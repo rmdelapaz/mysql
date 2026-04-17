@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn MySQL aggregate functions (COUNT, SUM, AVG, MIN, MAX), GROUP BY for grouping results, and HAVING for filtering groups.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Aggregate Functions &amp; GROUP BY - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 3: Querying Data</a></li>
+            <li aria-current="page">Lesson 9: Aggregate Functions &amp; GROUP BY</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>📈 Lesson 9: Aggregate Functions &amp; GROUP BY</h1>
+                <p class="lead">So far you've been retrieving individual rows — "show me this book" or "list those customers." But what about questions like "how many books do we have?" or "what's the average price?" Aggregate functions collapse many rows into a single answer. Add <code>GROUP BY</code> and you can answer those questions <em>per category</em> — average price per author, total sales per city, count per genre.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Use <code>COUNT</code>, <code>SUM</code>, <code>AVG</code>, <code>MIN</code>, and <code>MAX</code> to summarize data</li>
+                        <li>Understand how aggregate functions handle NULL values</li>
+                        <li>Group rows with <code>GROUP BY</code> to get per-category summaries</li>
+                        <li>Filter groups with <code>HAVING</code> (and understand how it differs from <code>WHERE</code>)</li>
+                        <li>Combine aggregates with <code>WHERE</code>, <code>ORDER BY</code>, and <code>LIMIT</code></li>
+                        <li>Avoid common aggregate mistakes</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 50 minutes</p>
+                    <p><strong>Prerequisites:</strong> Sorting &amp; limiting results (<a href="lesson_08.html">Lesson 8</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#what-are-aggregates" class="toc-link">What Are Aggregate Functions?</a></li>
+                        <li><a href="#count" class="toc-link">COUNT — Counting Rows</a></li>
+                        <li><a href="#sum-avg" class="toc-link">SUM &amp; AVG — Totals and Averages</a></li>
+                        <li><a href="#min-max" class="toc-link">MIN &amp; MAX — Extremes</a></li>
+                        <li><a href="#nulls" class="toc-link">Aggregates and NULL</a></li>
+                        <li><a href="#group-by" class="toc-link">GROUP BY — Per-Category Summaries</a></li>
+                        <li><a href="#having" class="toc-link">HAVING — Filtering Groups</a></li>
+                        <li><a href="#clause-order" class="toc-link">Updated Clause Order</a></li>
+                        <li><a href="#common-mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: What Are Aggregate Functions? -->
+            <section id="what-are-aggregates" class="lesson-section">
+                <h2>What Are Aggregate Functions?</h2>
+                <p>A regular <code>SELECT</code> returns one row per matching row in the table. An <strong>aggregate function</strong> takes multiple rows and collapses them into a single value — a count, a sum, an average, a minimum, or a maximum.</p>
+
+                <div class="mermaid">
+                    graph LR
+                        subgraph Input["10 rows from books table"]
+                            R1["$7.99"]
+                            R2["$8.99"]
+                            R3["$8.99"]
+                            R4["$9.49"]
+                            R5["$9.99"]
+                            R6["$10.49"]
+                            R7["$10.99"]
+                            R8["$11.99"]
+                            R9["$14.99"]
+                            R10["$15.99"]
+                        end
+                        Input -->|"AVG(price)"| Result["$10.99"]
+                </div>
+
+                <p>MySQL provides five core aggregate functions:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Function</th>
+                                <th>What It Does</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>COUNT()</code></td>
+                                <td>Counts rows</td>
+                                <td>How many books do we have?</td>
+                            </tr>
+                            <tr>
+                                <td><code>SUM()</code></td>
+                                <td>Adds up values</td>
+                                <td>What's the total value of all books?</td>
+                            </tr>
+                            <tr>
+                                <td><code>AVG()</code></td>
+                                <td>Calculates the average</td>
+                                <td>What's the average book price?</td>
+                            </tr>
+                            <tr>
+                                <td><code>MIN()</code></td>
+                                <td>Finds the smallest value</td>
+                                <td>What's the cheapest book?</td>
+                            </tr>
+                            <tr>
+                                <td><code>MAX()</code></td>
+                                <td>Finds the largest value</td>
+                                <td>What's the most expensive book?</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 2: COUNT -->
+            <section id="count" class="lesson-section">
+                <h2>COUNT — Counting Rows</h2>
+                <p><code>COUNT</code> is the most commonly used aggregate. It comes in two forms:</p>
+
+                <h3>COUNT(*) — Count All Rows</h3>
+                <p><code>COUNT(*)</code> counts every row, including rows with NULL values:</p>
+
+                <pre><code class="language-sql">
+-- How many books do we have?
+SELECT COUNT(*) AS total_books FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------------+
+| total_books |
++-------------+
+|          10 |
++-------------+
+                    </code></pre>
+                </div>
+
+                <pre><code class="language-sql">
+-- How many customers?
+SELECT COUNT(*) AS total_customers FROM customers;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-----------------+
+| total_customers |
++-----------------+
+|               8 |
++-----------------+
+                    </code></pre>
+                </div>
+
+                <h3>COUNT(column) — Count Non-NULL Values</h3>
+                <p><code>COUNT(column)</code> only counts rows where that column is <strong>not NULL</strong>:</p>
+
+                <pre><code class="language-sql">
+-- How many customers have a city listed?
+SELECT COUNT(city) AS customers_with_city FROM customers;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++---------------------+
+| customers_with_city |
++---------------------+
+|                   6 |
++---------------------+
+                    </code></pre>
+                </div>
+
+                <p>We have 8 customers total, but only 6 have a city — 2 have NULL cities (Eve and Hank from our earlier lessons).</p>
+
+                <h3>COUNT(DISTINCT column) — Count Unique Values</h3>
+                <p>Add <code>DISTINCT</code> to count only unique (non-duplicate) values:</p>
+
+                <pre><code class="language-sql">
+-- How many different authors do we have?
+SELECT COUNT(DISTINCT author) AS unique_authors FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++----------------+
+| unique_authors |
++----------------+
+|             10 |
++----------------+
+                    </code></pre>
+                </div>
+
+                <pre><code class="language-sql">
+-- How many different cities are represented?
+SELECT COUNT(DISTINCT city) AS unique_cities FROM customers;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++---------------+
+| unique_cities |
++---------------+
+|             4 |
++---------------+
+                    </code></pre>
+                </div>
+
+                <h3>COUNT with WHERE</h3>
+                <p>Combine <code>COUNT</code> with <code>WHERE</code> to count a subset:</p>
+
+                <pre><code class="language-sql">
+-- How many books are in stock?
+SELECT COUNT(*) AS in_stock_count FROM books
+WHERE in_stock = TRUE;
+
+-- How many books cost more than $10?
+SELECT COUNT(*) AS expensive_books FROM books
+WHERE price > 10;
+
+-- How many books were published after 1950?
+SELECT COUNT(*) AS modern_books FROM books
+WHERE published > '1950-01-01';
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Always Use an Alias</h4>
+                    <p>Without an alias, MySQL labels the result column <code>COUNT(*)</code> — which is ugly and hard to reference. Always give your aggregates a meaningful alias with <code>AS</code>.</p>
+                </div>
+            </section>
+
+            <!-- Section 3: SUM & AVG -->
+            <section id="sum-avg" class="lesson-section">
+                <h2>SUM &amp; AVG — Totals and Averages</h2>
+
+                <h3>SUM — Adding Up Values</h3>
+                <p><code>SUM</code> adds all values in a column. It works with numeric columns:</p>
+
+                <pre><code class="language-sql">
+-- Total value of all books (if you bought one of each)
+SELECT SUM(price) AS total_value FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------------+
+| total_value |
++-------------+
+|      109.90 |
++-------------+
+                    </code></pre>
+                </div>
+
+                <pre><code class="language-sql">
+-- Total pages across all books
+SELECT SUM(pages) AS total_pages FROM books;
+
+-- Total value of in-stock books only
+SELECT SUM(price) AS in_stock_value FROM books
+WHERE in_stock = TRUE;
+                </code></pre>
+
+                <h3>AVG — Calculating Averages</h3>
+                <p><code>AVG</code> returns the arithmetic mean (sum ÷ count):</p>
+
+                <pre><code class="language-sql">
+-- Average book price
+SELECT AVG(price) AS avg_price FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-----------+
+| avg_price |
++-----------+
+| 10.990000 |
++-----------+
+                    </code></pre>
+                </div>
+
+                <p>That's a lot of decimal places! Use <code>ROUND</code> to clean it up:</p>
+
+                <pre><code class="language-sql">
+-- Average price, rounded to 2 decimal places
+SELECT ROUND(AVG(price), 2) AS avg_price FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-----------+
+| avg_price |
++-----------+
+|     10.99 |
++-----------+
+                    </code></pre>
+                </div>
+
+                <pre><code class="language-sql">
+-- Average page count
+SELECT ROUND(AVG(pages)) AS avg_pages FROM books;
+
+-- Average price of in-stock books
+SELECT ROUND(AVG(price), 2) AS avg_in_stock_price FROM books
+WHERE in_stock = TRUE;
+                </code></pre>
+
+                <h3>Multiple Aggregates in One Query</h3>
+                <p>You can use multiple aggregate functions in a single <code>SELECT</code>:</p>
+
+                <pre><code class="language-sql">
+-- Get a complete price summary
+SELECT
+    COUNT(*) AS total_books,
+    ROUND(SUM(price), 2) AS total_value,
+    ROUND(AVG(price), 2) AS avg_price,
+    MIN(price) AS cheapest,
+    MAX(price) AS most_expensive
+FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------------+-------------+-----------+----------+----------------+
+| total_books | total_value | avg_price | cheapest | most_expensive |
++-------------+-------------+-----------+----------+----------------+
+|          10 |      109.90 |     10.99 |     7.99 |          15.99 |
++-------------+-------------+-----------+----------+----------------+
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Section 4: MIN & MAX -->
+            <section id="min-max" class="lesson-section">
+                <h2>MIN &amp; MAX — Extremes</h2>
+                <p><code>MIN</code> and <code>MAX</code> find the smallest and largest values. They work with numbers, text, and dates:</p>
+
+                <h3>With Numbers</h3>
+                <pre><code class="language-sql">
+-- Cheapest and most expensive books
+SELECT
+    MIN(price) AS cheapest,
+    MAX(price) AS most_expensive
+FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++----------+----------------+
+| cheapest | most_expensive |
++----------+----------------+
+|     7.99 |          15.99 |
++----------+----------------+
+                    </code></pre>
+                </div>
+
+                <h3>With Dates</h3>
+                <pre><code class="language-sql">
+-- Oldest and newest books
+SELECT
+    MIN(published) AS oldest_published,
+    MAX(published) AS newest_published
+FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------------+------------------+
+| oldest_published | newest_published |
++------------------+------------------+
+| 1813-01-28       | 1965-08-01       |
++------------------+------------------+
+                    </code></pre>
+                </div>
+
+                <h3>With Text</h3>
+                <p>For text, <code>MIN</code> returns the first alphabetically and <code>MAX</code> returns the last:</p>
+
+                <pre><code class="language-sql">
+-- First and last book titles alphabetically
+SELECT
+    MIN(title) AS first_alpha,
+    MAX(title) AS last_alpha
+FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------------+---------------------+
+| first_alpha | last_alpha          |
++-------------+---------------------+
+| 1984        | To Kill a Mockingbird |
++-------------+---------------------+
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ MIN/MAX Don't Tell You Which Row</h4>
+                    <p><code>MIN(price)</code> tells you the cheapest price is $7.99, but it doesn't tell you <em>which</em> book has that price. To get the full row, use <code>ORDER BY</code> + <code>LIMIT 1</code> instead:</p>
+                    <pre><code class="language-sql">
+-- Which book is cheapest? (full row info)
+SELECT title, price FROM books
+ORDER BY price ASC LIMIT 1;
+                    </code></pre>
+                    <p>In <a href="lesson_10.html">Lesson 10</a>, you'll learn subqueries which let you combine both approaches.</p>
+                </div>
+            </section>
+
+            <!-- Section 5: Aggregates and NULL -->
+            <section id="nulls" class="lesson-section">
+                <h2>Aggregates and NULL</h2>
+                <p>This is one of the most important (and most misunderstood) behaviors in SQL. Here's the rule:</p>
+
+                <div class="card card-accent">
+                    <h4>🔑 The NULL Rule</h4>
+                    <p>All aggregate functions <strong>ignore NULL values</strong> — except <code>COUNT(*)</code>, which counts all rows regardless.</p>
+                </div>
+
+                <p>Let's see what this means in practice:</p>
+
+                <pre><code class="language-sql">
+-- COUNT(*) vs COUNT(city) on the customers table
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(city) AS rows_with_city
+FROM customers;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------+----------------+
+| total_rows | rows_with_city |
++------------+----------------+
+|          8 |              6 |
++------------+----------------+
+                    </code></pre>
+                </div>
+
+                <p><code>COUNT(*)</code> says 8 because it counts all rows. <code>COUNT(city)</code> says 6 because it skips the 2 rows where city is NULL.</p>
+
+                <h3>AVG and NULL — A Subtle Gotcha</h3>
+                <p>Because <code>AVG</code> ignores NULLs, the average only considers non-NULL values:</p>
+
+                <pre><code class="language-sql">
+-- Imagine a ratings column where some books haven't been rated yet:
+-- Book A: 5, Book B: 3, Book C: NULL, Book D: 4
+
+-- AVG(rating) = (5 + 3 + 4) / 3 = 4.0  (NOT divided by 4!)
+-- The NULL is skipped entirely — both from the sum AND the count
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 If You Want NULLs Treated as Zero</h4>
+                    <p>Use <code>COALESCE</code> or <code>IFNULL</code> to replace NULLs before aggregating:</p>
+                    <pre><code class="language-sql">
+-- Treat NULL ratings as 0
+SELECT AVG(IFNULL(rating, 0)) AS avg_with_zeros FROM books;
+
+-- COALESCE does the same thing
+SELECT AVG(COALESCE(rating, 0)) AS avg_with_zeros FROM books;
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Section 6: GROUP BY -->
+            <section id="group-by" class="lesson-section">
+                <h2>GROUP BY — Per-Category Summaries</h2>
+                <p>Without <code>GROUP BY</code>, aggregate functions summarize the <em>entire table</em>. With <code>GROUP BY</code>, they summarize <em>each group</em> separately.</p>
+
+                <div class="mermaid">
+                    graph TD
+                        subgraph Before["Without GROUP BY"]
+                            A1["All 10 books"] -->|"AVG(price)"| A2["$10.99"]
+                        end
+                        subgraph After["With GROUP BY author"]
+                            B1["Austen's books"] -->|"AVG(price)"| B2["$7.99"]
+                            B3["Tolkien's books"] -->|"AVG(price)"| B4["$13.49"]
+                            B5["Orwell's books"] -->|"AVG(price)"| B6["$9.99"]
+                            B7["...etc..."] -->|"AVG(price)"| B8["..."]
+                        end
+                </div>
+
+                <h3>Basic GROUP BY</h3>
+
+                <pre><code class="language-sql">
+-- How many books does each author have?
+SELECT author, COUNT(*) AS book_count
+FROM books
+GROUP BY author;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++----------------------+------------+
+| author               | book_count |
++----------------------+------------+
+| Aldous Huxley        |          1 |
+| F. Scott Fitzgerald  |          1 |
+| Frank Herbert        |          1 |
+| George Orwell        |          1 |
+| Harper Lee           |          1 |
+| J.D. Salinger        |          1 |
+| J.R.R. Tolkien       |          1 |
+| Jane Austen          |          1 |
+| Ray Bradbury         |          1 |
+| J.R.R. Tolkien       |          1 |
++----------------------+------------+
+                    </code></pre>
+                </div>
+
+                <pre><code class="language-sql">
+-- How many customers are in each city?
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+WHERE city IS NOT NULL
+GROUP BY city;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------------+----------------+
+| city        | customer_count |
++-------------+----------------+
+| Chicago     |              2 |
+| Houston     |              1 |
+| Los Angeles |              1 |
+| New York    |              2 |
++-------------+----------------+
+                    </code></pre>
+                </div>
+
+                <h3>GROUP BY with Multiple Aggregates</h3>
+
+                <pre><code class="language-sql">
+-- Price stats by in_stock status
+SELECT
+    in_stock,
+    COUNT(*) AS book_count,
+    ROUND(AVG(price), 2) AS avg_price,
+    MIN(price) AS cheapest,
+    MAX(price) AS most_expensive
+FROM books
+GROUP BY in_stock;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++----------+------------+-----------+----------+----------------+
+| in_stock | book_count | avg_price | cheapest | most_expensive |
++----------+------------+-----------+----------+----------------+
+|        0 |          3 |     10.49 |     8.99 |          11.99 |
+|        1 |          7 |     11.13 |     7.99 |          15.99 |
++----------+------------+-----------+----------+----------------+
+                    </code></pre>
+                </div>
+
+                <h3>GROUP BY with ORDER BY</h3>
+                <p>You can sort the grouped results — often you'll sort by the aggregate value:</p>
+
+                <pre><code class="language-sql">
+-- Cities with the most customers first
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+WHERE city IS NOT NULL
+GROUP BY city
+ORDER BY customer_count DESC;
+                </code></pre>
+
+                <pre><code class="language-sql">
+-- Authors ranked by average book price
+SELECT
+    author,
+    COUNT(*) AS books,
+    ROUND(AVG(price), 2) AS avg_price
+FROM books
+GROUP BY author
+ORDER BY avg_price DESC;
+                </code></pre>
+
+                <h3>GROUP BY with LIMIT</h3>
+
+                <pre><code class="language-sql">
+-- Top 3 cities by customer count
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+WHERE city IS NOT NULL
+GROUP BY city
+ORDER BY customer_count DESC
+LIMIT 3;
+                </code></pre>
+
+                <h3>Grouping by Multiple Columns</h3>
+                <p>You can group by more than one column for finer-grained categories:</p>
+
+                <pre><code class="language-sql">
+-- Count books by in_stock status AND price range
+SELECT
+    in_stock,
+    CASE
+        WHEN price < 10 THEN 'Under $10'
+        WHEN price < 15 THEN '$10-$15'
+        ELSE '$15+'
+    END AS price_range,
+    COUNT(*) AS book_count
+FROM books
+GROUP BY in_stock, price_range
+ORDER BY in_stock DESC, price_range;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 The CASE Expression</h4>
+                    <p>Don't worry about <code>CASE</code> too much right now — it's like an if/else in SQL. We used it here to create price range labels. The important thing is that <code>GROUP BY</code> can group by any expression, not just raw column names.</p>
+                </div>
+            </section>
+
+            <!-- Section 7: HAVING -->
+            <section id="having" class="lesson-section">
+                <h2>HAVING — Filtering Groups</h2>
+                <p><code>WHERE</code> filters individual rows <em>before</em> grouping. <code>HAVING</code> filters groups <em>after</em> grouping. This is one of the most important distinctions in SQL.</p>
+
+                <div class="mermaid">
+                    graph LR
+                        A["All rows"] -->|"WHERE filters rows"| B["Matching rows"]
+                        B -->|"GROUP BY groups"| C["Groups"]
+                        C -->|"HAVING filters groups"| D["Matching groups"]
+                </div>
+
+                <h3>Basic HAVING</h3>
+
+                <pre><code class="language-sql">
+-- Show only cities with MORE than 1 customer
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+WHERE city IS NOT NULL
+GROUP BY city
+HAVING customer_count > 1;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++----------+----------------+
+| city     | customer_count |
++----------+----------------+
+| Chicago  |              2 |
+| New York |              2 |
++----------+----------------+
+                    </code></pre>
+                </div>
+
+                <p>Houston (1 customer) and Los Angeles (1 customer) are excluded because they don't satisfy <code>HAVING customer_count > 1</code>.</p>
+
+                <h3>WHERE vs HAVING</h3>
+                <p>This is a critical distinction:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>WHERE</th>
+                                <th>HAVING</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Filters</td>
+                                <td>Individual rows</td>
+                                <td>Groups (after GROUP BY)</td>
+                            </tr>
+                            <tr>
+                                <td>When it runs</td>
+                                <td>Before grouping</td>
+                                <td>After grouping</td>
+                            </tr>
+                            <tr>
+                                <td>Can use aggregates?</td>
+                                <td>❌ No</td>
+                                <td>✅ Yes</td>
+                            </tr>
+                            <tr>
+                                <td>Can use column values?</td>
+                                <td>✅ Yes</td>
+                                <td>✅ Yes (but only grouped columns)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <pre><code class="language-sql">
+-- ⛔ WRONG — you can't use an aggregate in WHERE
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+WHERE COUNT(*) > 1   -- ERROR! Aggregates not allowed in WHERE
+GROUP BY city;
+
+-- ✅ CORRECT — use HAVING for aggregate conditions
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+GROUP BY city
+HAVING COUNT(*) > 1;
+                </code></pre>
+
+                <h3>Using WHERE and HAVING Together</h3>
+                <p>Often you need both — <code>WHERE</code> to filter rows before grouping, and <code>HAVING</code> to filter groups after:</p>
+
+                <pre><code class="language-sql">
+-- Among in-stock books, find price ranges with more than 2 books
+SELECT
+    CASE
+        WHEN price < 10 THEN 'Under $10'
+        WHEN price < 13 THEN '$10-$13'
+        ELSE '$13+'
+    END AS price_range,
+    COUNT(*) AS book_count,
+    ROUND(AVG(price), 2) AS avg_price
+FROM books
+WHERE in_stock = TRUE          -- filter rows FIRST
+GROUP BY price_range
+HAVING book_count > 2          -- then filter groups
+ORDER BY avg_price;
+                </code></pre>
+
+                <p>The execution order is: <strong>WHERE</strong> removes out-of-stock books → <strong>GROUP BY</strong> groups the remaining books by price range → <strong>HAVING</strong> removes groups with 2 or fewer books.</p>
+
+                <h3>More HAVING Examples</h3>
+
+                <pre><code class="language-sql">
+-- Authors whose average book price is above $12
+SELECT
+    author,
+    ROUND(AVG(price), 2) AS avg_price
+FROM books
+GROUP BY author
+HAVING avg_price > 12
+ORDER BY avg_price DESC;
+
+-- Cities where total customer spending would exceed $100
+-- (hypothetical example with an orders table)
+-- SELECT city, SUM(order_total) AS total_spent
+-- FROM customers JOIN orders ON customers.id = orders.customer_id
+-- GROUP BY city
+-- HAVING total_spent > 100;
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ Rule of Thumb</h4>
+                    <p>If your condition involves a <strong>column value</strong> (like <code>price > 10</code>), use <code>WHERE</code>.<br>
+                    If your condition involves an <strong>aggregate</strong> (like <code>COUNT(*) > 1</code> or <code>AVG(price) > 12</code>), use <code>HAVING</code>.</p>
+                </div>
+            </section>
+
+            <!-- Section 8: Clause Order -->
+            <section id="clause-order" class="lesson-section">
+                <h2>Updated Clause Order</h2>
+                <p>With <code>GROUP BY</code> and <code>HAVING</code> added, the full clause order becomes:</p>
+
+                <div class="mermaid">
+                    graph TD
+                        A["SELECT columns / aggregates"] --> B["FROM table"]
+                        B --> C["WHERE row conditions"]
+                        C --> D["GROUP BY columns"]
+                        D --> E["HAVING group conditions"]
+                        E --> F["ORDER BY columns"]
+                        F --> G["LIMIT count"]
+                        G --> H["OFFSET skip"]
+                </div>
+
+                <pre><code class="language-sql">
+-- The full pattern in action:
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+WHERE city IS NOT NULL         -- 1. Filter rows
+GROUP BY city                  -- 2. Group remaining rows
+HAVING customer_count > 1      -- 3. Filter groups
+ORDER BY customer_count DESC   -- 4. Sort results
+LIMIT 5;                       -- 5. Limit output
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ Updated Memory Aid</h4>
+                    <p>The full clause order: <strong>S-F-W-G-H-O-L</strong></p>
+                    <p><strong>S</strong>elect → <strong>F</strong>rom → <strong>W</strong>here → <strong>G</strong>roup By → <strong>H</strong>aving → <strong>O</strong>rder By → <strong>L</strong>imit</p>
+                    <p>Or remember: <em>"Silly Frogs Will Gobble Hamburgers On Lily-pads."</em></p>
+                </div>
+            </section>
+
+            <!-- Section 9: Common Mistakes -->
+            <section id="common-mistakes" class="lesson-section">
+                <h2>Common Mistakes</h2>
+
+                <h3>Mistake 1: Non-Aggregated Columns Without GROUP BY</h3>
+
+                <pre><code class="language-sql">
+-- ⛔ WRONG — title is not aggregated or grouped
+SELECT title, COUNT(*) FROM books;
+
+-- ✅ CORRECT — group by the non-aggregated column
+SELECT title, COUNT(*) AS count FROM books
+GROUP BY title;
+
+-- ✅ Also correct — aggregate everything, no group needed
+SELECT COUNT(*) AS total FROM books;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ The GROUP BY Rule</h4>
+                    <p>Every column in <code>SELECT</code> must either be: (a) inside an aggregate function, or (b) listed in <code>GROUP BY</code>. MySQL's default mode may allow violations of this rule without an error, but the results will be unpredictable. Always follow this rule.</p>
+                </div>
+
+                <h3>Mistake 2: Using Aggregates in WHERE</h3>
+
+                <pre><code class="language-sql">
+-- ⛔ WRONG — WHERE can't use aggregates
+SELECT author FROM books
+WHERE COUNT(*) > 1
+GROUP BY author;
+
+-- ✅ CORRECT — use HAVING
+SELECT author, COUNT(*) AS book_count FROM books
+GROUP BY author
+HAVING book_count > 1;
+                </code></pre>
+
+                <h3>Mistake 3: Forgetting That AVG Ignores NULL</h3>
+
+                <pre><code class="language-sql">
+-- If you have ratings: 5, 3, NULL, 4
+-- AVG(rating) = 4.0 (divides by 3, not 4)
+-- This might not be what you want!
+
+-- If NULLs should count as zero:
+SELECT AVG(IFNULL(rating, 0)) AS avg_rating FROM books;
+                </code></pre>
+
+                <h3>Mistake 4: Wrong Clause Order</h3>
+
+                <pre><code class="language-sql">
+-- ⛔ WRONG — HAVING before GROUP BY
+SELECT city, COUNT(*) FROM customers
+HAVING COUNT(*) > 1
+GROUP BY city;
+
+-- ✅ CORRECT
+SELECT city, COUNT(*) FROM customers
+GROUP BY city
+HAVING COUNT(*) > 1;
+                </code></pre>
+            </section>
+
+            <!-- Section 10: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: Basic Aggregates</h3>
+                    <p>Write queries to find:</p>
+                    <ol>
+                        <li>The total number of books in the database</li>
+                        <li>The average book price (rounded to 2 decimal places)</li>
+                        <li>The total number of pages across all books</li>
+                        <li>The cheapest and most expensive book prices in a single query</li>
+                        <li>How many books are currently in stock</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+SELECT COUNT(*) AS total_books FROM books;
+
+-- 2
+SELECT ROUND(AVG(price), 2) AS avg_price FROM books;
+
+-- 3
+SELECT SUM(pages) AS total_pages FROM books;
+
+-- 4
+SELECT
+    MIN(price) AS cheapest,
+    MAX(price) AS most_expensive
+FROM books;
+
+-- 5
+SELECT COUNT(*) AS in_stock_count FROM books
+WHERE in_stock = TRUE;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: GROUP BY</h3>
+                    <p>Write queries to:</p>
+                    <ol>
+                        <li>Count the number of customers in each city (exclude NULL cities)</li>
+                        <li>Find the average book price for in-stock vs. out-of-stock books</li>
+                        <li>List each city and its customer count, sorted by count (highest first)</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+WHERE city IS NOT NULL
+GROUP BY city;
+
+-- 2
+SELECT
+    in_stock,
+    COUNT(*) AS book_count,
+    ROUND(AVG(price), 2) AS avg_price
+FROM books
+GROUP BY in_stock;
+
+-- 3
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+WHERE city IS NOT NULL
+GROUP BY city
+ORDER BY customer_count DESC;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: HAVING</h3>
+                    <p>Write queries to:</p>
+                    <ol>
+                        <li>Show only cities with more than 1 customer</li>
+                        <li>Among in-stock books, find which price ranges (under $10, $10-$15, $15+) have at least 2 books</li>
+                        <li>List authors whose books have an average page count above 250</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+WHERE city IS NOT NULL
+GROUP BY city
+HAVING customer_count > 1;
+
+-- 2
+SELECT
+    CASE
+        WHEN price < 10 THEN 'Under $10'
+        WHEN price < 15 THEN '$10-$15'
+        ELSE '$15+'
+    END AS price_range,
+    COUNT(*) AS book_count
+FROM books
+WHERE in_stock = TRUE
+GROUP BY price_range
+HAVING book_count >= 2;
+
+-- 3
+SELECT
+    author,
+    ROUND(AVG(pages)) AS avg_pages
+FROM books
+GROUP BY author
+HAVING avg_pages > 250;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 4: Combined Challenge</h3>
+                    <p>Write a single query that:</p>
+                    <ul>
+                        <li>Only considers in-stock books</li>
+                        <li>Groups them by author</li>
+                        <li>Calculates the count, average price, and total pages per author</li>
+                        <li>Only shows authors with an average price above $10</li>
+                        <li>Sorts by average price, highest first</li>
+                        <li>Returns the top 5 results</li>
+                    </ul>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+SELECT
+    author,
+    COUNT(*) AS book_count,
+    ROUND(AVG(price), 2) AS avg_price,
+    SUM(pages) AS total_pages
+FROM books
+WHERE in_stock = TRUE
+GROUP BY author
+HAVING avg_price > 10
+ORDER BY avg_price DESC
+LIMIT 5;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What does <code>COUNT(*)</code> count?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! COUNT(*) counts every row, regardless of NULL values in any column.">
+                                A) All rows, including those with NULL values
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="That's COUNT(column), not COUNT(*). The asterisk means all rows.">
+                                B) Only rows where no columns are NULL
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="COUNT returns a number, not a list of values.">
+                                C) All distinct values in the table
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> When should you use HAVING instead of WHERE?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="HAVING is specifically for filtering groups, not a general-purpose upgrade over WHERE.">
+                                A) Always — HAVING is the newer, better version of WHERE
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! HAVING filters groups after GROUP BY. It can use aggregate functions like COUNT, AVG, SUM — which WHERE cannot.">
+                                B) When filtering on aggregate values (COUNT, AVG, SUM, etc.)
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="HAVING works with GROUP BY. Without GROUP BY, use WHERE.">
+                                C) When the table has more than 1000 rows
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> How does <code>AVG()</code> handle NULL values?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="NULL is not the same as 0. AVG skips NULLs entirely.">
+                                A) Treats them as 0
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! AVG ignores NULLs — it only averages the non-NULL values. For example, AVG of (5, 3, NULL, 4) = 12/3 = 4.0, not 12/4 = 3.0.">
+                                B) Ignores them completely
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="AVG still works even when some values are NULL — it just skips them.">
+                                C) Returns NULL if any value is NULL
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> What is the correct clause order?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="HAVING must come after GROUP BY, not before it.">
+                                A) SELECT → FROM → WHERE → HAVING → GROUP BY → ORDER BY
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The order is: SELECT → FROM → WHERE → GROUP BY → HAVING → ORDER BY → LIMIT. Remember: S-F-W-G-H-O-L.">
+                                B) SELECT → FROM → WHERE → GROUP BY → HAVING → ORDER BY
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="GROUP BY must come before ORDER BY.">
+                                C) SELECT → FROM → WHERE → ORDER BY → GROUP BY → HAVING
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 11: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li><strong>Aggregate functions</strong> collapse multiple rows into a single value</li>
+                        <li><strong>COUNT(*)</strong> counts all rows; <strong>COUNT(column)</strong> counts non-NULL values</li>
+                        <li><strong>SUM</strong> and <strong>AVG</strong> work with numeric columns; use <code>ROUND</code> to clean up decimals</li>
+                        <li><strong>MIN</strong> and <strong>MAX</strong> work with numbers, dates, and text</li>
+                        <li>All aggregates <strong>ignore NULL</strong> except <code>COUNT(*)</code></li>
+                        <li><strong>GROUP BY</strong> splits rows into groups for per-category aggregation</li>
+                        <li><strong>HAVING</strong> filters groups after aggregation (WHERE filters rows before)</li>
+                        <li>Every non-aggregated column in SELECT must be in <code>GROUP BY</code></li>
+                        <li>Full clause order: <strong>SELECT → FROM → WHERE → GROUP BY → HAVING → ORDER BY → LIMIT</strong></li>
+                        <li>Use <code>COUNT(DISTINCT column)</code> to count unique values</li>
+                    </ul>
+                </div>
+
+                <h3>Quick Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pattern</th>
+                                <th>Syntax</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Count all rows</td>
+                                <td><code>SELECT COUNT(*) FROM table</code></td>
+                            </tr>
+                            <tr>
+                                <td>Count non-NULL</td>
+                                <td><code>SELECT COUNT(column) FROM table</code></td>
+                            </tr>
+                            <tr>
+                                <td>Count unique</td>
+                                <td><code>SELECT COUNT(DISTINCT col) FROM table</code></td>
+                            </tr>
+                            <tr>
+                                <td>Sum values</td>
+                                <td><code>SELECT SUM(col) FROM table</code></td>
+                            </tr>
+                            <tr>
+                                <td>Average (rounded)</td>
+                                <td><code>SELECT ROUND(AVG(col), 2) FROM table</code></td>
+                            </tr>
+                            <tr>
+                                <td>Min / Max</td>
+                                <td><code>SELECT MIN(col), MAX(col) FROM table</code></td>
+                            </tr>
+                            <tr>
+                                <td>Group summary</td>
+                                <td><code>SELECT col, COUNT(*) FROM t GROUP BY col</code></td>
+                            </tr>
+                            <tr>
+                                <td>Filter groups</td>
+                                <td><code>GROUP BY col HAVING COUNT(*) > N</code></td>
+                            </tr>
+                            <tr>
+                                <td>NULL → 0 in AVG</td>
+                                <td><code>AVG(IFNULL(col, 0))</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html" target="_blank" rel="noopener">MySQL Docs — Aggregate Functions</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html" target="_blank" rel="noopener">MySQL Docs — GROUP BY Handling</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/group-by-modifiers.html" target="_blank" rel="noopener">MySQL Docs — GROUP BY Modifiers</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>You can now summarize, group, and filter aggregate data — powerful tools for turning raw rows into meaningful insights. But what if you need a query <em>inside</em> another query? "Show me all books that cost more than the average price" — that requires knowing the average first, then using it as a filter. In the next lesson, you'll learn <strong>subqueries</strong> — queries nested inside other queries — to solve exactly these kinds of multi-step problems.</p>
+
+                <div class="card card-accent" style="text-align: center; padding: 2rem;">
+                    <h3>🎉 Congratulations!</h3>
+                    <p>You've unlocked the analytical power of SQL. COUNT, SUM, AVG, MIN, MAX, GROUP BY, HAVING — these are the tools that transform raw data into business intelligence!</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_08.html" class="prev-lesson">← Previous: Sorting &amp; Limiting Results</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_10.html" class="next-lesson">Next: Subqueries &amp; Nested Queries →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

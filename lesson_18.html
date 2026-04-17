@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn MySQL transactions — ACID properties, BEGIN, COMMIT, ROLLBACK, and savepoints — to guarantee data integrity when multiple operations must succeed or fail together.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Transactions - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 6: Advanced Features</a></li>
+            <li aria-current="page">Lesson 18: Transactions</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🔒 Lesson 18: Transactions</h1>
+                <p class="lead">Imagine a customer places an order: you INSERT the order, INSERT the order items, and UPDATE the inventory. But what if the server crashes after the order is inserted but <em>before</em> the inventory is updated? You'd have an order with no inventory deduction — or worse, deducted inventory with no order. A <strong>transaction</strong> groups these operations into an all-or-nothing unit: either everything succeeds together, or everything is rolled back as if nothing happened.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Explain the ACID properties of transactions</li>
+                        <li>Use <code>START TRANSACTION</code>, <code>COMMIT</code>, and <code>ROLLBACK</code></li>
+                        <li>Create and roll back to <code>SAVEPOINT</code>s</li>
+                        <li>Understand autocommit mode and how to control it</li>
+                        <li>Use transactions inside stored procedures</li>
+                        <li>Recognize common transaction patterns and pitfalls</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 45 minutes</p>
+                    <p><strong>Prerequisites:</strong> Stored Procedures &amp; Functions (<a href="lesson_17.html">Lesson 17</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#why-transactions" class="toc-link">Why Transactions?</a></li>
+                        <li><a href="#acid" class="toc-link">The ACID Properties</a></li>
+                        <li><a href="#basic-syntax" class="toc-link">Basic Transaction Syntax</a></li>
+                        <li><a href="#commit" class="toc-link">COMMIT — Make It Permanent</a></li>
+                        <li><a href="#rollback" class="toc-link">ROLLBACK — Undo Everything</a></li>
+                        <li><a href="#autocommit" class="toc-link">Autocommit Mode</a></li>
+                        <li><a href="#savepoints" class="toc-link">Savepoints — Partial Rollback</a></li>
+                        <li><a href="#transactions-in-procedures" class="toc-link">Transactions in Stored Procedures</a></li>
+                        <li><a href="#common-patterns" class="toc-link">Common Transaction Patterns</a></li>
+                        <li><a href="#pitfalls" class="toc-link">Pitfalls &amp; Best Practices</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: Why Transactions? -->
+            <section id="why-transactions" class="lesson-section">
+                <h2>Why Transactions?</h2>
+                <p>Many real-world database operations involve <strong>multiple steps</strong> that must succeed or fail as a unit:</p>
+
+                <ul>
+                    <li><strong>Bank transfer:</strong> Debit Account A and credit Account B — both must happen, or neither</li>
+                    <li><strong>Order placement:</strong> Create the order, add line items, update inventory — all or nothing</li>
+                    <li><strong>User registration:</strong> Create the user account, create their profile, send a welcome email record — if any step fails, clean up</li>
+                </ul>
+
+                <p>Without transactions, a failure midway through leaves your data in an <strong>inconsistent state</strong> — some steps completed, others not. Transactions prevent this.</p>
+
+                <div class="mermaid">
+                    graph TD
+                        subgraph tx["Transaction"]
+                            S1["Step 1: INSERT order"] --> S2["Step 2: INSERT order_items"]
+                            S2 --> S3["Step 3: UPDATE inventory"]
+                        end
+                        S3 -->|"All succeed"| C["COMMIT ✅<br/>Changes saved permanently"]
+                        S2 -->|"Step 3 fails"| R["ROLLBACK ❌<br/>All changes undone"]
+                        S1 -->|"Step 2 fails"| R
+                </div>
+            </section>
+
+            <!-- Section 2: ACID -->
+            <section id="acid" class="lesson-section">
+                <h2>The ACID Properties</h2>
+                <p>Transactions guarantee four properties, known by the acronym <strong>ACID</strong>:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Property</th>
+                                <th>Meaning</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Atomicity</strong></td>
+                                <td>All operations succeed or all are rolled back — no partial completion</td>
+                                <td>A bank transfer either moves money or doesn't — it can't debit without crediting</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Consistency</strong></td>
+                                <td>The database moves from one valid state to another — all constraints are maintained</td>
+                                <td>Account balances can't go negative if you have a CHECK constraint</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Isolation</strong></td>
+                                <td>Concurrent transactions don't interfere with each other</td>
+                                <td>Two people buying the last item — only one gets it, not both</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durability</strong></td>
+                                <td>Once committed, data survives crashes, power failures, etc.</td>
+                                <td>After COMMIT, even a server restart won't lose the data</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 InnoDB Required</h4>
+                    <p>ACID transactions require the <strong>InnoDB</strong> storage engine, which is MySQL's default since version 5.5. The older MyISAM engine does <em>not</em> support transactions. You can check a table's engine with: <code>SHOW TABLE STATUS LIKE 'table_name';</code></p>
+                </div>
+            </section>
+
+            <!-- Section 3: Basic Syntax -->
+            <section id="basic-syntax" class="lesson-section">
+                <h2>Basic Transaction Syntax</h2>
+
+                <pre><code class="language-sql">
+-- Start a transaction
+START TRANSACTION;
+
+-- Do your work (INSERT, UPDATE, DELETE)
+INSERT INTO orders (customer_id, order_date) VALUES (1, CURRENT_DATE);
+INSERT INTO order_items (order_id, book_id, quantity) VALUES (LAST_INSERT_ID(), 1, 2);
+
+-- If everything worked:
+COMMIT;
+
+-- OR if something went wrong:
+ROLLBACK;
+                </code></pre>
+
+                <p>Between <code>START TRANSACTION</code> and <code>COMMIT</code> (or <code>ROLLBACK</code>), your changes are <strong>temporary</strong>. Other database connections can't see them yet. Only after COMMIT do they become permanent and visible.</p>
+
+                <div class="card card-info">
+                    <h4>💡 BEGIN vs START TRANSACTION</h4>
+                    <p>Both work identically in MySQL:</p>
+                    <pre><code class="language-sql">
+START TRANSACTION;   -- Standard SQL syntax
+BEGIN;               -- MySQL alias (same thing)
+BEGIN WORK;          -- Another alias (same thing)
+                    </code></pre>
+                    <p><code>START TRANSACTION</code> is the SQL standard and slightly more explicit. Both are fine.</p>
+                </div>
+            </section>
+
+            <!-- Section 4: COMMIT -->
+            <section id="commit" class="lesson-section">
+                <h2>COMMIT — Make It Permanent</h2>
+                <p><code>COMMIT</code> tells MySQL: "Everything since START TRANSACTION looks good — save it permanently."</p>
+
+                <pre><code class="language-sql">
+START TRANSACTION;
+
+-- Create a new order for Alice (customer_id = 1)
+INSERT INTO orders (customer_id, order_date)
+VALUES (1, '2026-04-16');
+
+-- Get the new order's ID
+SET @new_order_id = LAST_INSERT_ID();
+
+-- Add items to the order
+INSERT INTO order_items (order_id, book_id, quantity)
+VALUES (@new_order_id, 1, 1);    -- 1 copy of Dune
+
+INSERT INTO order_items (order_id, book_id, quantity)
+VALUES (@new_order_id, 2, 3);    -- 3 copies of 1984
+
+-- Everything succeeded — commit!
+COMMIT;
+                </code></pre>
+
+                <p>After COMMIT, the order and its items are permanently stored. Even if the server crashes immediately after, the data survives (that's <strong>durability</strong>).</p>
+
+                <h3>What Happens After COMMIT</h3>
+                <ul>
+                    <li>All changes become permanent on disk</li>
+                    <li>Other connections can now see the new data</li>
+                    <li>The transaction ends — you're back to normal mode</li>
+                    <li>You <strong>cannot</strong> ROLLBACK after COMMIT</li>
+                </ul>
+            </section>
+
+            <!-- Section 5: ROLLBACK -->
+            <section id="rollback" class="lesson-section">
+                <h2>ROLLBACK — Undo Everything</h2>
+                <p><code>ROLLBACK</code> tells MySQL: "Something went wrong — undo all changes since START TRANSACTION."</p>
+
+                <pre><code class="language-sql">
+START TRANSACTION;
+
+-- Accidentally delete all books!
+DELETE FROM order_items;
+DELETE FROM books;
+
+-- Oh no! Undo everything:
+ROLLBACK;
+
+-- Phew — books and order_items are still intact
+SELECT COUNT(*) FROM books;  -- Still has all rows
+                </code></pre>
+
+                <p>ROLLBACK is your safety net. The data is restored to exactly the state it was in before START TRANSACTION.</p>
+
+                <h3>Practical Example: Transfer with Validation</h3>
+
+                <pre><code class="language-sql">
+-- Simulate a "balance transfer" between two accounts
+-- accounts table: id, name, balance
+
+START TRANSACTION;
+
+-- Debit the source account
+UPDATE accounts SET balance = balance - 500 WHERE id = 1;
+
+-- Check if the balance went negative
+SELECT balance INTO @source_balance FROM accounts WHERE id = 1;
+
+-- If negative, abort the whole thing
+-- (In the CLI you'd check manually; in a procedure, use IF)
+-- For now, let's assume it's fine and credit the destination:
+UPDATE accounts SET balance = balance + 500 WHERE id = 2;
+
+-- Verify both accounts look correct, then commit:
+COMMIT;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ ROLLBACK Only Undoes DML</h4>
+                    <p><code>ROLLBACK</code> undoes data changes (INSERT, UPDATE, DELETE). It does <strong>not</strong> undo DDL statements like CREATE TABLE, DROP TABLE, or ALTER TABLE — those are automatically committed and cannot be rolled back.</p>
+                </div>
+            </section>
+
+            <!-- Section 6: Autocommit -->
+            <section id="autocommit" class="lesson-section">
+                <h2>Autocommit Mode</h2>
+                <p>By default, MySQL runs in <strong>autocommit mode</strong> — every single statement is automatically wrapped in its own transaction and committed immediately:</p>
+
+                <pre><code class="language-sql">
+-- With autocommit ON (default):
+INSERT INTO books (title, price, author_id) VALUES ('Foundation', 11.99, 4);
+-- This is immediately committed — you can't ROLLBACK it
+
+-- Check autocommit status:
+SELECT @@autocommit;  -- 1 = ON, 0 = OFF
+                </code></pre>
+
+                <p>When you write <code>START TRANSACTION</code>, autocommit is temporarily suspended for that transaction. After COMMIT or ROLLBACK, autocommit resumes.</p>
+
+                <h3>Disabling Autocommit</h3>
+
+                <pre><code class="language-sql">
+-- Turn off autocommit for the current session
+SET autocommit = 0;
+
+-- Now every statement is part of an implicit transaction
+INSERT INTO books (title, price, author_id) VALUES ('Foundation', 11.99, 4);
+UPDATE books SET price = 12.99 WHERE title = 'Foundation';
+
+-- Nothing is saved until you explicitly COMMIT:
+COMMIT;
+
+-- Or undo everything:
+ROLLBACK;
+
+-- Turn autocommit back on:
+SET autocommit = 1;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 When to Disable Autocommit</h4>
+                    <p>Most applications use the default (autocommit ON) and explicitly wrap multi-step operations in <code>START TRANSACTION ... COMMIT</code>. Disabling autocommit for a whole session is uncommon but useful for bulk data loading or migration scripts where you want manual control over commits.</p>
+                </div>
+
+                <h3>Implicit Commits</h3>
+                <p>Certain statements cause an <strong>implicit commit</strong> — they automatically commit any pending transaction, even if you didn't write COMMIT:</p>
+
+                <ul>
+                    <li>DDL statements: <code>CREATE TABLE</code>, <code>ALTER TABLE</code>, <code>DROP TABLE</code></li>
+                    <li><code>TRUNCATE TABLE</code></li>
+                    <li><code>CREATE INDEX</code>, <code>DROP INDEX</code></li>
+                    <li><code>CREATE USER</code>, <code>GRANT</code>, <code>REVOKE</code></li>
+                    <li>Starting a new <code>START TRANSACTION</code> (commits the previous one)</li>
+                </ul>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Don't Mix DDL with Transactions</h4>
+                    <p>If you run a <code>CREATE TABLE</code> inside a transaction, it implicitly commits everything before it — including changes you might have wanted to roll back. Keep DDL statements outside of transactions.</p>
+                </div>
+            </section>
+
+            <!-- Section 7: Savepoints -->
+            <section id="savepoints" class="lesson-section">
+                <h2>Savepoints — Partial Rollback</h2>
+                <p>Sometimes you want to undo <em>part</em> of a transaction without losing everything. A <strong>savepoint</strong> is a named checkpoint you can roll back to.</p>
+
+                <pre><code class="language-sql">
+START TRANSACTION;
+
+-- Step 1: Create the order
+INSERT INTO orders (customer_id, order_date) VALUES (1, CURRENT_DATE);
+SET @order_id = LAST_INSERT_ID();
+
+SAVEPOINT after_order;
+
+-- Step 2: Add items
+INSERT INTO order_items (order_id, book_id, quantity)
+VALUES (@order_id, 1, 1);
+
+SAVEPOINT after_items;
+
+-- Step 3: Try something risky
+INSERT INTO order_items (order_id, book_id, quantity)
+VALUES (@order_id, 999, 1);  -- book_id 999 doesn't exist!
+
+-- Step 3 failed — roll back to after_items, keeping Steps 1 & 2
+ROLLBACK TO SAVEPOINT after_items;
+
+-- Steps 1 and 2 are still intact — commit them:
+COMMIT;
+                </code></pre>
+
+                <div class="mermaid">
+                    graph LR
+                        S["START"] --> O["INSERT order"]
+                        O --> SP1["SAVEPOINT after_order"]
+                        SP1 --> I["INSERT items"]
+                        I --> SP2["SAVEPOINT after_items"]
+                        SP2 --> R["Risky INSERT<br/>(fails)"]
+                        R -->|"ROLLBACK TO after_items"| SP2
+                        SP2 --> C["COMMIT ✅<br/>Order + items saved"]
+                </div>
+
+                <h3>Savepoint Commands</h3>
+
+                <pre><code class="language-sql">
+-- Create a savepoint
+SAVEPOINT savepoint_name;
+
+-- Roll back to a savepoint (undo changes AFTER the savepoint)
+ROLLBACK TO SAVEPOINT savepoint_name;
+
+-- Release (delete) a savepoint without rolling back
+RELEASE SAVEPOINT savepoint_name;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Savepoints Don't End the Transaction</h4>
+                    <p><code>ROLLBACK TO SAVEPOINT</code> undoes changes made after the savepoint, but the transaction is still active. You still need to <code>COMMIT</code> or <code>ROLLBACK</code> to end it. A full <code>ROLLBACK</code> (without a savepoint name) undoes <em>everything</em>, including all savepoints.</p>
+                </div>
+            </section>
+
+            <!-- Section 8: Transactions in Stored Procedures -->
+            <section id="transactions-in-procedures" class="lesson-section">
+                <h2>Transactions in Stored Procedures</h2>
+                <p>Transactions inside stored procedures are where the real power emerges — you can combine multi-step logic with error handling.</p>
+
+                <h3>Basic Pattern</h3>
+
+                <pre><code class="language-sql">
+DELIMITER //
+
+CREATE PROCEDURE place_order(
+    IN cust_id INT,
+    IN book_id_param INT,
+    IN qty INT,
+    OUT result_message VARCHAR(100)
+)
+BEGIN
+    DECLARE order_id INT;
+
+    -- Use a handler for errors
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET result_message = 'Error: Order failed — rolled back';
+    END;
+
+    START TRANSACTION;
+
+    -- Create the order
+    INSERT INTO orders (customer_id, order_date)
+    VALUES (cust_id, CURRENT_DATE);
+
+    SET order_id = LAST_INSERT_ID();
+
+    -- Add the item
+    INSERT INTO order_items (order_id, book_id, quantity)
+    VALUES (order_id, book_id_param, qty);
+
+    -- If we got here, everything worked
+    COMMIT;
+    SET result_message = CONCAT('Success: Order #', order_id, ' created');
+
+END //
+
+DELIMITER ;
+
+-- Test it:
+CALL place_order(1, 1, 2, @msg);
+SELECT @msg;
+-- 'Success: Order #4 created'
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 DECLARE ... HANDLER</h4>
+                    <p>The <code>DECLARE EXIT HANDLER FOR SQLEXCEPTION</code> block catches any SQL error during the transaction. When an error occurs, the handler runs: it rolls back the transaction and sets an error message. Without a handler, the procedure would stop at the error, leaving the transaction in a half-finished state.</p>
+                </div>
+
+                <h3>Transfer Between Accounts</h3>
+
+                <pre><code class="language-sql">
+DELIMITER //
+
+CREATE PROCEDURE transfer_funds(
+    IN from_account INT,
+    IN to_account INT,
+    IN amount DECIMAL(10,2),
+    OUT result VARCHAR(100)
+)
+BEGIN
+    DECLARE source_balance DECIMAL(10,2);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET result = 'Error: Transfer failed';
+    END;
+
+    START TRANSACTION;
+
+    -- Check source balance
+    SELECT balance INTO source_balance
+    FROM accounts
+    WHERE id = from_account
+    FOR UPDATE;  -- Lock the row to prevent concurrent modification
+
+    IF source_balance < amount THEN
+        ROLLBACK;
+        SET result = 'Error: Insufficient funds';
+    ELSE
+        -- Debit source
+        UPDATE accounts SET balance = balance - amount
+        WHERE id = from_account;
+
+        -- Credit destination
+        UPDATE accounts SET balance = balance + amount
+        WHERE id = to_account;
+
+        COMMIT;
+        SET result = CONCAT('Success: Transferred $', amount);
+    END IF;
+
+END //
+
+DELIMITER ;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 SELECT ... FOR UPDATE</h4>
+                    <p><code>FOR UPDATE</code> locks the selected rows until the transaction ends. This prevents another transaction from reading or modifying the same account balance between your check and your update — avoiding a <strong>race condition</strong> where two concurrent transfers both see "enough balance" and overdraft the account.</p>
+                </div>
+            </section>
+
+            <!-- Section 9: Common Transaction Patterns -->
+            <section id="common-patterns" class="lesson-section">
+                <h2>Common Transaction Patterns</h2>
+
+                <h3>1. The Try-Commit-Catch-Rollback Pattern</h3>
+                <p>The most common pattern — attempt the work, commit on success, rollback on failure:</p>
+
+                <pre><code class="language-sql">
+DECLARE EXIT HANDLER FOR SQLEXCEPTION
+BEGIN
+    ROLLBACK;
+    -- Log the error, set a message, etc.
+END;
+
+START TRANSACTION;
+    -- Multiple operations...
+COMMIT;
+                </code></pre>
+
+                <h3>2. Batch Insert with Transaction</h3>
+                <p>Wrap bulk inserts in a transaction — much faster than individual autocommitted inserts:</p>
+
+                <pre><code class="language-sql">
+START TRANSACTION;
+
+INSERT INTO books (title, price, author_id) VALUES ('Book 1', 9.99, 1);
+INSERT INTO books (title, price, author_id) VALUES ('Book 2', 12.99, 2);
+INSERT INTO books (title, price, author_id) VALUES ('Book 3', 7.99, 3);
+-- ... hundreds more ...
+
+COMMIT;
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ Performance Boost</h4>
+                    <p>Wrapping 1,000 INSERTs in a single transaction can be <strong>10–50x faster</strong> than 1,000 individual autocommitted INSERTs. Each COMMIT forces a disk sync — doing it once instead of 1,000 times is dramatically faster.</p>
+                </div>
+
+                <h3>3. Conditional Commit</h3>
+
+                <pre><code class="language-sql">
+START TRANSACTION;
+
+DELETE FROM order_items WHERE order_id = 5;
+DELETE FROM orders WHERE id = 5;
+
+-- Check if we actually deleted anything meaningful:
+-- (In a procedure, use ROW_COUNT() or a variable)
+-- If something looks wrong:
+--   ROLLBACK;
+-- If everything is fine:
+COMMIT;
+                </code></pre>
+
+                <h3>4. Read-Only Transaction</h3>
+                <p>You can start a transaction in read-only mode — MySQL can optimize it since it knows no writes will happen:</p>
+
+                <pre><code class="language-sql">
+START TRANSACTION READ ONLY;
+
+SELECT * FROM customers;
+SELECT * FROM orders WHERE customer_id = 1;
+
+COMMIT;  -- Nothing changed, but ends the transaction
+                </code></pre>
+            </section>
+
+            <!-- Section 10: Pitfalls & Best Practices -->
+            <section id="pitfalls" class="lesson-section">
+                <h2>Pitfalls &amp; Best Practices</h2>
+
+                <h3>1. Keep Transactions Short</h3>
+                <p>Long transactions hold locks on rows, blocking other users. Do your prep work (validation, calculations) <em>before</em> starting the transaction, then keep the transaction itself as brief as possible.</p>
+
+                <pre><code class="language-sql">
+-- ❌ BAD: Long transaction with unnecessary work inside
+START TRANSACTION;
+    -- 5 seconds of complex calculations...
+    -- Other users are waiting for locked rows
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+COMMIT;
+
+-- ✅ GOOD: Do prep work first, then a quick transaction
+-- Calculate everything first...
+START TRANSACTION;
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+    UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+COMMIT;
+                </code></pre>
+
+                <h3>2. Always End Your Transactions</h3>
+                <p>A transaction that's never committed or rolled back holds locks indefinitely. Always ensure every <code>START TRANSACTION</code> has a matching <code>COMMIT</code> or <code>ROLLBACK</code> — even in error cases.</p>
+
+                <h3>3. Don't Mix DDL and DML in a Transaction</h3>
+
+                <pre><code class="language-sql">
+-- ❌ BAD: DDL implicitly commits everything before it
+START TRANSACTION;
+    INSERT INTO orders (customer_id, order_date) VALUES (1, CURRENT_DATE);
+    CREATE TABLE temp_log (msg TEXT);  -- IMPLICIT COMMIT happens here!
+    -- The INSERT is now committed — you can't roll it back
+    ROLLBACK;  -- Only rolls back changes AFTER the implicit commit
+                </code></pre>
+
+                <h3>4. Handle Deadlocks</h3>
+                <p>When two transactions each hold a lock that the other needs, MySQL detects a <strong>deadlock</strong> and automatically rolls back one of them. Your application should catch this error and retry:</p>
+
+                <pre><code class="language-sql">
+-- In application code (pseudocode):
+-- retry_count = 0
+-- while retry_count < 3:
+--     try:
+--         START TRANSACTION
+--         ... do work ...
+--         COMMIT
+--         break
+--     catch deadlock_error:
+--         retry_count += 1
+--         wait briefly, then retry
+                </code></pre>
+
+                <h3>5. Use Consistent Lock Order</h3>
+                <p>To minimize deadlocks, always access tables (and rows) in the same order across all transactions. If Transaction A locks customers then orders, and Transaction B locks orders then customers, they can deadlock. Both locking customers first prevents this.</p>
+
+                <div class="card card-success">
+                    <h4>✅ Transaction Best Practices Summary</h4>
+                    <ul>
+                        <li>Keep transactions as <strong>short</strong> as possible</li>
+                        <li>Always <strong>end</strong> transactions (COMMIT or ROLLBACK)</li>
+                        <li>Use <strong>error handlers</strong> in stored procedures to ensure ROLLBACK on failure</li>
+                        <li>Don't put <strong>DDL</strong> inside transactions</li>
+                        <li>Access tables in a <strong>consistent order</strong> to prevent deadlocks</li>
+                        <li>Use <code>FOR UPDATE</code> when you read-then-write to prevent race conditions</li>
+                        <li>Use transactions for <strong>batch inserts</strong> — dramatically faster than autocommit</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section 11: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: Basic Transactions</h3>
+                    <p>Write SQL to:</p>
+                    <ol>
+                        <li>Start a transaction, insert a new author ("Ursula K. Le Guin"), insert a book by that author ("The Left Hand of Darkness", $10.99), then commit</li>
+                        <li>Start a transaction, delete all rows from <code>order_items</code>, then ROLLBACK (verify the data is restored)</li>
+                        <li>Start a transaction, insert two new customers, then commit. Verify they exist.</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+START TRANSACTION;
+INSERT INTO authors (name) VALUES ('Ursula K. Le Guin');
+SET @author_id = LAST_INSERT_ID();
+INSERT INTO books (title, price, author_id)
+VALUES ('The Left Hand of Darkness', 10.99, @author_id);
+COMMIT;
+
+-- 2
+START TRANSACTION;
+DELETE FROM order_items;
+SELECT COUNT(*) FROM order_items;  -- 0 rows (temporarily)
+ROLLBACK;
+SELECT COUNT(*) FROM order_items;  -- All rows restored!
+
+-- 3
+START TRANSACTION;
+INSERT INTO customers (first_name, last_name)
+VALUES ('Dave', 'Wilson');
+INSERT INTO customers (first_name, last_name)
+VALUES ('Eve', 'Brown');
+COMMIT;
+SELECT * FROM customers WHERE first_name IN ('Dave', 'Eve');
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: Savepoints</h3>
+                    <p>Write a transaction that:</p>
+                    <ol>
+                        <li>Inserts a new order for customer 2</li>
+                        <li>Creates a savepoint called <code>order_created</code></li>
+                        <li>Inserts an order item for book_id 1</li>
+                        <li>Creates a savepoint called <code>item_added</code></li>
+                        <li>Inserts another order item for a non-existent book (book_id 999)</li>
+                        <li>Rolls back to <code>item_added</code> (keeping the order and first item)</li>
+                        <li>Commits the transaction</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+START TRANSACTION;
+
+-- 1. Insert order
+INSERT INTO orders (customer_id, order_date) VALUES (2, CURRENT_DATE);
+SET @oid = LAST_INSERT_ID();
+
+-- 2. Savepoint
+SAVEPOINT order_created;
+
+-- 3. Insert valid item
+INSERT INTO order_items (order_id, book_id, quantity) VALUES (@oid, 1, 1);
+
+-- 4. Savepoint
+SAVEPOINT item_added;
+
+-- 5. Try invalid item (might cause FK error)
+-- INSERT INTO order_items (order_id, book_id, quantity) VALUES (@oid, 999, 1);
+
+-- 6. Roll back to item_added
+ROLLBACK TO SAVEPOINT item_added;
+
+-- 7. Commit (order + first item are saved)
+COMMIT;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: Transaction in a Stored Procedure</h3>
+                    <p>Create a stored procedure called <code>safe_delete_order</code> that:</p>
+                    <ul>
+                        <li>Takes an order ID as an IN parameter and a result message as an OUT parameter</li>
+                        <li>Uses a transaction to delete the order's items from <code>order_items</code> first, then the order from <code>orders</code></li>
+                        <li>Includes an error handler that rolls back on any SQL exception</li>
+                        <li>Sets the result message to indicate success or failure</li>
+                    </ul>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+DELIMITER //
+
+CREATE PROCEDURE safe_delete_order(
+    IN order_id_param INT,
+    OUT result VARCHAR(100)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET result = 'Error: Delete failed — rolled back';
+    END;
+
+    START TRANSACTION;
+
+    -- Delete items first (child rows)
+    DELETE FROM order_items WHERE order_id = order_id_param;
+
+    -- Then delete the order (parent row)
+    DELETE FROM orders WHERE id = order_id_param;
+
+    IF ROW_COUNT() = 0 THEN
+        ROLLBACK;
+        SET result = CONCAT('Error: Order #', order_id_param, ' not found');
+    ELSE
+        COMMIT;
+        SET result = CONCAT('Success: Order #', order_id_param, ' deleted');
+    END IF;
+END //
+
+DELIMITER ;
+
+-- Test:
+CALL safe_delete_order(3, @msg);
+SELECT @msg;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What does "Atomicity" in ACID mean?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Atomicity means all operations in a transaction succeed together or all are rolled back together. There's no partial completion — it's all or nothing.">
+                                A) All operations in a transaction succeed or all are rolled back
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="That's Isolation — the property that prevents concurrent transactions from interfering with each other.">
+                                B) Transactions can't see each other's uncommitted changes
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="That's Durability — the property that committed data survives system failures.">
+                                C) Data survives server crashes after COMMIT
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> What happens to changes inside a transaction before COMMIT is called?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Changes are NOT saved to disk permanently until COMMIT. That's the whole point of transactions — you can still ROLLBACK.">
+                                A) They are immediately saved to disk
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Before COMMIT, changes are temporary — visible to the current connection but not yet permanent. Other connections typically can't see them, and they can be undone with ROLLBACK.">
+                                B) They are temporary and can be undone with ROLLBACK
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Changes DO exist temporarily — you can SELECT and see them within your own connection. They just aren't permanent until COMMIT.">
+                                C) They don't exist anywhere yet
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> What does a SAVEPOINT allow you to do?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="SAVEPOINT doesn't commit anything — it just creates a named checkpoint within an active transaction.">
+                                A) Commit part of a transaction while keeping the rest open
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! SAVEPOINT creates a named checkpoint. ROLLBACK TO SAVEPOINT undoes changes made AFTER that point, while preserving changes made before it. The transaction remains active until you COMMIT or fully ROLLBACK.">
+                                B) Roll back to a specific point within a transaction without undoing everything
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Savepoints are strictly within a single transaction, not across multiple ones. They're checkpoints, not inter-transaction tools.">
+                                C) Save changes across multiple transactions
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> Why should you keep transactions short?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL can handle long transactions — there's no hard limit on duration. The issue is practical, not technical.">
+                                A) MySQL has a maximum transaction duration of 30 seconds
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Active transactions hold locks on rows they've modified (and sometimes read). Long transactions keep those locks for longer, blocking other users from accessing the same data. Short transactions minimize lock contention.">
+                                B) Long transactions hold locks that block other users from accessing the same data
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Transactions don't consume proportionally more memory based on duration. The concern is about lock contention, not memory.">
+                                C) Long transactions use too much memory
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 12: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li>A <strong>transaction</strong> groups operations into an all-or-nothing unit</li>
+                        <li><strong>ACID</strong>: Atomicity, Consistency, Isolation, Durability</li>
+                        <li><code>START TRANSACTION</code> begins, <code>COMMIT</code> saves permanently, <code>ROLLBACK</code> undoes everything</li>
+                        <li><strong>Autocommit</strong> is ON by default — each statement is its own transaction</li>
+                        <li><code>START TRANSACTION</code> temporarily suspends autocommit</li>
+                        <li><strong>Savepoints</strong> let you roll back to a checkpoint without undoing the entire transaction</li>
+                        <li>DDL statements (CREATE, ALTER, DROP) cause <strong>implicit commits</strong> — don't mix with DML transactions</li>
+                        <li>Use <code>DECLARE EXIT HANDLER FOR SQLEXCEPTION</code> in procedures to auto-rollback on errors</li>
+                        <li><code>SELECT ... FOR UPDATE</code> locks rows to prevent race conditions</li>
+                        <li>Keep transactions <strong>short</strong> to minimize lock contention</li>
+                        <li>Batch inserts inside a transaction are <strong>dramatically faster</strong> than individual autocommits</li>
+                    </ul>
+                </div>
+
+                <h3>Quick Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>START TRANSACTION</code></td>
+                                <td>Begin a transaction</td>
+                            </tr>
+                            <tr>
+                                <td><code>COMMIT</code></td>
+                                <td>Save all changes permanently</td>
+                            </tr>
+                            <tr>
+                                <td><code>ROLLBACK</code></td>
+                                <td>Undo all changes since START TRANSACTION</td>
+                            </tr>
+                            <tr>
+                                <td><code>SAVEPOINT name</code></td>
+                                <td>Create a named checkpoint</td>
+                            </tr>
+                            <tr>
+                                <td><code>ROLLBACK TO SAVEPOINT name</code></td>
+                                <td>Undo changes after the savepoint</td>
+                            </tr>
+                            <tr>
+                                <td><code>RELEASE SAVEPOINT name</code></td>
+                                <td>Delete a savepoint (no rollback)</td>
+                            </tr>
+                            <tr>
+                                <td><code>SET autocommit = 0/1</code></td>
+                                <td>Disable/enable autocommit</td>
+                            </tr>
+                            <tr>
+                                <td><code>SELECT ... FOR UPDATE</code></td>
+                                <td>Lock selected rows until transaction ends</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/commit.html" target="_blank" rel="noopener">MySQL Docs — COMMIT, ROLLBACK, and SAVEPOINT</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-model.html" target="_blank" rel="noopener">MySQL Docs — InnoDB Transaction Model</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-autocommit-commit-rollback.html" target="_blank" rel="noopener">MySQL Docs — Autocommit, Commit, and Rollback</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-deadlocks.html" target="_blank" rel="noopener">MySQL Docs — Deadlocks in InnoDB</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>You can now protect data integrity with transactions. But who gets to run those transactions? In <a href="lesson_19.html">Lesson 19: User Management &amp; Permissions</a>, you'll learn to create database users, control what they can access with GRANT and REVOKE, and apply the principle of least privilege to keep your database secure.</p>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_17.html" class="prev-lesson">← Previous: Stored Procedures &amp; Functions</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_19.html" class="next-lesson">Next: User Management &amp; Permissions →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

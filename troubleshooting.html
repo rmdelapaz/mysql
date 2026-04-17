@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MySQL troubleshooting guide — solutions for installation issues, service problems, connection failures, performance slowdowns, and common setup pitfalls.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Troubleshooting - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li aria-current="page">Troubleshooting</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🔧 Troubleshooting Guide</h1>
+                <p class="lead">Step-by-step solutions for the most common issues you'll encounter while working through this course — from installation problems to performance questions.</p>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary><h2 style="display: inline; margin: 0;">📑 Sections</h2></summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#install" class="toc-link">Installation &amp; Setup Issues</a></li>
+                        <li><a href="#service" class="toc-link">MySQL Service Problems</a></li>
+                        <li><a href="#connection" class="toc-link">Connection Issues</a></li>
+                        <li><a href="#phpmyadmin" class="toc-link">phpMyAdmin Issues</a></li>
+                        <li><a href="#queries" class="toc-link">Query Problems</a></li>
+                        <li><a href="#performance" class="toc-link">Performance Issues</a></li>
+                        <li><a href="#encoding" class="toc-link">Character Encoding Issues</a></li>
+                        <li><a href="#wsl" class="toc-link">WSL-Specific Issues</a></li>
+                        <li><a href="#reset-password" class="toc-link">Resetting the Root Password</a></li>
+                        <li><a href="#nuclear" class="toc-link">Nuclear Option: Reinstall MySQL</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Installation -->
+            <section id="install" class="lesson-section">
+                <h2>Installation &amp; Setup Issues</h2>
+
+                <div class="card card-info">
+                    <h3>🔹 Package Not Found During Installation</h3>
+                    <p><strong>Symptom:</strong> <code>E: Unable to locate package mysql-server</code></p>
+                    <p><strong>Fix:</strong> Update your package list first:</p>
+                    <pre><code class="language-bash">
+sudo apt update
+sudo apt install mysql-server
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 MySQL Root Password Never Set</h3>
+                    <p><strong>Symptom:</strong> You installed MySQL but were never prompted for a root password. Now you can't log in.</p>
+                    <p><strong>Fix:</strong> On Ubuntu, MySQL often uses <code>auth_socket</code> authentication for root. Log in with <code>sudo</code>:</p>
+                    <pre><code class="language-bash">
+# Log in as root using sudo (no password needed)
+sudo mysql
+
+# Once inside, set a password for root
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'YourNewPassword!';
+FLUSH PRIVILEGES;
+EXIT;
+
+# Now you can log in with: mysql -u root -p
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 mysql_secure_installation Fails</h3>
+                    <p><strong>Symptom:</strong> Running <code>sudo mysql_secure_installation</code> gives errors or loops.</p>
+                    <p><strong>Fix:</strong> Make sure MySQL is running first, then try:</p>
+                    <pre><code class="language-bash">
+# Ensure MySQL is running
+sudo service mysql start
+
+# If it still fails, set root password manually first (see above)
+# Then run the secure installation
+sudo mysql_secure_installation
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 Apache Won't Start (Port 80 in Use)</h3>
+                    <p><strong>Symptom:</strong> <code>sudo service apache2 start</code> fails because another process is using port 80.</p>
+                    <p><strong>Fix:</strong></p>
+                    <pre><code class="language-bash">
+# Find what's using port 80
+sudo lsof -i :80
+
+# If it's another web server (nginx, IIS), stop it
+sudo service nginx stop
+
+# Or change Apache's port in /etc/apache2/ports.conf
+# Listen 8080 (instead of 80)
+
+# Restart Apache
+sudo service apache2 restart
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Service Problems -->
+            <section id="service" class="lesson-section">
+                <h2>MySQL Service Problems</h2>
+
+                <div class="card card-info">
+                    <h3>🔹 MySQL Won't Start</h3>
+                    <p><strong>Symptom:</strong> <code>sudo service mysql start</code> fails or exits immediately.</p>
+                    <p><strong>Fix:</strong> Check the error log:</p>
+                    <pre><code class="language-bash">
+# Check the status
+sudo service mysql status
+
+# Read the error log
+sudo tail -50 /var/log/mysql/error.log
+
+# Common causes:
+# - Port 3306 already in use → another MySQL instance running
+# - Corrupted data files → check the error log for specifics
+# - Insufficient disk space → check with: df -h
+# - Permission issues → check ownership of /var/lib/mysql
+
+# Try restarting
+sudo service mysql restart
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 MySQL Stops Unexpectedly</h3>
+                    <p><strong>Symptom:</strong> MySQL was running but crashed or stopped.</p>
+                    <p><strong>Fix:</strong></p>
+                    <pre><code class="language-bash">
+# Check the error log for crash details
+sudo tail -100 /var/log/mysql/error.log
+
+# Common causes:
+# - Out of memory (OOM killer) → check: dmesg | grep -i mysql
+# - Disk full → check: df -h
+# - Configuration error after editing my.cnf
+
+# Restart the service
+sudo service mysql start
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 Checking MySQL Status</h3>
+                    <pre><code class="language-bash">
+# Is MySQL running?
+sudo service mysql status
+
+# Which version?
+mysql --version
+
+# Is it listening on port 3306?
+sudo netstat -tlnp | grep 3306
+# or
+sudo ss -tlnp | grep 3306
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Connection Issues -->
+            <section id="connection" class="lesson-section">
+                <h2>Connection Issues</h2>
+
+                <div class="card card-info">
+                    <h3>🔹 "Access Denied" with Correct Password</h3>
+                    <p><strong>Symptom:</strong> You're sure the password is right, but you still get <code>ERROR 1045</code>.</p>
+                    <p><strong>Possible Causes:</strong></p>
+                    <ul>
+                        <li>The user exists for a different host (e.g., <code>'user'@'%'</code> but not <code>'user'@'localhost'</code>)</li>
+                        <li>Root uses <code>auth_socket</code> — try <code>sudo mysql</code> instead</li>
+                        <li>Password has special characters that the shell is interpreting — wrap in single quotes</li>
+                    </ul>
+                    <pre><code class="language-bash">
+# Try with sudo (for auth_socket users)
+sudo mysql
+
+# Check which authentication method root uses
+sudo mysql -e "SELECT User, Host, plugin FROM mysql.user WHERE User='root';"
+
+# If it shows 'auth_socket', switch to password authentication:
+sudo mysql
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'YourPassword!';
+FLUSH PRIVILEGES;
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 Can't Connect via Socket</h3>
+                    <p><strong>Symptom:</strong> <code>Can't connect through socket '/var/run/mysqld/mysqld.sock'</code></p>
+                    <p><strong>Fix:</strong></p>
+                    <pre><code class="language-bash">
+# Check if MySQL is running
+sudo service mysql status
+
+# If not running, start it
+sudo service mysql start
+
+# If the socket file is missing, check the config
+cat /etc/mysql/mysql.conf.d/mysqld.cnf | grep socket
+
+# Verify the socket file exists
+ls -la /var/run/mysqld/mysqld.sock
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 Connection Times Out (Remote)</h3>
+                    <p><strong>Fix:</strong> MySQL defaults to localhost-only. For remote connections:</p>
+                    <pre><code class="language-bash">
+# 1. Edit MySQL config
+sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
+# Change: bind-address = 127.0.0.1
+# To:     bind-address = 0.0.0.0
+
+# 2. Restart MySQL
+sudo service mysql restart
+
+# 3. Create a user that can connect remotely
+mysql -u root -p
+CREATE USER 'remote_user'@'%' IDENTIFIED BY 'SecurePass!';
+GRANT ALL PRIVILEGES ON bookstore.* TO 'remote_user'@'%';
+
+# 4. Check firewall (if applicable)
+sudo ufw allow 3306
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- phpMyAdmin -->
+            <section id="phpmyadmin" class="lesson-section">
+                <h2>phpMyAdmin Issues</h2>
+
+                <div class="card card-info">
+                    <h3>🔹 phpMyAdmin Page Not Found (404)</h3>
+                    <p><strong>Symptom:</strong> Navigating to <code>http://localhost/phpmyadmin</code> gives a 404 error.</p>
+                    <p><strong>Fix:</strong></p>
+                    <pre><code class="language-bash">
+# Check if phpMyAdmin is installed
+dpkg -l | grep phpmyadmin
+
+# If not installed:
+sudo apt install phpmyadmin
+
+# During installation, select "apache2" when asked for the web server
+
+# If installed but not linked to Apache:
+sudo ln -s /usr/share/phpmyadmin /var/www/html/phpmyadmin
+
+# Restart Apache
+sudo service apache2 restart
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 Can't Log In to phpMyAdmin</h3>
+                    <p><strong>Symptom:</strong> The login page appears but your credentials are rejected.</p>
+                    <p><strong>Fix:</strong> phpMyAdmin uses MySQL's authentication. Make sure your MySQL user uses <code>mysql_native_password</code> (not <code>auth_socket</code>):</p>
+                    <pre><code class="language-bash">
+sudo mysql
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'YourPassword!';
+FLUSH PRIVILEGES;
+EXIT;
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 Upload Size Too Small in phpMyAdmin</h3>
+                    <p><strong>Symptom:</strong> Can't import large <code>.sql</code> files — "file exceeds maximum upload size."</p>
+                    <p><strong>Fix:</strong> Edit PHP settings:</p>
+                    <pre><code class="language-bash">
+# Find the php.ini file
+php -i | grep "Loaded Configuration File"
+
+# Edit it (path may vary)
+sudo nano /etc/php/8.x/apache2/php.ini
+
+# Change these values:
+# upload_max_filesize = 64M
+# post_max_size = 64M
+# max_execution_time = 300
+
+# Restart Apache
+sudo service apache2 restart
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Query Problems -->
+            <section id="queries" class="lesson-section">
+                <h2>Query Problems</h2>
+
+                <div class="card card-info">
+                    <h3>🔹 Query Returns No Results (But Should)</h3>
+                    <p><strong>Possible Causes:</strong></p>
+                    <ul>
+                        <li>Wrong database selected — check with <code>SELECT DATABASE();</code></li>
+                        <li>Table is empty — check with <code>SELECT COUNT(*) FROM table_name;</code></li>
+                        <li><code>WHERE</code> condition too restrictive</li>
+                        <li>Case-sensitive comparison on a case-insensitive column (or vice versa)</li>
+                        <li>Comparing to NULL with <code>=</code> instead of <code>IS NULL</code></li>
+                    </ul>
+                    <pre><code class="language-sql">
+-- Bad: This never works for NULL values
+SELECT * FROM books WHERE author_id = NULL;
+
+-- Fix: Use IS NULL
+SELECT * FROM books WHERE author_id IS NULL;
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 JOIN Returns Unexpected Duplicates</h3>
+                    <p><strong>Cause:</strong> A many-to-many relationship or missing <code>DISTINCT</code>.</p>
+                    <pre><code class="language-sql">
+-- If you see duplicate rows, check the relationship
+-- Use DISTINCT to remove duplicates
+SELECT DISTINCT b.title, a.name
+FROM books b
+JOIN authors a ON b.author_id = a.id;
+
+-- Or check if you're joining on the wrong column
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 Query Hangs or Is Very Slow</h3>
+                    <p><strong>Quick Fixes:</strong></p>
+                    <pre><code class="language-sql">
+-- 1. Check if there's a long-running query
+SHOW PROCESSLIST;
+
+-- 2. Kill a stuck query (use the Id from PROCESSLIST)
+KILL 12345;
+
+-- 3. Analyze the slow query
+EXPLAIN SELECT * FROM books WHERE author_id = 3;
+-- Look for "type: ALL" (full table scan) — add an index
+
+-- 4. Add an index
+CREATE INDEX idx_author_id ON books(author_id);
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 "You Can't Specify Target Table for Update in FROM Clause"</h3>
+                    <p><strong>Cause:</strong> You're trying to UPDATE/DELETE a table while reading from it in a subquery.</p>
+                    <pre><code class="language-sql">
+-- Bad:
+DELETE FROM books WHERE price = (SELECT MIN(price) FROM books);
+
+-- Fix: Wrap in a derived table
+DELETE FROM books WHERE price = (SELECT min_price FROM (SELECT MIN(price) AS min_price FROM books) AS tmp);
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Performance -->
+            <section id="performance" class="lesson-section">
+                <h2>Performance Issues</h2>
+
+                <div class="card card-info">
+                    <h3>🔹 Quick Performance Checklist</h3>
+                    <ol>
+                        <li><strong>Use <code>EXPLAIN</code></strong> — look for <code>type: ALL</code> (full table scan). Add indexes on columns in <code>WHERE</code>, <code>JOIN</code>, and <code>ORDER BY</code>.</li>
+                        <li><strong>Avoid <code>SELECT *</code></strong> — only request the columns you need.</li>
+                        <li><strong>Add indexes</strong> — on foreign keys, frequently filtered columns, and columns used in <code>ORDER BY</code>.</li>
+                        <li><strong>Use <code>LIMIT</code></strong> — don't fetch thousands of rows when you need 10.</li>
+                        <li><strong>Check for missing foreign key indexes</strong> — foreign key columns should always be indexed.</li>
+                    </ol>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 Enable the Slow Query Log</h3>
+                    <pre><code class="language-sql">
+-- Check if slow query log is enabled
+SHOW VARIABLES LIKE 'slow_query_log';
+
+-- Enable it
+SET GLOBAL slow_query_log = 'ON';
+SET GLOBAL long_query_time = 1;   -- Log queries slower than 1 second
+
+-- Check the log file location
+SHOW VARIABLES LIKE 'slow_query_log_file';
+                    </code></pre>
+                    <pre><code class="language-bash">
+# View the slow query log
+sudo tail -50 /var/lib/mysql/hostname-slow.log
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Encoding -->
+            <section id="encoding" class="lesson-section">
+                <h2>Character Encoding Issues</h2>
+
+                <div class="card card-info">
+                    <h3>🔹 Garbled Characters (Mojibake)</h3>
+                    <p><strong>Symptom:</strong> Characters like <code>Ã©</code> appear instead of <code>é</code>, or emojis show as <code>????</code>.</p>
+                    <p><strong>Fix:</strong> Ensure everything uses <code>utf8mb4</code>:</p>
+                    <pre><code class="language-sql">
+-- Check database encoding
+SELECT DEFAULT_CHARACTER_SET_NAME FROM information_schema.SCHEMATA
+WHERE SCHEMA_NAME = 'bookstore';
+
+-- Check table encoding
+SHOW CREATE TABLE books;
+
+-- Fix database encoding
+ALTER DATABASE bookstore CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Fix table encoding
+ALTER TABLE books CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Set connection encoding
+SET NAMES utf8mb4;
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 Emojis Show as "????"</h3>
+                    <p><strong>Cause:</strong> The column uses <code>utf8</code> (3-byte) instead of <code>utf8mb4</code> (4-byte). Emojis require 4 bytes.</p>
+                    <p><strong>Fix:</strong> Convert the column or table to <code>utf8mb4</code>:</p>
+                    <pre><code class="language-sql">
+ALTER TABLE posts MODIFY COLUMN content TEXT CHARACTER SET utf8mb4;
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- WSL -->
+            <section id="wsl" class="lesson-section">
+                <h2>WSL-Specific Issues</h2>
+
+                <div class="card card-info">
+                    <h3>🔹 Services Don't Start Automatically in WSL</h3>
+                    <p><strong>Symptom:</strong> MySQL and Apache aren't running when you open WSL.</p>
+                    <p><strong>Cause:</strong> WSL doesn't use <code>systemd</code> by default, so services don't auto-start.</p>
+                    <p><strong>Fix:</strong> Start services manually each session, or create an alias:</p>
+                    <pre><code class="language-bash">
+# Start services manually
+sudo service mysql start
+sudo service apache2 start
+
+# Or add to ~/.bashrc for convenience
+echo 'alias lamp-start="sudo service mysql start && sudo service apache2 start"' >> ~/.bashrc
+source ~/.bashrc
+
+# Now just type: lamp-start
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 Can't Access localhost from Windows Browser</h3>
+                    <p><strong>Symptom:</strong> Apache is running in WSL but <code>http://localhost</code> doesn't work in your Windows browser.</p>
+                    <p><strong>Fix:</strong></p>
+                    <pre><code class="language-bash">
+# Check if Apache is running
+sudo service apache2 status
+
+# Try the WSL IP address instead
+hostname -I
+# Use that IP in your browser: http://172.x.x.x/phpmyadmin
+
+# In newer WSL2, localhost forwarding should work.
+# If not, restart WSL: (in PowerShell)
+# wsl --shutdown
+# Then reopen your Ubuntu terminal
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 MySQL Data Directory Permissions in WSL</h3>
+                    <p><strong>Symptom:</strong> MySQL won't start with permission errors on <code>/var/lib/mysql</code>.</p>
+                    <p><strong>Fix:</strong></p>
+                    <pre><code class="language-bash">
+# Fix ownership
+sudo chown -R mysql:mysql /var/lib/mysql
+sudo chmod 750 /var/lib/mysql
+
+# Restart MySQL
+sudo service mysql start
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Reset Password -->
+            <section id="reset-password" class="lesson-section">
+                <h2>Resetting the Root Password</h2>
+                <p>If you've completely lost the root password, here's how to reset it:</p>
+
+                <pre><code class="language-bash">
+# 1. Stop MySQL
+sudo service mysql stop
+
+# 2. Start MySQL in safe mode (skip authentication)
+sudo mysqld_safe --skip-grant-tables &
+
+# 3. Connect without a password
+mysql -u root
+
+# 4. Reset the password
+FLUSH PRIVILEGES;
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'YourNewPassword!';
+EXIT;
+
+# 5. Stop the safe-mode instance and restart normally
+sudo service mysql stop
+sudo service mysql start
+
+# 6. Test the new password
+mysql -u root -p
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Safe Mode = No Security</h4>
+                    <p>While MySQL is running with <code>--skip-grant-tables</code>, anyone can connect without a password. Complete the password reset quickly and restart in normal mode.</p>
+                </div>
+            </section>
+
+            <!-- Nuclear Option -->
+            <section id="nuclear" class="lesson-section">
+                <h2>Nuclear Option: Reinstall MySQL</h2>
+                <p>If nothing else works and you want a fresh start:</p>
+
+                <pre><code class="language-bash">
+# WARNING: This deletes ALL databases and data!
+
+# 1. Stop MySQL
+sudo service mysql stop
+
+# 2. Remove MySQL completely
+sudo apt remove --purge mysql-server mysql-client mysql-common
+sudo apt autoremove
+sudo rm -rf /var/lib/mysql
+sudo rm -rf /etc/mysql
+
+# 3. Reinstall
+sudo apt update
+sudo apt install mysql-server
+
+# 4. Secure the installation
+sudo mysql_secure_installation
+
+# 5. Start the service
+sudo service mysql start
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Last Resort Only</h4>
+                    <p>This removes all databases, all users, and all data. Only do this if you're willing to recreate everything from scratch (or restore from a backup — you do have backups, right? See <a href="lesson_20.html">Lesson 20</a>).</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Page Navigation">
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

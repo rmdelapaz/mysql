@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn to navigate the MySQL command-line interface and phpMyAdmin — running queries, exploring databases, and managing your server with confidence.">
+    <meta name="author" content="Ray De La Paz">
+    <title>MySQL CLI &amp; phpMyAdmin - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 1: Getting Started</a></li>
+            <li aria-current="page">Lesson 3: MySQL CLI &amp; phpMyAdmin</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>💻 Lesson 3: MySQL CLI &amp; phpMyAdmin</h1>
+                <p class="lead">You've got MySQL installed. Now let's learn the two main tools you'll use to interact with it — the command-line interface for power and precision, and phpMyAdmin for visual exploration.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Log in and out of the MySQL command-line client</li>
+                        <li>Navigate databases and tables using CLI commands</li>
+                        <li>Understand the difference between SQL statements and MySQL-specific commands</li>
+                        <li>Use phpMyAdmin to browse databases, run queries, and view table structures</li>
+                        <li>Know when to use the CLI vs. phpMyAdmin</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 45 minutes</p>
+                    <p><strong>Prerequisites:</strong> MySQL installed and running (<a href="lesson_02.html">Lesson 2</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#two-tools" class="toc-link">Two Tools, One Database</a></li>
+                        <li><a href="#cli-basics" class="toc-link">The MySQL Command-Line Client</a></li>
+                        <li><a href="#cli-navigation" class="toc-link">Navigating with CLI Commands</a></li>
+                        <li><a href="#cli-tips" class="toc-link">CLI Tips and Tricks</a></li>
+                        <li><a href="#phpmyadmin-tour" class="toc-link">phpMyAdmin: A Guided Tour</a></li>
+                        <li><a href="#running-queries" class="toc-link">Running Queries in Both Tools</a></li>
+                        <li><a href="#cli-vs-phpmyadmin" class="toc-link">CLI vs. phpMyAdmin: When to Use Which</a></li>
+                        <li><a href="#sql-files" class="toc-link">Saving and Running SQL Files</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: Two Tools -->
+            <section id="two-tools" class="lesson-section">
+                <h2>Two Tools, One Database</h2>
+                <p>There are many ways to interact with a MySQL server, but the two most common for learners and developers are:</p>
+
+                <div class="mermaid">
+                    graph LR
+                        A["You"] -->|"type commands"| B["MySQL CLI<br/><em>Terminal-based</em>"]
+                        A -->|"click &amp; type"| C["phpMyAdmin<br/><em>Browser-based</em>"]
+                        B -->|"SQL"| D["MySQL Server"]
+                        C -->|"SQL"| D
+                </div>
+
+                <p>Both tools send the exact same SQL to the exact same MySQL server — they're just different interfaces. Think of it like driving a car with a manual transmission vs. an automatic: the engine underneath is identical, but the controls feel different.</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>MySQL CLI</th>
+                                <th>phpMyAdmin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Interface</td>
+                                <td>Text-based terminal</td>
+                                <td>Visual web browser</td>
+                            </tr>
+                            <tr>
+                                <td>Speed</td>
+                                <td>Fast once you know the commands</td>
+                                <td>More clicks, but discoverable</td>
+                            </tr>
+                            <tr>
+                                <td>Scripting</td>
+                                <td>Excellent — run .sql files, pipe commands</td>
+                                <td>Limited — can import .sql files</td>
+                            </tr>
+                            <tr>
+                                <td>Visual browsing</td>
+                                <td>Plain text tables</td>
+                                <td>Rich HTML tables, sortable columns</td>
+                            </tr>
+                            <tr>
+                                <td>Learning curve</td>
+                                <td>Steeper — must memorize commands</td>
+                                <td>Gentler — menus guide you</td>
+                            </tr>
+                            <tr>
+                                <td>Available everywhere</td>
+                                <td>Yes — any machine with MySQL installed</td>
+                                <td>Only if Apache/PHP are set up</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ Our Approach</h4>
+                    <p>Throughout this course, we'll use the <strong>CLI as the primary tool</strong> because it teaches you SQL directly and works everywhere. We'll show phpMyAdmin alongside it so you can visualize what's happening. Professional developers use both — the CLI for scripting and automation, phpMyAdmin (or similar tools) for quick visual checks.</p>
+                </div>
+            </section>
+
+            <!-- Section 2: CLI Basics -->
+            <section id="cli-basics" class="lesson-section">
+                <h2>The MySQL Command-Line Client</h2>
+
+                <h3>Logging In</h3>
+                <p>Open your terminal (Ubuntu/WSL, macOS Terminal, or Linux terminal) and connect to MySQL:</p>
+
+                <pre><code class="language-bash">
+mysql -u root -p
+                </code></pre>
+
+                <p>Let's break down those flags:</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Flag</th>
+                                <th>Meaning</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>mysql</code></td>
+                                <td>The MySQL command-line client program</td>
+                            </tr>
+                            <tr>
+                                <td><code>-u root</code></td>
+                                <td>Connect as the user named <code>root</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>-p</code></td>
+                                <td>Prompt for the password (don't type the password on the same line — it would be visible in your shell history)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>After entering your password, you'll see the MySQL prompt:</p>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 8
+Server version: 8.0.xx-0ubuntu0.24.04.1 (Ubuntu)
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql>
+                    </code></pre>
+                </div>
+
+                <p>That <code>mysql></code> prompt means you're inside the MySQL client. Everything you type here is sent to the MySQL server.</p>
+
+                <h3>Logging Out</h3>
+                <p>Any of these commands will disconnect you and return to your regular terminal:</p>
+
+                <pre><code class="language-sql">
+EXIT;
+QUIT;
+\q
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Connecting to a Specific Database Directly</h4>
+                    <p>You can also specify a database when you log in:</p>
+                    <pre><code class="language-bash">
+mysql -u root -p my_database
+                    </code></pre>
+                    <p>This is equivalent to logging in and then running <code>USE my_database;</code>.</p>
+                </div>
+            </section>
+
+            <!-- Section 3: CLI Navigation -->
+            <section id="cli-navigation" class="lesson-section">
+                <h2>Navigating with CLI Commands</h2>
+                <p>MySQL has two kinds of commands you'll type at the prompt:</p>
+                <ol>
+                    <li><strong>SQL statements</strong> — standard SQL that works on any database (SELECT, INSERT, CREATE, etc.)</li>
+                    <li><strong>MySQL-specific commands</strong> — shortcuts that only work in the MySQL CLI (SHOW, DESCRIBE, USE, etc.)</li>
+                </ol>
+
+                <p>Let's walk through the essential navigation commands. Try each one as you read!</p>
+
+                <h3>SHOW DATABASES — List All Databases</h3>
+
+                <pre><code class="language-sql">
+SHOW DATABASES;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+4 rows in set (0.01 sec)
+                    </code></pre>
+                </div>
+
+                <p>These are MySQL's built-in system databases. You'll add your own databases starting in Lesson 4.</p>
+
+                <h3>USE — Select a Database</h3>
+                <p>Before you can look at tables, you need to tell MySQL which database to work with:</p>
+
+                <pre><code class="language-sql">
+USE mysql;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
+Database changed
+                    </code></pre>
+                </div>
+
+                <p>Now all commands will operate on the <code>mysql</code> system database (until you <code>USE</code> a different one).</p>
+
+                <h3>SHOW TABLES — List Tables in the Current Database</h3>
+
+                <pre><code class="language-sql">
+SHOW TABLES;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------------------------------------------------+
+| Tables_in_mysql                                      |
++------------------------------------------------------+
+| columns_priv                                         |
+| component                                            |
+| db                                                   |
+| default_roles                                        |
+| ...                                                  |
+| user                                                 |
++------------------------------------------------------+
+                    </code></pre>
+                </div>
+
+                <p>The <code>mysql</code> system database contains tables that store user accounts, permissions, and server settings. You'll rarely interact with these directly, but it's good to know they exist.</p>
+
+                <h3>DESCRIBE — Show a Table's Structure</h3>
+                <p><code>DESCRIBE</code> (or its shorthand <code>DESC</code>) shows the columns, data types, and constraints for a table:</p>
+
+                <pre><code class="language-sql">
+DESCRIBE user;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output (abbreviated):</h4>
+                    <pre><code>
++-----------+-----------------------------------+------+-----+---------+-------+
+| Field     | Type                              | Null | Key | Default | Extra |
++-----------+-----------------------------------+------+-----+---------+-------+
+| Host      | char(255)                         | NO   | PRI |         |       |
+| User      | char(32)                          | NO   | PRI |         |       |
+| ...       | ...                               | ...  | ... | ...     | ...   |
++-----------+-----------------------------------+------+-----+---------+-------+
+                    </code></pre>
+                </div>
+
+                <p>This is incredibly useful — you'll use <code>DESCRIBE</code> constantly to remind yourself what columns a table has.</p>
+
+                <h3>SELECT — Query Data</h3>
+                <p>And of course, you can run any SQL query. Here's a quick peek at the MySQL user accounts:</p>
+
+                <pre><code class="language-sql">
+SELECT User, Host FROM user;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------------+-----------+
+| User             | Host      |
++------------------+-----------+
+| debian-sys-maint | localhost |
+| mysql.infoschema | localhost |
+| mysql.session    | localhost |
+| mysql.sys        | localhost |
+| phpmyadmin       | localhost |
+| root             | localhost |
++------------------+-----------+
+6 rows in set (0.00 sec)
+                    </code></pre>
+                </div>
+
+                <h3>Navigation Command Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>What It Does</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>SHOW DATABASES;</code></td>
+                                <td>List all databases</td>
+                                <td><code>SHOW DATABASES;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>USE</code></td>
+                                <td>Switch to a database</td>
+                                <td><code>USE my_database;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>SHOW TABLES;</code></td>
+                                <td>List tables in current database</td>
+                                <td><code>SHOW TABLES;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>DESCRIBE</code></td>
+                                <td>Show a table's column structure</td>
+                                <td><code>DESCRIBE customers;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>SHOW CREATE TABLE</code></td>
+                                <td>Show the SQL used to create a table</td>
+                                <td><code>SHOW CREATE TABLE customers;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>SELECT DATABASE();</code></td>
+                                <td>Show currently selected database</td>
+                                <td><code>SELECT DATABASE();</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>STATUS;</code></td>
+                                <td>Show connection and server info</td>
+                                <td><code>STATUS;</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 4: CLI Tips -->
+            <section id="cli-tips" class="lesson-section">
+                <h2>CLI Tips and Tricks</h2>
+
+                <h3>Every Statement Ends with a Semicolon</h3>
+                <p>SQL statements in the CLI <strong>must</strong> end with a semicolon (<code>;</code>). If you press Enter without one, MySQL thinks you're still typing and shows a continuation prompt:</p>
+
+                <pre><code class="language-sql">
+mysql> SELECT
+    -> VERSION()
+    -> ;
+                </code></pre>
+
+                <p>The <code>-></code> prompt means "I'm waiting for more input." Just type the semicolon and press Enter to execute.</p>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Stuck at the -> Prompt?</h4>
+                    <p>If you see <code>-></code> and can't figure out what's missing, type <code>;</code> and press Enter. If you see <code>'></code> or <code>"></code>, you have an unclosed quote — type the matching quote then a semicolon: <code>';</code> or <code>";</code>. To abandon the command entirely, type <code>\c</code> and press Enter.</p>
+                </div>
+
+                <h3>Multi-Line Statements</h3>
+                <p>You can (and should) write longer SQL across multiple lines for readability. MySQL doesn't execute until it sees the semicolon:</p>
+
+                <pre><code class="language-sql">
+SELECT
+    User,
+    Host
+FROM
+    user
+WHERE
+    Host = 'localhost';
+                </code></pre>
+
+                <p>This is much easier to read than cramming everything on one line.</p>
+
+                <h3>Command History</h3>
+                <p>Press the <strong>Up Arrow</strong> key to cycle through previous commands — just like in your regular terminal. This saves a lot of retyping.</p>
+
+                <h3>Clearing the Screen</h3>
+
+                <pre><code class="language-sql">
+\! clear
+                </code></pre>
+
+                <p>Or on Windows/WSL, you can use <code>SYSTEM clear</code> — the <code>\!</code> prefix runs a shell command from inside MySQL.</p>
+
+                <h3>Getting Help</h3>
+
+                <pre><code class="language-sql">
+-- General help
+HELP;
+
+-- Help on a specific topic
+HELP SELECT;
+HELP CREATE TABLE;
+                </code></pre>
+
+                <h3>Useful Shorthand Commands</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Shorthand</th>
+                                <th>Full Command</th>
+                                <th>What It Does</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>\q</code></td>
+                                <td><code>EXIT;</code></td>
+                                <td>Quit the MySQL client</td>
+                            </tr>
+                            <tr>
+                                <td><code>\c</code></td>
+                                <td>—</td>
+                                <td>Cancel the current command</td>
+                            </tr>
+                            <tr>
+                                <td><code>\s</code></td>
+                                <td><code>STATUS;</code></td>
+                                <td>Server status and connection info</td>
+                            </tr>
+                            <tr>
+                                <td><code>\h</code></td>
+                                <td><code>HELP;</code></td>
+                                <td>Show help</td>
+                            </tr>
+                            <tr>
+                                <td><code>\G</code></td>
+                                <td>—</td>
+                                <td>Display results vertically (great for wide rows)</td>
+                            </tr>
+                            <tr>
+                                <td><code>\! cmd</code></td>
+                                <td><code>SYSTEM cmd</code></td>
+                                <td>Run a shell command without leaving MySQL</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Vertical Output with \G</h3>
+                <p>When a table has many columns, the default horizontal output wraps and becomes hard to read. Use <code>\G</code> instead of <code>;</code> to display each row vertically:</p>
+
+                <pre><code class="language-sql">
+SELECT * FROM user WHERE User = 'root'\G
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output (abbreviated):</h4>
+                    <pre><code>
+*************************** 1. row ***************************
+                 Host: localhost
+                 User: root
+          Select_priv: Y
+          Insert_priv: Y
+          Update_priv: Y
+          Delete_priv: Y
+          ...
+1 row in set (0.00 sec)
+                    </code></pre>
+                </div>
+
+                <p>Each column is listed on its own line with its value — much easier to read for wide tables.</p>
+            </section>
+
+            <!-- Section 5: phpMyAdmin Tour -->
+            <section id="phpmyadmin-tour" class="lesson-section">
+                <h2>phpMyAdmin: A Guided Tour</h2>
+                <p>Open your browser and go to <a href="http://localhost/phpmyadmin" target="_blank">http://localhost/phpmyadmin</a>. Log in with your root credentials. Here's what you'll see:</p>
+
+                <div class="card card-accent">
+                    <h4>📖 No phpMyAdmin? No Problem.</h4>
+                    <p>If you didn't install phpMyAdmin or you're using MySQL Workbench (macOS), you can still follow along — the concepts are the same, just the interface looks different. All SQL in this course works identically in any tool.</p>
+                </div>
+
+                <h3>The Interface Layout</h3>
+
+                <div class="mermaid">
+                    graph TB
+                        subgraph phpMyAdmin["phpMyAdmin Interface"]
+                            direction TB
+                            A["🔝 Top Bar<br/>Server info, user, settings, logout"]
+                            B["📂 Left Sidebar<br/>Database &amp; table tree<br/>(click to navigate)"]
+                            C["📄 Main Panel<br/>Tables, query results,<br/>forms, structure"]
+                            D["📑 Tab Bar<br/>Structure | SQL | Search | Insert | Export | Import | ..."]
+                        end
+                </div>
+
+                <ul>
+                    <li><strong>Left Sidebar</strong> — shows all your databases as an expandable tree. Click a database name to select it, then expand it to see its tables.</li>
+                    <li><strong>Tab Bar</strong> — appears when you've selected a database or table. Key tabs:
+                        <ul>
+                            <li><strong>Structure</strong> — view and modify columns, indexes, and keys</li>
+                            <li><strong>SQL</strong> — type and execute raw SQL queries</li>
+                            <li><strong>Search</strong> — build queries visually with dropdowns and filters</li>
+                            <li><strong>Insert</strong> — add new rows via a form</li>
+                            <li><strong>Export / Import</strong> — dump or load data (CSV, SQL, etc.)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Main Panel</strong> — displays results, forms, table data, and structure depending on which tab you're on.</li>
+                </ul>
+
+                <h3>Browsing a Database</h3>
+                <ol>
+                    <li>In the left sidebar, click on <strong>mysql</strong> (the system database)</li>
+                    <li>The main panel shows a list of all tables in that database</li>
+                    <li>Click on the <strong>user</strong> table</li>
+                    <li>You'll see the table's data displayed in a grid — this is the same data you'd see with <code>SELECT * FROM user;</code> in the CLI</li>
+                </ol>
+
+                <h3>Viewing Table Structure</h3>
+                <ol>
+                    <li>With the <code>user</code> table selected, click the <strong>Structure</strong> tab</li>
+                    <li>You'll see every column listed with its type, null setting, key status, default value, and extras</li>
+                    <li>This is the visual equivalent of <code>DESCRIBE user;</code></li>
+                </ol>
+
+                <h3>Running a Query</h3>
+                <ol>
+                    <li>Click on <strong>mysql</strong> in the sidebar (to select the database)</li>
+                    <li>Click the <strong>SQL</strong> tab</li>
+                    <li>Type a query in the text box:
+                        <pre><code class="language-sql">
+SELECT User, Host FROM user;
+                        </code></pre>
+                    </li>
+                    <li>Click <strong>Go</strong> (or press Ctrl+Enter)</li>
+                    <li>The results appear below in a formatted table</li>
+                </ol>
+
+                <div class="card card-success">
+                    <h4>✅ Same SQL, Different View</h4>
+                    <p>The SQL you type in phpMyAdmin is <em>identical</em> to what you'd type in the CLI. phpMyAdmin just provides a nicer visual wrapper around the results. This is important: you're learning SQL, not phpMyAdmin-specific commands.</p>
+                </div>
+            </section>
+
+            <!-- Section 6: Running Queries in Both Tools -->
+            <section id="running-queries" class="lesson-section">
+                <h2>Running Queries in Both Tools</h2>
+                <p>Let's run the same commands side by side to reinforce that both tools do the same thing.</p>
+
+                <h3>Example 1: Check the MySQL Version</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CLI</th>
+                                <th>phpMyAdmin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Type <code>SELECT VERSION();</code> at the <code>mysql></code> prompt</td>
+                                <td>Click SQL tab → type <code>SELECT VERSION();</code> → click Go</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>Both return the same version number.</p>
+
+                <h3>Example 2: List Databases</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CLI</th>
+                                <th>phpMyAdmin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Type <code>SHOW DATABASES;</code></td>
+                                <td>Look at the left sidebar — all databases are listed there. Or: SQL tab → <code>SHOW DATABASES;</code> → Go</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Example 3: Select a Database and View Tables</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CLI</th>
+                                <th>phpMyAdmin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>USE mysql;</code> then <code>SHOW TABLES;</code></td>
+                                <td>Click <strong>mysql</strong> in the sidebar — the table list appears automatically</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Example 4: Describe a Table</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CLI</th>
+                                <th>phpMyAdmin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>DESCRIBE user;</code></td>
+                                <td>Click <strong>user</strong> table → <strong>Structure</strong> tab</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 Tip: Use Both Together</h4>
+                    <p>A great workflow is to <strong>write and test SQL in the CLI</strong> (it's faster and builds muscle memory), then <strong>switch to phpMyAdmin to visually inspect</strong> the results when you want to double-check your data. Many developers keep both open side by side.</p>
+                </div>
+            </section>
+
+            <!-- Section 7: CLI vs phpMyAdmin -->
+            <section id="cli-vs-phpmyadmin" class="lesson-section">
+                <h2>CLI vs. phpMyAdmin: When to Use Which</h2>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Better Tool</th>
+                                <th>Why</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Quick data check ("how many rows?")</td>
+                                <td>CLI</td>
+                                <td>Faster to type a query than click through menus</td>
+                            </tr>
+                            <tr>
+                                <td>Browsing table data visually</td>
+                                <td>phpMyAdmin</td>
+                                <td>Sortable columns, pagination, inline editing</td>
+                            </tr>
+                            <tr>
+                                <td>Writing and testing complex queries</td>
+                                <td>CLI (or SQL tab)</td>
+                                <td>Multi-line editing, command history</td>
+                            </tr>
+                            <tr>
+                                <td>Designing table structure</td>
+                                <td>phpMyAdmin</td>
+                                <td>Visual form for columns, types, keys</td>
+                            </tr>
+                            <tr>
+                                <td>Running a .sql script</td>
+                                <td>CLI</td>
+                                <td><code>SOURCE file.sql;</code> — one command</td>
+                            </tr>
+                            <tr>
+                                <td>Importing/exporting data</td>
+                                <td>Either</td>
+                                <td>phpMyAdmin has a nice UI; CLI has <code>mysqldump</code></td>
+                            </tr>
+                            <tr>
+                                <td>Remote server (SSH only)</td>
+                                <td>CLI</td>
+                                <td>phpMyAdmin may not be installed on production servers</td>
+                            </tr>
+                            <tr>
+                                <td>Learning SQL syntax</td>
+                                <td>CLI</td>
+                                <td>Forces you to type SQL by hand — no GUI shortcuts</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-accent">
+                    <h4>📖 The Professional Reality</h4>
+                    <p>In the real world, most backend developers and DBAs primarily use the command line (or a desktop client like MySQL Workbench, DataGrip, or DBeaver). phpMyAdmin is popular in shared hosting environments and for quick admin tasks. Learning the CLI first means you'll be comfortable in any environment.</p>
+                </div>
+            </section>
+
+            <!-- Section 8: SQL Files -->
+            <section id="sql-files" class="lesson-section">
+                <h2>Saving and Running SQL Files</h2>
+                <p>As your queries get longer, typing them into the CLI every time becomes tedious. A better approach is to save your SQL in <code>.sql</code> files and run them from the command line.</p>
+
+                <h3>Creating a SQL File</h3>
+                <p>Open your text editor (VS Code recommended) and create a file called <code>test.sql</code>:</p>
+
+                <pre><code class="language-sql">
+-- test.sql
+-- A simple test script
+
+SELECT VERSION();
+SELECT NOW();
+SHOW DATABASES;
+                </code></pre>
+
+                <p>Save it somewhere accessible (e.g., your home directory or a project folder).</p>
+
+                <h3>Running a SQL File from the CLI</h3>
+                <p>There are two ways:</p>
+
+                <h4>Method 1: SOURCE command (from inside MySQL)</h4>
+                <pre><code class="language-sql">
+-- Log in first, then:
+SOURCE /path/to/test.sql;
+                </code></pre>
+
+                <h4>Method 2: Redirect input (from the terminal, before logging in)</h4>
+                <pre><code class="language-bash">
+mysql -u root -p < /path/to/test.sql
+                </code></pre>
+
+                <p>Method 2 is especially useful for automation — you can run SQL scripts from bash scripts, cron jobs, or deployment pipelines.</p>
+
+                <h3>Running a SQL File in phpMyAdmin</h3>
+                <ol>
+                    <li>Click the <strong>Import</strong> tab</li>
+                    <li>Click <strong>Choose File</strong> and select your <code>.sql</code> file</li>
+                    <li>Click <strong>Go</strong></li>
+                </ol>
+
+                <div class="card card-success">
+                    <h4>✅ Pro Tip: Build a SQL Library</h4>
+                    <p>As you work through this course, save your SQL in organized files — one per lesson or one per topic. This gives you a personal reference library of tested SQL that you can reuse later. For example: <code>lesson_04_create_tables.sql</code>, <code>lesson_06_crud.sql</code>, etc.</p>
+                </div>
+            </section>
+
+            <!-- Section 9: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: CLI Exploration</h3>
+                    <p>Log into MySQL from the CLI and perform the following tasks:</p>
+                    <ol>
+                        <li>Run <code>STATUS;</code> — what MySQL version and connection type do you see?</li>
+                        <li>Run <code>SHOW DATABASES;</code> — list all databases</li>
+                        <li>Run <code>USE information_schema;</code> — switch to the information_schema database</li>
+                        <li>Run <code>SHOW TABLES;</code> — how many tables does information_schema have?</li>
+                        <li>Run <code>DESCRIBE TABLES;</code> — look at the structure of the TABLES table</li>
+                        <li>Run <code>SELECT DATABASE();</code> — confirm which database is selected</li>
+                        <li>Exit with <code>\q</code></li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ What You Should See</summary>
+                        <ul>
+                            <li><code>STATUS;</code> shows your MySQL version, connection ID, current database, and character set</li>
+                            <li><code>SHOW DATABASES;</code> lists 4 system databases (information_schema, mysql, performance_schema, sys)</li>
+                            <li><code>information_schema</code> typically has 70+ tables — they contain metadata about all databases and tables on the server</li>
+                            <li><code>SELECT DATABASE();</code> returns <code>information_schema</code></li>
+                        </ul>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: phpMyAdmin Scavenger Hunt</h3>
+                    <p>Open phpMyAdmin and find the answers to these questions (no CLI allowed!):</p>
+                    <ol>
+                        <li>How many databases are listed in the sidebar?</li>
+                        <li>Click on the <code>mysql</code> database — how many tables does it contain?</li>
+                        <li>Click on the <code>user</code> table, then the <strong>Structure</strong> tab — what data type is the <code>User</code> column?</li>
+                        <li>Click the <strong>SQL</strong> tab and run: <code>SELECT User, Host FROM user;</code> — how many users are listed?</li>
+                        <li>Find the phpMyAdmin version (hint: look at the bottom of any page or the home screen)</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Expected Answers</summary>
+                        <ul>
+                            <li>You should see 4–5 databases (the 4 system databases + possibly phpmyadmin's own database)</li>
+                            <li>The <code>mysql</code> database has around 37 tables (varies by version)</li>
+                            <li>The <code>User</code> column is <code>char(32)</code></li>
+                            <li>You'll see the users you created plus system accounts (typically 5–6 total)</li>
+                            <li>The phpMyAdmin version appears at the bottom-right of every page</li>
+                        </ul>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: Create and Run a SQL File</h3>
+                    <ol>
+                        <li>Create a file called <code>my_first_script.sql</code> in your text editor</li>
+                        <li>Add these queries:
+                            <pre><code class="language-sql">
+-- my_first_script.sql
+-- Practice running SQL from a file
+
+SELECT 'Hello from a SQL file!' AS message;
+SELECT VERSION() AS mysql_version;
+SELECT NOW() AS current_time;
+SELECT USER() AS logged_in_as;
+SHOW DATABASES;
+                            </code></pre>
+                        </li>
+                        <li>Save the file</li>
+                        <li>Run it from inside MySQL: <code>SOURCE /path/to/my_first_script.sql;</code></li>
+                        <li>Exit and run it from the terminal: <code>mysql -u root -p &lt; /path/to/my_first_script.sql</code></li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ What You Should See</summary>
+                        <p>Both methods produce the same output: a greeting message, your MySQL version, the current date/time, your login username, and a list of databases. The only difference is that the terminal redirect method exits immediately after running (no interactive prompt).</p>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What happens if you press Enter without a semicolon in the MySQL CLI?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL is more patient than that — it waits for you to finish.">
+                                A) An error is thrown
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The -> prompt means MySQL is waiting for more input. Type a semicolon to execute.">
+                                B) MySQL shows a -> continuation prompt
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL won't execute until it sees a semicolon.">
+                                C) The query runs anyway
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> Which command shows the column structure of a table?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="SHOW TABLES lists tables, not their structure.">
+                                A) SHOW TABLES;
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! DESCRIBE (or DESC) shows column names, types, nullability, keys, and defaults for a table.">
+                                B) DESCRIBE tablename;
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="EXPLAIN is used for query execution plans, not table structure.">
+                                C) EXPLAIN tablename;
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> How do you run a .sql file from inside the MySQL CLI?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="RUN is not a MySQL command.">
+                                A) RUN file.sql;
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="IMPORT is used in phpMyAdmin's interface, not the CLI.">
+                                B) IMPORT file.sql;
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! SOURCE reads and executes all SQL statements in the specified file.">
+                                C) SOURCE file.sql;
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 10: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li>The <strong>MySQL CLI</strong> and <strong>phpMyAdmin</strong> are two interfaces to the same database — use both</li>
+                        <li>Log in with <code>mysql -u root -p</code>; log out with <code>EXIT;</code> or <code>\q</code></li>
+                        <li>Navigate with: <code>SHOW DATABASES</code>, <code>USE</code>, <code>SHOW TABLES</code>, <code>DESCRIBE</code></li>
+                        <li>Every SQL statement ends with a <strong>semicolon</strong> — no semicolon means MySQL keeps waiting</li>
+                        <li>Use <code>\G</code> instead of <code>;</code> for vertical output on wide tables</li>
+                        <li>phpMyAdmin's key tabs: <strong>Structure</strong>, <strong>SQL</strong>, <strong>Search</strong>, <strong>Insert</strong>, <strong>Export/Import</strong></li>
+                        <li>Save SQL in <code>.sql</code> files and run with <code>SOURCE</code> or input redirection</li>
+                        <li>CLI builds SQL muscle memory; phpMyAdmin gives visual feedback — use both strategically</li>
+                    </ul>
+                </div>
+
+                <h3>🚀 What's Next?</h3>
+                <p>You're comfortable navigating MySQL with both tools. In the next lesson, you'll start building your own databases and tables — creating the structures that will hold your data. This is where it gets really fun!</p>
+
+                <div class="card card-accent" style="text-align: center; padding: 2rem;">
+                    <h3>🎉 Module 1 Complete!</h3>
+                    <p>You've finished the Getting Started module. You understand what databases are, you've installed MySQL, and you can navigate it confidently with the CLI and phpMyAdmin. Time to start building!</p>
+                </div>
+            </section>
+
+            <!-- Lesson Navigation -->
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_02.html" class="prev-lesson">← Previous: Installing MySQL (LAMP Stack)</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_04.html" class="next-lesson">Next: Creating Databases &amp; Tables →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

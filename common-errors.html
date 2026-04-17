@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Common MySQL errors explained — what they mean, why they happen, and how to fix them. A quick-reference guide for the MySQL Foundations course.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Common Errors - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li aria-current="page">Common Errors</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>❌ Common MySQL Errors</h1>
+                <p class="lead">A reference guide to the most frequently encountered MySQL errors, what causes them, and how to fix them. When you hit an error, search for the error number on this page.</p>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary><h2 style="display: inline; margin: 0;">📑 Sections</h2></summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#syntax" class="toc-link">Syntax Errors</a></li>
+                        <li><a href="#table-db" class="toc-link">Table &amp; Database Errors</a></li>
+                        <li><a href="#data" class="toc-link">Data &amp; Constraint Errors</a></li>
+                        <li><a href="#connection" class="toc-link">Connection &amp; Access Errors</a></li>
+                        <li><a href="#import-export" class="toc-link">Import/Export Errors</a></li>
+                        <li><a href="#procedure" class="toc-link">Procedure &amp; Function Errors</a></li>
+                        <li><a href="#general-tips" class="toc-link">General Debugging Tips</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Syntax Errors -->
+            <section id="syntax" class="lesson-section">
+                <h2>Syntax Errors</h2>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1064: Syntax Error</h3>
+                    <p><strong>Message:</strong> <code>You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '...' at line X</code></p>
+                    <h4>Common Causes:</h4>
+                    <ul>
+                        <li>Missing or extra comma, parenthesis, or semicolon</li>
+                        <li>Typo in a keyword (<code>SELCET</code> instead of <code>SELECT</code>)</li>
+                        <li>Using a reserved word as a column or table name without backticks</li>
+                        <li>Running <code>mysqldump</code> from inside the <code>mysql&gt;</code> prompt</li>
+                        <li>Missing quotes around string values</li>
+                    </ul>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Look at what comes AFTER "near" in the error — that's where MySQL got confused
+
+-- Bad: reserved word as column name
+CREATE TABLE orders (order INT);           -- 'order' is reserved!
+
+-- Fix: use backticks or a different name
+CREATE TABLE orders (`order` INT);         -- Works but not recommended
+CREATE TABLE orders (order_number INT);    -- Better: avoid reserved words
+
+-- Bad: missing comma
+SELECT title price FROM books;
+
+-- Fix: add the comma
+SELECT title, price FROM books;
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1054: Unknown Column</h3>
+                    <p><strong>Message:</strong> <code>Unknown column 'column_name' in 'field list'</code></p>
+                    <h4>Common Causes:</h4>
+                    <ul>
+                        <li>Typo in the column name</li>
+                        <li>Column doesn't exist in the table</li>
+                        <li>Forgot to specify the table alias in a join</li>
+                        <li>Using a column alias in <code>WHERE</code> (not allowed — use <code>HAVING</code> or repeat the expression)</li>
+                    </ul>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Check the actual column names
+DESCRIBE books;
+
+-- Bad: alias used in WHERE
+SELECT price * 0.9 AS sale_price FROM books WHERE sale_price < 10;
+
+-- Fix: repeat the expression or use HAVING
+SELECT price * 0.9 AS sale_price FROM books WHERE price * 0.9 < 10;
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1055: Non-aggregated Column in GROUP BY</h3>
+                    <p><strong>Message:</strong> <code>Expression #N of SELECT list is not in GROUP BY clause and contains nonaggregated column</code></p>
+                    <h4>Cause:</h4>
+                    <p>You selected a column that isn't in <code>GROUP BY</code> and isn't inside an aggregate function.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Bad: title is not aggregated or grouped
+SELECT author_id, title, COUNT(*) FROM books GROUP BY author_id;
+
+-- Fix Option 1: Add to GROUP BY
+SELECT author_id, title, COUNT(*) FROM books GROUP BY author_id, title;
+
+-- Fix Option 2: Use an aggregate
+SELECT author_id, MAX(title), COUNT(*) FROM books GROUP BY author_id;
+
+-- Fix Option 3: Remove the non-aggregated column
+SELECT author_id, COUNT(*) FROM books GROUP BY author_id;
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Table & DB Errors -->
+            <section id="table-db" class="lesson-section">
+                <h2>Table &amp; Database Errors</h2>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1046: No Database Selected</h3>
+                    <p><strong>Message:</strong> <code>No database selected</code></p>
+                    <h4>Cause:</h4>
+                    <p>You ran a query without first selecting a database with <code>USE</code>.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Select the database first
+USE bookstore;
+
+-- Then run your query
+SELECT * FROM books;
+
+-- Or specify the database in the query
+SELECT * FROM bookstore.books;
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1049: Unknown Database</h3>
+                    <p><strong>Message:</strong> <code>Unknown database 'database_name'</code></p>
+                    <h4>Cause:</h4>
+                    <p>The database name is misspelled or doesn't exist.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- List all databases to check the name
+SHOW DATABASES;
+
+-- Create it if it doesn't exist
+CREATE DATABASE IF NOT EXISTS bookstore;
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1050: Table Already Exists</h3>
+                    <p><strong>Message:</strong> <code>Table 'table_name' already exists</code></p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Use IF NOT EXISTS to avoid the error
+CREATE TABLE IF NOT EXISTS books (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200)
+);
+
+-- Or drop the table first (careful — this deletes all data!)
+DROP TABLE IF EXISTS books;
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1146: Table Doesn't Exist</h3>
+                    <p><strong>Message:</strong> <code>Table 'database.table_name' doesn't exist</code></p>
+                    <h4>Common Causes:</h4>
+                    <ul>
+                        <li>Typo in the table name</li>
+                        <li>Wrong database selected</li>
+                        <li>Table hasn't been created yet</li>
+                        <li>Case sensitivity on Linux (tables are case-sensitive on Linux, not on Windows/macOS)</li>
+                    </ul>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Check current database and list tables
+SELECT DATABASE();
+SHOW TABLES;
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Data Errors -->
+            <section id="data" class="lesson-section">
+                <h2>Data &amp; Constraint Errors</h2>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1062: Duplicate Entry</h3>
+                    <p><strong>Message:</strong> <code>Duplicate entry 'value' for key 'key_name'</code></p>
+                    <h4>Cause:</h4>
+                    <p>You're trying to insert or update a value that violates a <code>UNIQUE</code> constraint or <code>PRIMARY KEY</code>.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Check existing values
+SELECT * FROM users WHERE email = 'john@example.com';
+
+-- Option 1: Use INSERT ... ON DUPLICATE KEY UPDATE
+INSERT INTO users (email, name) VALUES ('john@example.com', 'John')
+ON DUPLICATE KEY UPDATE name = VALUES(name);
+
+-- Option 2: Use INSERT IGNORE (silently skips duplicates)
+INSERT IGNORE INTO users (email, name) VALUES ('john@example.com', 'John');
+
+-- Option 3: Use a different unique value
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1048: Column Cannot Be NULL</h3>
+                    <p><strong>Message:</strong> <code>Column 'column_name' cannot be null</code></p>
+                    <h4>Cause:</h4>
+                    <p>You're inserting or updating a <code>NOT NULL</code> column with a NULL value (or not providing a value for a required column).</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Provide a value for the required column
+INSERT INTO books (title, price) VALUES ('My Book', 9.99);
+
+-- Or alter the column to allow NULLs (if appropriate)
+ALTER TABLE books MODIFY COLUMN price DECIMAL(10,2) NULL;
+
+-- Or add a default value
+ALTER TABLE books MODIFY COLUMN price DECIMAL(10,2) DEFAULT 0.00;
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1451: Cannot Delete — Foreign Key Constraint</h3>
+                    <p><strong>Message:</strong> <code>Cannot delete or update a parent row: a foreign key constraint fails</code></p>
+                    <h4>Cause:</h4>
+                    <p>You're trying to delete a row that other rows depend on via a foreign key (and the action is <code>RESTRICT</code> or <code>NO ACTION</code>).</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Option 1: Delete the child rows first
+DELETE FROM books WHERE author_id = 5;
+DELETE FROM authors WHERE id = 5;
+
+-- Option 2: Change the foreign key to CASCADE
+ALTER TABLE books DROP FOREIGN KEY fk_author;
+ALTER TABLE books ADD CONSTRAINT fk_author
+    FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE;
+
+-- Option 3: Set child values to NULL
+ALTER TABLE books DROP FOREIGN KEY fk_author;
+ALTER TABLE books ADD CONSTRAINT fk_author
+    FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE SET NULL;
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1452: Cannot Add — Foreign Key Constraint</h3>
+                    <p><strong>Message:</strong> <code>Cannot add or update a child row: a foreign key constraint fails</code></p>
+                    <h4>Cause:</h4>
+                    <p>You're inserting a foreign key value that doesn't exist in the parent table.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Check if the parent record exists
+SELECT * FROM authors WHERE id = 99;
+
+-- Insert the parent record first, then the child
+INSERT INTO authors (id, name) VALUES (99, 'New Author');
+INSERT INTO books (title, author_id) VALUES ('New Book', 99);
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1406: Data Too Long</h3>
+                    <p><strong>Message:</strong> <code>Data too long for column 'column_name' at row N</code></p>
+                    <h4>Cause:</h4>
+                    <p>The value exceeds the column's maximum length (e.g., inserting 300 characters into a <code>VARCHAR(200)</code>).</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Check the column's current limit
+DESCRIBE books;
+
+-- Increase the column size
+ALTER TABLE books MODIFY COLUMN title VARCHAR(500);
+
+-- Or truncate the data before inserting
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1366: Incorrect Value for Column</h3>
+                    <p><strong>Message:</strong> <code>Incorrect integer value: 'abc' for column 'id' at row 1</code></p>
+                    <h4>Cause:</h4>
+                    <p>You're inserting a value that doesn't match the column's data type (e.g., text into an <code>INT</code> column).</p>
+                    <h4>How to Fix:</h4>
+                    <p>Make sure the value matches the column type. Check for accidental quotes around numbers or missing quotes around strings.</p>
+                </div>
+            </section>
+
+            <!-- Connection Errors -->
+            <section id="connection" class="lesson-section">
+                <h2>Connection &amp; Access Errors</h2>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1045: Access Denied</h3>
+                    <p><strong>Message:</strong> <code>Access denied for user 'username'@'host' (using password: YES)</code></p>
+                    <h4>Common Causes:</h4>
+                    <ul>
+                        <li>Wrong password</li>
+                        <li>Wrong username</li>
+                        <li>User doesn't exist for that host (e.g., <code>'user'@'localhost'</code> exists but <code>'user'@'%'</code> does not)</li>
+                    </ul>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Check if the user exists
+SELECT User, Host FROM mysql.user WHERE User = 'username';
+
+-- Reset the password (as root)
+ALTER USER 'username'@'localhost' IDENTIFIED BY 'NewPassword!';
+
+-- Make sure you're using -p (with password prompt)
+-- mysql -u username -p
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1142: Command Denied</h3>
+                    <p><strong>Message:</strong> <code>DELETE command denied to user 'user'@'localhost' for table 'books'</code></p>
+                    <h4>Cause:</h4>
+                    <p>The user doesn't have the required privilege for the operation.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Check the user's privileges
+SHOW GRANTS FOR 'user'@'localhost';
+
+-- Grant the missing privilege (as root)
+GRANT DELETE ON bookstore.books TO 'user'@'localhost';
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 2002: Can't Connect to MySQL Server</h3>
+                    <p><strong>Message:</strong> <code>Can't connect to local MySQL server through socket '/var/run/mysqld/mysqld.sock'</code></p>
+                    <h4>Cause:</h4>
+                    <p>The MySQL server isn't running.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-bash">
+# Start the MySQL service
+sudo service mysql start
+
+# Check if it's running
+sudo service mysql status
+
+# If using systemd:
+sudo systemctl start mysql
+sudo systemctl status mysql
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 2003: Can't Connect to MySQL Server on 'host'</h3>
+                    <p><strong>Message:</strong> <code>Can't connect to MySQL server on 'hostname' (111)</code></p>
+                    <h4>Common Causes:</h4>
+                    <ul>
+                        <li>MySQL isn't configured to accept remote connections</li>
+                        <li>Firewall blocking port 3306</li>
+                        <li>Wrong hostname or IP address</li>
+                    </ul>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-bash">
+# Check if MySQL is listening on the network
+sudo netstat -tlnp | grep 3306
+
+# Edit MySQL config to allow remote connections
+# In /etc/mysql/mysql.conf.d/mysqld.cnf:
+# Change: bind-address = 127.0.0.1
+# To:     bind-address = 0.0.0.0
+
+# Restart MySQL
+sudo service mysql restart
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Import/Export Errors -->
+            <section id="import-export" class="lesson-section">
+                <h2>Import/Export Errors</h2>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1290: --secure-file-priv</h3>
+                    <p><strong>Message:</strong> <code>The MySQL server is running with the --secure-file-priv option so it cannot execute this statement</code></p>
+                    <h4>Cause:</h4>
+                    <p>Your <code>INTO OUTFILE</code> or <code>LOAD DATA INFILE</code> path is outside the allowed directory.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Check the allowed directory
+SHOW VARIABLES LIKE 'secure_file_priv';
+
+-- Use the allowed path in your query
+-- e.g., /var/lib/mysql-files/
+SELECT * INTO OUTFILE '/var/lib/mysql-files/export.csv' ...
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 13: Can't Get Stat / Permission Denied (File Operations)</h3>
+                    <p><strong>Message:</strong> <code>Can't get stat of '/path/file.csv' (OS errno 13 - Permission denied)</code></p>
+                    <h4>Cause:</h4>
+                    <p>The MySQL server process doesn't have permission to read or write the file.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-bash">
+# Use /tmp or the secure_file_priv directory
+# Or adjust file permissions
+chmod 644 /path/to/file.csv
+chown mysql:mysql /path/to/file.csv
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>File Already Exists (INTO OUTFILE)</h3>
+                    <p><strong>Message:</strong> <code>File '/path/file.csv' already exists</code></p>
+                    <h4>Cause:</h4>
+                    <p><code>INTO OUTFILE</code> will not overwrite existing files.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-bash">
+# Delete the existing file from the terminal
+rm /tmp/export.csv
+
+# Then re-run your query
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 3948: LOAD DATA LOCAL INFILE Disabled</h3>
+                    <p><strong>Message:</strong> <code>Loading local data is disabled; this must be enabled on both the client and server side</code></p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Enable on the server
+SET GLOBAL local_infile = 1;
+                    </code></pre>
+                    <pre><code class="language-bash">
+# Reconnect with LOCAL enabled
+mysql -u root -p --local-infile=1 bookstore
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Procedure Errors -->
+            <section id="procedure" class="lesson-section">
+                <h2>Procedure &amp; Function Errors</h2>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1304: Procedure/Function Already Exists</h3>
+                    <p><strong>Message:</strong> <code>PROCEDURE my_proc already exists</code></p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Drop and recreate
+DROP PROCEDURE IF EXISTS my_proc;
+
+-- Then create the procedure
+DELIMITER //
+CREATE PROCEDURE my_proc()
+BEGIN
+    -- ...
+END //
+DELIMITER ;
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>ERROR 1418: No DETERMINISTIC or NO SQL</h3>
+                    <p><strong>Message:</strong> <code>This function has none of DETERMINISTIC, NO SQL, or READS SQL DATA in its declaration</code></p>
+                    <h4>Cause:</h4>
+                    <p>Binary logging is enabled and MySQL requires functions to declare their nature.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Add DETERMINISTIC (if the function always returns the same output for the same input)
+CREATE FUNCTION my_func(x INT) RETURNS INT
+DETERMINISTIC
+BEGIN
+    RETURN x * 2;
+END;
+
+-- Or READS SQL DATA (if it reads from tables but doesn't write)
+CREATE FUNCTION my_func(x INT) RETURNS INT
+READS SQL DATA
+BEGIN
+    RETURN (SELECT COUNT(*) FROM books WHERE author_id = x);
+END;
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>DELIMITER Confusion</h3>
+                    <p><strong>Symptom:</strong> Procedure/function creation fails or only runs the first line.</p>
+                    <h4>Cause:</h4>
+                    <p>You forgot to change the delimiter before <code>CREATE PROCEDURE</code> / <code>CREATE FUNCTION</code>, so MySQL treats the first semicolon inside the body as the end of the statement.</p>
+                    <h4>How to Fix:</h4>
+                    <pre><code class="language-sql">
+-- Always set DELIMITER before and after
+DELIMITER //
+CREATE PROCEDURE my_proc()
+BEGIN
+    SELECT 1;   -- This semicolon doesn't end the CREATE statement
+    SELECT 2;
+END //
+DELIMITER ;
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- General Tips -->
+            <section id="general-tips" class="lesson-section">
+                <h2>General Debugging Tips</h2>
+
+                <div class="card card-success">
+                    <h4>✅ Read the Error Message Carefully</h4>
+                    <p>MySQL errors always include: the error number, a description, and often the exact position where it got confused. The text after <code>near '...'</code> in syntax errors shows where to look.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ Use SHOW WARNINGS</h4>
+                    <p>After any statement, run <code>SHOW WARNINGS;</code> to see any warnings MySQL generated but didn't stop for (truncated data, implicit type conversions, etc.).</p>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ Check Your Context</h4>
+                    <pre><code class="language-sql">
+-- What database am I in?
+SELECT DATABASE();
+
+-- Who am I logged in as?
+SELECT CURRENT_USER();
+
+-- What tables exist?
+SHOW TABLES;
+
+-- What columns does this table have?
+DESCRIBE my_table;
+                    </code></pre>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ Test Before You Modify</h4>
+                    <p>Before running <code>UPDATE</code> or <code>DELETE</code>, run a <code>SELECT</code> with the same <code>WHERE</code> clause to verify which rows will be affected.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ Start Small, Build Up</h4>
+                    <p>If a complex query fails, simplify it. Start with the basic <code>SELECT</code>, then add <code>WHERE</code>, then <code>JOIN</code>, then <code>GROUP BY</code>, testing at each step.</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Page Navigation">
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

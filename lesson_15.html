@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn how to create, use, and manage MySQL views — virtual tables that simplify complex queries, improve readability, and add a layer of security to your database.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Views - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 5: Database Design</a></li>
+            <li aria-current="page">Lesson 15: Views</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🪟 Lesson 15: Views</h1>
+                <p class="lead">You've written some impressive multi-table JOINs — five tables deep, with aggregates and filters. But do you really want to retype (or copy-paste) that 15-line query every time someone asks for the same report? A <strong>view</strong> lets you save a query as a virtual table. After creating it, you query the view just like a regular table — one simple SELECT instead of a wall of JOINs.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Explain what a view is and how it differs from a table</li>
+                        <li>Create views with <code>CREATE VIEW</code></li>
+                        <li>Query views just like regular tables</li>
+                        <li>Update and replace existing views</li>
+                        <li>Understand which views are updatable (and which aren't)</li>
+                        <li>Drop views and manage them in your database</li>
+                        <li>Use views for security, simplicity, and abstraction</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 40 minutes</p>
+                    <p><strong>Prerequisites:</strong> Indexes &amp; Query Optimization (<a href="lesson_14.html">Lesson 14</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#what-is-view" class="toc-link">What Is a View?</a></li>
+                        <li><a href="#creating-views" class="toc-link">Creating Views</a></li>
+                        <li><a href="#querying-views" class="toc-link">Querying Views</a></li>
+                        <li><a href="#views-with-joins" class="toc-link">Views with JOINs</a></li>
+                        <li><a href="#views-with-aggregates" class="toc-link">Views with Aggregates</a></li>
+                        <li><a href="#updating-views" class="toc-link">Updating &amp; Replacing Views</a></li>
+                        <li><a href="#updatable-views" class="toc-link">Updatable Views</a></li>
+                        <li><a href="#dropping-views" class="toc-link">Dropping Views</a></li>
+                        <li><a href="#use-cases" class="toc-link">When to Use Views</a></li>
+                        <li><a href="#view-limitations" class="toc-link">Limitations &amp; Gotchas</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: What Is a View? -->
+            <section id="what-is-view" class="lesson-section">
+                <h2>What Is a View?</h2>
+                <p>A <strong>view</strong> is a <em>saved query</em> that behaves like a virtual table. It doesn't store data itself — every time you query a view, MySQL runs the underlying query and returns the results as if they came from a real table.</p>
+
+                <div class="mermaid">
+                    graph LR
+                        subgraph view["View: customer_orders"]
+                            V["Saved SELECT query"]
+                        end
+                        subgraph tables["Actual Tables"]
+                            C["customers"]
+                            O["orders"]
+                            OI["order_items"]
+                            B["books"]
+                        end
+                        V -->|"runs query against"| C
+                        V -->|"runs query against"| O
+                        V -->|"runs query against"| OI
+                        V -->|"runs query against"| B
+                        U["Your query:<br/>SELECT * FROM customer_orders"] -->|"uses"| V
+                </div>
+
+                <h3>Table vs View</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>Table</th>
+                                <th>View</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Stores data on disk</td>
+                                <td>✅ Yes</td>
+                                <td>❌ No — stores only the query definition</td>
+                            </tr>
+                            <tr>
+                                <td>Can be queried with SELECT</td>
+                                <td>✅ Yes</td>
+                                <td>✅ Yes — looks just like a table</td>
+                            </tr>
+                            <tr>
+                                <td>Data is always current</td>
+                                <td>Only when updated</td>
+                                <td>✅ Yes — re-runs the query each time</td>
+                            </tr>
+                            <tr>
+                                <td>Can INSERT/UPDATE directly</td>
+                                <td>✅ Yes</td>
+                                <td>Sometimes (with restrictions)</td>
+                            </tr>
+                            <tr>
+                                <td>Can have indexes</td>
+                                <td>✅ Yes</td>
+                                <td>❌ No — uses indexes from underlying tables</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>Think of a view as a <strong>window</strong> into your data — it shows you a specific angle of the underlying tables without creating any copies.</p>
+            </section>
+
+            <!-- Section 2: Creating Views -->
+            <section id="creating-views" class="lesson-section">
+                <h2>Creating Views</h2>
+
+                <h3>Basic Syntax</h3>
+
+                <pre><code class="language-sql">
+CREATE VIEW view_name AS
+SELECT columns
+FROM table_name
+WHERE conditions;
+                </code></pre>
+
+                <h3>Example: Active Customers</h3>
+
+                <pre><code class="language-sql">
+-- Create a view of customers in Las Vegas
+CREATE VIEW las_vegas_customers AS
+SELECT id, first_name, last_name, email
+FROM customers
+WHERE city = 'Las Vegas';
+                </code></pre>
+
+                <p>That's it. The view now exists as a queryable object in your database, just like a table.</p>
+
+                <h3>Naming Conventions</h3>
+                <p>Common patterns include:</p>
+                <ul>
+                    <li><code>v_customer_orders</code> — prefix with <code>v_</code></li>
+                    <li><code>vw_customer_orders</code> — prefix with <code>vw_</code></li>
+                    <li><code>customer_orders_view</code> — suffix with <code>_view</code></li>
+                </ul>
+                <p>Any convention works — the important thing is consistency across your database so you can tell views apart from tables at a glance.</p>
+
+                <div class="card card-info">
+                    <h4>💡 See All Views</h4>
+                    <p>To list all views in the current database:</p>
+                    <pre><code class="language-sql">
+SHOW FULL TABLES WHERE Table_type = 'VIEW';
+                    </code></pre>
+                    <p>To see the definition of a view:</p>
+                    <pre><code class="language-sql">
+SHOW CREATE VIEW las_vegas_customers;
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Section 3: Querying Views -->
+            <section id="querying-views" class="lesson-section">
+                <h2>Querying Views</h2>
+                <p>Once created, you use a view exactly like a table in SELECT statements:</p>
+
+                <pre><code class="language-sql">
+-- Query the view just like a table
+SELECT * FROM las_vegas_customers;
+
+-- Add filters on top of the view
+SELECT first_name, last_name
+FROM las_vegas_customers
+WHERE last_name LIKE 'S%';
+
+-- Use it with ORDER BY, LIMIT, etc.
+SELECT * FROM las_vegas_customers
+ORDER BY last_name
+LIMIT 10;
+                </code></pre>
+
+                <p>Anyone querying <code>las_vegas_customers</code> doesn't need to know about the <code>WHERE city = 'Las Vegas'</code> filter — it's baked into the view. They just write a simple SELECT and get the right data.</p>
+
+                <h3>Views in JOINs</h3>
+                <p>You can also join views with other tables or views:</p>
+
+                <pre><code class="language-sql">
+-- Join the view with the orders table
+SELECT
+    lvc.first_name,
+    lvc.last_name,
+    o.id AS order_id,
+    o.order_date
+FROM las_vegas_customers lvc
+INNER JOIN orders o ON lvc.id = o.customer_id;
+                </code></pre>
+            </section>
+
+            <!-- Section 4: Views with JOINs -->
+            <section id="views-with-joins" class="lesson-section">
+                <h2>Views with JOINs</h2>
+                <p>This is where views really shine — wrapping complex multi-table JOINs into a simple, reusable name.</p>
+
+                <h3>Order Details View</h3>
+
+                <pre><code class="language-sql">
+-- Save a complex JOIN as a view
+CREATE VIEW v_order_details AS
+SELECT
+    o.id AS order_id,
+    o.order_date,
+    c.first_name,
+    c.last_name,
+    b.title AS book_title,
+    a.name AS author,
+    oi.quantity,
+    b.price,
+    ROUND(oi.quantity * b.price, 2) AS line_total
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id
+INNER JOIN order_items oi ON o.id = oi.order_id
+INNER JOIN books b ON oi.book_id = b.id
+INNER JOIN authors a ON b.author_id = a.id;
+                </code></pre>
+
+                <p>Now, instead of writing that 12-line query every time, anyone can just write:</p>
+
+                <pre><code class="language-sql">
+-- Simple!
+SELECT * FROM v_order_details;
+
+-- Alice's orders only
+SELECT * FROM v_order_details
+WHERE first_name = 'Alice'
+ORDER BY order_date DESC;
+
+-- Total by author
+SELECT author, SUM(line_total) AS revenue
+FROM v_order_details
+GROUP BY author;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output of SELECT * FROM v_order_details:</h4>
+                    <pre><code>
++----------+------------+------------+-----------+---------------------+---------------+----------+-------+------------+
+| order_id | order_date | first_name | last_name | book_title          | author        | quantity | price | line_total |
++----------+------------+------------+-----------+---------------------+---------------+----------+-------+------------+
+|        1 | 2026-01-15 | Alice      | Johnson   | Dune                | Frank Herbert |        1 | 14.99 |      14.99 |
+|        1 | 2026-01-15 | Alice      | Johnson   | 1984                | George Orwell |        2 |  9.99 |      19.98 |
+|        2 | 2026-02-20 | Alice      | Johnson   | Pride and Prejudice | Jane Austen   |        1 |  7.99 |       7.99 |
+|        3 | 2026-03-10 | Bob        | Smith     | Dune                | Frank Herbert |        1 | 14.99 |      14.99 |
++----------+------------+------------+-----------+---------------------+---------------+----------+-------+------------+
+                    </code></pre>
+                </div>
+
+                <h3>Customer Summary View</h3>
+
+                <pre><code class="language-sql">
+CREATE VIEW v_customer_summary AS
+SELECT
+    c.id AS customer_id,
+    CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
+    COUNT(DISTINCT o.id) AS total_orders,
+    COALESCE(SUM(oi.quantity), 0) AS items_bought,
+    COALESCE(ROUND(SUM(oi.quantity * b.price), 2), 0) AS total_spent
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+LEFT JOIN order_items oi ON o.id = oi.order_id
+LEFT JOIN books b ON oi.book_id = b.id
+GROUP BY c.id, c.first_name, c.last_name;
+                </code></pre>
+
+                <pre><code class="language-sql">
+-- Now getting a customer report is one line:
+SELECT * FROM v_customer_summary ORDER BY total_spent DESC;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------------+----------------+--------------+--------------+-------------+
+| customer_id | customer_name  | total_orders | items_bought | total_spent |
++-------------+----------------+--------------+--------------+-------------+
+|           1 | Alice Johnson  |            2 |            4 |       42.96 |
+|           2 | Bob Smith      |            1 |            1 |       14.99 |
+|           3 | Carol Williams |            0 |            0 |        0.00 |
++-------------+----------------+--------------+--------------+-------------+
+                    </code></pre>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ The Power of Views</h4>
+                    <p>Notice how <code>v_customer_summary</code> hides four LEFT JOINs, COALESCE, CONCAT, GROUP BY, and aggregates behind a single name. A manager who doesn't know SQL can run <code>SELECT * FROM v_customer_summary</code> and get a polished report. That's the real value — <strong>abstraction</strong>.</p>
+                </div>
+            </section>
+
+            <!-- Section 5: Views with Aggregates -->
+            <section id="views-with-aggregates" class="lesson-section">
+                <h2>Views with Aggregates</h2>
+                <p>Views can include GROUP BY, aggregate functions, and computed columns:</p>
+
+                <h3>Author Sales Report</h3>
+
+                <pre><code class="language-sql">
+CREATE VIEW v_author_sales AS
+SELECT
+    a.id AS author_id,
+    a.name AS author,
+    COUNT(DISTINCT b.id) AS books_in_catalog,
+    COALESCE(SUM(oi.quantity), 0) AS copies_sold,
+    COALESCE(ROUND(SUM(oi.quantity * b.price), 2), 0) AS total_revenue
+FROM authors a
+LEFT JOIN books b ON a.id = b.author_id
+LEFT JOIN order_items oi ON b.id = oi.book_id
+GROUP BY a.id, a.name;
+                </code></pre>
+
+                <pre><code class="language-sql">
+-- Quick access to author performance
+SELECT * FROM v_author_sales ORDER BY total_revenue DESC;
+
+-- Find authors with no sales
+SELECT author FROM v_author_sales WHERE copies_sold = 0;
+                </code></pre>
+
+                <h3>Monthly Revenue</h3>
+
+                <pre><code class="language-sql">
+CREATE VIEW v_monthly_revenue AS
+SELECT
+    DATE_FORMAT(o.order_date, '%Y-%m') AS month,
+    COUNT(DISTINCT o.id) AS order_count,
+    SUM(oi.quantity) AS items_sold,
+    ROUND(SUM(oi.quantity * b.price), 2) AS revenue
+FROM orders o
+INNER JOIN order_items oi ON o.id = oi.order_id
+INNER JOIN books b ON oi.book_id = b.id
+GROUP BY DATE_FORMAT(o.order_date, '%Y-%m');
+                </code></pre>
+
+                <pre><code class="language-sql">
+-- Monthly dashboard in one line
+SELECT * FROM v_monthly_revenue ORDER BY month;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++---------+-------------+------------+---------+
+| month   | order_count | items_sold | revenue |
++---------+-------------+------------+---------+
+| 2026-01 |           1 |          3 |   34.97 |
+| 2026-02 |           1 |          1 |    7.99 |
+| 2026-03 |           1 |          1 |   14.99 |
++---------+-------------+------------+---------+
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Section 6: Updating & Replacing Views -->
+            <section id="updating-views" class="lesson-section">
+                <h2>Updating &amp; Replacing Views</h2>
+                <p>Need to change a view's query? Use <code>CREATE OR REPLACE VIEW</code>:</p>
+
+                <pre><code class="language-sql">
+-- Modify the view to add the email column
+CREATE OR REPLACE VIEW las_vegas_customers AS
+SELECT id, first_name, last_name, email, phone
+FROM customers
+WHERE city = 'Las Vegas';
+                </code></pre>
+
+                <p>This replaces the old definition with the new one. If the view doesn't exist yet, it creates it. This is safer than DROP + CREATE because it's a single atomic operation.</p>
+
+                <h3>ALTER VIEW</h3>
+                <p>An alternative syntax that only works on existing views:</p>
+
+                <pre><code class="language-sql">
+-- Only works if the view already exists
+ALTER VIEW las_vegas_customers AS
+SELECT id, first_name, last_name, email, phone
+FROM customers
+WHERE city = 'Las Vegas';
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 CREATE OR REPLACE Is Usually Better</h4>
+                    <p><code>CREATE OR REPLACE VIEW</code> works whether the view exists or not — it creates it if missing, replaces it if present. <code>ALTER VIEW</code> fails if the view doesn't exist. Most developers prefer <code>CREATE OR REPLACE</code> for convenience and in migration scripts.</p>
+                </div>
+            </section>
+
+            <!-- Section 7: Updatable Views -->
+            <section id="updatable-views" class="lesson-section">
+                <h2>Updatable Views</h2>
+                <p>Some views allow you to run INSERT, UPDATE, or DELETE against them, and the changes pass through to the underlying table. These are called <strong>updatable views</strong>.</p>
+
+                <h3>When Is a View Updatable?</h3>
+                <p>A view is updatable when MySQL can unambiguously trace each row in the view back to exactly one row in a single underlying table. This means the view must NOT contain:</p>
+
+                <ul>
+                    <li>Aggregate functions (COUNT, SUM, AVG, etc.)</li>
+                    <li>GROUP BY or HAVING</li>
+                    <li>DISTINCT</li>
+                    <li>UNION or UNION ALL</li>
+                    <li>Subqueries in the SELECT list</li>
+                    <li>JOINs (in most cases)</li>
+                </ul>
+
+                <h3>Example: Updatable View</h3>
+
+                <pre><code class="language-sql">
+-- This view is updatable — simple filter on one table
+CREATE VIEW las_vegas_customers AS
+SELECT id, first_name, last_name, email
+FROM customers
+WHERE city = 'Las Vegas';
+
+-- UPDATE through the view — changes the underlying table
+UPDATE las_vegas_customers
+SET email = 'newemail@example.com'
+WHERE id = 5;
+
+-- DELETE through the view — deletes from the underlying table
+DELETE FROM las_vegas_customers WHERE id = 5;
+
+-- INSERT through the view — inserts into the underlying table
+-- (city won't be 'Las Vegas' unless you set it — see WITH CHECK OPTION below)
+INSERT INTO las_vegas_customers (first_name, last_name, email)
+VALUES ('Dave', 'Miller', 'dave@example.com');
+                </code></pre>
+
+                <h3>Example: Non-Updatable View</h3>
+
+                <pre><code class="language-sql">
+-- This view is NOT updatable — it has GROUP BY and aggregates
+CREATE VIEW v_customer_summary AS
+SELECT customer_id, COUNT(*) AS order_count
+FROM orders
+GROUP BY customer_id;
+
+-- This will fail:
+UPDATE v_customer_summary SET order_count = 10 WHERE customer_id = 1;
+-- Error: The target table is not updatable
+                </code></pre>
+
+                <h3>WITH CHECK OPTION</h3>
+                <p>When inserting or updating through a view, the new/modified row might not match the view's WHERE condition — making it "disappear" from the view. <code>WITH CHECK OPTION</code> prevents this:</p>
+
+                <pre><code class="language-sql">
+CREATE VIEW las_vegas_customers AS
+SELECT id, first_name, last_name, email, city
+FROM customers
+WHERE city = 'Las Vegas'
+WITH CHECK OPTION;
+
+-- This INSERT will FAIL because city isn't 'Las Vegas':
+INSERT INTO las_vegas_customers (first_name, last_name, email, city)
+VALUES ('Eve', 'Brown', 'eve@example.com', 'Denver');
+-- Error: CHECK OPTION failed
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 In Practice</h4>
+                    <p>Most views in production are used for <strong>reading</strong> data (SELECT), not writing. Updatable views are a nice feature to know about, but you'll use them far less often than read-only views. When in doubt, treat views as read-only.</p>
+                </div>
+            </section>
+
+            <!-- Section 8: Dropping Views -->
+            <section id="dropping-views" class="lesson-section">
+                <h2>Dropping Views</h2>
+
+                <pre><code class="language-sql">
+-- Drop a view
+DROP VIEW v_order_details;
+
+-- Drop only if it exists (avoids error)
+DROP VIEW IF EXISTS v_order_details;
+
+-- Drop multiple views at once
+DROP VIEW IF EXISTS v_order_details, v_customer_summary, v_author_sales;
+                </code></pre>
+
+                <p>Dropping a view only removes the saved query definition — it does <strong>not</strong> affect the underlying tables or their data in any way.</p>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Cascading Dependencies</h4>
+                    <p>If View B references View A, and you drop View A, then View B will break — it'll produce an error when queried. MySQL doesn't prevent you from dropping views that other views depend on, so be careful with chains of dependent views.</p>
+                </div>
+            </section>
+
+            <!-- Section 9: When to Use Views -->
+            <section id="use-cases" class="lesson-section">
+                <h2>When to Use Views</h2>
+
+                <h3>1. Simplify Complex Queries</h3>
+                <p>The most common reason. Wrap a multi-table JOIN in a view and give teams a clean, simple interface:</p>
+
+                <pre><code class="language-sql">
+-- Instead of writing this every time...
+SELECT c.first_name, o.order_date, b.title, oi.quantity
+FROM orders o
+JOIN customers c ON o.customer_id = c.id
+JOIN order_items oi ON o.id = oi.order_id
+JOIN books b ON oi.book_id = b.id;
+
+-- ...teams can write this:
+SELECT * FROM v_order_details;
+                </code></pre>
+
+                <h3>2. Security — Restrict Access to Columns</h3>
+                <p>Show users only the columns they need, hiding sensitive data:</p>
+
+                <pre><code class="language-sql">
+-- Customer service team sees names and emails, not salary data
+CREATE VIEW v_customer_public AS
+SELECT id, first_name, last_name, email, city
+FROM customers;
+-- They can't see: salary, SSN, internal_notes, etc.
+
+-- Grant access to the view only:
+GRANT SELECT ON bookstore.v_customer_public TO 'support_team'@'%';
+                </code></pre>
+
+                <h3>3. Security — Restrict Access to Rows</h3>
+
+                <pre><code class="language-sql">
+-- Sales team only sees their own region's data
+CREATE VIEW v_west_coast_orders AS
+SELECT * FROM orders
+WHERE region = 'West Coast';
+                </code></pre>
+
+                <h3>4. Backward Compatibility</h3>
+                <p>If you restructure tables, a view can maintain the old "shape" so existing queries don't break:</p>
+
+                <pre><code class="language-sql">
+-- Old table had a "name" column, new table has first_name + last_name
+CREATE VIEW v_customers_legacy AS
+SELECT id, CONCAT(first_name, ' ', last_name) AS name, email
+FROM customers;
+
+-- Old queries still work:
+SELECT name, email FROM v_customers_legacy;
+                </code></pre>
+
+                <h3>5. Reusable Report Definitions</h3>
+                <p>Dashboard queries, monthly reports, KPI calculations — define once, use everywhere:</p>
+
+                <pre><code class="language-sql">
+-- The finance team's monthly report is now standardized
+SELECT * FROM v_monthly_revenue WHERE month = '2026-03';
+                </code></pre>
+
+                <div class="mermaid">
+                    graph TD
+                        A["Why use a View?"]
+                        A --> B["Simplify complex JOINs"]
+                        A --> C["Restrict column access"]
+                        A --> D["Restrict row access"]
+                        A --> E["Maintain backward compatibility"]
+                        A --> F["Standardize reports"]
+                </div>
+            </section>
+
+            <!-- Section 10: Limitations & Gotchas -->
+            <section id="view-limitations" class="lesson-section">
+                <h2>Limitations &amp; Gotchas</h2>
+
+                <h3>1. Views Don't Store Data</h3>
+                <p>A view re-runs its query every time it's accessed. A complex view on large tables can be slow. If you need cached results, consider a <strong>materialized view</strong> (MySQL doesn't natively support these, but you can simulate one with a table + scheduled refresh).</p>
+
+                <h3>2. No Indexes on Views</h3>
+                <p>You can't add indexes to a view itself. Performance depends entirely on the indexes of the underlying tables. Make sure those base tables are properly indexed (see <a href="lesson_14.html">Lesson 14</a>).</p>
+
+                <h3>3. ORDER BY in Views Is Ignored</h3>
+
+                <pre><code class="language-sql">
+-- ORDER BY inside a view definition is mostly ignored
+CREATE VIEW v_sorted_books AS
+SELECT * FROM books ORDER BY title;
+
+-- MySQL may ignore the ORDER BY — add it when querying:
+SELECT * FROM v_sorted_books ORDER BY title;
+                </code></pre>
+
+                <p>The SQL standard says views are unordered sets. Always put ORDER BY in your outer query, not inside the view definition.</p>
+
+                <h3>4. Renaming Columns</h3>
+                <p>If the underlying table's columns are renamed, views referencing the old column names will break. This is a maintenance consideration when refactoring schemas.</p>
+
+                <h3>5. Performance Consideration</h3>
+                <p>Views built on top of other views (nested views) can create hard-to-debug performance issues. Keep the chain shallow — one level is ideal, two is acceptable, three is a code smell.</p>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Views Are Not a Substitute for Good Schema Design</h4>
+                    <p>If you find yourself creating dozens of views to work around a poorly designed schema, that's a signal to redesign the tables instead. Views add abstraction, not fixes.</p>
+                </div>
+            </section>
+
+            <!-- Section 11: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: Create Basic Views</h3>
+                    <p>Write SQL statements to:</p>
+                    <ol>
+                        <li>Create a view called <code>v_book_catalog</code> that shows each book's title, price, and author name (JOIN books to authors)</li>
+                        <li>Create a view called <code>v_expensive_books</code> that shows only books priced above $10.00</li>
+                        <li>Query <code>v_book_catalog</code> to find all books by George Orwell</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+CREATE VIEW v_book_catalog AS
+SELECT b.title, b.price, a.name AS author
+FROM books b
+INNER JOIN authors a ON b.author_id = a.id;
+
+-- 2
+CREATE VIEW v_expensive_books AS
+SELECT id, title, price
+FROM books
+WHERE price > 10.00;
+
+-- 3
+SELECT * FROM v_book_catalog WHERE author = 'George Orwell';
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: Views with JOINs &amp; Aggregates</h3>
+                    <p>Write SQL statements to:</p>
+                    <ol>
+                        <li>Create a view called <code>v_order_summary</code> that shows: order ID, order date, customer full name (CONCAT), number of items in the order (SUM of quantity), and order total (SUM of quantity × price)</li>
+                        <li>Query the view to find all orders over $20</li>
+                        <li>Create a view called <code>v_never_ordered</code> that shows customers who have zero orders</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+CREATE VIEW v_order_summary AS
+SELECT
+    o.id AS order_id,
+    o.order_date,
+    CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
+    SUM(oi.quantity) AS total_items,
+    ROUND(SUM(oi.quantity * b.price), 2) AS order_total
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id
+INNER JOIN order_items oi ON o.id = oi.order_id
+INNER JOIN books b ON oi.book_id = b.id
+GROUP BY o.id, o.order_date, c.first_name, c.last_name;
+
+-- 2
+SELECT * FROM v_order_summary WHERE order_total > 20;
+
+-- 3
+CREATE VIEW v_never_ordered AS
+SELECT c.id, c.first_name, c.last_name, c.email
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+WHERE o.id IS NULL;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: Modify &amp; Manage Views</h3>
+                    <p>Write SQL statements to:</p>
+                    <ol>
+                        <li>Replace the <code>v_book_catalog</code> view to also include the book's <code>id</code> column</li>
+                        <li>Drop the <code>v_expensive_books</code> view (safely, without error if it doesn't exist)</li>
+                        <li>List all views in the current database</li>
+                        <li>Show the full definition of <code>v_order_summary</code></li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+CREATE OR REPLACE VIEW v_book_catalog AS
+SELECT b.id, b.title, b.price, a.name AS author
+FROM books b
+INNER JOIN authors a ON b.author_id = a.id;
+
+-- 2
+DROP VIEW IF EXISTS v_expensive_books;
+
+-- 3
+SHOW FULL TABLES WHERE Table_type = 'VIEW';
+
+-- 4
+SHOW CREATE VIEW v_order_summary;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 4: Security View Challenge</h3>
+                    <p>Your bookstore has a <code>customers</code> table with columns: id, first_name, last_name, email, phone, city, credit_card_last4, internal_notes.</p>
+                    <p>Write a view for the customer support team that:</p>
+                    <ul>
+                        <li>Shows: id, first_name, last_name, email, phone, city</li>
+                        <li>Hides: credit_card_last4 and internal_notes</li>
+                        <li>Only shows customers from Las Vegas and Henderson</li>
+                        <li>Uses WITH CHECK OPTION</li>
+                    </ul>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+CREATE VIEW v_support_customers AS
+SELECT id, first_name, last_name, email, phone, city
+FROM customers
+WHERE city IN ('Las Vegas', 'Henderson')
+WITH CHECK OPTION;
+
+-- Support team gets access to this view only:
+-- GRANT SELECT ON bookstore.v_support_customers TO 'support'@'%';
+                        </code></pre>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What does a view store?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Views don't store data — that's what makes them different from tables.">
+                                A) A cached copy of the query results
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! A view stores only the query definition (the SELECT statement). Each time you query the view, MySQL runs that saved query against the current data in the underlying tables.">
+                                B) Only the query definition — it re-runs the query each time
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="A view is a saved query, not a table structure. It has no columns of its own — it derives them from the SELECT statement.">
+                                C) A separate copy of the table structure
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> Which of these would make a view NOT updatable?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="A WHERE clause just filters rows — the view can still map each row back to the underlying table.">
+                                A) A WHERE clause
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! GROUP BY with aggregate functions produces computed rows that can't be traced back to individual rows in the underlying table. MySQL can't 'un-SUM' a value, so updates are impossible.">
+                                B) GROUP BY with aggregate functions
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Column aliases just rename columns in the output — they don't affect whether MySQL can update the underlying rows.">
+                                C) Column aliases (AS)
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> What does WITH CHECK OPTION do?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="WITH CHECK OPTION doesn't block all writes — it blocks writes that would violate the view's WHERE condition.">
+                                A) Makes the view completely read-only
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! WITH CHECK OPTION ensures that any INSERT or UPDATE through the view must produce rows that still match the view's WHERE clause. This prevents data from 'disappearing' from the view after an update.">
+                                B) Prevents inserting or updating rows that wouldn't be visible through the view
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="WITH CHECK OPTION is about data integrity when writing through the view, not about read performance.">
+                                C) Adds a validation check on SELECT queries
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> What is the safest way to modify an existing view?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="DROP + CREATE works but isn't atomic — there's a brief moment where the view doesn't exist, which can break concurrent queries.">
+                                A) DROP VIEW then CREATE VIEW
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! CREATE OR REPLACE VIEW is atomic — it replaces the definition in one step. If the view doesn't exist, it creates it. No gap where the view is missing.">
+                                B) CREATE OR REPLACE VIEW
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="There's no UPDATE VIEW syntax in MySQL. You'd use ALTER VIEW or CREATE OR REPLACE VIEW.">
+                                C) UPDATE VIEW
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 12: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li>A <strong>view</strong> is a saved query that acts like a virtual table — it stores the query, not the data</li>
+                        <li><code>CREATE VIEW name AS SELECT ...</code> saves a query for reuse</li>
+                        <li>Query views exactly like tables: <code>SELECT * FROM view_name</code></li>
+                        <li>Views can wrap complex multi-table JOINs, aggregates, and filters into a simple name</li>
+                        <li><code>CREATE OR REPLACE VIEW</code> safely updates an existing view</li>
+                        <li><strong>Updatable views</strong> allow INSERT/UPDATE/DELETE — but only for simple, single-table views without aggregates or GROUP BY</li>
+                        <li><code>WITH CHECK OPTION</code> prevents writes that would create rows invisible to the view</li>
+                        <li><code>DROP VIEW IF EXISTS</code> safely removes a view without affecting underlying data</li>
+                        <li>Use views for <strong>simplification</strong>, <strong>security</strong> (column/row restriction), <strong>backward compatibility</strong>, and <strong>standardized reports</strong></li>
+                        <li>Views can't have their own indexes — performance depends on the underlying tables</li>
+                        <li>Avoid ORDER BY inside view definitions — add it when querying</li>
+                    </ul>
+                </div>
+
+                <h3>Quick Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>CREATE VIEW v AS SELECT ...</code></td>
+                                <td>Create a new view</td>
+                            </tr>
+                            <tr>
+                                <td><code>CREATE OR REPLACE VIEW v AS ...</code></td>
+                                <td>Create or update a view (safest)</td>
+                            </tr>
+                            <tr>
+                                <td><code>ALTER VIEW v AS SELECT ...</code></td>
+                                <td>Modify an existing view</td>
+                            </tr>
+                            <tr>
+                                <td><code>DROP VIEW IF EXISTS v</code></td>
+                                <td>Remove a view (safe)</td>
+                            </tr>
+                            <tr>
+                                <td><code>SHOW FULL TABLES WHERE Table_type = 'VIEW'</code></td>
+                                <td>List all views</td>
+                            </tr>
+                            <tr>
+                                <td><code>SHOW CREATE VIEW v</code></td>
+                                <td>Show view definition</td>
+                            </tr>
+                            <tr>
+                                <td><code>... WITH CHECK OPTION</code></td>
+                                <td>Enforce view's WHERE on writes</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/create-view.html" target="_blank" rel="noopener">MySQL Docs — CREATE VIEW Statement</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/view-updatability.html" target="_blank" rel="noopener">MySQL Docs — Updatable and Insertable Views</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/view-restrictions.html" target="_blank" rel="noopener">MySQL Docs — View Restrictions</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>You can now query efficiently (indexes) and simplify complex queries (views). The last piece of Module 5 is <strong>designing the database itself</strong>. In <a href="lesson_16.html">Lesson 16: Database Design &amp; Normalization</a>, you'll learn to structure tables from scratch using normalization rules (1NF, 2NF, 3NF) — ensuring your data is organized, duplication-free, and maintainable.</p>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_14.html" class="prev-lesson">← Previous: Indexes &amp; Query Optimization</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_16.html" class="next-lesson">Next: Database Design &amp; Normalization →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

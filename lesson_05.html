@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn MySQL data types (INT, VARCHAR, TEXT, DECIMAL, DATE, BOOLEAN) and constraints (PRIMARY KEY, NOT NULL, UNIQUE, DEFAULT, AUTO_INCREMENT, CHECK) to build well-structured tables.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Data Types &amp; Constraints - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 2: Tables &amp; Data Types</a></li>
+            <li aria-current="page">Lesson 5: Data Types &amp; Constraints</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🧱 Lesson 5: Data Types &amp; Constraints</h1>
+                <p class="lead">Every column in a table needs a data type — it tells MySQL what kind of information goes there and how much space to reserve. Constraints add rules that keep your data clean. Choosing wisely here means fewer bugs, faster queries, and happier databases.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Choose the right <strong>numeric</strong> type for whole numbers, decimals, and money</li>
+                        <li>Choose the right <strong>string</strong> type for short text, long text, and fixed-length codes</li>
+                        <li>Store <strong>dates and times</strong> correctly with DATE, DATETIME, and TIMESTAMP</li>
+                        <li>Understand how MySQL handles <strong>BOOLEAN</strong> values</li>
+                        <li>Apply constraints: <code>PRIMARY KEY</code>, <code>NOT NULL</code>, <code>UNIQUE</code>, <code>DEFAULT</code>, <code>AUTO_INCREMENT</code>, and <code>CHECK</code></li>
+                        <li>Know when to use <code>UNSIGNED</code>, <code>ENUM</code>, and <code>SET</code></li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 45 minutes</p>
+                    <p><strong>Prerequisites:</strong> Creating databases and tables (<a href="lesson_04.html">Lesson 4</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#why-types-matter" class="toc-link">Why Data Types Matter</a></li>
+                        <li><a href="#numeric-types" class="toc-link">Numeric Types</a></li>
+                        <li><a href="#string-types" class="toc-link">String Types</a></li>
+                        <li><a href="#date-time-types" class="toc-link">Date &amp; Time Types</a></li>
+                        <li><a href="#boolean-enum" class="toc-link">BOOLEAN, ENUM &amp; SET</a></li>
+                        <li><a href="#constraints" class="toc-link">Constraints</a></li>
+                        <li><a href="#choosing-types" class="toc-link">Choosing the Right Type — A Practical Guide</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: Why Data Types Matter -->
+            <section id="why-types-matter" class="lesson-section">
+                <h2>Why Data Types Matter</h2>
+                <p>You might wonder: why not just store everything as text? Three reasons:</p>
+
+                <div class="mermaid">
+                    graph LR
+                        A["Data Types"] --> B["🛡️ Validation"]
+                        A --> C["⚡ Performance"]
+                        A --> D["💾 Storage"]
+                        B --> E["MySQL rejects bad data<br/>e.g., 'hello' into an INT column"]
+                        C --> F["Numbers are compared faster<br/>than text; dates can be sorted"]
+                        D --> G["INT uses 4 bytes<br/>VARCHAR(10) uses up to 11 bytes<br/>TEXT uses up to 65KB"]
+                </div>
+
+                <p>Think of data types like containers: you wouldn't pour soup into a paper bag or store a feather in a shipping container. The right type holds the right data efficiently.</p>
+
+                <blockquote>
+                    <strong>💡 Rule of Thumb:</strong> Always pick the <em>smallest</em> type that can comfortably hold your data. Smaller types = less disk space, faster queries, and more rows in memory.
+                </blockquote>
+            </section>
+
+            <!-- Section 2: Numeric Types -->
+            <section id="numeric-types" class="lesson-section">
+                <h2>Numeric Types</h2>
+                <p>MySQL has several numeric types, divided into <strong>integers</strong> (whole numbers) and <strong>decimals</strong> (numbers with fractional parts).</p>
+
+                <h3>Integer Types</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Bytes</th>
+                                <th>Signed Range</th>
+                                <th>Unsigned Range</th>
+                                <th>Use Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>TINYINT</code></td>
+                                <td>1</td>
+                                <td>-128 to 127</td>
+                                <td>0 to 255</td>
+                                <td>Age, rating (1-5), status codes</td>
+                            </tr>
+                            <tr>
+                                <td><code>SMALLINT</code></td>
+                                <td>2</td>
+                                <td>-32,768 to 32,767</td>
+                                <td>0 to 65,535</td>
+                                <td>Year, small counts</td>
+                            </tr>
+                            <tr>
+                                <td><code>MEDIUMINT</code></td>
+                                <td>3</td>
+                                <td>-8.3M to 8.3M</td>
+                                <td>0 to 16.7M</td>
+                                <td>Medium-sized IDs</td>
+                            </tr>
+                            <tr>
+                                <td><code>INT</code></td>
+                                <td>4</td>
+                                <td>-2.1B to 2.1B</td>
+                                <td>0 to 4.2B</td>
+                                <td>Most IDs, counts, general use</td>
+                            </tr>
+                            <tr>
+                                <td><code>BIGINT</code></td>
+                                <td>8</td>
+                                <td>-9.2 quintillion to 9.2 quintillion</td>
+                                <td>0 to 18.4 quintillion</td>
+                                <td>Huge IDs, social media post IDs</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <pre><code class="language-sql">
+-- Integer examples
+CREATE TABLE integer_demo (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    age         TINYINT UNSIGNED,         -- 0-255, perfect for ages
+    year_born   SMALLINT,                 -- up to 32,767
+    page_count  INT UNSIGNED,             -- no negative pages!
+    tweet_id    BIGINT UNSIGNED           -- Twitter IDs are huge numbers
+);
+                </code></pre>
+
+                <h4>UNSIGNED — Positive Only</h4>
+                <p>Adding <code>UNSIGNED</code> after an integer type means it only stores positive numbers (and zero), but doubles the maximum value. Use it when negative values don't make sense — ages, counts, page numbers, IDs.</p>
+
+                <pre><code class="language-sql">
+-- SIGNED (default): -128 to 127
+-- UNSIGNED:          0 to 255
+age TINYINT UNSIGNED   -- Nobody has a negative age!
+                </code></pre>
+
+                <h3>Decimal / Fractional Types</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Precision</th>
+                                <th>Use Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>DECIMAL(M, D)</code></td>
+                                <td>Exact — M total digits, D after decimal</td>
+                                <td>Money, financial calculations, anything requiring exact values</td>
+                            </tr>
+                            <tr>
+                                <td><code>FLOAT</code></td>
+                                <td>~7 significant digits (approximate)</td>
+                                <td>Scientific measurements, coordinates (when slight imprecision is OK)</td>
+                            </tr>
+                            <tr>
+                                <td><code>DOUBLE</code></td>
+                                <td>~15 significant digits (approximate)</td>
+                                <td>Higher-precision scientific calculations</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <pre><code class="language-sql">
+-- DECIMAL examples
+price       DECIMAL(8, 2),    -- Up to 999,999.99
+tax_rate    DECIMAL(5, 4),    -- Up to 9.9999 (e.g., 0.0825)
+gpa         DECIMAL(3, 2),    -- Up to 9.99 (e.g., 3.85)
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Never Use FLOAT for Money</h4>
+                    <p><code>FLOAT</code> and <code>DOUBLE</code> are <em>approximate</em> types — they can produce rounding errors. For example, <code>0.1 + 0.2</code> might equal <code>0.30000000000000004</code> in floating point. This is catastrophic for financial calculations. <strong>Always use <code>DECIMAL</code> for money.</strong></p>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 Reading DECIMAL(M, D)</h4>
+                    <p><code>M</code> = total number of digits (both sides of the decimal point). <code>D</code> = digits after the decimal point. So <code>DECIMAL(8, 2)</code> means up to 6 digits before the decimal and 2 after it: <code>999999.99</code>. The maximum value of <code>M</code> is 65, and the maximum of <code>D</code> is 30.</p>
+                </div>
+            </section>
+
+            <!-- Section 3: String Types -->
+            <section id="string-types" class="lesson-section">
+                <h2>String Types</h2>
+                <p>MySQL has many string types, but you'll use three most of the time: <code>CHAR</code>, <code>VARCHAR</code>, and <code>TEXT</code>.</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Max Length</th>
+                                <th>Storage</th>
+                                <th>Use Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>CHAR(N)</code></td>
+                                <td>255 characters</td>
+                                <td>Always N bytes (padded with spaces)</td>
+                                <td>Fixed-length: country codes, state abbreviations, hashes</td>
+                            </tr>
+                            <tr>
+                                <td><code>VARCHAR(N)</code></td>
+                                <td>65,535 characters</td>
+                                <td>Actual length + 1-2 bytes</td>
+                                <td>Variable-length: names, emails, titles, URLs</td>
+                            </tr>
+                            <tr>
+                                <td><code>TINYTEXT</code></td>
+                                <td>255 characters</td>
+                                <td>Actual length + 1 byte</td>
+                                <td>Short text (rarely used — VARCHAR is better)</td>
+                            </tr>
+                            <tr>
+                                <td><code>TEXT</code></td>
+                                <td>~65,000 characters</td>
+                                <td>Actual length + 2 bytes</td>
+                                <td>Blog posts, descriptions, long-form content</td>
+                            </tr>
+                            <tr>
+                                <td><code>MEDIUMTEXT</code></td>
+                                <td>~16 million characters</td>
+                                <td>Actual length + 3 bytes</td>
+                                <td>Very long documents, articles</td>
+                            </tr>
+                            <tr>
+                                <td><code>LONGTEXT</code></td>
+                                <td>~4 billion characters</td>
+                                <td>Actual length + 4 bytes</td>
+                                <td>Huge data (rarely needed)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>CHAR vs. VARCHAR</h3>
+                <p>The key difference is how they store data:</p>
+
+                <div class="mermaid">
+                    graph LR
+                        subgraph CHAR_10["CHAR(10) — Always 10 bytes"]
+                            A["'hello     '"] --- B["Padded to 10"]
+                        end
+                        subgraph VARCHAR_10["VARCHAR(10) — Only what's needed"]
+                            C["'hello'"] --- D["5 bytes + 1"]
+                        end
+                </div>
+
+                <pre><code class="language-sql">
+-- CHAR — fixed length, padded with spaces
+country_code  CHAR(2),          -- 'US', 'PH', 'JP' — always 2 chars
+state_code    CHAR(2),          -- 'NV', 'CA', 'TX'
+md5_hash      CHAR(32),         -- MD5 hashes are always 32 hex characters
+
+-- VARCHAR — variable length, stores only what's needed
+first_name    VARCHAR(50),      -- 'Ray' stores as 3 + 1 bytes
+email         VARCHAR(100),     -- 'ray@email.com' stores as 13 + 1 bytes
+title         VARCHAR(200),     -- Book titles vary widely in length
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ When to Use CHAR vs. VARCHAR</h4>
+                    <p>Use <code>CHAR</code> when every value has the <em>exact same length</em> (country codes, state abbreviations, UUIDs, hashes). Use <code>VARCHAR</code> for everything else — it's the most common string type by far.</p>
+                </div>
+
+                <h3>TEXT Types</h3>
+                <p>Use <code>TEXT</code> for long-form content that doesn't need a length limit:</p>
+
+                <pre><code class="language-sql">
+-- TEXT for long content
+bio           TEXT,               -- User biography
+description   TEXT,               -- Product description
+article_body  MEDIUMTEXT,         -- Full blog article
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 VARCHAR vs. TEXT</h4>
+                    <p>Both can store text, but they differ in important ways:</p>
+                    <ul>
+                        <li><code>VARCHAR</code> can have a <code>DEFAULT</code> value; <code>TEXT</code> cannot (in most cases)</li>
+                        <li><code>VARCHAR</code> can be part of an index fully; <code>TEXT</code> requires a prefix length</li>
+                        <li><code>VARCHAR</code> is stored inline with the row; large <code>TEXT</code> values are stored separately</li>
+                    </ul>
+                    <p><strong>Rule:</strong> If you know the maximum length and it's under ~1000 characters, use <code>VARCHAR</code>. If the content is truly unbounded (blog posts, comments, descriptions), use <code>TEXT</code>.</p>
+                </div>
+            </section>
+
+            <!-- Section 4: Date & Time Types -->
+            <section id="date-time-types" class="lesson-section">
+                <h2>Date &amp; Time Types</h2>
+                <p>MySQL has dedicated types for dates and times — never store them as strings!</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Format</th>
+                                <th>Range</th>
+                                <th>Use Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>DATE</code></td>
+                                <td><code>YYYY-MM-DD</code></td>
+                                <td>1000-01-01 to 9999-12-31</td>
+                                <td>Birthdays, publication dates, deadlines</td>
+                            </tr>
+                            <tr>
+                                <td><code>TIME</code></td>
+                                <td><code>HH:MM:SS</code></td>
+                                <td>-838:59:59 to 838:59:59</td>
+                                <td>Duration, time of day</td>
+                            </tr>
+                            <tr>
+                                <td><code>DATETIME</code></td>
+                                <td><code>YYYY-MM-DD HH:MM:SS</code></td>
+                                <td>1000-01-01 to 9999-12-31</td>
+                                <td>Order timestamps, event start times</td>
+                            </tr>
+                            <tr>
+                                <td><code>TIMESTAMP</code></td>
+                                <td><code>YYYY-MM-DD HH:MM:SS</code></td>
+                                <td>1970-01-01 to 2038-01-19</td>
+                                <td>Created/updated timestamps, audit trails</td>
+                            </tr>
+                            <tr>
+                                <td><code>YEAR</code></td>
+                                <td><code>YYYY</code></td>
+                                <td>1901 to 2155</td>
+                                <td>Publication year, model year</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <pre><code class="language-sql">
+-- Date and time examples
+CREATE TABLE events (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    event_name   VARCHAR(100) NOT NULL,
+    event_date   DATE NOT NULL,              -- '2026-04-16'
+    start_time   TIME,                       -- '14:30:00'
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                         ON UPDATE CURRENT_TIMESTAMP
+);
+                </code></pre>
+
+                <h3>DATETIME vs. TIMESTAMP</h3>
+                <p>They look the same but behave differently:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>DATETIME</th>
+                                <th>TIMESTAMP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Storage</td>
+                                <td>8 bytes</td>
+                                <td>4 bytes</td>
+                            </tr>
+                            <tr>
+                                <td>Range</td>
+                                <td>1000–9999</td>
+                                <td>1970–2038</td>
+                            </tr>
+                            <tr>
+                                <td>Time zone</td>
+                                <td>Stores as-is (no conversion)</td>
+                                <td>Converts to UTC on storage, back to local on retrieval</td>
+                            </tr>
+                            <tr>
+                                <td>Best for</td>
+                                <td>Event dates, birthdates, historical dates</td>
+                                <td>Record creation/modification tracking</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ Auto-Tracking Timestamps</h4>
+                    <p>A very common pattern is automatically recording when a row was created and last updated:</p>
+                    <pre><code class="language-sql">
+created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+                    ON UPDATE CURRENT_TIMESTAMP
+                    </code></pre>
+                    <p><code>created_at</code> is set once when the row is inserted. <code>updated_at</code> is automatically refreshed every time the row changes. You'll see this pattern in almost every production database.</p>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Never Store Dates as Strings</h4>
+                    <p>It's tempting to use <code>VARCHAR(10)</code> for dates like <code>'04/16/2026'</code>, but this breaks sorting, comparisons, and date arithmetic. MySQL can't calculate "30 days from now" on a string. <strong>Always use DATE, DATETIME, or TIMESTAMP.</strong></p>
+                </div>
+            </section>
+
+            <!-- Section 5: BOOLEAN, ENUM & SET -->
+            <section id="boolean-enum" class="lesson-section">
+                <h2>BOOLEAN, ENUM &amp; SET</h2>
+
+                <h3>BOOLEAN</h3>
+                <p>MySQL doesn't have a true boolean type — <code>BOOLEAN</code> is an alias for <code>TINYINT(1)</code>:</p>
+
+                <pre><code class="language-sql">
+-- These are equivalent:
+is_active  BOOLEAN DEFAULT TRUE,
+is_active  TINYINT(1) DEFAULT 1,
+                </code></pre>
+
+                <p>MySQL stores <code>TRUE</code> as <code>1</code> and <code>FALSE</code> as <code>0</code>. You can use either in queries:</p>
+
+                <pre><code class="language-sql">
+-- Both work:
+SELECT * FROM books WHERE in_stock = TRUE;
+SELECT * FROM books WHERE in_stock = 1;
+                </code></pre>
+
+                <h3>ENUM — Pick One from a List</h3>
+                <p><code>ENUM</code> restricts a column to a predefined set of values. Only one value can be chosen:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE shirts (
+    id     INT AUTO_INCREMENT PRIMARY KEY,
+    size   ENUM('XS', 'S', 'M', 'L', 'XL', 'XXL') NOT NULL,
+    color  ENUM('red', 'blue', 'green', 'black', 'white') NOT NULL
+);
+
+-- Valid:
+INSERT INTO shirts (size, color) VALUES ('M', 'blue');
+
+-- Invalid — MySQL will reject or warn:
+INSERT INTO shirts (size, color) VALUES ('XXXL', 'purple');
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 ENUM Pros and Cons</h4>
+                    <p><strong>Pros:</strong> Enforces valid values, very compact storage (1-2 bytes regardless of string length), self-documenting.</p>
+                    <p><strong>Cons:</strong> Adding or removing values requires <code>ALTER TABLE</code>, which can be slow on large tables. If the list changes frequently, a lookup table (a separate table with the valid values) is often a better choice.</p>
+                </div>
+
+                <h3>SET — Pick Multiple from a List</h3>
+                <p><code>SET</code> is like <code>ENUM</code> but allows multiple values per row:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE user_preferences (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    username    VARCHAR(50) NOT NULL,
+    interests   SET('sports', 'music', 'tech', 'gaming', 'cooking')
+);
+
+-- One interest:
+INSERT INTO user_preferences (username, interests)
+VALUES ('alice', 'music');
+
+-- Multiple interests (comma-separated, no spaces):
+INSERT INTO user_preferences (username, interests)
+VALUES ('bob', 'tech,gaming,music');
+                </code></pre>
+
+                <div class="card card-accent">
+                    <h4>📖 In Practice</h4>
+                    <p><code>SET</code> is rarely used in modern databases. For many-to-many relationships like "a user has multiple interests," a <strong>junction table</strong> (covered in <a href="lesson_11.html">Lesson 11</a>) is the standard and more flexible approach.</p>
+                </div>
+            </section>
+
+            <!-- Section 6: Constraints -->
+            <section id="constraints" class="lesson-section">
+                <h2>Constraints</h2>
+                <p>Constraints are rules enforced by MySQL at the database level. They prevent invalid data from ever entering your tables — acting as a safety net regardless of which application or user is inserting data.</p>
+
+                <div class="mermaid">
+                    graph TD
+                        A["Constraints"] --> B["PRIMARY KEY<br/>Unique identifier for each row"]
+                        A --> C["NOT NULL<br/>Column must have a value"]
+                        A --> D["UNIQUE<br/>No duplicate values"]
+                        A --> E["DEFAULT<br/>Fallback value if none given"]
+                        A --> F["AUTO_INCREMENT<br/>Auto-generates sequential IDs"]
+                        A --> G["CHECK<br/>Custom validation rule"]
+                        A --> H["FOREIGN KEY<br/>Links to another table"]
+                </div>
+
+                <h3>PRIMARY KEY</h3>
+                <p>Every table should have a primary key — it uniquely identifies each row. A primary key is automatically <code>NOT NULL</code> and <code>UNIQUE</code>.</p>
+
+                <pre><code class="language-sql">
+-- Column-level (most common for single-column keys)
+CREATE TABLE products (
+    id  INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+-- Table-level (required for composite keys)
+CREATE TABLE order_items (
+    order_id   INT,
+    product_id INT,
+    quantity   INT NOT NULL,
+    PRIMARY KEY (order_id, product_id)
+);
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Composite Primary Keys</h4>
+                    <p>A <strong>composite primary key</strong> uses two or more columns together to identify a row. In the <code>order_items</code> example, neither <code>order_id</code> nor <code>product_id</code> alone is unique — but the <em>combination</em> of both is. This is common in junction tables for many-to-many relationships.</p>
+                </div>
+
+                <h3>NOT NULL</h3>
+                <p>Prevents a column from accepting <code>NULL</code> (empty/unknown) values. MySQL will reject any insert or update that tries to set a <code>NOT NULL</code> column to NULL.</p>
+
+                <pre><code class="language-sql">
+-- first_name and email are required; city is optional
+first_name  VARCHAR(50) NOT NULL,
+email       VARCHAR(100) NOT NULL,
+city        VARCHAR(50),              -- allows NULL (default behavior)
+                </code></pre>
+
+                <blockquote>
+                    <strong>💡 Tip:</strong> Ask yourself: "Does this column <em>always</em> need a value for the row to make sense?" If yes, add <code>NOT NULL</code>. A customer without a name doesn't make sense — so <code>first_name</code> should be <code>NOT NULL</code>. A customer without a phone number might be fine — so <code>phone</code> can allow NULL.
+                </blockquote>
+
+                <h3>UNIQUE</h3>
+                <p>Ensures no two rows have the same value in a column. Unlike <code>PRIMARY KEY</code>, a table can have multiple <code>UNIQUE</code> columns, and <code>UNIQUE</code> columns can contain NULL values (but only one NULL per column).</p>
+
+                <pre><code class="language-sql">
+-- Each customer must have a unique email
+email       VARCHAR(100) NOT NULL UNIQUE,
+
+-- ISBN numbers are unique across all books
+isbn        VARCHAR(13) UNIQUE,
+
+-- You can also name the constraint
+CONSTRAINT uq_email UNIQUE (email)
+                </code></pre>
+
+                <h3>DEFAULT</h3>
+                <p>Provides a value when one isn't specified during an <code>INSERT</code>:</p>
+
+                <pre><code class="language-sql">
+in_stock    BOOLEAN DEFAULT TRUE,
+role        VARCHAR(20) DEFAULT 'customer',
+created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+quantity    INT DEFAULT 0,
+                </code></pre>
+
+                <pre><code class="language-sql">
+-- If we insert without specifying 'in_stock':
+INSERT INTO books (title, author, price)
+VALUES ('Dune', 'Frank Herbert', 12.99);
+
+-- in_stock will automatically be TRUE (1)
+                </code></pre>
+
+                <h3>AUTO_INCREMENT</h3>
+                <p>Automatically generates sequential integer values (1, 2, 3, ...). Used almost exclusively for primary keys:</p>
+
+                <pre><code class="language-sql">
+id  INT AUTO_INCREMENT PRIMARY KEY
+                </code></pre>
+
+                <p>Key behaviors:</p>
+                <ul>
+                    <li>You don't include <code>id</code> in your <code>INSERT</code> — MySQL assigns it automatically</li>
+                    <li>If you delete row 5, the number 5 is <em>not</em> reused — the next insert gets 6</li>
+                    <li>You can check the current value: <code>SELECT LAST_INSERT_ID();</code></li>
+                    <li>Only one <code>AUTO_INCREMENT</code> column per table, and it must be indexed (usually as <code>PRIMARY KEY</code>)</li>
+                </ul>
+
+                <h3>CHECK (MySQL 8.0.16+)</h3>
+                <p>Enforces a custom condition on column values:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE products (
+    id       INT AUTO_INCREMENT PRIMARY KEY,
+    name     VARCHAR(100) NOT NULL,
+    price    DECIMAL(8, 2) NOT NULL,
+    quantity INT NOT NULL DEFAULT 0,
+
+    -- Prices must be positive
+    CONSTRAINT chk_price CHECK (price > 0),
+
+    -- Quantity can't be negative
+    CONSTRAINT chk_quantity CHECK (quantity >= 0)
+);
+
+-- This will FAIL:
+INSERT INTO products (name, price, quantity)
+VALUES ('Widget', -5.00, 10);
+-- ERROR: Check constraint 'chk_price' is violated.
+                </code></pre>
+
+                <pre><code class="language-sql">
+-- More CHECK examples
+age     TINYINT UNSIGNED CHECK (age >= 0 AND age <= 150),
+rating  DECIMAL(3,2) CHECK (rating >= 0 AND rating <= 5),
+status  VARCHAR(20) CHECK (status IN ('active', 'inactive', 'pending')),
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ CHECK Constraint History</h4>
+                    <p>Before MySQL 8.0.16, <code>CHECK</code> constraints were accepted in SQL syntax but <strong>silently ignored</strong>. If you're using MySQL 8.0.16 or later (which you should be), they work as expected. Always verify your MySQL version: <code>SELECT VERSION();</code></p>
+                </div>
+
+                <h3>FOREIGN KEY (Preview)</h3>
+                <p>Foreign keys link a column in one table to the primary key of another table. This enforces <strong>referential integrity</strong> — you can't add an order for a customer that doesn't exist. We'll cover foreign keys in depth in <a href="lesson_12.html">Lesson 12</a>.</p>
+
+                <pre><code class="language-sql">
+-- Quick preview — full explanation in Lesson 12
+CREATE TABLE orders (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id  INT NOT NULL,
+    order_date   DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
+                </code></pre>
+
+                <h3>Constraints Quick Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Constraint</th>
+                                <th>What It Enforces</th>
+                                <th>Can a Table Have Multiple?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>PRIMARY KEY</code></td>
+                                <td>Uniquely identifies each row (NOT NULL + UNIQUE)</td>
+                                <td>No — one per table</td>
+                            </tr>
+                            <tr>
+                                <td><code>NOT NULL</code></td>
+                                <td>Column must always have a value</td>
+                                <td>Yes</td>
+                            </tr>
+                            <tr>
+                                <td><code>UNIQUE</code></td>
+                                <td>No duplicate values in the column</td>
+                                <td>Yes</td>
+                            </tr>
+                            <tr>
+                                <td><code>DEFAULT</code></td>
+                                <td>Provides a fallback value on INSERT</td>
+                                <td>Yes</td>
+                            </tr>
+                            <tr>
+                                <td><code>AUTO_INCREMENT</code></td>
+                                <td>Auto-generates sequential integer values</td>
+                                <td>No — one per table</td>
+                            </tr>
+                            <tr>
+                                <td><code>CHECK</code></td>
+                                <td>Validates against a custom condition</td>
+                                <td>Yes</td>
+                            </tr>
+                            <tr>
+                                <td><code>FOREIGN KEY</code></td>
+                                <td>References a row in another table</td>
+                                <td>Yes</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 7: Choosing the Right Type -->
+            <section id="choosing-types" class="lesson-section">
+                <h2>Choosing the Right Type — A Practical Guide</h2>
+                <p>When designing a table, use this flowchart to pick the right data type:</p>
+
+                <div class="mermaid">
+                    graph TD
+                        A["What kind of data?"] --> B{"Is it a number?"}
+                        A --> C{"Is it text?"}
+                        A --> D{"Is it a date/time?"}
+                        A --> E{"Is it true/false?"}
+
+                        B -->|"Whole number"| F["INT or TINYINT/SMALLINT/BIGINT<br/>based on range needed"]
+                        B -->|"Decimal / Money"| G["DECIMAL(M,D)<br/>NEVER use FLOAT for money"]
+
+                        C -->|"Fixed length ≤255"| H["CHAR(N)<br/>Codes, hashes, abbreviations"]
+                        C -->|"Variable length ≤65K"| I["VARCHAR(N)<br/>Names, emails, titles"]
+                        C -->|"Long text"| J["TEXT or MEDIUMTEXT<br/>Articles, descriptions"]
+
+                        D -->|"Date only"| K["DATE"]
+                        D -->|"Date + time"| L["DATETIME or TIMESTAMP"]
+                        D -->|"Time only"| M["TIME"]
+
+                        E --> N["BOOLEAN<br/>(stored as TINYINT)"]
+                </div>
+
+                <h3>Common Column Patterns</h3>
+                <p>Here are types you'll use again and again in real projects:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Column Purpose</th>
+                                <th>Recommended Type</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Primary key</td>
+                                <td><code>INT AUTO_INCREMENT PRIMARY KEY</code></td>
+                                <td><code>id INT AUTO_INCREMENT PRIMARY KEY</code></td>
+                            </tr>
+                            <tr>
+                                <td>Person's name</td>
+                                <td><code>VARCHAR(50-100)</code></td>
+                                <td><code>first_name VARCHAR(50) NOT NULL</code></td>
+                            </tr>
+                            <tr>
+                                <td>Email address</td>
+                                <td><code>VARCHAR(100) NOT NULL UNIQUE</code></td>
+                                <td><code>email VARCHAR(100) NOT NULL UNIQUE</code></td>
+                            </tr>
+                            <tr>
+                                <td>Phone number</td>
+                                <td><code>VARCHAR(20)</code></td>
+                                <td><code>phone VARCHAR(20)</code></td>
+                            </tr>
+                            <tr>
+                                <td>Money / price</td>
+                                <td><code>DECIMAL(10, 2)</code></td>
+                                <td><code>price DECIMAL(10, 2) NOT NULL</code></td>
+                            </tr>
+                            <tr>
+                                <td>Age</td>
+                                <td><code>TINYINT UNSIGNED</code></td>
+                                <td><code>age TINYINT UNSIGNED</code></td>
+                            </tr>
+                            <tr>
+                                <td>Country code</td>
+                                <td><code>CHAR(2)</code></td>
+                                <td><code>country_code CHAR(2)</code></td>
+                            </tr>
+                            <tr>
+                                <td>URL</td>
+                                <td><code>VARCHAR(2083)</code></td>
+                                <td><code>website VARCHAR(2083)</code></td>
+                            </tr>
+                            <tr>
+                                <td>Blog post body</td>
+                                <td><code>TEXT</code> or <code>MEDIUMTEXT</code></td>
+                                <td><code>body TEXT NOT NULL</code></td>
+                            </tr>
+                            <tr>
+                                <td>Active/inactive flag</td>
+                                <td><code>BOOLEAN DEFAULT TRUE</code></td>
+                                <td><code>is_active BOOLEAN DEFAULT TRUE</code></td>
+                            </tr>
+                            <tr>
+                                <td>Creation timestamp</td>
+                                <td><code>DATETIME DEFAULT CURRENT_TIMESTAMP</code></td>
+                                <td><code>created_at DATETIME DEFAULT CURRENT_TIMESTAMP</code></td>
+                            </tr>
+                            <tr>
+                                <td>Last-modified timestamp</td>
+                                <td><code>DATETIME ... ON UPDATE</code></td>
+                                <td><code>updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 Why VARCHAR(20) for Phone Numbers?</h4>
+                    <p>Phone numbers look like numbers, but they're actually text! They can start with a <code>0</code> or <code>+</code>, contain dashes and spaces, and you never do math on them. <code>'+1 (702) 555-0123'</code> is a string, not a number. Always store phone numbers as <code>VARCHAR</code>.</p>
+                </div>
+            </section>
+
+            <!-- Section 8: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: Pick the Right Type</h3>
+                    <p>For each piece of data below, choose the most appropriate MySQL data type and explain why:</p>
+                    <ol>
+                        <li>A customer's ZIP code (US format: "89002" or "89002-1234")</li>
+                        <li>The price of a product</li>
+                        <li>The number of items in stock</li>
+                        <li>A user's biography</li>
+                        <li>Whether an account is active or suspended</li>
+                        <li>A country's two-letter ISO code (like "US" or "PH")</li>
+                        <li>A student's GPA (0.00 to 4.00)</li>
+                        <li>The date a book was published</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <ol>
+                            <li><code>VARCHAR(10)</code> — ZIP codes can have leading zeros and hyphens; they're text, not numbers</li>
+                            <li><code>DECIMAL(10, 2) NOT NULL</code> — exact precision for money; never FLOAT</li>
+                            <li><code>INT UNSIGNED DEFAULT 0</code> — whole number, can't be negative</li>
+                            <li><code>TEXT</code> — biographies can be long and have no fixed upper limit</li>
+                            <li><code>BOOLEAN DEFAULT TRUE</code> — simple true/false toggle</li>
+                            <li><code>CHAR(2) NOT NULL</code> — always exactly 2 characters, CHAR is perfect</li>
+                            <li><code>DECIMAL(3, 2)</code> — holds 0.00 to 9.99, perfect for GPA</li>
+                            <li><code>DATE</code> — date only, no time needed</li>
+                        </ol>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: Build a Table with Constraints</h3>
+                    <p>Create an <code>employees</code> table inside the <code>bookstore</code> database with the following requirements:</p>
+                    <ul>
+                        <li><code>id</code> — auto-incrementing primary key</li>
+                        <li><code>first_name</code> — up to 50 characters, required</li>
+                        <li><code>last_name</code> — up to 50 characters, required</li>
+                        <li><code>email</code> — up to 100 characters, required, must be unique</li>
+                        <li><code>hire_date</code> — date only, required</li>
+                        <li><code>salary</code> — up to 999,999.99, required, must be positive</li>
+                        <li><code>department</code> — one of: 'sales', 'inventory', 'management', 'support'</li>
+                        <li><code>is_active</code> — boolean, defaults to true</li>
+                        <li><code>created_at</code> — auto-set to current timestamp</li>
+                    </ul>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+USE bookstore;
+
+CREATE TABLE IF NOT EXISTS employees (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    first_name  VARCHAR(50) NOT NULL,
+    last_name   VARCHAR(50) NOT NULL,
+    email       VARCHAR(100) NOT NULL UNIQUE,
+    hire_date   DATE NOT NULL,
+    salary      DECIMAL(8, 2) NOT NULL,
+    department  ENUM('sales', 'inventory', 'management', 'support'),
+    is_active   BOOLEAN DEFAULT TRUE,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_salary CHECK (salary > 0)
+);
+
+DESCRIBE employees;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: Fix the Bad Table</h3>
+                    <p>This table has several design problems. Identify and fix them:</p>
+                    <pre><code class="language-sql">
+CREATE TABLE Orders (
+    OrderID VARCHAR(10),
+    CustomerName VARCHAR(500),
+    Price FLOAT,
+    OrderDate VARCHAR(20),
+    phone INT,
+    Status VARCHAR(100)
+);
+                    </code></pre>
+
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Look for: naming conventions, missing primary key, wrong data types (money, dates, phone numbers), missing constraints, oversized columns.</p>
+                    </details>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+CREATE TABLE orders (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    customer_name  VARCHAR(100) NOT NULL,
+    price          DECIMAL(10, 2) NOT NULL,
+    order_date     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    phone          VARCHAR(20),
+    status         ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled')
+                       DEFAULT 'pending',
+
+    CONSTRAINT chk_price CHECK (price > 0)
+);
+                        </code></pre>
+                        <p><strong>Issues fixed:</strong></p>
+                        <ul>
+                            <li>Table and column names → lowercase snake_case</li>
+                            <li>Added <code>INT AUTO_INCREMENT PRIMARY KEY</code> instead of <code>VARCHAR(10)</code></li>
+                            <li>Reduced <code>customer_name</code> from 500 to a reasonable 100 chars</li>
+                            <li><code>FLOAT</code> → <code>DECIMAL(10, 2)</code> for money</li>
+                            <li><code>VARCHAR(20)</code> → <code>DATETIME</code> for dates</li>
+                            <li><code>INT</code> → <code>VARCHAR(20)</code> for phone numbers</li>
+                            <li><code>VARCHAR(100)</code> → <code>ENUM</code> for status (or VARCHAR with CHECK)</li>
+                            <li>Added <code>NOT NULL</code> and <code>CHECK</code> constraints</li>
+                        </ul>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> Which data type should you use for storing prices?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="FLOAT is approximate and can cause rounding errors with money.">
+                                A) FLOAT
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! DECIMAL provides exact precision, which is critical for financial calculations.">
+                                B) DECIMAL
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="INT can only store whole numbers — no cents!">
+                                C) INT
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Storing prices as text prevents sorting and math operations.">
+                                D) VARCHAR
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> What does UNSIGNED do to an integer type?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="UNSIGNED affects the range, not the storage size.">
+                                A) Doubles the storage size
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! UNSIGNED removes negative numbers, allowing the positive range to double. For example, TINYINT goes from -128..127 to 0..255.">
+                                B) Removes negative values and doubles the positive range
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="UNSIGNED restricts the range, it doesn't remove it.">
+                                C) Allows any value without restriction
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> Why should phone numbers be stored as VARCHAR instead of INT?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Phone numbers aren't typically that long — 15-20 characters max.">
+                                A) Phone numbers are too long for INT
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Phone numbers can start with 0 or +, contain dashes and spaces, and you never do math on them. They're identifiers, not quantities.">
+                                B) Phone numbers can have leading zeros, plus signs, and dashes
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="VARCHAR can actually be less efficient for short fixed-length data, but that's not the main reason.">
+                                C) VARCHAR is more memory-efficient than INT
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> When should you use CHAR instead of VARCHAR?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="CHAR is actually fixed-size — it wastes space on variable-length data.">
+                                A) When you want to save storage space
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Longer strings are perfect for VARCHAR, not CHAR.">
+                                B) When the text is very long
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! CHAR is ideal for fixed-length data like country codes (CHAR(2)), state abbreviations, or MD5 hashes (CHAR(32)) — values that are always the same length.">
+                                C) When every value has the exact same length
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> What constraint automatically sets a column to the next sequential number?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="DEFAULT provides a static fallback value, not an auto-incrementing sequence.">
+                                A) DEFAULT
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="UNIQUE prevents duplicates but doesn't generate values automatically.">
+                                B) UNIQUE
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! AUTO_INCREMENT automatically assigns 1, 2, 3, etc. to new rows, ensuring each row gets a unique ID without you specifying one.">
+                                C) AUTO_INCREMENT
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="CHECK validates conditions but doesn't generate values.">
+                                D) CHECK
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 9: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li><strong>Numeric types:</strong> Use <code>INT</code> for most whole numbers, <code>TINYINT</code>/<code>SMALLINT</code>/<code>BIGINT</code> when you need a specific range, and <code>DECIMAL</code> for exact decimals (especially money)</li>
+                        <li><strong>Never use FLOAT for money</strong> — it produces rounding errors</li>
+                        <li><strong>String types:</strong> <code>VARCHAR</code> for most text, <code>CHAR</code> for fixed-length values, <code>TEXT</code> for long-form content</li>
+                        <li><strong>Date types:</strong> <code>DATE</code> for dates, <code>DATETIME</code> for timestamps, <code>TIMESTAMP</code> for auto-tracking. Never store dates as strings</li>
+                        <li><strong>BOOLEAN</strong> is really <code>TINYINT(1)</code> — <code>TRUE</code> = 1, <code>FALSE</code> = 0</li>
+                        <li><strong>ENUM</strong> restricts a column to specific values; good for stable, small lists</li>
+                        <li><strong>Constraints</strong> enforce data integrity: <code>PRIMARY KEY</code>, <code>NOT NULL</code>, <code>UNIQUE</code>, <code>DEFAULT</code>, <code>AUTO_INCREMENT</code>, <code>CHECK</code></li>
+                        <li><code>UNSIGNED</code> removes negative numbers and doubles the positive range</li>
+                        <li>Always pick the <strong>smallest type</strong> that comfortably holds your data</li>
+                        <li>Phone numbers, ZIP codes, and other "numeric-looking" identifiers should be stored as <code>VARCHAR</code></li>
+                    </ul>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/data-types.html" target="_blank" rel="noopener">MySQL Docs — Data Types</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_blank" rel="noopener">MySQL Docs — Integer Types</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html" target="_blank" rel="noopener">MySQL Docs — DECIMAL and NUMERIC</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/string-types.html" target="_blank" rel="noopener">MySQL Docs — String Types</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/create-table-check-constraints.html" target="_blank" rel="noopener">MySQL Docs — CHECK Constraints</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>Now that you know <em>what</em> types of data go into tables and <em>how</em> to protect them with constraints, it's time to put data in and get it back out. In the next lesson, you'll learn the four fundamental operations every database developer uses daily — <strong>INSERT, SELECT, UPDATE, and DELETE</strong> — collectively known as <strong>CRUD</strong>.</p>
+
+                <div class="card card-accent" style="text-align: center; padding: 2rem;">
+                    <h3>🎉 Congratulations!</h3>
+                    <p>You now know how to choose the right data type for any column and enforce rules with constraints. This knowledge will guide every table you design from here on out!</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_04.html" class="prev-lesson">← Previous: Creating Databases &amp; Tables</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_06.html" class="next-lesson">Next: CRUD Operations →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

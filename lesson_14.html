@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn how MySQL indexes work, when to create them, how to use EXPLAIN to analyze query performance, and best practices for query optimization.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Indexes &amp; Query Optimization - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 5: Database Design</a></li>
+            <li aria-current="page">Lesson 14: Indexes &amp; Query Optimization</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>⚡ Lesson 14: Indexes &amp; Query Optimization</h1>
+                <p class="lead">Your queries work — but are they <em>fast</em>? When a table has 10 rows, everything feels instant. When it has 10 million, a missing index can turn a sub-second lookup into a 30-second crawl. Indexes are the single most important performance tool in your MySQL toolkit. In this lesson, you'll learn how they work, when to create them, and how to use <code>EXPLAIN</code> to diagnose slow queries like a pro.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Explain what an index is and why it matters for performance</li>
+                        <li>Create single-column and composite (multi-column) indexes</li>
+                        <li>Use <code>EXPLAIN</code> to analyze how MySQL executes a query</li>
+                        <li>Identify when indexes help and when they hurt</li>
+                        <li>Apply best practices for index design</li>
+                        <li>Recognize and fix common performance pitfalls</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 45 minutes</p>
+                    <p><strong>Prerequisites:</strong> JOINs (<a href="lesson_13.html">Lesson 13</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#the-problem" class="toc-link">The Problem: Full Table Scans</a></li>
+                        <li><a href="#what-is-index" class="toc-link">What Is an Index?</a></li>
+                        <li><a href="#creating-indexes" class="toc-link">Creating Indexes</a></li>
+                        <li><a href="#composite-indexes" class="toc-link">Composite (Multi-Column) Indexes</a></li>
+                        <li><a href="#unique-indexes" class="toc-link">Unique Indexes</a></li>
+                        <li><a href="#explain" class="toc-link">EXPLAIN — Your Query Microscope</a></li>
+                        <li><a href="#when-to-index" class="toc-link">When to Index (and When Not To)</a></li>
+                        <li><a href="#index-killers" class="toc-link">Index Killers — What Prevents Index Use</a></li>
+                        <li><a href="#managing-indexes" class="toc-link">Managing Indexes</a></li>
+                        <li><a href="#optimization-tips" class="toc-link">General Query Optimization Tips</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: The Problem -->
+            <section id="the-problem" class="lesson-section">
+                <h2>The Problem: Full Table Scans</h2>
+                <p>Without an index, MySQL has one strategy for finding data: <strong>read every single row</strong> in the table and check if it matches your condition. This is called a <strong>full table scan</strong>.</p>
+
+                <pre><code class="language-sql">
+-- Find a customer by email
+SELECT * FROM customers WHERE email = 'alice@example.com';
+                </code></pre>
+
+                <p>With 10 rows, this is fine — MySQL checks all 10 and responds instantly. But with 5 million rows, MySQL reads <em>all 5 million</em> to find one match. That's like reading every page of an encyclopedia to find one topic instead of using the index in the back.</p>
+
+                <div class="mermaid">
+                    graph LR
+                        subgraph scan["Full Table Scan (no index)"]
+                            R1["Row 1 ❌"] --> R2["Row 2 ❌"] --> R3["Row 3 ❌"] --> R4["...millions more..."] --> RN["Row N ✅ Found!"]
+                        end
+                        subgraph lookup["Index Lookup"]
+                            I["Index"] -->|"Jump directly"| RN2["Row N ✅ Found!"]
+                        end
+                </div>
+            </section>
+
+            <!-- Section 2: What Is an Index? -->
+            <section id="what-is-index" class="lesson-section">
+                <h2>What Is an Index?</h2>
+                <p>A database <strong>index</strong> is a separate data structure (usually a <strong>B-tree</strong>) that stores a sorted copy of one or more columns along with pointers back to the full rows. Think of it like the index at the back of a textbook — instead of flipping through every page, you look up "JOINs" in the index, find "page 247," and go straight there.</p>
+
+                <div class="mermaid">
+                    graph TD
+                        subgraph btree["B-Tree Index on email"]
+                            Root["d..."]
+                            Left["a... – c..."]
+                            Right["d... – z..."]
+                            L1["alice@..."]
+                            L2["bob@..."]
+                            L3["carol@..."]
+                            L4["dave@..."]
+                            L5["zara@..."]
+                            Root --> Left
+                            Root --> Right
+                            Left --> L1
+                            Left --> L2
+                            Left --> L3
+                            Right --> L4
+                            Right --> L5
+                        end
+                </div>
+
+                <h3>How It Speeds Things Up</h3>
+                <p>Instead of scanning every row, MySQL navigates the B-tree in <strong>O(log n)</strong> time. For a table with 1 million rows, a full scan checks 1,000,000 rows. A B-tree lookup checks roughly <strong>20</strong>. That's the difference between waiting 5 seconds and waiting 5 milliseconds.</p>
+
+                <div class="card card-info">
+                    <h4>💡 Primary Keys Are Already Indexed</h4>
+                    <p>Every table's <code>PRIMARY KEY</code> is automatically indexed. That's why <code>SELECT * FROM customers WHERE id = 42</code> is always fast — MySQL uses the primary key index (called the <strong>clustered index</strong>) to jump directly to row 42. You never need to create an index on a primary key.</p>
+                </div>
+
+                <h3>The Trade-Off</h3>
+                <p>Indexes aren't free. Every index:</p>
+                <ul>
+                    <li><strong>Uses disk space</strong> — the sorted copy takes up storage</li>
+                    <li><strong>Slows down writes</strong> — every INSERT, UPDATE, or DELETE must also update each relevant index</li>
+                    <li><strong>Needs maintenance</strong> — MySQL keeps indexes in sync automatically, but more indexes = more work per write</li>
+                </ul>
+
+                <p>The goal is to index columns you <em>search on frequently</em> without indexing everything blindly.</p>
+            </section>
+
+            <!-- Section 3: Creating Indexes -->
+            <section id="creating-indexes" class="lesson-section">
+                <h2>Creating Indexes</h2>
+
+                <h3>Syntax</h3>
+
+                <pre><code class="language-sql">
+-- Create an index on a single column
+CREATE INDEX index_name ON table_name (column_name);
+
+-- Example: index the email column on customers
+CREATE INDEX idx_customers_email ON customers (email);
+                </code></pre>
+
+                <h3>Naming Convention</h3>
+                <p>A widely used pattern is <code>idx_tablename_columnname</code>:</p>
+                <ul>
+                    <li><code>idx_customers_email</code></li>
+                    <li><code>idx_orders_customer_id</code></li>
+                    <li><code>idx_books_author_id</code></li>
+                </ul>
+                <p>The name is for your reference — MySQL doesn't care what you call it, but consistent naming makes maintenance much easier.</p>
+
+                <h3>Index on a Foreign Key</h3>
+                <p>Foreign key columns are prime candidates for indexes because you JOIN and filter on them constantly:</p>
+
+                <pre><code class="language-sql">
+-- Index the foreign key columns we use in JOINs
+CREATE INDEX idx_orders_customer_id ON orders (customer_id);
+CREATE INDEX idx_books_author_id ON books (author_id);
+CREATE INDEX idx_order_items_order_id ON order_items (order_id);
+CREATE INDEX idx_order_items_book_id ON order_items (book_id);
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 MySQL May Auto-Index Foreign Keys</h4>
+                    <p>When you define a <code>FOREIGN KEY</code> constraint, MySQL (InnoDB) automatically creates an index on the foreign key column if one doesn't already exist. So you may already have these indexes! Use <code>SHOW INDEX FROM table_name</code> to check.</p>
+                </div>
+
+                <h3>Creating an Index During Table Creation</h3>
+                <p>You can also define indexes inside a <code>CREATE TABLE</code> statement:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE customers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    city VARCHAR(100),
+    INDEX idx_customers_email (email),
+    INDEX idx_customers_city (city)
+);
+                </code></pre>
+            </section>
+
+            <!-- Section 4: Composite Indexes -->
+            <section id="composite-indexes" class="lesson-section">
+                <h2>Composite (Multi-Column) Indexes</h2>
+                <p>A <strong>composite index</strong> covers two or more columns. It's useful when you frequently filter or sort by a specific combination of columns.</p>
+
+                <pre><code class="language-sql">
+-- Index on last_name + first_name (together)
+CREATE INDEX idx_customers_name ON customers (last_name, first_name);
+                </code></pre>
+
+                <h3>Column Order Matters — The "Left Prefix" Rule</h3>
+                <p>A composite index on <code>(last_name, first_name)</code> can satisfy queries that filter on:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Query Filters On</th>
+                                <th>Uses Index?</th>
+                                <th>Why?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>WHERE last_name = 'Smith'</code></td>
+                                <td>✅ Yes</td>
+                                <td>Matches the leftmost column</td>
+                            </tr>
+                            <tr>
+                                <td><code>WHERE last_name = 'Smith' AND first_name = 'Bob'</code></td>
+                                <td>✅ Yes</td>
+                                <td>Matches both columns (full index)</td>
+                            </tr>
+                            <tr>
+                                <td><code>WHERE first_name = 'Bob'</code></td>
+                                <td>❌ No</td>
+                                <td>Skips the leftmost column — can't use index</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>Think of it like a phone book sorted by last name, then first name. You can quickly find all the "Smiths" (left column). You can quickly find "Bob Smith" (both columns). But you <em>can't</em> efficiently find all the "Bobs" without scanning every entry — the book isn't sorted by first name alone.</p>
+
+                <div class="card card-warning">
+                    <h4>⚠️ The Left Prefix Rule</h4>
+                    <p>A composite index on <code>(A, B, C)</code> can serve queries filtering on: <code>A</code>, <code>(A, B)</code>, or <code>(A, B, C)</code>. It <strong>cannot</strong> serve queries that skip <code>A</code> entirely (like filtering only on <code>B</code> or <code>C</code>). Always put the most-filtered column first.</p>
+                </div>
+
+                <h3>Real-World Example</h3>
+
+                <pre><code class="language-sql">
+-- If you frequently run queries like:
+SELECT * FROM orders
+WHERE customer_id = 5 AND order_date >= '2026-01-01';
+
+-- Create a composite index matching those columns:
+CREATE INDEX idx_orders_customer_date
+ON orders (customer_id, order_date);
+                </code></pre>
+
+                <p>This index helps MySQL quickly find all orders for customer 5, then narrow down by date — without scanning the whole table.</p>
+            </section>
+
+            <!-- Section 5: Unique Indexes -->
+            <section id="unique-indexes" class="lesson-section">
+                <h2>Unique Indexes</h2>
+                <p>A <strong>unique index</strong> enforces uniqueness on a column (or combination of columns) while also providing the performance benefits of a regular index. It's essentially a constraint and an index in one.</p>
+
+                <pre><code class="language-sql">
+-- Ensure no two customers share the same email
+CREATE UNIQUE INDEX idx_customers_email_unique
+ON customers (email);
+
+-- Alternative: defined inside CREATE TABLE
+CREATE TABLE customers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) NOT NULL,
+    UNIQUE INDEX idx_customers_email_unique (email)
+);
+                </code></pre>
+
+                <p>If you try to INSERT a duplicate email, MySQL rejects it with an error — just like a <code>UNIQUE</code> constraint. The difference is that you're also getting index performance for lookups on that column.</p>
+
+                <div class="card card-info">
+                    <h4>💡 UNIQUE Constraint vs UNIQUE INDEX</h4>
+                    <p>In MySQL, <code>UNIQUE</code> constraints are implemented as unique indexes internally. Writing <code>UNIQUE (email)</code> or <code>UNIQUE INDEX idx_email (email)</code> in a CREATE TABLE statement produces the same result. They're interchangeable.</p>
+                </div>
+            </section>
+
+            <!-- Section 6: EXPLAIN -->
+            <section id="explain" class="lesson-section">
+                <h2>EXPLAIN — Your Query Microscope</h2>
+                <p>How do you know if MySQL is actually <em>using</em> your index? Put <code>EXPLAIN</code> in front of any SELECT statement and MySQL shows you its <strong>execution plan</strong> — exactly how it intends to find your data.</p>
+
+                <pre><code class="language-sql">
+EXPLAIN SELECT * FROM customers WHERE email = 'alice@example.com';
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Example Output (simplified):</h4>
+                    <pre><code>
++----+------+----------------------+----------------------+---------+-------+------+-------+
+| id | type | possible_keys        | key                  | key_len | ref   | rows | Extra |
++----+------+----------------------+----------------------+---------+-------+------+-------+
+|  1 | ref  | idx_customers_email  | idx_customers_email  | 402     | const |    1 | NULL  |
++----+------+----------------------+----------------------+---------+-------+------+-------+
+                    </code></pre>
+                </div>
+
+                <h3>Key Columns in EXPLAIN Output</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Column</th>
+                                <th>What It Tells You</th>
+                                <th>What to Look For</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>type</code></td>
+                                <td>How MySQL accesses the table</td>
+                                <td><code>const</code>, <code>ref</code>, <code>range</code> = good. <code>ALL</code> = full table scan (bad)</td>
+                            </tr>
+                            <tr>
+                                <td><code>possible_keys</code></td>
+                                <td>Which indexes MySQL <em>could</em> use</td>
+                                <td>Should list relevant indexes. NULL = no usable indexes</td>
+                            </tr>
+                            <tr>
+                                <td><code>key</code></td>
+                                <td>Which index MySQL actually <em>chose</em></td>
+                                <td>Should show your index name. NULL = no index used</td>
+                            </tr>
+                            <tr>
+                                <td><code>rows</code></td>
+                                <td>Estimated number of rows MySQL will examine</td>
+                                <td>Lower is better. Compare to total table rows</td>
+                            </tr>
+                            <tr>
+                                <td><code>Extra</code></td>
+                                <td>Additional info about the strategy</td>
+                                <td><code>Using index</code> = great. <code>Using filesort</code> = extra work for sorting</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>The <code>type</code> Column — From Best to Worst</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Meaning</th>
+                                <th>Speed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>system</code> / <code>const</code></td>
+                                <td>At most one matching row (primary key or unique lookup)</td>
+                                <td>⚡ Fastest</td>
+                            </tr>
+                            <tr>
+                                <td><code>eq_ref</code></td>
+                                <td>One row per join (unique index in a JOIN)</td>
+                                <td>⚡ Excellent</td>
+                            </tr>
+                            <tr>
+                                <td><code>ref</code></td>
+                                <td>Multiple matching rows via non-unique index</td>
+                                <td>✅ Good</td>
+                            </tr>
+                            <tr>
+                                <td><code>range</code></td>
+                                <td>Index range scan (BETWEEN, &lt;, &gt;, IN)</td>
+                                <td>✅ Good</td>
+                            </tr>
+                            <tr>
+                                <td><code>index</code></td>
+                                <td>Full index scan (reads entire index, not table)</td>
+                                <td>⚠️ Okay</td>
+                            </tr>
+                            <tr>
+                                <td><code>ALL</code></td>
+                                <td>Full table scan — reads every row</td>
+                                <td>🐌 Slowest</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Before and After: Seeing the Impact</h3>
+
+                <pre><code class="language-sql">
+-- BEFORE index: full table scan
+EXPLAIN SELECT * FROM customers WHERE city = 'Las Vegas';
+-- type: ALL, rows: 50000 (checks every row)
+
+-- Create the index
+CREATE INDEX idx_customers_city ON customers (city);
+
+-- AFTER index: index lookup
+EXPLAIN SELECT * FROM customers WHERE city = 'Las Vegas';
+-- type: ref, key: idx_customers_city, rows: 342 (checks only matches)
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ The EXPLAIN Habit</h4>
+                    <p>Get in the habit of running <code>EXPLAIN</code> on any query you think might be slow. Look for: <code>type: ALL</code> (full table scan), <code>key: NULL</code> (no index used), or a high <code>rows</code> count. These are your optimization targets.</p>
+                </div>
+            </section>
+
+            <!-- Section 7: When to Index -->
+            <section id="when-to-index" class="lesson-section">
+                <h2>When to Index (and When Not To)</h2>
+
+                <h3>✅ DO Create Indexes On:</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Scenario</th>
+                                <th>Why</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Columns in <code>WHERE</code> clauses</td>
+                                <td>These are your filter conditions — the most common use</td>
+                            </tr>
+                            <tr>
+                                <td>Foreign key columns</td>
+                                <td>Used in JOINs constantly (MySQL may auto-create these)</td>
+                            </tr>
+                            <tr>
+                                <td>Columns in <code>ORDER BY</code></td>
+                                <td>Avoids expensive "filesort" operations</td>
+                            </tr>
+                            <tr>
+                                <td>Columns in <code>GROUP BY</code></td>
+                                <td>Speeds up grouping and aggregation</td>
+                            </tr>
+                            <tr>
+                                <td>Columns used in JOIN conditions</td>
+                                <td>Helps MySQL match rows between tables</td>
+                            </tr>
+                            <tr>
+                                <td>High-cardinality columns (many unique values)</td>
+                                <td>Email, username, phone — index narrows the search dramatically</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>❌ DON'T Create Indexes On:</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Scenario</th>
+                                <th>Why Not</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Tiny tables (under ~1,000 rows)</td>
+                                <td>Full scan is already fast — index overhead isn't worth it</td>
+                            </tr>
+                            <tr>
+                                <td>Low-cardinality columns (few unique values)</td>
+                                <td>A boolean <code>is_active</code> column with only TRUE/FALSE — index can't narrow much</td>
+                            </tr>
+                            <tr>
+                                <td>Columns you rarely filter or sort on</td>
+                                <td>No queries use them = wasted space and write overhead</td>
+                            </tr>
+                            <tr>
+                                <td>Tables with heavy INSERT/UPDATE/DELETE</td>
+                                <td>Every write updates every index — too many indexes slow writes</td>
+                            </tr>
+                            <tr>
+                                <td>Columns with lots of NULLs</td>
+                                <td>Indexes on mostly-NULL columns provide little benefit</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 The Sweet Spot</h4>
+                    <p>Most tables do well with indexes on: the primary key (automatic), all foreign keys (often automatic), and 1–3 additional columns that appear in your most frequent WHERE, ORDER BY, or JOIN conditions. Start there and add more only when EXPLAIN shows a problem.</p>
+                </div>
+            </section>
+
+            <!-- Section 8: Index Killers -->
+            <section id="index-killers" class="lesson-section">
+                <h2>Index Killers — What Prevents Index Use</h2>
+                <p>You created an index, but MySQL isn't using it? These common patterns <strong>prevent</strong> MySQL from using indexes:</p>
+
+                <h3>1. Functions on Indexed Columns</h3>
+
+                <pre><code class="language-sql">
+-- ❌ BAD: Function wraps the indexed column — index can't be used
+SELECT * FROM orders WHERE YEAR(order_date) = 2026;
+
+-- ✅ GOOD: Rewrite as a range — index works
+SELECT * FROM orders
+WHERE order_date >= '2026-01-01' AND order_date < '2027-01-01';
+                </code></pre>
+
+                <h3>2. Leading Wildcards in LIKE</h3>
+
+                <pre><code class="language-sql">
+-- ❌ BAD: Leading wildcard — full scan required
+SELECT * FROM customers WHERE email LIKE '%@gmail.com';
+
+-- ✅ GOOD: Trailing wildcard — index works
+SELECT * FROM customers WHERE email LIKE 'alice%';
+                </code></pre>
+
+                <p>Leading <code>%</code> means "starts with anything" — MySQL can't use the sorted index because it doesn't know where to start looking. Trailing <code>%</code> is fine because the index is sorted by the beginning of the string.</p>
+
+                <h3>3. Implicit Type Conversion</h3>
+
+                <pre><code class="language-sql">
+-- ❌ BAD: phone is VARCHAR, but you're comparing to an integer
+SELECT * FROM customers WHERE phone = 5551234;
+
+-- ✅ GOOD: Compare with matching type
+SELECT * FROM customers WHERE phone = '5551234';
+                </code></pre>
+
+                <p>When MySQL has to convert types, it may wrap the column in a conversion function internally, breaking index usage.</p>
+
+                <h3>4. OR Conditions on Different Columns</h3>
+
+                <pre><code class="language-sql">
+-- ❌ Potentially slow: OR across different columns
+SELECT * FROM customers WHERE city = 'Las Vegas' OR last_name = 'Smith';
+
+-- ✅ Better: Use UNION if both columns are indexed
+SELECT * FROM customers WHERE city = 'Las Vegas'
+UNION
+SELECT * FROM customers WHERE last_name = 'Smith';
+                </code></pre>
+
+                <h3>5. Negation</h3>
+
+                <pre><code class="language-sql">
+-- ❌ Often can't use index:
+SELECT * FROM customers WHERE city != 'Las Vegas';
+SELECT * FROM customers WHERE city NOT IN ('Las Vegas', 'Reno');
+
+-- MySQL must scan to find all the NON-matches
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ When in Doubt, EXPLAIN</h4>
+                    <p>Not sure if your query uses an index? Don't guess — run <code>EXPLAIN</code> and check the <code>key</code> and <code>type</code> columns. That's the definitive answer.</p>
+                </div>
+            </section>
+
+            <!-- Section 9: Managing Indexes -->
+            <section id="managing-indexes" class="lesson-section">
+                <h2>Managing Indexes</h2>
+
+                <h3>View Indexes on a Table</h3>
+
+                <pre><code class="language-sql">
+-- See all indexes on a table
+SHOW INDEX FROM customers;
+
+-- Shorter alternative
+SHOW INDEXES FROM orders;
+                </code></pre>
+
+                <h3>Drop an Index</h3>
+
+                <pre><code class="language-sql">
+-- Remove an index you no longer need
+DROP INDEX idx_customers_city ON customers;
+
+-- Alternative syntax
+ALTER TABLE customers DROP INDEX idx_customers_city;
+                </code></pre>
+
+                <h3>Rename / Rebuild</h3>
+                <p>MySQL doesn't have a <code>RENAME INDEX</code> command (prior to 5.7). In older versions, drop and recreate. In 5.7+, you can use:</p>
+
+                <pre><code class="language-sql">
+-- MySQL 5.7+
+ALTER TABLE customers RENAME INDEX idx_old_name TO idx_new_name;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Check Before You Create</h4>
+                    <p>Before creating a new index, run <code>SHOW INDEX FROM table_name</code> to see what already exists. Duplicate indexes waste space and slow down writes for no benefit.</p>
+                </div>
+            </section>
+
+            <!-- Section 10: General Query Optimization Tips -->
+            <section id="optimization-tips" class="lesson-section">
+                <h2>General Query Optimization Tips</h2>
+                <p>Indexes are the biggest lever, but these habits also help:</p>
+
+                <h3>1. Select Only What You Need</h3>
+
+                <pre><code class="language-sql">
+-- ❌ BAD: Fetches all columns (even ones you don't use)
+SELECT * FROM orders;
+
+-- ✅ GOOD: Fetch only what you need
+SELECT id, order_date, customer_id FROM orders;
+                </code></pre>
+
+                <p>Less data to read, transfer, and process. This matters at scale.</p>
+
+                <h3>2. Use LIMIT for Large Results</h3>
+
+                <pre><code class="language-sql">
+-- Don't pull 100,000 rows if you need the top 10
+SELECT title, price FROM books ORDER BY price DESC LIMIT 10;
+                </code></pre>
+
+                <h3>3. Avoid SELECT DISTINCT When Unnecessary</h3>
+
+                <pre><code class="language-sql">
+-- DISTINCT forces MySQL to sort/deduplicate — expensive on big tables
+-- Only use it when you truly have duplicates to remove
+SELECT DISTINCT city FROM customers;  -- Fine: you want unique cities
+SELECT DISTINCT * FROM orders;        -- Usually a design smell
+                </code></pre>
+
+                <h3>4. Use EXISTS Instead of IN for Subqueries</h3>
+
+                <pre><code class="language-sql">
+-- ❌ IN can be slow with large subquery results
+SELECT * FROM customers
+WHERE id IN (SELECT customer_id FROM orders);
+
+-- ✅ EXISTS short-circuits — stops as soon as it finds a match
+SELECT * FROM customers c
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id);
+                </code></pre>
+
+                <h3>5. Keep JOINs Efficient</h3>
+
+                <pre><code class="language-sql">
+-- Ensure JOIN columns are indexed and use matching types
+-- Index on orders.customer_id helps this JOIN enormously
+SELECT c.first_name, o.order_date
+FROM customers c
+INNER JOIN orders o ON c.id = o.customer_id;
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ Performance Mindset</h4>
+                    <p>Don't optimize prematurely — write correct queries first, then use <code>EXPLAIN</code> to find actual bottlenecks. Index the columns that EXPLAIN tells you need it, not every column "just in case."</p>
+                </div>
+            </section>
+
+            <!-- Section 11: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: Create Indexes</h3>
+                    <p>Write SQL statements to:</p>
+                    <ol>
+                        <li>Create an index on the <code>city</code> column of the <code>customers</code> table</li>
+                        <li>Create a composite index on <code>(customer_id, order_date)</code> on the <code>orders</code> table</li>
+                        <li>Create a unique index on the <code>email</code> column of the <code>customers</code> table</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+CREATE INDEX idx_customers_city ON customers (city);
+
+-- 2
+CREATE INDEX idx_orders_customer_date ON orders (customer_id, order_date);
+
+-- 3
+CREATE UNIQUE INDEX idx_customers_email_unique ON customers (email);
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: EXPLAIN Analysis</h3>
+                    <p>For each query below, predict whether MySQL will use an index or perform a full table scan. Then verify by running <code>EXPLAIN</code>.</p>
+                    <ol>
+                        <li><code>SELECT * FROM customers WHERE id = 5;</code></li>
+                        <li><code>SELECT * FROM customers WHERE city = 'Denver';</code> (assume no index on city)</li>
+                        <li><code>SELECT * FROM orders WHERE customer_id = 3;</code> (assume foreign key exists)</li>
+                        <li><code>SELECT * FROM customers WHERE UPPER(email) = 'ALICE@EXAMPLE.COM';</code></li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1: Uses PRIMARY key index → type: const
+EXPLAIN SELECT * FROM customers WHERE id = 5;
+
+-- 2: No index on city → type: ALL (full table scan)
+EXPLAIN SELECT * FROM customers WHERE city = 'Denver';
+
+-- 3: Foreign key auto-index → type: ref, key: customer_id index
+EXPLAIN SELECT * FROM orders WHERE customer_id = 3;
+
+-- 4: UPPER() wraps the column → index on email CAN'T be used → type: ALL
+--    Fix: WHERE email = 'alice@example.com' (MySQL collation is
+--    case-insensitive by default, so UPPER is unnecessary!)
+EXPLAIN SELECT * FROM customers WHERE UPPER(email) = 'ALICE@EXAMPLE.COM';
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: Fix the Slow Queries</h3>
+                    <p>Each query below has a performance problem. Rewrite it to be index-friendly:</p>
+                    <ol>
+                        <li><code>SELECT * FROM orders WHERE YEAR(order_date) = 2026;</code></li>
+                        <li><code>SELECT * FROM customers WHERE email LIKE '%smith%';</code></li>
+                        <li><code>SELECT * FROM customers WHERE phone = 5551234;</code> (phone is VARCHAR)</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1: Replace YEAR() with a range
+SELECT * FROM orders
+WHERE order_date >= '2026-01-01' AND order_date < '2027-01-01';
+
+-- 2: Leading wildcard can't use index — if you must search
+-- mid-string, consider a FULLTEXT index instead:
+-- CREATE FULLTEXT INDEX idx_email_ft ON customers (email);
+-- SELECT * FROM customers WHERE MATCH(email) AGAINST('smith');
+-- Otherwise, restructure the search (e.g., add a domain column)
+
+-- 3: Match the column type — compare VARCHAR to a string
+SELECT * FROM customers WHERE phone = '5551234';
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 4: Index Design Challenge</h3>
+                    <p>You have an <code>employees</code> table with columns: <code>id</code>, <code>first_name</code>, <code>last_name</code>, <code>department</code>, <code>hire_date</code>, <code>salary</code>, <code>is_active</code>.</p>
+                    <p>The most common queries are:</p>
+                    <ol>
+                        <li><code>WHERE department = 'Engineering' AND is_active = TRUE</code></li>
+                        <li><code>WHERE last_name = 'Smith'</code></li>
+                        <li><code>WHERE hire_date BETWEEN '2025-01-01' AND '2025-12-31'</code></li>
+                        <li><code>ORDER BY salary DESC LIMIT 10</code></li>
+                    </ol>
+                    <p>What indexes would you create? Justify each choice.</p>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- For query 1: composite index — department first (higher cardinality)
+CREATE INDEX idx_emp_dept_active ON employees (department, is_active);
+
+-- For query 2: single column index
+CREATE INDEX idx_emp_last_name ON employees (last_name);
+
+-- For query 3: index on hire_date for range scan
+CREATE INDEX idx_emp_hire_date ON employees (hire_date);
+
+-- For query 4: index on salary for sorted access
+CREATE INDEX idx_emp_salary ON employees (salary);
+
+-- Note: is_active alone (boolean) wouldn't be a good index —
+-- too few unique values. But as the second column in a
+-- composite index with department, it helps narrow results
+-- after department is matched.
+                        </code></pre>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What happens without an index on a WHERE column?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL will still run the query — it just does so by reading every row, which is slow on large tables.">
+                                A) The query fails with an error
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Without an index, MySQL performs a full table scan — it reads every row to find matches. This works, but gets very slow as the table grows.">
+                                B) MySQL performs a full table scan
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL doesn't auto-create indexes on demand. You need to create them yourself (or they come from PK/FK constraints).">
+                                C) MySQL automatically creates a temporary index
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> For a composite index on <code>(A, B, C)</code>, which WHERE clause can use it?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="This skips column A. The left prefix rule requires that you start from the leftmost column.">
+                                A) WHERE B = 'x' AND C = 'y'
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! This matches the left prefix: column A is the leftmost column. A composite index on (A, B, C) can serve queries on A, (A, B), or (A, B, C).">
+                                B) WHERE A = 'x' AND B = 'y'
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="C alone skips both A and B. The index is sorted by A first, so it can't jump to C directly.">
+                                C) WHERE C = 'z'
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> In EXPLAIN output, which <code>type</code> value indicates the worst performance?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="'ref' means MySQL is using a non-unique index to look up matching rows. That's actually good!">
+                                A) ref
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="'range' means MySQL is scanning a range of index values. That's still efficient for bounded searches.">
+                                B) range
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! 'ALL' means a full table scan — MySQL reads every row in the table. This is the slowest access type and usually signals a missing index.">
+                                C) ALL
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> Why does <code>WHERE YEAR(order_date) = 2026</code> prevent index usage?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="YEAR() is a valid MySQL function. The query works fine — it's just slow.">
+                                A) YEAR() is not a valid MySQL function
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! When you wrap an indexed column in a function, MySQL must evaluate the function for every row — it can't look up the pre-computed result in the index. Rewrite as a date range to let the index work.">
+                                B) The function transforms the column value, so MySQL can't match it against the index
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="You CAN index DATE columns, and the index works great — but only when you compare directly against the column, not a function wrapping it.">
+                                C) DATE columns cannot be indexed
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 12: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li>An <strong>index</strong> is a sorted data structure (B-tree) that lets MySQL find rows without scanning the entire table</li>
+                        <li><strong>Primary keys</strong> are automatically indexed; foreign keys usually are too</li>
+                        <li><code>CREATE INDEX idx_name ON table (column)</code> adds a single-column index</li>
+                        <li><strong>Composite indexes</strong> cover multiple columns — column order matters (left prefix rule)</li>
+                        <li><strong>Unique indexes</strong> enforce uniqueness while providing index performance</li>
+                        <li><code>EXPLAIN</code> shows the query execution plan — use it to verify index usage</li>
+                        <li>Look for <code>type: ALL</code> (bad) and <code>key: NULL</code> (no index used) in EXPLAIN output</li>
+                        <li><strong>Index killers</strong>: functions on columns, leading wildcards, type mismatches, OR across columns</li>
+                        <li>Index columns in WHERE, JOIN ON, ORDER BY, and GROUP BY clauses</li>
+                        <li>Don't over-index — each index slows down writes and uses disk space</li>
+                        <li>Use <code>SHOW INDEX FROM table</code> to see existing indexes</li>
+                    </ul>
+                </div>
+
+                <h3>Quick Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>CREATE INDEX idx ON tbl (col)</code></td>
+                                <td>Create a single-column index</td>
+                            </tr>
+                            <tr>
+                                <td><code>CREATE INDEX idx ON tbl (a, b)</code></td>
+                                <td>Create a composite index</td>
+                            </tr>
+                            <tr>
+                                <td><code>CREATE UNIQUE INDEX idx ON tbl (col)</code></td>
+                                <td>Create a unique index</td>
+                            </tr>
+                            <tr>
+                                <td><code>DROP INDEX idx ON tbl</code></td>
+                                <td>Remove an index</td>
+                            </tr>
+                            <tr>
+                                <td><code>SHOW INDEX FROM tbl</code></td>
+                                <td>View all indexes on a table</td>
+                            </tr>
+                            <tr>
+                                <td><code>EXPLAIN SELECT ...</code></td>
+                                <td>Show query execution plan</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/optimization-indexes.html" target="_blank" rel="noopener">MySQL Docs — Optimization and Indexes</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/using-explain.html" target="_blank" rel="noopener">MySQL Docs — Understanding the Query Execution Plan</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/create-index.html" target="_blank" rel="noopener">MySQL Docs — CREATE INDEX Statement</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/multiple-column-indexes.html" target="_blank" rel="noopener">MySQL Docs — Multiple-Column Indexes</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>Now that you can make queries <em>fast</em>, it's time to make complex queries <em>simple</em>. In <a href="lesson_15.html">Lesson 15: Views</a>, you'll learn to save complex multi-table JOINs as reusable virtual tables — giving your colleagues (and your future self) clean, readable access to data without rewriting 10-line queries every time.</p>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_13.html" class="prev-lesson">← Previous: Joins</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_15.html" class="next-lesson">Next: Views →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

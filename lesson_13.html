@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Master MySQL JOINs — INNER JOIN, LEFT JOIN, RIGHT JOIN, CROSS JOIN, and self-joins — to query data across multiple related tables in a single statement.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Joins - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 4: Relationships &amp; Joins</a></li>
+            <li aria-current="page">Lesson 13: Joins</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🔀 Lesson 13: Joins</h1>
+                <p class="lead">You've built relationships between tables and enforced them with foreign keys. Now it's time for the payoff — querying data across multiple tables in a single statement. "Show me every order with the customer's name and the books they bought." That's a JOIN. This is arguably the most important topic in SQL and one of the most common interview subjects.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Use <code>INNER JOIN</code> to combine rows from two or more tables</li>
+                        <li>Use <code>LEFT JOIN</code> and <code>RIGHT JOIN</code> to include unmatched rows</li>
+                        <li>Understand and use <code>CROSS JOIN</code> for all combinations</li>
+                        <li>Write self-joins to relate a table to itself</li>
+                        <li>Join three or more tables in a single query</li>
+                        <li>Combine JOINs with WHERE, GROUP BY, ORDER BY, and aggregates</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 60 minutes</p>
+                    <p><strong>Prerequisites:</strong> Foreign keys &amp; referential integrity (<a href="lesson_12.html">Lesson 12</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#why-joins" class="toc-link">Why JOINs?</a></li>
+                        <li><a href="#sample-data" class="toc-link">Our Sample Data</a></li>
+                        <li><a href="#inner-join" class="toc-link">INNER JOIN</a></li>
+                        <li><a href="#left-join" class="toc-link">LEFT JOIN</a></li>
+                        <li><a href="#right-join" class="toc-link">RIGHT JOIN</a></li>
+                        <li><a href="#cross-join" class="toc-link">CROSS JOIN</a></li>
+                        <li><a href="#self-join" class="toc-link">Self-Joins</a></li>
+                        <li><a href="#multi-table" class="toc-link">Joining Three or More Tables</a></li>
+                        <li><a href="#joins-with-agg" class="toc-link">JOINs with Aggregates</a></li>
+                        <li><a href="#choosing" class="toc-link">Choosing the Right JOIN</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: Why JOINs? -->
+            <section id="why-joins" class="lesson-section">
+                <h2>Why JOINs?</h2>
+                <p>Your data lives in separate tables — customers in one, orders in another, books in a third. But real questions span tables:</p>
+                <ul>
+                    <li>"Which customers ordered <em>Dune</em>?"</li>
+                    <li>"What's the total revenue per author?"</li>
+                    <li>"Show me all orders with customer names and book titles."</li>
+                </ul>
+
+                <p>A <strong>JOIN</strong> combines rows from two or more tables based on a related column (usually a foreign key matching a primary key). The result is a new, wider table that includes columns from both sources.</p>
+
+                <div class="mermaid">
+                    graph LR
+                        subgraph customers["customers"]
+                            C["id | name"]
+                        end
+                        subgraph orders["orders"]
+                            O["id | customer_id | date"]
+                        end
+                        subgraph result["JOIN result"]
+                            R["customer.name | order.id | order.date"]
+                        end
+                        C -->|"JOIN ON"| O
+                        O -->|"produces"| R
+                </div>
+            </section>
+
+            <!-- Section 2: Sample Data -->
+            <section id="sample-data" class="lesson-section">
+                <h2>Our Sample Data</h2>
+                <p>We'll use a simplified version of our bookstore schema for the examples. Here's what's in each table:</p>
+
+                <h3>authors</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>id</th><th>name</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>Frank Herbert</td></tr>
+                            <tr><td>2</td><td>George Orwell</td></tr>
+                            <tr><td>3</td><td>Jane Austen</td></tr>
+                            <tr><td>4</td><td>Isaac Asimov</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>books</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>id</th><th>title</th><th>author_id</th><th>price</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>Dune</td><td>1</td><td>14.99</td></tr>
+                            <tr><td>2</td><td>1984</td><td>2</td><td>9.99</td></tr>
+                            <tr><td>3</td><td>Pride and Prejudice</td><td>3</td><td>7.99</td></tr>
+                            <tr><td>4</td><td>Animal Farm</td><td>2</td><td>8.49</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>customers</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>id</th><th>first_name</th><th>last_name</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>Alice</td><td>Johnson</td></tr>
+                            <tr><td>2</td><td>Bob</td><td>Smith</td></tr>
+                            <tr><td>3</td><td>Carol</td><td>Williams</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>orders</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>id</th><th>customer_id</th><th>order_date</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>1</td><td>2026-01-15</td></tr>
+                            <tr><td>2</td><td>1</td><td>2026-02-20</td></tr>
+                            <tr><td>3</td><td>2</td><td>2026-03-10</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>order_items</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>id</th><th>order_id</th><th>book_id</th><th>quantity</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+                            <tr><td>2</td><td>1</td><td>2</td><td>2</td></tr>
+                            <tr><td>3</td><td>2</td><td>3</td><td>1</td></tr>
+                            <tr><td>4</td><td>3</td><td>1</td><td>1</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>Notice: <strong>Isaac Asimov</strong> (author 4) has no books in our table. <strong>Carol</strong> (customer 3) has no orders. These "unmatched" rows will become important when we compare INNER JOIN vs LEFT JOIN.</p>
+            </section>
+
+            <!-- Section 3: INNER JOIN -->
+            <section id="inner-join" class="lesson-section">
+                <h2>INNER JOIN</h2>
+                <p>An <code>INNER JOIN</code> returns only rows where there's a match in <strong>both</strong> tables. If a row in one table has no matching row in the other, it's excluded from the results.</p>
+
+                <div class="mermaid">
+                    graph LR
+                        subgraph Result["INNER JOIN Result"]
+                            M["Only matching rows from BOTH tables"]
+                        end
+                        subgraph Left["Table A"]
+                            A1["Matched ✅"]
+                            A2["Unmatched ❌"]
+                        end
+                        subgraph Right["Table B"]
+                            B1["Matched ✅"]
+                            B2["Unmatched ❌"]
+                        end
+                        A1 --> M
+                        B1 --> M
+                </div>
+
+                <h3>Basic Syntax</h3>
+
+                <pre><code class="language-sql">
+SELECT columns
+FROM table_a
+INNER JOIN table_b ON table_a.column = table_b.column;
+                </code></pre>
+
+                <h3>Example: Books with Author Names</h3>
+
+                <pre><code class="language-sql">
+-- Show each book with its author's name
+SELECT
+    books.title,
+    authors.name AS author
+FROM books
+INNER JOIN authors ON books.author_id = authors.id;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++---------------------+----------------+
+| title               | author         |
++---------------------+----------------+
+| Dune                | Frank Herbert  |
+| 1984                | George Orwell  |
+| Pride and Prejudice | Jane Austen    |
+| Animal Farm         | George Orwell  |
++---------------------+----------------+
+                    </code></pre>
+                </div>
+
+                <p>Notice: <strong>Isaac Asimov doesn't appear</strong> — he has no books in our table. INNER JOIN only shows rows with matches on both sides.</p>
+
+                <h3>Table Aliases</h3>
+                <p>Typing full table names gets tedious. Use aliases to shorten them:</p>
+
+                <pre><code class="language-sql">
+-- Same query with aliases
+SELECT b.title, a.name AS author
+FROM books b
+INNER JOIN authors a ON b.author_id = a.id;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Alias Convention</h4>
+                    <p>Common choices: first letter of the table name (<code>b</code> for books, <code>a</code> for authors, <code>c</code> for customers, <code>o</code> for orders). For tables with the same first letter, use two letters (<code>oi</code> for order_items, <code>bc</code> for book_categories).</p>
+                </div>
+
+                <h3>Orders with Customer Names</h3>
+
+                <pre><code class="language-sql">
+SELECT
+    o.id AS order_id,
+    c.first_name,
+    c.last_name,
+    o.order_date
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++----------+------------+-----------+------------+
+| order_id | first_name | last_name | order_date |
++----------+------------+-----------+------------+
+|        1 | Alice      | Johnson   | 2026-01-15 |
+|        2 | Alice      | Johnson   | 2026-02-20 |
+|        3 | Bob        | Smith     | 2026-03-10 |
++----------+------------+-----------+------------+
+                    </code></pre>
+                </div>
+
+                <p>Carol doesn't appear — she has no orders. INNER JOIN excludes her.</p>
+
+                <h3>Adding WHERE to a JOIN</h3>
+
+                <pre><code class="language-sql">
+-- George Orwell's books only
+SELECT b.title, b.price, a.name AS author
+FROM books b
+INNER JOIN authors a ON b.author_id = a.id
+WHERE a.name = 'George Orwell';
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------------+-------+---------------+
+| title       | price | author        |
++-------------+-------+---------------+
+| 1984        |  9.99 | George Orwell |
+| Animal Farm |  8.49 | George Orwell |
++-------------+-------+---------------+
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 JOIN vs. JOIN ... WHERE</h4>
+                    <p>The <code>ON</code> clause defines <em>how</em> the tables connect (the relationship). The <code>WHERE</code> clause filters the <em>results</em> after joining. Keep them separate — don't put filter logic in ON (except for outer joins, which we'll cover next).</p>
+                </div>
+
+                <h3>The Shorthand: Just "JOIN"</h3>
+                <p><code>JOIN</code> without the <code>INNER</code> keyword is identical to <code>INNER JOIN</code>:</p>
+
+                <pre><code class="language-sql">
+-- These are exactly the same:
+SELECT b.title, a.name FROM books b INNER JOIN authors a ON b.author_id = a.id;
+SELECT b.title, a.name FROM books b JOIN authors a ON b.author_id = a.id;
+                </code></pre>
+
+                <p>Most developers write just <code>JOIN</code> for brevity. Both are correct.</p>
+            </section>
+
+            <!-- Section 4: LEFT JOIN -->
+            <section id="left-join" class="lesson-section">
+                <h2>LEFT JOIN</h2>
+                <p>A <code>LEFT JOIN</code> (also called <code>LEFT OUTER JOIN</code>) returns <strong>all rows from the left table</strong>, plus matching rows from the right table. If there's no match, the right side's columns are filled with NULL.</p>
+
+                <div class="mermaid">
+                    graph LR
+                        subgraph Result["LEFT JOIN Result"]
+                            M["All left rows + matching right rows"]
+                            N["Left rows with no match get NULLs for right columns"]
+                        end
+                        subgraph Left["Left Table (ALL rows)"]
+                            A1["Matched ✅"]
+                            A2["No match ✅ (NULLs)"]
+                        end
+                        subgraph Right["Right Table"]
+                            B1["Matched ✅"]
+                            B2["Unmatched ❌"]
+                        end
+                        A1 --> M
+                        A2 --> N
+                        B1 --> M
+                </div>
+
+                <h3>Example: All Authors, Even Without Books</h3>
+
+                <pre><code class="language-sql">
+-- All authors, including those with no books
+SELECT
+    a.name AS author,
+    b.title
+FROM authors a
+LEFT JOIN books b ON a.id = b.author_id;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++----------------+---------------------+
+| author         | title               |
++----------------+---------------------+
+| Frank Herbert  | Dune                |
+| George Orwell  | 1984                |
+| George Orwell  | Animal Farm         |
+| Jane Austen    | Pride and Prejudice |
+| Isaac Asimov   | NULL                |  ← no books, but still appears
++----------------+---------------------+
+                    </code></pre>
+                </div>
+
+                <p>Isaac Asimov now appears with NULL for the title — LEFT JOIN keeps all rows from the <em>left</em> table (authors).</p>
+
+                <h3>All Customers, Even Without Orders</h3>
+
+                <pre><code class="language-sql">
+SELECT
+    c.first_name,
+    c.last_name,
+    o.id AS order_id,
+    o.order_date
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------+-----------+----------+------------+
+| first_name | last_name | order_id | order_date |
++------------+-----------+----------+------------+
+| Alice      | Johnson   |        1 | 2026-01-15 |
+| Alice      | Johnson   |        2 | 2026-02-20 |
+| Bob        | Smith     |        3 | 2026-03-10 |
+| Carol      | Williams  |     NULL | NULL       |  ← no orders
++------------+-----------+----------+------------+
+                    </code></pre>
+                </div>
+
+                <h3>Finding Rows Without Matches</h3>
+                <p>One of the most common uses of LEFT JOIN is finding rows that <strong>don't</strong> have a match — orphans, inactive records, or gaps in your data:</p>
+
+                <pre><code class="language-sql">
+-- Authors who have NO books
+SELECT a.name
+FROM authors a
+LEFT JOIN books b ON a.id = b.author_id
+WHERE b.id IS NULL;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++--------------+
+| name         |
++--------------+
+| Isaac Asimov |
++--------------+
+                    </code></pre>
+                </div>
+
+                <pre><code class="language-sql">
+-- Customers who have never ordered
+SELECT c.first_name, c.last_name
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+WHERE o.id IS NULL;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------+-----------+
+| first_name | last_name |
++------------+-----------+
+| Carol      | Williams  |
++------------+-----------+
+                    </code></pre>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ The LEFT JOIN + IS NULL Pattern</h4>
+                    <p>This is one of the most useful patterns in SQL: <code>LEFT JOIN ... WHERE right_table.pk IS NULL</code>. It finds "everything on the left that has NO match on the right." Use it for: customers without orders, products never sold, employees not assigned to projects, etc.</p>
+                </div>
+            </section>
+
+            <!-- Section 5: RIGHT JOIN -->
+            <section id="right-join" class="lesson-section">
+                <h2>RIGHT JOIN</h2>
+                <p>A <code>RIGHT JOIN</code> is the mirror of LEFT JOIN — it returns <strong>all rows from the right table</strong>, plus matching rows from the left. Unmatched left rows are filled with NULL.</p>
+
+                <pre><code class="language-sql">
+-- All books, including those by unknown authors (if any)
+SELECT a.name AS author, b.title
+FROM authors a
+RIGHT JOIN books b ON a.id = b.author_id;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 RIGHT JOIN Is Rarely Used</h4>
+                    <p>In practice, almost everyone uses LEFT JOIN exclusively. Any RIGHT JOIN can be rewritten as a LEFT JOIN by swapping the table order:</p>
+                    <pre><code class="language-sql">
+-- These produce the same result:
+SELECT * FROM A RIGHT JOIN B ON A.id = B.a_id;
+SELECT * FROM B LEFT JOIN A ON A.id = B.a_id;
+                    </code></pre>
+                    <p>LEFT JOIN is the convention. You'll rarely see RIGHT JOIN in production code, but you should know it exists and how it works.</p>
+                </div>
+            </section>
+
+            <!-- Section 6: CROSS JOIN -->
+            <section id="cross-join" class="lesson-section">
+                <h2>CROSS JOIN</h2>
+                <p>A <code>CROSS JOIN</code> produces the <strong>Cartesian product</strong> — every row from the left table paired with every row from the right table. No <code>ON</code> clause needed.</p>
+
+                <pre><code class="language-sql">
+-- Every author paired with every book (regardless of who wrote what)
+SELECT a.name AS author, b.title
+FROM authors a
+CROSS JOIN books b;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output (4 authors × 4 books = 16 rows):</h4>
+                    <pre><code>
++----------------+---------------------+
+| author         | title               |
++----------------+---------------------+
+| Frank Herbert  | Dune                |
+| Frank Herbert  | 1984                |
+| Frank Herbert  | Pride and Prejudice |
+| Frank Herbert  | Animal Farm         |
+| George Orwell  | Dune                |
+| George Orwell  | 1984                |
+| George Orwell  | Pride and Prejudice |
+| George Orwell  | Animal Farm         |
+| Jane Austen    | Dune                |
+| Jane Austen    | 1984                |
+| Jane Austen    | Pride and Prejudice |
+| Jane Austen    | Animal Farm         |
+| Isaac Asimov   | Dune                |
+| Isaac Asimov   | 1984                |
+| Isaac Asimov   | Pride and Prejudice |
+| Isaac Asimov   | Animal Farm         |
++----------------+---------------------+
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ CROSS JOIN Can Explode</h4>
+                    <p>If Table A has 1,000 rows and Table B has 1,000 rows, a CROSS JOIN produces <strong>1,000,000 rows</strong>. Use it carefully and only when you actually need every combination.</p>
+                </div>
+
+                <h3>When CROSS JOIN Is Useful</h3>
+                <p>Despite the warning, CROSS JOIN has legitimate uses:</p>
+
+                <pre><code class="language-sql">
+-- Generate a grid: every size × every color
+SELECT s.size_name, c.color_name
+FROM sizes s
+CROSS JOIN colors c;
+-- Small-Red, Small-Blue, Medium-Red, Medium-Blue, etc.
+
+-- Pair every employee with every training module
+SELECT e.name, t.module_name
+FROM employees e
+CROSS JOIN training_modules t;
+                </code></pre>
+            </section>
+
+            <!-- Section 7: Self-Join -->
+            <section id="self-join" class="lesson-section">
+                <h2>Self-Joins</h2>
+                <p>A <strong>self-join</strong> joins a table to <em>itself</em>. This is useful when rows in the same table have a parent-child or peer relationship.</p>
+
+                <h3>Employee-Manager Example</h3>
+                <p>Imagine an employees table where each employee has a <code>manager_id</code> that references another employee's <code>id</code>:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE employees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    manager_id INT,
+    FOREIGN KEY (manager_id) REFERENCES employees(id)
+);
+
+INSERT INTO employees (id, name, manager_id) VALUES
+    (1, 'Alice', NULL),    -- CEO, no manager
+    (2, 'Bob', 1),         -- reports to Alice
+    (3, 'Carol', 1),       -- reports to Alice
+    (4, 'Dave', 2),        -- reports to Bob
+    (5, 'Eve', 2);         -- reports to Bob
+                </code></pre>
+
+                <pre><code class="language-sql">
+-- Show each employee with their manager's name
+SELECT
+    e.name AS employee,
+    m.name AS manager
+FROM employees e
+LEFT JOIN employees m ON e.manager_id = m.id;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++----------+---------+
+| employee | manager |
++----------+---------+
+| Alice    | NULL    |  ← CEO has no manager
+| Bob      | Alice   |
+| Carol    | Alice   |
+| Dave     | Bob     |
+| Eve      | Bob     |
++----------+---------+
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 Aliases Are Required in Self-Joins</h4>
+                    <p>Since you're referencing the same table twice, aliases are mandatory to distinguish the two "copies." Here, <code>e</code> is the employee and <code>m</code> is the manager — even though they're the same table.</p>
+                </div>
+
+                <h3>Finding Peers</h3>
+
+                <pre><code class="language-sql">
+-- Find pairs of books by the same author
+SELECT
+    b1.title AS book_1,
+    b2.title AS book_2,
+    a.name AS author
+FROM books b1
+INNER JOIN books b2 ON b1.author_id = b2.author_id AND b1.id < b2.id
+INNER JOIN authors a ON b1.author_id = a.id;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++--------+-------------+---------------+
+| book_1 | book_2      | author        |
++--------+-------------+---------------+
+| 1984   | Animal Farm | George Orwell |
++--------+-------------+---------------+
+                    </code></pre>
+                </div>
+
+                <p>The trick <code>b1.id < b2.id</code> prevents duplicate pairs (we don't want both "1984 + Animal Farm" and "Animal Farm + 1984") and prevents a book from pairing with itself.</p>
+            </section>
+
+            <!-- Section 8: Multi-Table Joins -->
+            <section id="multi-table" class="lesson-section">
+                <h2>Joining Three or More Tables</h2>
+                <p>Real queries often span many tables. Just chain additional JOINs:</p>
+
+                <h3>Orders → Customers + Order Items + Books</h3>
+
+                <pre><code class="language-sql">
+-- Full order details: who bought what
+SELECT
+    c.first_name,
+    c.last_name,
+    o.order_date,
+    b.title,
+    oi.quantity,
+    b.price
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id
+INNER JOIN order_items oi ON o.id = oi.order_id
+INNER JOIN books b ON oi.book_id = b.id
+ORDER BY o.order_date, c.last_name;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------+-----------+------------+---------------------+----------+-------+
+| first_name | last_name | order_date | title               | quantity | price |
++------------+-----------+------------+---------------------+----------+-------+
+| Alice      | Johnson   | 2026-01-15 | Dune                |        1 | 14.99 |
+| Alice      | Johnson   | 2026-01-15 | 1984                |        2 |  9.99 |
+| Alice      | Johnson   | 2026-02-20 | Pride and Prejudice |        1 |  7.99 |
+| Bob        | Smith     | 2026-03-10 | Dune                |        1 | 14.99 |
++------------+-----------+------------+---------------------+----------+-------+
+                    </code></pre>
+                </div>
+
+                <h3>Adding Authors to the Chain</h3>
+
+                <pre><code class="language-sql">
+-- Who bought books by which author?
+SELECT
+    c.first_name AS customer,
+    b.title,
+    a.name AS author,
+    o.order_date
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id
+INNER JOIN order_items oi ON o.id = oi.order_id
+INNER JOIN books b ON oi.book_id = b.id
+INNER JOIN authors a ON b.author_id = a.id
+ORDER BY c.first_name;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Reading Multi-Table JOINs</h4>
+                    <p>Follow the chain: start from orders → connect to customers (who ordered) → connect to order_items (what was in the order) → connect to books (what the item was) → connect to authors (who wrote it). Each JOIN adds one more table to the result.</p>
+                </div>
+
+                <div class="mermaid">
+                    graph LR
+                        O["orders"] -->|"customer_id"| C["customers"]
+                        O -->|"id"| OI["order_items"]
+                        OI -->|"book_id"| B["books"]
+                        B -->|"author_id"| A["authors"]
+                </div>
+            </section>
+
+            <!-- Section 9: JOINs with Aggregates -->
+            <section id="joins-with-agg" class="lesson-section">
+                <h2>JOINs with Aggregates</h2>
+                <p>JOINs combined with <code>GROUP BY</code> and aggregate functions unlock powerful analytics:</p>
+
+                <h3>How Many Books Per Author?</h3>
+
+                <pre><code class="language-sql">
+SELECT
+    a.name AS author,
+    COUNT(b.id) AS book_count
+FROM authors a
+LEFT JOIN books b ON a.id = b.author_id
+GROUP BY a.id, a.name
+ORDER BY book_count DESC;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++----------------+------------+
+| author         | book_count |
++----------------+------------+
+| George Orwell  |          2 |
+| Frank Herbert  |          1 |
+| Jane Austen    |          1 |
+| Isaac Asimov   |          0 |  ← LEFT JOIN keeps this
++----------------+------------+
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 COUNT(b.id) vs COUNT(*)</h4>
+                    <p>With LEFT JOIN, use <code>COUNT(right_table.column)</code> instead of <code>COUNT(*)</code>. <code>COUNT(*)</code> would count Isaac Asimov's NULL row as 1, giving a misleading count. <code>COUNT(b.id)</code> correctly returns 0 because NULLs aren't counted.</p>
+                </div>
+
+                <h3>Total Revenue Per Customer</h3>
+
+                <pre><code class="language-sql">
+SELECT
+    c.first_name,
+    c.last_name,
+    COUNT(DISTINCT o.id) AS total_orders,
+    SUM(oi.quantity) AS items_bought,
+    ROUND(SUM(oi.quantity * b.price), 2) AS total_spent
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+LEFT JOIN order_items oi ON o.id = oi.order_id
+LEFT JOIN books b ON oi.book_id = b.id
+GROUP BY c.id, c.first_name, c.last_name
+ORDER BY total_spent DESC;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------+-----------+--------------+--------------+-------------+
+| first_name | last_name | total_orders | items_bought | total_spent |
++------------+-----------+--------------+--------------+-------------+
+| Alice      | Johnson   |            2 |            4 |       42.96 |
+| Bob        | Smith     |            1 |            1 |       14.99 |
+| Carol      | Williams  |            0 |         NULL |        NULL |
++------------+-----------+--------------+--------------+-------------+
+                    </code></pre>
+                </div>
+
+                <h3>Revenue Per Author</h3>
+
+                <pre><code class="language-sql">
+SELECT
+    a.name AS author,
+    SUM(oi.quantity) AS copies_sold,
+    ROUND(SUM(oi.quantity * b.price), 2) AS revenue
+FROM authors a
+INNER JOIN books b ON a.id = b.author_id
+INNER JOIN order_items oi ON b.id = oi.book_id
+GROUP BY a.id, a.name
+ORDER BY revenue DESC;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++---------------+-------------+---------+
+| author        | copies_sold | revenue |
++---------------+-------------+---------+
+| Frank Herbert |           2 |   29.98 |
+| George Orwell |           2 |   19.98 |
+| Jane Austen   |           1 |    7.99 |
++---------------+-------------+---------+
+                    </code></pre>
+                </div>
+
+                <h3>Filtering Groups with HAVING</h3>
+
+                <pre><code class="language-sql">
+-- Authors with total revenue over $15
+SELECT
+    a.name AS author,
+    ROUND(SUM(oi.quantity * b.price), 2) AS revenue
+FROM authors a
+INNER JOIN books b ON a.id = b.author_id
+INNER JOIN order_items oi ON b.id = oi.book_id
+GROUP BY a.id, a.name
+HAVING revenue > 15
+ORDER BY revenue DESC;
+                </code></pre>
+            </section>
+
+            <!-- Section 10: Choosing the Right JOIN -->
+            <section id="choosing" class="lesson-section">
+                <h2>Choosing the Right JOIN</h2>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>JOIN Type</th>
+                                <th>Returns</th>
+                                <th>Use When</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>INNER JOIN</code></td>
+                                <td>Only matching rows from both tables</td>
+                                <td>You only want results where both sides have data</td>
+                            </tr>
+                            <tr>
+                                <td><code>LEFT JOIN</code></td>
+                                <td>All left rows + matching right (NULLs for no match)</td>
+                                <td>You want all items from the left, even without matches</td>
+                            </tr>
+                            <tr>
+                                <td><code>RIGHT JOIN</code></td>
+                                <td>All right rows + matching left (NULLs for no match)</td>
+                                <td>Rarely used — rewrite as LEFT JOIN instead</td>
+                            </tr>
+                            <tr>
+                                <td><code>CROSS JOIN</code></td>
+                                <td>Every possible combination</td>
+                                <td>You need all permutations (sizes × colors, etc.)</td>
+                            </tr>
+                            <tr>
+                                <td>Self-Join</td>
+                                <td>Rows related to other rows in the same table</td>
+                                <td>Hierarchies (manager/employee) or peer comparisons</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mermaid">
+                    graph TD
+                        A["Do you need ALL rows from one table?"] -->|"No"| B["INNER JOIN"]
+                        A -->|"Yes"| C["Which table should keep all rows?"]
+                        C -->|"The first/left one"| D["LEFT JOIN"]
+                        C -->|"Both tables"| E["Two LEFT JOINs or FULL OUTER JOIN*"]
+                        A -->|"Need every combination?"| F["CROSS JOIN"]
+                        A -->|"Same table to itself?"| G["Self-Join"]
+                </div>
+
+                <p><small>*MySQL doesn't support FULL OUTER JOIN directly, but you can emulate it with a UNION of LEFT and RIGHT JOINs.</small></p>
+
+                <div class="card card-success">
+                    <h4>✅ Quick Decision Guide</h4>
+                    <ul>
+                        <li><strong>"Show me orders with customer names"</strong> → INNER JOIN (only orders that have customers)</li>
+                        <li><strong>"Show me ALL customers, even those without orders"</strong> → LEFT JOIN (customers on the left)</li>
+                        <li><strong>"Which customers have NEVER ordered?"</strong> → LEFT JOIN + WHERE IS NULL</li>
+                        <li><strong>"Every shirt in every color"</strong> → CROSS JOIN</li>
+                        <li><strong>"Show employees and their managers"</strong> → Self-join</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section 11: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: INNER JOIN</h3>
+                    <p>Write queries to:</p>
+                    <ol>
+                        <li>Show each book's title and its author's name</li>
+                        <li>Show each order's ID, date, and the customer's full name (first + last)</li>
+                        <li>Show each order item with the book title and quantity (join order_items to books)</li>
+                        <li>Show only books by George Orwell with their prices</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+SELECT b.title, a.name AS author
+FROM books b
+INNER JOIN authors a ON b.author_id = a.id;
+
+-- 2
+SELECT o.id AS order_id, o.order_date,
+       CONCAT(c.first_name, ' ', c.last_name) AS customer
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id;
+
+-- 3
+SELECT oi.id, b.title, oi.quantity
+FROM order_items oi
+INNER JOIN books b ON oi.book_id = b.id;
+
+-- 4
+SELECT b.title, b.price
+FROM books b
+INNER JOIN authors a ON b.author_id = a.id
+WHERE a.name = 'George Orwell';
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: LEFT JOIN</h3>
+                    <p>Write queries to:</p>
+                    <ol>
+                        <li>Show ALL authors and their books (including authors with no books)</li>
+                        <li>Find authors who have no books in the database</li>
+                        <li>Show ALL customers with their order count (including customers with 0 orders)</li>
+                        <li>Find books that have never been ordered</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+SELECT a.name AS author, b.title
+FROM authors a
+LEFT JOIN books b ON a.id = b.author_id;
+
+-- 2
+SELECT a.name AS author
+FROM authors a
+LEFT JOIN books b ON a.id = b.author_id
+WHERE b.id IS NULL;
+
+-- 3
+SELECT
+    c.first_name,
+    c.last_name,
+    COUNT(o.id) AS order_count
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.id, c.first_name, c.last_name;
+
+-- 4
+SELECT b.title
+FROM books b
+LEFT JOIN order_items oi ON b.id = oi.book_id
+WHERE oi.id IS NULL;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: Multi-Table JOINs</h3>
+                    <p>Write queries to:</p>
+                    <ol>
+                        <li>Show every order item with the customer name, book title, and quantity</li>
+                        <li>Calculate total revenue per author (SUM of quantity × price from order_items joined to books and authors)</li>
+                        <li>Find which customers bought books by George Orwell</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+SELECT
+    c.first_name,
+    c.last_name,
+    b.title,
+    oi.quantity
+FROM order_items oi
+INNER JOIN orders o ON oi.order_id = o.id
+INNER JOIN customers c ON o.customer_id = c.id
+INNER JOIN books b ON oi.book_id = b.id;
+
+-- 2
+SELECT
+    a.name AS author,
+    ROUND(SUM(oi.quantity * b.price), 2) AS revenue
+FROM authors a
+INNER JOIN books b ON a.id = b.author_id
+INNER JOIN order_items oi ON b.id = oi.book_id
+GROUP BY a.id, a.name
+ORDER BY revenue DESC;
+
+-- 3
+SELECT DISTINCT c.first_name, c.last_name
+FROM customers c
+INNER JOIN orders o ON c.id = o.customer_id
+INNER JOIN order_items oi ON o.id = oi.order_id
+INNER JOIN books b ON oi.book_id = b.id
+INNER JOIN authors a ON b.author_id = a.id
+WHERE a.name = 'George Orwell';
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 4: Combined Challenge</h3>
+                    <p>Write a single query that produces a customer report showing:</p>
+                    <ul>
+                        <li>Customer's full name</li>
+                        <li>Number of orders they've placed</li>
+                        <li>Total number of items bought (sum of quantities)</li>
+                        <li>Total amount spent</li>
+                        <li>Include ALL customers, even those with no orders (show 0 for counts, NULL for amount)</li>
+                        <li>Sort by total spent (highest first), with NULL values last</li>
+                    </ul>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+SELECT
+    CONCAT(c.first_name, ' ', c.last_name) AS customer,
+    COUNT(DISTINCT o.id) AS total_orders,
+    COALESCE(SUM(oi.quantity), 0) AS items_bought,
+    ROUND(SUM(oi.quantity * b.price), 2) AS total_spent
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+LEFT JOIN order_items oi ON o.id = oi.order_id
+LEFT JOIN books b ON oi.book_id = b.id
+GROUP BY c.id, c.first_name, c.last_name
+ORDER BY total_spent IS NULL, total_spent DESC;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What does INNER JOIN return?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! INNER JOIN returns only rows where there's a matching value in BOTH tables. Unmatched rows from either side are excluded.">
+                                A) Only rows with matches in both tables
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="That's LEFT JOIN — INNER JOIN excludes unmatched left rows.">
+                                B) All rows from the left table plus matches
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="That's CROSS JOIN — INNER JOIN only pairs rows that match on the ON condition.">
+                                C) Every possible combination of rows
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> How do you find customers who have never placed an order?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="INNER JOIN would ONLY show customers who HAVE orders — the opposite of what we want.">
+                                A) INNER JOIN customers to orders, then WHERE order_id IS NULL
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! LEFT JOIN keeps all customers, then WHERE o.id IS NULL filters for only those whose order columns are NULL — meaning no matching orders exist.">
+                                B) LEFT JOIN customers to orders, then WHERE orders.id IS NULL
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="CROSS JOIN creates all possible combinations — it doesn't help find missing relationships.">
+                                C) CROSS JOIN customers with orders
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> When using LEFT JOIN with COUNT, why use COUNT(right_table.column) instead of COUNT(*)?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Both are valid syntax. The difference is in how they handle NULLs from unmatched rows.">
+                                A) COUNT(*) causes a syntax error with LEFT JOIN
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! COUNT(*) counts all rows including those with NULLs from unmatched joins, giving a count of 1 for unmatched records. COUNT(column) skips NULLs, correctly returning 0 for items with no match.">
+                                B) COUNT(*) would count NULL rows as 1, giving incorrect counts
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Both work with LEFT JOIN. The issue is accuracy, not performance.">
+                                C) COUNT(column) is faster than COUNT(*)
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> When is a self-join appropriate?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Duplicating a table is unnecessary — a self-join queries the original table twice using aliases.">
+                                A) When you need to duplicate a table's data
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Self-joins are perfect for hierarchies (employees/managers), comparisons between rows in the same table (books by the same author), or finding related pairs.">
+                                B) When rows in a table relate to other rows in the same table
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="That's a regular multi-table JOIN. Self-joins specifically involve a table joined to itself.">
+                                C) When you need to join more than two different tables
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 12: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li><strong>INNER JOIN</strong> returns only matching rows from both tables — the most common join type</li>
+                        <li><strong>LEFT JOIN</strong> returns all left rows plus matching right rows (NULLs for no match)</li>
+                        <li><strong>LEFT JOIN + WHERE IS NULL</strong> finds rows with no match — extremely useful pattern</li>
+                        <li><strong>RIGHT JOIN</strong> is the mirror of LEFT JOIN — rarely used in practice</li>
+                        <li><strong>CROSS JOIN</strong> produces every combination (Cartesian product) — use with caution</li>
+                        <li><strong>Self-joins</strong> relate a table to itself using aliases — great for hierarchies</li>
+                        <li>Chain multiple JOINs to query across 3, 4, or more tables</li>
+                        <li>Use <strong>table aliases</strong> to keep queries readable</li>
+                        <li>With LEFT JOIN and COUNT, use <code>COUNT(column)</code> not <code>COUNT(*)</code> for accurate counts</li>
+                        <li>The <code>ON</code> clause defines the relationship; <code>WHERE</code> filters the results</li>
+                    </ul>
+                </div>
+
+                <h3>Quick Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pattern</th>
+                                <th>Syntax</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>INNER JOIN</td>
+                                <td><code>FROM a JOIN b ON a.id = b.a_id</code></td>
+                            </tr>
+                            <tr>
+                                <td>LEFT JOIN</td>
+                                <td><code>FROM a LEFT JOIN b ON a.id = b.a_id</code></td>
+                            </tr>
+                            <tr>
+                                <td>Find no match</td>
+                                <td><code>LEFT JOIN b ON ... WHERE b.id IS NULL</code></td>
+                            </tr>
+                            <tr>
+                                <td>CROSS JOIN</td>
+                                <td><code>FROM a CROSS JOIN b</code></td>
+                            </tr>
+                            <tr>
+                                <td>Self-join</td>
+                                <td><code>FROM t AS a JOIN t AS b ON a.col = b.col</code></td>
+                            </tr>
+                            <tr>
+                                <td>Multi-table</td>
+                                <td><code>FROM a JOIN b ON ... JOIN c ON ... JOIN d ON ...</code></td>
+                            </tr>
+                            <tr>
+                                <td>JOIN + aggregate</td>
+                                <td><code>JOIN ... GROUP BY ... HAVING ...</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/join.html" target="_blank" rel="noopener">MySQL Docs — JOIN Clause</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/nested-join-optimization.html" target="_blank" rel="noopener">MySQL Docs — Nested Join Optimization</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/outer-join-simplification.html" target="_blank" rel="noopener">MySQL Docs — Outer Join Simplification</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>That completes <strong>Module 4: Relationships &amp; Joins!</strong> You've gone from single-table queries to multi-table analytics — a massive leap. In <strong>Module 5: Database Design</strong>, you'll learn to make everything faster and cleaner: <strong>Indexes</strong> for query optimization, <strong>Views</strong> for simplifying complex queries, and <strong>Normalization</strong> for designing efficient schemas from scratch.</p>
+
+                <div class="card card-accent" style="text-align: center; padding: 2rem;">
+                    <h3>🎉 Module 4 Complete!</h3>
+                    <p>You've mastered JOINs — the single most powerful and most-tested concept in SQL. Relationships, foreign keys, and multi-table queries are now in your toolkit. You're writing real-world SQL!</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_12.html" class="prev-lesson">← Previous: Foreign Keys &amp; Referential Integrity</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_14.html" class="next-lesson">Next: Indexes &amp; Query Optimization →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

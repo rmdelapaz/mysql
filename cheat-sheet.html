@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MySQL cheat sheet — quick reference for all essential SQL commands, syntax, data types, operators, and functions covered in the MySQL Foundations course.">
+    <meta name="author" content="Ray De La Paz">
+    <title>MySQL Cheat Sheet - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li aria-current="page">MySQL Cheat Sheet</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>📋 MySQL Cheat Sheet</h1>
+                <p class="lead">A quick-reference guide to every essential MySQL command and concept from this course. Bookmark this page and come back whenever you need a syntax reminder.</p>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary><h2 style="display: inline; margin: 0;">📑 Sections</h2></summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#databases" class="toc-link">Database Commands</a></li>
+                        <li><a href="#tables" class="toc-link">Table Commands</a></li>
+                        <li><a href="#data-types" class="toc-link">Data Types</a></li>
+                        <li><a href="#constraints" class="toc-link">Constraints</a></li>
+                        <li><a href="#crud" class="toc-link">CRUD Operations</a></li>
+                        <li><a href="#filtering" class="toc-link">Filtering &amp; Sorting</a></li>
+                        <li><a href="#aggregates" class="toc-link">Aggregate Functions</a></li>
+                        <li><a href="#joins" class="toc-link">Joins</a></li>
+                        <li><a href="#subqueries" class="toc-link">Subqueries</a></li>
+                        <li><a href="#indexes-views" class="toc-link">Indexes &amp; Views</a></li>
+                        <li><a href="#procedures" class="toc-link">Stored Procedures &amp; Functions</a></li>
+                        <li><a href="#transactions" class="toc-link">Transactions</a></li>
+                        <li><a href="#users" class="toc-link">User Management</a></li>
+                        <li><a href="#import-export" class="toc-link">Import &amp; Export</a></li>
+                        <li><a href="#operators" class="toc-link">Operators Quick Reference</a></li>
+                        <li><a href="#string-functions" class="toc-link">String Functions</a></li>
+                        <li><a href="#date-functions" class="toc-link">Date &amp; Time Functions</a></li>
+                        <li><a href="#numeric-functions" class="toc-link">Numeric Functions</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Databases -->
+            <section id="databases" class="lesson-section">
+                <h2>Database Commands</h2>
+                <pre><code class="language-sql">
+-- Show all databases
+SHOW DATABASES;
+
+-- Create a database
+CREATE DATABASE bookstore;
+CREATE DATABASE IF NOT EXISTS bookstore;
+
+-- Use a database
+USE bookstore;
+
+-- Show which database is selected
+SELECT DATABASE();
+
+-- Drop a database
+DROP DATABASE bookstore;
+DROP DATABASE IF EXISTS bookstore;
+                </code></pre>
+            </section>
+
+            <!-- Tables -->
+            <section id="tables" class="lesson-section">
+                <h2>Table Commands</h2>
+                <pre><code class="language-sql">
+-- Show all tables in the current database
+SHOW TABLES;
+
+-- Describe a table's structure
+DESCRIBE books;
+DESC books;
+SHOW COLUMNS FROM books;
+
+-- Create a table
+CREATE TABLE books (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    price DECIMAL(10, 2) DEFAULT 0.00,
+    publication_year INT,
+    author_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (author_id) REFERENCES authors(id)
+);
+
+-- Alter a table
+ALTER TABLE books ADD COLUMN isbn VARCHAR(13);
+ALTER TABLE books DROP COLUMN isbn;
+ALTER TABLE books MODIFY COLUMN title VARCHAR(300) NOT NULL;
+ALTER TABLE books RENAME COLUMN title TO book_title;
+ALTER TABLE books RENAME TO publications;
+
+-- Drop a table
+DROP TABLE books;
+DROP TABLE IF EXISTS books;
+
+-- Truncate (delete all rows, keep structure)
+TRUNCATE TABLE books;
+                </code></pre>
+            </section>
+
+            <!-- Data Types -->
+            <section id="data-types" class="lesson-section">
+                <h2>Data Types</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Category</th><th>Type</th><th>Description</th><th>Example</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td rowspan="4"><strong>Numeric</strong></td><td><code>INT</code></td><td>Whole numbers (-2B to 2B)</td><td><code>42</code></td></tr>
+                            <tr><td><code>BIGINT</code></td><td>Large whole numbers</td><td><code>9223372036854775807</code></td></tr>
+                            <tr><td><code>DECIMAL(p, s)</code></td><td>Exact decimal (use for money)</td><td><code>DECIMAL(10,2)</code> → <code>12345678.99</code></td></tr>
+                            <tr><td><code>FLOAT / DOUBLE</code></td><td>Approximate decimal</td><td><code>3.14159</code></td></tr>
+                            <tr><td rowspan="4"><strong>String</strong></td><td><code>VARCHAR(n)</code></td><td>Variable-length string up to n chars</td><td><code>VARCHAR(200)</code></td></tr>
+                            <tr><td><code>CHAR(n)</code></td><td>Fixed-length string (padded)</td><td><code>CHAR(2)</code> → state codes</td></tr>
+                            <tr><td><code>TEXT</code></td><td>Long text (up to 64 KB)</td><td>Blog posts, descriptions</td></tr>
+                            <tr><td><code>ENUM('a','b')</code></td><td>One value from a list</td><td><code>ENUM('draft','published')</code></td></tr>
+                            <tr><td rowspan="4"><strong>Date/Time</strong></td><td><code>DATE</code></td><td>Date only</td><td><code>'2026-04-16'</code></td></tr>
+                            <tr><td><code>TIME</code></td><td>Time only</td><td><code>'14:30:00'</code></td></tr>
+                            <tr><td><code>DATETIME</code></td><td>Date and time</td><td><code>'2026-04-16 14:30:00'</code></td></tr>
+                            <tr><td><code>TIMESTAMP</code></td><td>Date/time (auto UTC conversion)</td><td><code>CURRENT_TIMESTAMP</code></td></tr>
+                            <tr><td><strong>Boolean</strong></td><td><code>BOOLEAN / TINYINT(1)</code></td><td>True (1) or False (0)</td><td><code>TRUE</code>, <code>FALSE</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Constraints -->
+            <section id="constraints" class="lesson-section">
+                <h2>Constraints</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Constraint</th><th>Purpose</th><th>Example</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>PRIMARY KEY</code></td><td>Unique identifier for each row</td><td><code>id INT PRIMARY KEY</code></td></tr>
+                            <tr><td><code>AUTO_INCREMENT</code></td><td>Auto-generate sequential IDs</td><td><code>id INT AUTO_INCREMENT</code></td></tr>
+                            <tr><td><code>NOT NULL</code></td><td>Column cannot be empty</td><td><code>name VARCHAR(100) NOT NULL</code></td></tr>
+                            <tr><td><code>UNIQUE</code></td><td>No duplicate values</td><td><code>email VARCHAR(255) UNIQUE</code></td></tr>
+                            <tr><td><code>DEFAULT</code></td><td>Default value if none provided</td><td><code>status VARCHAR(20) DEFAULT 'active'</code></td></tr>
+                            <tr><td><code>CHECK</code></td><td>Validate values (MySQL 8.0.16+)</td><td><code>CHECK (price >= 0)</code></td></tr>
+                            <tr><td><code>FOREIGN KEY</code></td><td>Link to another table's primary key</td><td><code>FOREIGN KEY (author_id) REFERENCES authors(id)</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Foreign Key Actions</h3>
+                <pre><code class="language-sql">
+FOREIGN KEY (author_id) REFERENCES authors(id)
+    ON DELETE CASCADE        -- Delete child rows when parent is deleted
+    ON DELETE SET NULL       -- Set to NULL when parent is deleted
+    ON DELETE RESTRICT       -- Prevent deletion if children exist (default)
+    ON UPDATE CASCADE        -- Update child values when parent key changes
+                </code></pre>
+            </section>
+
+            <!-- CRUD -->
+            <section id="crud" class="lesson-section">
+                <h2>CRUD Operations</h2>
+                <pre><code class="language-sql">
+-- INSERT (Create)
+INSERT INTO books (title, price, author_id) VALUES ('1984', 11.99, 1);
+INSERT INTO books (title, price) VALUES
+    ('Dune', 14.99),
+    ('Neuromancer', 12.99);
+
+-- SELECT (Read)
+SELECT * FROM books;
+SELECT title, price FROM books;
+SELECT title AS book_title, price AS cost FROM books;   -- Aliases
+SELECT DISTINCT author_id FROM books;                   -- Unique values
+
+-- UPDATE
+UPDATE books SET price = 13.99 WHERE id = 1;
+UPDATE books SET price = price * 1.10 WHERE price < 10; -- Increase by 10%
+
+-- DELETE
+DELETE FROM books WHERE id = 5;
+DELETE FROM books WHERE price IS NULL;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Always use WHERE with UPDATE and DELETE!</h4>
+                    <p>Without WHERE, every row is affected. Run a SELECT with the same WHERE first to verify.</p>
+                </div>
+            </section>
+
+            <!-- Filtering -->
+            <section id="filtering" class="lesson-section">
+                <h2>Filtering &amp; Sorting</h2>
+                <pre><code class="language-sql">
+-- WHERE clause
+SELECT * FROM books WHERE price > 10;
+SELECT * FROM books WHERE price BETWEEN 10 AND 20;
+SELECT * FROM books WHERE author_id IN (1, 3, 5);
+SELECT * FROM books WHERE title LIKE '%gatsby%';          -- Contains
+SELECT * FROM books WHERE title LIKE 'The%';              -- Starts with
+SELECT * FROM books WHERE publication_year IS NULL;
+SELECT * FROM books WHERE price > 10 AND author_id = 1;
+SELECT * FROM books WHERE price > 20 OR author_id = 2;
+SELECT * FROM books WHERE NOT author_id = 3;
+
+-- ORDER BY
+SELECT * FROM books ORDER BY price ASC;                   -- Low to high
+SELECT * FROM books ORDER BY price DESC;                  -- High to low
+SELECT * FROM books ORDER BY author_id ASC, price DESC;   -- Multi-column
+
+-- LIMIT & OFFSET
+SELECT * FROM books LIMIT 10;                             -- First 10 rows
+SELECT * FROM books LIMIT 10 OFFSET 20;                   -- Rows 21–30
+                </code></pre>
+            </section>
+
+            <!-- Aggregates -->
+            <section id="aggregates" class="lesson-section">
+                <h2>Aggregate Functions</h2>
+                <pre><code class="language-sql">
+-- Basic aggregates
+SELECT COUNT(*) FROM books;
+SELECT COUNT(DISTINCT author_id) FROM books;
+SELECT SUM(price) FROM books;
+SELECT AVG(price) FROM books;
+SELECT MIN(price), MAX(price) FROM books;
+
+-- GROUP BY
+SELECT author_id, COUNT(*) AS total, AVG(price) AS avg_price
+FROM books
+GROUP BY author_id;
+
+-- HAVING (filter groups — like WHERE but for aggregates)
+SELECT author_id, COUNT(*) AS total
+FROM books
+GROUP BY author_id
+HAVING total >= 3;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Query Execution Order</h4>
+                    <p><code>FROM</code> → <code>WHERE</code> → <code>GROUP BY</code> → <code>HAVING</code> → <code>SELECT</code> → <code>ORDER BY</code> → <code>LIMIT</code></p>
+                </div>
+            </section>
+
+            <!-- Joins -->
+            <section id="joins" class="lesson-section">
+                <h2>Joins</h2>
+                <pre><code class="language-sql">
+-- INNER JOIN (rows that match in both tables)
+SELECT b.title, a.name
+FROM books b
+INNER JOIN authors a ON b.author_id = a.id;
+
+-- LEFT JOIN (all rows from left table + matches from right)
+SELECT b.title, a.name
+FROM books b
+LEFT JOIN authors a ON b.author_id = a.id;
+
+-- RIGHT JOIN (all rows from right table + matches from left)
+SELECT b.title, a.name
+FROM books b
+RIGHT JOIN authors a ON b.author_id = a.id;
+
+-- CROSS JOIN (every combination — Cartesian product)
+SELECT b.title, c.name
+FROM books b
+CROSS JOIN categories c;
+
+-- Self-join (table joined to itself)
+SELECT e.name AS employee, m.name AS manager
+FROM employees e
+LEFT JOIN employees m ON e.manager_id = m.id;
+
+-- Multi-table join
+SELECT b.title, a.name AS author, p.name AS publisher
+FROM books b
+JOIN authors a ON b.author_id = a.id
+JOIN publishers p ON b.publisher_id = p.id;
+
+-- Many-to-many (via junction table)
+SELECT b.title, g.name AS genre
+FROM books b
+JOIN book_genres bg ON b.id = bg.book_id
+JOIN genres g ON bg.genre_id = g.id;
+                </code></pre>
+            </section>
+
+            <!-- Subqueries -->
+            <section id="subqueries" class="lesson-section">
+                <h2>Subqueries</h2>
+                <pre><code class="language-sql">
+-- Scalar subquery (returns one value)
+SELECT title, price
+FROM books
+WHERE price > (SELECT AVG(price) FROM books);
+
+-- IN with subquery (returns a list)
+SELECT name FROM authors
+WHERE id IN (SELECT DISTINCT author_id FROM books WHERE price > 20);
+
+-- EXISTS (true if subquery returns any rows)
+SELECT name FROM authors a
+WHERE EXISTS (SELECT 1 FROM books b WHERE b.author_id = a.id);
+
+-- Subquery in FROM (derived table)
+SELECT avg_by_author.author_id, avg_by_author.avg_price
+FROM (
+    SELECT author_id, AVG(price) AS avg_price
+    FROM books GROUP BY author_id
+) AS avg_by_author
+WHERE avg_by_author.avg_price > 15;
+                </code></pre>
+            </section>
+
+            <!-- Indexes & Views -->
+            <section id="indexes-views" class="lesson-section">
+                <h2>Indexes &amp; Views</h2>
+                <pre><code class="language-sql">
+-- Create an index
+CREATE INDEX idx_author_id ON books(author_id);
+CREATE UNIQUE INDEX idx_email ON customers(email);
+CREATE INDEX idx_name_year ON books(author_id, publication_year);  -- Composite
+
+-- Show indexes
+SHOW INDEX FROM books;
+
+-- Drop an index
+DROP INDEX idx_author_id ON books;
+
+-- Analyze a query's execution plan
+EXPLAIN SELECT * FROM books WHERE author_id = 3;
+
+-- Create a view
+CREATE VIEW cheap_books AS
+SELECT title, price FROM books WHERE price < 10;
+
+-- Use the view like a table
+SELECT * FROM cheap_books;
+
+-- Replace a view
+CREATE OR REPLACE VIEW cheap_books AS
+SELECT title, price, author_id FROM books WHERE price < 15;
+
+-- Drop a view
+DROP VIEW IF EXISTS cheap_books;
+                </code></pre>
+            </section>
+
+            <!-- Stored Procedures -->
+            <section id="procedures" class="lesson-section">
+                <h2>Stored Procedures &amp; Functions</h2>
+                <pre><code class="language-sql">
+-- Stored procedure
+DELIMITER //
+CREATE PROCEDURE get_books_by_author(IN p_author_id INT)
+BEGIN
+    SELECT title, price FROM books WHERE author_id = p_author_id;
+END //
+DELIMITER ;
+
+-- Call a procedure
+CALL get_books_by_author(1);
+
+-- Procedure with OUT parameter
+DELIMITER //
+CREATE PROCEDURE count_books(IN p_author_id INT, OUT p_count INT)
+BEGIN
+    SELECT COUNT(*) INTO p_count FROM books WHERE author_id = p_author_id;
+END //
+DELIMITER ;
+
+CALL count_books(1, @total);
+SELECT @total;
+
+-- Stored function (returns a value)
+DELIMITER //
+CREATE FUNCTION discount_price(original DECIMAL(10,2), pct INT)
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    RETURN original * (1 - pct / 100);
+END //
+DELIMITER ;
+
+-- Use the function
+SELECT title, price, discount_price(price, 20) AS sale_price FROM books;
+
+-- Drop
+DROP PROCEDURE IF EXISTS get_books_by_author;
+DROP FUNCTION IF EXISTS discount_price;
+                </code></pre>
+            </section>
+
+            <!-- Transactions -->
+            <section id="transactions" class="lesson-section">
+                <h2>Transactions</h2>
+                <pre><code class="language-sql">
+-- Basic transaction
+START TRANSACTION;
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+    UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+COMMIT;
+
+-- Rollback on error
+START TRANSACTION;
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+    -- Something goes wrong...
+ROLLBACK;
+
+-- Savepoints
+START TRANSACTION;
+    INSERT INTO orders (...) VALUES (...);
+    SAVEPOINT after_order;
+    INSERT INTO order_items (...) VALUES (...);
+    -- Problem with items? Roll back to savepoint
+    ROLLBACK TO after_order;
+    -- Fix and retry...
+COMMIT;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 ACID Properties</h4>
+                    <p><strong>A</strong>tomicity — all or nothing. <strong>C</strong>onsistency — data stays valid. <strong>I</strong>solation — transactions don't interfere. <strong>D</strong>urability — committed data survives crashes.</p>
+                </div>
+            </section>
+
+            <!-- Users -->
+            <section id="users" class="lesson-section">
+                <h2>User Management</h2>
+                <pre><code class="language-sql">
+-- Create a user
+CREATE USER 'app_user'@'localhost' IDENTIFIED BY 'SecurePass123!';
+
+-- Grant privileges
+GRANT SELECT, INSERT, UPDATE ON bookstore.* TO 'app_user'@'localhost';
+GRANT ALL PRIVILEGES ON bookstore.* TO 'admin'@'localhost';
+
+-- View privileges
+SHOW GRANTS FOR 'app_user'@'localhost';
+
+-- Revoke privileges
+REVOKE DELETE ON bookstore.* FROM 'app_user'@'localhost';
+
+-- Change password
+ALTER USER 'app_user'@'localhost' IDENTIFIED BY 'NewPass!';
+
+-- Lock / unlock
+ALTER USER 'app_user'@'localhost' ACCOUNT LOCK;
+ALTER USER 'app_user'@'localhost' ACCOUNT UNLOCK;
+
+-- Delete a user
+DROP USER IF EXISTS 'app_user'@'localhost';
+
+-- Roles (MySQL 8+)
+CREATE ROLE 'reader';
+GRANT SELECT ON bookstore.* TO 'reader';
+GRANT 'reader' TO 'alice'@'localhost';
+SET DEFAULT ROLE ALL TO 'alice'@'localhost';
+
+-- List all users
+SELECT User, Host FROM mysql.user;
+                </code></pre>
+            </section>
+
+            <!-- Import/Export -->
+            <section id="import-export" class="lesson-section">
+                <h2>Import &amp; Export</h2>
+                <pre><code class="language-bash">
+# --- TERMINAL COMMANDS (not inside mysql>) ---
+
+# Dump a database
+mysqldump -u root -p bookstore > backup.sql
+
+# Dump specific tables
+mysqldump -u root -p bookstore books authors > partial.sql
+
+# Dump all databases
+mysqldump -u root -p --all-databases > full_backup.sql
+
+# Schema only (no data)
+mysqldump -u root -p --no-data bookstore > schema.sql
+
+# Production-safe dump (InnoDB, no locking)
+mysqldump -u root -p --single-transaction --routines --triggers bookstore > backup.sql
+
+# Restore a dump
+mysql -u root -p bookstore < backup.sql
+
+# CLI CSV import
+mysqlimport -u root -p --local --fields-terminated-by=',' --ignore-lines=1 bookstore books.csv
+                </code></pre>
+
+                <pre><code class="language-sql">
+-- --- INSIDE MYSQL ---
+
+-- Export to CSV
+SELECT id, title, price
+INTO OUTFILE '/tmp/books.csv'
+FIELDS TERMINATED BY ',' ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+FROM books;
+
+-- Import from CSV
+LOAD DATA INFILE '/tmp/books.csv'
+INTO TABLE books
+FIELDS TERMINATED BY ',' ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+
+-- Check file path restrictions
+SHOW VARIABLES LIKE 'secure_file_priv';
+                </code></pre>
+            </section>
+
+            <!-- Operators -->
+            <section id="operators" class="lesson-section">
+                <h2>Operators Quick Reference</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Category</th><th>Operator</th><th>Example</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td rowspan="6"><strong>Comparison</strong></td><td><code>=</code></td><td><code>price = 10</code></td></tr>
+                            <tr><td><code>!=</code> or <code>&lt;&gt;</code></td><td><code>status != 'active'</code></td></tr>
+                            <tr><td><code>&lt;</code>, <code>&gt;</code></td><td><code>price &gt; 20</code></td></tr>
+                            <tr><td><code>&lt;=</code>, <code>&gt;=</code></td><td><code>quantity &lt;= 0</code></td></tr>
+                            <tr><td><code>BETWEEN</code></td><td><code>price BETWEEN 10 AND 20</code></td></tr>
+                            <tr><td><code>IN</code></td><td><code>id IN (1, 2, 3)</code></td></tr>
+                            <tr><td rowspan="3"><strong>Logical</strong></td><td><code>AND</code></td><td><code>price &gt; 10 AND stock &gt; 0</code></td></tr>
+                            <tr><td><code>OR</code></td><td><code>category = 'fiction' OR category = 'sci-fi'</code></td></tr>
+                            <tr><td><code>NOT</code></td><td><code>NOT status = 'deleted'</code></td></tr>
+                            <tr><td rowspan="2"><strong>Pattern</strong></td><td><code>LIKE</code></td><td><code>title LIKE '%war%'</code> (<code>%</code> = any chars, <code>_</code> = one char)</td></tr>
+                            <tr><td><code>REGEXP</code></td><td><code>title REGEXP '^The'</code></td></tr>
+                            <tr><td rowspan="2"><strong>NULL</strong></td><td><code>IS NULL</code></td><td><code>email IS NULL</code></td></tr>
+                            <tr><td><code>IS NOT NULL</code></td><td><code>email IS NOT NULL</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- String Functions -->
+            <section id="string-functions" class="lesson-section">
+                <h2>String Functions</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Function</th><th>Description</th><th>Example</th><th>Result</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>CONCAT()</code></td><td>Combine strings</td><td><code>CONCAT(first, ' ', last)</code></td><td><code>'John Doe'</code></td></tr>
+                            <tr><td><code>CONCAT_WS()</code></td><td>Combine with separator</td><td><code>CONCAT_WS(', ', city, state)</code></td><td><code>'Austin, TX'</code></td></tr>
+                            <tr><td><code>UPPER()</code></td><td>Uppercase</td><td><code>UPPER('hello')</code></td><td><code>'HELLO'</code></td></tr>
+                            <tr><td><code>LOWER()</code></td><td>Lowercase</td><td><code>LOWER('HELLO')</code></td><td><code>'hello'</code></td></tr>
+                            <tr><td><code>TRIM()</code></td><td>Remove whitespace</td><td><code>TRIM('  hi  ')</code></td><td><code>'hi'</code></td></tr>
+                            <tr><td><code>SUBSTRING()</code></td><td>Extract part of string</td><td><code>SUBSTRING('Hello', 1, 3)</code></td><td><code>'Hel'</code></td></tr>
+                            <tr><td><code>LENGTH()</code></td><td>String length (bytes)</td><td><code>LENGTH('Hello')</code></td><td><code>5</code></td></tr>
+                            <tr><td><code>CHAR_LENGTH()</code></td><td>String length (characters)</td><td><code>CHAR_LENGTH('Hello')</code></td><td><code>5</code></td></tr>
+                            <tr><td><code>REPLACE()</code></td><td>Replace occurrences</td><td><code>REPLACE('abc', 'b', 'x')</code></td><td><code>'axc'</code></td></tr>
+                            <tr><td><code>LEFT() / RIGHT()</code></td><td>First/last N characters</td><td><code>LEFT('Hello', 2)</code></td><td><code>'He'</code></td></tr>
+                            <tr><td><code>REVERSE()</code></td><td>Reverse a string</td><td><code>REVERSE('Hello')</code></td><td><code>'olleH'</code></td></tr>
+                            <tr><td><code>COALESCE()</code></td><td>First non-NULL value</td><td><code>COALESCE(nickname, name)</code></td><td>Returns nickname or name</td></tr>
+                            <tr><td><code>IFNULL()</code></td><td>Default if NULL</td><td><code>IFNULL(phone, 'N/A')</code></td><td>Phone or <code>'N/A'</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Date Functions -->
+            <section id="date-functions" class="lesson-section">
+                <h2>Date &amp; Time Functions</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Function</th><th>Description</th><th>Example</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>NOW()</code></td><td>Current date and time</td><td><code>'2026-04-16 14:30:00'</code></td></tr>
+                            <tr><td><code>CURDATE()</code></td><td>Current date</td><td><code>'2026-04-16'</code></td></tr>
+                            <tr><td><code>CURTIME()</code></td><td>Current time</td><td><code>'14:30:00'</code></td></tr>
+                            <tr><td><code>YEAR() / MONTH() / DAY()</code></td><td>Extract parts</td><td><code>YEAR('2026-04-16')</code> → <code>2026</code></td></tr>
+                            <tr><td><code>DATE_FORMAT()</code></td><td>Format a date</td><td><code>DATE_FORMAT(NOW(), '%M %d, %Y')</code></td></tr>
+                            <tr><td><code>DATE_ADD()</code></td><td>Add to a date</td><td><code>DATE_ADD(NOW(), INTERVAL 7 DAY)</code></td></tr>
+                            <tr><td><code>DATE_SUB()</code></td><td>Subtract from a date</td><td><code>DATE_SUB(NOW(), INTERVAL 1 MONTH)</code></td></tr>
+                            <tr><td><code>DATEDIFF()</code></td><td>Days between two dates</td><td><code>DATEDIFF('2026-12-31', '2026-01-01')</code> → <code>364</code></td></tr>
+                            <tr><td><code>TIMESTAMPDIFF()</code></td><td>Difference in units</td><td><code>TIMESTAMPDIFF(YEAR, birth, NOW())</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Numeric Functions -->
+            <section id="numeric-functions" class="lesson-section">
+                <h2>Numeric Functions</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Function</th><th>Description</th><th>Example</th><th>Result</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>ROUND()</code></td><td>Round to N decimals</td><td><code>ROUND(3.14159, 2)</code></td><td><code>3.14</code></td></tr>
+                            <tr><td><code>CEIL()</code></td><td>Round up</td><td><code>CEIL(3.2)</code></td><td><code>4</code></td></tr>
+                            <tr><td><code>FLOOR()</code></td><td>Round down</td><td><code>FLOOR(3.9)</code></td><td><code>3</code></td></tr>
+                            <tr><td><code>ABS()</code></td><td>Absolute value</td><td><code>ABS(-5)</code></td><td><code>5</code></td></tr>
+                            <tr><td><code>MOD()</code></td><td>Modulo (remainder)</td><td><code>MOD(10, 3)</code></td><td><code>1</code></td></tr>
+                            <tr><td><code>POWER()</code></td><td>Exponentiation</td><td><code>POWER(2, 3)</code></td><td><code>8</code></td></tr>
+                            <tr><td><code>SQRT()</code></td><td>Square root</td><td><code>SQRT(16)</code></td><td><code>4</code></td></tr>
+                            <tr><td><code>RAND()</code></td><td>Random float 0–1</td><td><code>RAND()</code></td><td><code>0.7342...</code></td></tr>
+                            <tr><td><code>TRUNCATE()</code></td><td>Truncate decimals</td><td><code>TRUNCATE(3.14159, 2)</code></td><td><code>3.14</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Back to Home -->
+            <nav class="lesson-nav" aria-label="Page Navigation">
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

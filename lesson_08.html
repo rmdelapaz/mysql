@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn to sort query results with ORDER BY (ascending and descending), limit output with LIMIT, and implement pagination with OFFSET in MySQL.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Sorting &amp; Limiting Results - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 3: Querying Data</a></li>
+            <li aria-current="page">Lesson 8: Sorting &amp; Limiting Results</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>📊 Lesson 8: Sorting &amp; Limiting Results</h1>
+                <p class="lead">Raw query results come back in whatever order MySQL feels like returning them. That's fine for debugging, but real applications need sorted results and pagination. In this lesson, you'll learn to control the order and quantity of your output.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Sort results with <code>ORDER BY</code> in ascending and descending order</li>
+                        <li>Sort by multiple columns with priority ordering</li>
+                        <li>Limit output to a fixed number of rows with <code>LIMIT</code></li>
+                        <li>Skip rows with <code>OFFSET</code> for pagination</li>
+                        <li>Combine <code>WHERE</code>, <code>ORDER BY</code>, and <code>LIMIT</code> in real-world patterns</li>
+                        <li>Understand how NULL values are sorted</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 40 minutes</p>
+                    <p><strong>Prerequisites:</strong> WHERE clauses and filtering (<a href="lesson_07.html">Lesson 7</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#order-by" class="toc-link">ORDER BY — Sorting Results</a></li>
+                        <li><a href="#multi-sort" class="toc-link">Sorting by Multiple Columns</a></li>
+                        <li><a href="#null-sorting" class="toc-link">How NULL Values Sort</a></li>
+                        <li><a href="#limit" class="toc-link">LIMIT — Controlling Row Count</a></li>
+                        <li><a href="#offset" class="toc-link">OFFSET — Skipping Rows</a></li>
+                        <li><a href="#pagination" class="toc-link">Pagination Patterns</a></li>
+                        <li><a href="#clause-order" class="toc-link">SQL Clause Order</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: ORDER BY -->
+            <section id="order-by" class="lesson-section">
+                <h2>ORDER BY — Sorting Results</h2>
+                <p>Without <code>ORDER BY</code>, MySQL returns rows in no guaranteed order — it might be insertion order, primary key order, or something else entirely. Never rely on default order. If you want a specific order, <strong>always use ORDER BY</strong>.</p>
+
+                <h3>Ascending Order (ASC) — The Default</h3>
+
+                <pre><code class="language-sql">
+-- Sort books by price, cheapest first
+SELECT title, price FROM books ORDER BY price;
+
+-- Same thing — ASC is the default
+SELECT title, price FROM books ORDER BY price ASC;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------------------------+-------+
+| title                   | price |
++-------------------------+-------+
+| Pride and Prejudice     |  7.99 |
+| The Great Gatsby        |  8.99 |
+| The Catcher in the Rye  |  8.99 |
+| Brave New World         |  9.49 |
+| 1984                    |  9.99 |
+| Fahrenheit 451          | 10.49 |
+| The Hobbit              | 10.99 |
+| To Kill a Mockingbird   | 11.99 |
+| Dune                    | 14.99 |
+| Lord of the Rings       | 15.99 |
++-------------------------+-------+
+                    </code></pre>
+                </div>
+
+                <h3>Descending Order (DESC)</h3>
+
+                <pre><code class="language-sql">
+-- Sort books by price, most expensive first
+SELECT title, price FROM books ORDER BY price DESC;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------------------------+-------+
+| title                   | price |
++-------------------------+-------+
+| Lord of the Rings       | 15.99 |
+| Dune                    | 14.99 |
+| To Kill a Mockingbird   | 11.99 |
+| The Hobbit              | 10.99 |
+| Fahrenheit 451          | 10.49 |
+| 1984                    |  9.99 |
+| Brave New World         |  9.49 |
+| The Great Gatsby        |  8.99 |
+| The Catcher in the Rye  |  8.99 |
+| Pride and Prejudice     |  7.99 |
++-------------------------+-------+
+                    </code></pre>
+                </div>
+
+                <h3>Sorting Text</h3>
+                <p>Text sorts alphabetically (A→Z for ASC, Z→A for DESC):</p>
+
+                <pre><code class="language-sql">
+-- Alphabetical by title
+SELECT title FROM books ORDER BY title ASC;
+
+-- Alphabetical by author
+SELECT DISTINCT author FROM books ORDER BY author;
+
+-- Reverse alphabetical by last name
+SELECT first_name, last_name FROM customers ORDER BY last_name DESC;
+                </code></pre>
+
+                <h3>Sorting Dates</h3>
+                <p>Dates sort chronologically — earliest first with <code>ASC</code>, latest first with <code>DESC</code>:</p>
+
+                <pre><code class="language-sql">
+-- Oldest books first
+SELECT title, published FROM books ORDER BY published ASC;
+
+-- Newest books first
+SELECT title, published FROM books ORDER BY published DESC;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output (newest first):</h4>
+                    <pre><code>
++-------------------------+------------+
+| title                   | published  |
++-------------------------+------------+
+| Dune                    | 1965-08-01 |
+| To Kill a Mockingbird   | 1960-07-11 |
+| Lord of the Rings       | 1954-07-29 |
+| Fahrenheit 451          | 1953-10-19 |
+| The Catcher in the Rye  | 1951-07-16 |
+| 1984                    | 1949-06-08 |
+| The Hobbit              | 1937-09-21 |
+| Brave New World         | 1932-01-01 |
+| The Great Gatsby        | 1925-04-10 |
+| Pride and Prejudice     | 1813-01-28 |
++-------------------------+------------+
+                    </code></pre>
+                </div>
+
+                <h3>Sorting with WHERE</h3>
+                <p><code>ORDER BY</code> works with <code>WHERE</code> — filter first, then sort the results:</p>
+
+                <pre><code class="language-sql">
+-- In-stock books, cheapest first
+SELECT title, price FROM books
+WHERE in_stock = TRUE
+ORDER BY price ASC;
+
+-- Books over $10, newest first
+SELECT title, price, published FROM books
+WHERE price > 10
+ORDER BY published DESC;
+                </code></pre>
+            </section>
+
+            <!-- Section 2: Multi-Column Sort -->
+            <section id="multi-sort" class="lesson-section">
+                <h2>Sorting by Multiple Columns</h2>
+                <p>When two rows have the same value in the first sort column, the second column breaks the tie:</p>
+
+                <pre><code class="language-sql">
+-- Sort by price, then by title (for books at the same price)
+SELECT title, price FROM books
+ORDER BY price ASC, title ASC;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output (notice the $8.99 books are now alphabetized):</h4>
+                    <pre><code>
++-------------------------+-------+
+| title                   | price |
++-------------------------+-------+
+| Pride and Prejudice     |  7.99 |
+| The Catcher in the Rye  |  8.99 |  ← alphabetical
+| The Great Gatsby        |  8.99 |  ← tie-breaker
+| Brave New World         |  9.49 |
+| 1984                    |  9.99 |
+| Fahrenheit 451          | 10.49 |
+| The Hobbit              | 10.99 |
+| To Kill a Mockingbird   | 11.99 |
+| Dune                    | 14.99 |
+| Lord of the Rings       | 15.99 |
++-------------------------+-------+
+                    </code></pre>
+                </div>
+
+                <p>Each column can have its own direction:</p>
+
+                <pre><code class="language-sql">
+-- Sort by in_stock (in-stock first), then by price (cheapest first)
+SELECT title, in_stock, price FROM books
+ORDER BY in_stock DESC, price ASC;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Why In-Stock DESC?</h4>
+                    <p>Remember that MySQL stores <code>TRUE</code> as <code>1</code> and <code>FALSE</code> as <code>0</code>. <code>DESC</code> puts <code>1</code> (TRUE/in-stock) before <code>0</code> (FALSE/out-of-stock) — so in-stock books appear first.</p>
+                </div>
+
+                <pre><code class="language-sql">
+-- Customers sorted by city, then last name within each city
+SELECT first_name, last_name, city FROM customers
+WHERE city IS NOT NULL
+ORDER BY city ASC, last_name ASC;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------+-----------+-------------+
+| first_name | last_name | city        |
++------------+-----------+-------------+
+| Bob        | Smith     | Chicago     |
+| Grace      | Wilson    | Chicago     |
+| Dave       | Brown     | Houston     |
+| Carol      | Williams  | Los Angeles |
+| Alice      | Johnson   | New York    |
+| Frank      | Miller    | New York    |
++------------+-----------+-------------+
+                    </code></pre>
+                </div>
+
+                <h3>Sorting by Expressions</h3>
+                <p>You can sort by calculated values, not just column names:</p>
+
+                <pre><code class="language-sql">
+-- Sort by price per page (value for money!)
+SELECT
+    title,
+    price,
+    pages,
+    ROUND(price / pages, 4) AS price_per_page
+FROM books
+WHERE pages > 0
+ORDER BY price_per_page ASC;
+                </code></pre>
+
+                <pre><code class="language-sql">
+-- Sort by column position (not recommended, but possible)
+SELECT title, author, price FROM books
+ORDER BY 3 DESC;  -- sorts by the 3rd column (price)
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Avoid Sorting by Column Number</h4>
+                    <p>Sorting by position (<code>ORDER BY 3</code>) works but is fragile — if someone adds or reorders columns in the SELECT list, the sort breaks silently. Always use column names.</p>
+                </div>
+            </section>
+
+            <!-- Section 3: NULL Sorting -->
+            <section id="null-sorting" class="lesson-section">
+                <h2>How NULL Values Sort</h2>
+                <p>MySQL treats <code>NULL</code> as the lowest possible value:</p>
+                <ul>
+                    <li><code>ORDER BY col ASC</code> → NULLs appear <strong>first</strong></li>
+                    <li><code>ORDER BY col DESC</code> → NULLs appear <strong>last</strong></li>
+                </ul>
+
+                <pre><code class="language-sql">
+-- NULLs first (ascending)
+SELECT first_name, city FROM customers ORDER BY city ASC;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Eve        | NULL        |  ← NULLs first in ASC
+| Hank       | NULL        |
+| Bob        | Chicago     |
+| Grace      | Chicago     |
+| Dave       | Houston     |
+| Carol      | Los Angeles |
+| Alice      | New York    |
+| Frank      | New York    |
++------------+-------------+
+                    </code></pre>
+                </div>
+
+                <h3>Controlling NULL Position</h3>
+                <p>If you want NULLs at the end of an ascending sort, use a trick with <code>IS NULL</code>:</p>
+
+                <pre><code class="language-sql">
+-- Ascending, but push NULLs to the bottom
+SELECT first_name, city FROM customers
+ORDER BY city IS NULL ASC, city ASC;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Grace      | Chicago     |
+| Dave       | Houston     |
+| Carol      | Los Angeles |
+| Alice      | New York    |
+| Frank      | New York    |
+| Eve        | NULL        |  ← NULLs at the end now
+| Hank       | NULL        |
++------------+-------------+
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 How This Works</h4>
+                    <p><code>city IS NULL</code> evaluates to <code>1</code> (TRUE) for NULL cities and <code>0</code> (FALSE) for non-NULL cities. Sorting this <code>ASC</code> puts 0 (has a city) before 1 (NULL city). Then the second sort column <code>city ASC</code> sorts the non-NULL cities alphabetically.</p>
+                </div>
+            </section>
+
+            <!-- Section 4: LIMIT -->
+            <section id="limit" class="lesson-section">
+                <h2>LIMIT — Controlling Row Count</h2>
+                <p><code>LIMIT</code> restricts how many rows are returned. It's essential for performance (don't fetch a million rows when you need 10) and for building application features like "top N" lists.</p>
+
+                <h3>Basic LIMIT</h3>
+
+                <pre><code class="language-sql">
+-- The 3 cheapest books
+SELECT title, price FROM books
+ORDER BY price ASC
+LIMIT 3;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------------------------+-------+
+| title                   | price |
++-------------------------+-------+
+| Pride and Prejudice     |  7.99 |
+| The Great Gatsby        |  8.99 |
+| The Catcher in the Rye  |  8.99 |
++-------------------------+-------+
+                    </code></pre>
+                </div>
+
+                <pre><code class="language-sql">
+-- The 5 most expensive books
+SELECT title, price FROM books
+ORDER BY price DESC
+LIMIT 5;
+
+-- The 3 longest books
+SELECT title, pages FROM books
+ORDER BY pages DESC
+LIMIT 3;
+
+-- The newest book
+SELECT title, published FROM books
+ORDER BY published DESC
+LIMIT 1;
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ Common Patterns with LIMIT</h4>
+                    <p><code>LIMIT 1</code> is especially useful for finding the single "most" or "least" of something:</p>
+                    <pre><code class="language-sql">
+-- Most expensive book
+SELECT title, price FROM books ORDER BY price DESC LIMIT 1;
+
+-- Oldest book
+SELECT title, published FROM books ORDER BY published ASC LIMIT 1;
+
+-- Most recently created customer
+SELECT * FROM customers ORDER BY created_at DESC LIMIT 1;
+                    </code></pre>
+                </div>
+
+                <h3>LIMIT with WHERE</h3>
+
+                <pre><code class="language-sql">
+-- Top 3 cheapest in-stock books
+SELECT title, price FROM books
+WHERE in_stock = TRUE
+ORDER BY price ASC
+LIMIT 3;
+
+-- The 2 most expensive books under $15
+SELECT title, price FROM books
+WHERE price < 15
+ORDER BY price DESC
+LIMIT 2;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ LIMIT Without ORDER BY</h4>
+                    <p><code>LIMIT</code> without <code>ORDER BY</code> returns an arbitrary subset of rows — MySQL doesn't guarantee which ones. This is rarely useful. <strong>Always pair LIMIT with ORDER BY</strong> unless you genuinely don't care which rows you get.</p>
+                </div>
+            </section>
+
+            <!-- Section 5: OFFSET -->
+            <section id="offset" class="lesson-section">
+                <h2>OFFSET — Skipping Rows</h2>
+                <p><code>OFFSET</code> tells MySQL to skip a number of rows before starting to return results. Combined with <code>LIMIT</code>, it enables pagination.</p>
+
+                <pre><code class="language-sql">
+-- Skip the first 3 rows, then return the next 3
+SELECT title, price FROM books
+ORDER BY price ASC
+LIMIT 3 OFFSET 3;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output (rows 4–6 by price):</h4>
+                    <pre><code>
++-----------------+-------+
+| title           | price |
++-----------------+-------+
+| Brave New World |  9.49 |
+| 1984            |  9.99 |
+| Fahrenheit 451  | 10.49 |
++-----------------+-------+
+                    </code></pre>
+                </div>
+
+                <h3>Alternative Syntax</h3>
+                <p>MySQL also supports a comma syntax: <code>LIMIT offset, count</code>:</p>
+
+                <pre><code class="language-sql">
+-- Same as LIMIT 3 OFFSET 3:
+SELECT title, price FROM books
+ORDER BY price ASC
+LIMIT 3, 3;
+-- The first number is the offset, the second is the count
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Which Syntax to Use?</h4>
+                    <p><code>LIMIT 3 OFFSET 3</code> is clearer and more readable than <code>LIMIT 3, 3</code>. The comma syntax is older and easier to misread (which number is offset and which is count?). Prefer the <code>LIMIT ... OFFSET ...</code> form.</p>
+                </div>
+
+                <div class="mermaid">
+                    graph LR
+                        subgraph All_Rows["All 10 books sorted by price"]
+                            R1["Row 1"] --> R2["Row 2"] --> R3["Row 3"] --> R4["Row 4"] --> R5["Row 5"] --> R6["Row 6"] --> R7["Row 7"] --> R8["Row 8"] --> R9["Row 9"] --> R10["Row 10"]
+                        end
+                        subgraph OFFSET_3["OFFSET 3 (skip these)"]
+                            R1
+                            R2
+                            R3
+                        end
+                        subgraph LIMIT_3["LIMIT 3 (return these)"]
+                            R4
+                            R5
+                            R6
+                        end
+                </div>
+            </section>
+
+            <!-- Section 6: Pagination -->
+            <section id="pagination" class="lesson-section">
+                <h2>Pagination Patterns</h2>
+                <p>Pagination is how applications display large datasets across multiple pages — like search results, product listings, or email inboxes. The formula is:</p>
+
+                <pre><code class="language-sql">
+-- Page N with P items per page:
+SELECT columns FROM table
+ORDER BY sort_column
+LIMIT P OFFSET (N - 1) * P;
+                </code></pre>
+
+                <h3>Example: 3 Books Per Page</h3>
+
+                <pre><code class="language-sql">
+-- Page 1 (first 3 books)
+SELECT title, price FROM books ORDER BY title LIMIT 3 OFFSET 0;
+
+-- Page 2 (next 3 books)
+SELECT title, price FROM books ORDER BY title LIMIT 3 OFFSET 3;
+
+-- Page 3 (next 3 books)
+SELECT title, price FROM books ORDER BY title LIMIT 3 OFFSET 6;
+
+-- Page 4 (remaining book)
+SELECT title, price FROM books ORDER BY title LIMIT 3 OFFSET 9;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Page 1 Output:</h4>
+                    <pre><code>
++-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| 1984                  |  9.99 |
+| Brave New World       |  9.49 |
+| Dune                  | 14.99 |
++-----------------------+-------+
+                    </code></pre>
+                </div>
+
+                <div class="card card-output">
+                    <h4>Page 2 Output:</h4>
+                    <pre><code>
++-------------------------+-------+
+| title                   | price |
++-------------------------+-------+
+| Fahrenheit 451          | 10.49 |
+| Lord of the Rings       | 15.99 |
+| Pride and Prejudice     |  7.99 |
++-------------------------+-------+
+                    </code></pre>
+                </div>
+
+                <h3>Getting the Total Count</h3>
+                <p>For pagination UI (showing "Page 2 of 4" or "Showing 4–6 of 10"), you also need the total row count:</p>
+
+                <pre><code class="language-sql">
+-- Total number of books
+SELECT COUNT(*) AS total_books FROM books;
+
+-- Total in-stock books (for filtered pagination)
+SELECT COUNT(*) AS total_in_stock FROM books WHERE in_stock = TRUE;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ OFFSET Performance on Large Tables</h4>
+                    <p><code>OFFSET</code> doesn't skip rows efficiently — MySQL still reads and discards them. <code>OFFSET 100000</code> means MySQL reads 100,000 rows just to throw them away. For large datasets (millions of rows), consider these alternatives:</p>
+                    <ul>
+                        <li><strong>Keyset pagination</strong> — <code>WHERE id > last_seen_id LIMIT 10</code> (much faster)</li>
+                        <li><strong>Covering indexes</strong> — ensure the sort column is indexed</li>
+                        <li><strong>Caching</strong> — cache page results in the application layer</li>
+                    </ul>
+                    <p>For our course and most small-to-medium applications, <code>OFFSET</code> works perfectly fine.</p>
+                </div>
+
+                <h3>Keyset Pagination Preview</h3>
+                <p>For comparison, here's how keyset pagination works — instead of skipping by count, you filter by the last value seen:</p>
+
+                <pre><code class="language-sql">
+-- Page 1: get the first 3 books by ID
+SELECT id, title, price FROM books
+ORDER BY id ASC
+LIMIT 3;
+-- Returns IDs 1, 2, 3
+
+-- Page 2: get 3 books AFTER id 3
+SELECT id, title, price FROM books
+WHERE id > 3
+ORDER BY id ASC
+LIMIT 3;
+-- Returns IDs 4, 5, 6
+
+-- Page 3: get 3 books AFTER id 6
+SELECT id, title, price FROM books
+WHERE id > 6
+ORDER BY id ASC
+LIMIT 3;
+                </code></pre>
+
+                <p>This avoids the <code>OFFSET</code> penalty entirely and is how most high-traffic APIs implement pagination.</p>
+            </section>
+
+            <!-- Section 7: Clause Order -->
+            <section id="clause-order" class="lesson-section">
+                <h2>SQL Clause Order</h2>
+                <p>SQL clauses must appear in a specific order. Getting this wrong causes syntax errors. Here's the order for everything we've learned so far:</p>
+
+                <div class="mermaid">
+                    graph TD
+                        A["SELECT columns"] --> B["FROM table"]
+                        B --> C["WHERE conditions"]
+                        C --> D["ORDER BY columns"]
+                        D --> E["LIMIT count"]
+                        E --> F["OFFSET skip"]
+                </div>
+
+                <pre><code class="language-sql">
+-- The full pattern:
+SELECT title, price
+FROM books
+WHERE in_stock = TRUE AND price < 15
+ORDER BY price ASC
+LIMIT 5
+OFFSET 0;
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ Memory Aid</h4>
+                    <p>Think of it as a pipeline: <strong>S</strong>elect what you want → <strong>F</strong>rom where → <strong>W</strong>hich rows → <strong>O</strong>rder them → <strong>L</strong>imit how many. Or just remember: <strong>S-F-W-O-L</strong>.</p>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Common Mistake</h4>
+                    <p>Putting <code>ORDER BY</code> before <code>WHERE</code> is a syntax error:</p>
+                    <pre><code class="language-sql">
+-- ⛔ WRONG — ORDER BY can't come before WHERE
+SELECT title FROM books ORDER BY price WHERE price > 10;
+
+-- ✅ CORRECT
+SELECT title FROM books WHERE price > 10 ORDER BY price;
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Section 8: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: Basic Sorting</h3>
+                    <p>Write queries to:</p>
+                    <ol>
+                        <li>List all books alphabetically by title</li>
+                        <li>List all books from most expensive to cheapest</li>
+                        <li>List all customers alphabetically by last name, then first name</li>
+                        <li>List all books from newest to oldest publication date</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+SELECT title FROM books ORDER BY title ASC;
+
+-- 2
+SELECT title, price FROM books ORDER BY price DESC;
+
+-- 3
+SELECT last_name, first_name FROM customers
+ORDER BY last_name ASC, first_name ASC;
+
+-- 4
+SELECT title, published FROM books ORDER BY published DESC;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: LIMIT &amp; Top N</h3>
+                    <p>Write queries to find:</p>
+                    <ol>
+                        <li>The 3 most expensive books</li>
+                        <li>The single oldest book in the database</li>
+                        <li>The 5 shortest books (fewest pages)</li>
+                        <li>The 3 cheapest in-stock books</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1
+SELECT title, price FROM books
+ORDER BY price DESC LIMIT 3;
+
+-- 2
+SELECT title, published FROM books
+ORDER BY published ASC LIMIT 1;
+
+-- 3
+SELECT title, pages FROM books
+ORDER BY pages ASC LIMIT 5;
+
+-- 4
+SELECT title, price FROM books
+WHERE in_stock = TRUE
+ORDER BY price ASC LIMIT 3;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: Pagination</h3>
+                    <p>Imagine a bookstore website showing 4 books per page, sorted by title alphabetically. Write queries for:</p>
+                    <ol>
+                        <li>Page 1 (first 4 books)</li>
+                        <li>Page 2 (next 4 books)</li>
+                        <li>Page 3 (remaining books)</li>
+                        <li>The total number of books (for "Page X of Y")</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- Page 1
+SELECT title, price FROM books
+ORDER BY title LIMIT 4 OFFSET 0;
+
+-- Page 2
+SELECT title, price FROM books
+ORDER BY title LIMIT 4 OFFSET 4;
+
+-- Page 3
+SELECT title, price FROM books
+ORDER BY title LIMIT 4 OFFSET 8;
+
+-- Total count
+SELECT COUNT(*) AS total_books FROM books;
+-- Returns 10 → 10 / 4 = 3 pages (with 2 books on the last page)
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 4: Combined Challenge</h3>
+                    <p>Write a single query that:</p>
+                    <ul>
+                        <li>Shows the title, author, price, and pages</li>
+                        <li>Only includes in-stock books</li>
+                        <li>Only includes books with more than 200 pages</li>
+                        <li>Sorts by pages (most pages first)</li>
+                        <li>Returns only the top 5 results</li>
+                    </ul>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+SELECT title, author, price, pages
+FROM books
+WHERE in_stock = TRUE
+  AND pages > 200
+ORDER BY pages DESC
+LIMIT 5;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What is the default sort direction for ORDER BY?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Without specifying ASC or DESC, ORDER BY defaults to ascending (A→Z, 0→9, oldest→newest).">
+                                A) ASC (ascending)
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="DESC must be explicitly specified — ASC is the default.">
+                                B) DESC (descending)
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="There IS a default — MySQL doesn't choose randomly.">
+                                C) Random — MySQL decides
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> Where do NULL values appear in an ascending sort?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! MySQL treats NULL as the lowest possible value, so NULLs come first in ASC order and last in DESC order.">
+                                A) First (before all other values)
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="NULLs come last in DESC, not in ASC.">
+                                B) Last (after all other values)
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="NULLs aren't excluded — they have a defined position.">
+                                C) They are excluded from results
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> What does <code>LIMIT 5 OFFSET 10</code> do?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="LIMIT controls how many rows are returned, not the starting point.">
+                                A) Returns the first 5 rows and the first 10 rows
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! OFFSET 10 skips the first 10 rows, then LIMIT 5 returns the next 5 (rows 11–15).">
+                                B) Skips 10 rows, then returns the next 5
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="OFFSET skips rows — it doesn't return them.">
+                                C) Returns 10 rows starting from row 5
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> What is the correct order of SQL clauses?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="WHERE must come before ORDER BY.">
+                                A) SELECT → FROM → ORDER BY → WHERE → LIMIT
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The clause order is: SELECT → FROM → WHERE → ORDER BY → LIMIT (→ OFFSET). Getting this wrong causes syntax errors.">
+                                B) SELECT → FROM → WHERE → ORDER BY → LIMIT
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="LIMIT always comes after ORDER BY, not before it.">
+                                C) SELECT → FROM → WHERE → LIMIT → ORDER BY
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 9: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li><strong>ORDER BY</strong> sorts results — <code>ASC</code> (default) for ascending, <code>DESC</code> for descending</li>
+                        <li>You can sort by <strong>multiple columns</strong> — the second column is the tie-breaker</li>
+                        <li>Each sort column can have its <strong>own direction</strong> (ASC or DESC)</li>
+                        <li><strong>NULL values</strong> sort as the lowest value — first in ASC, last in DESC</li>
+                        <li><strong>LIMIT N</strong> returns only N rows — essential for "top N" queries</li>
+                        <li><strong>OFFSET M</strong> skips M rows before returning results</li>
+                        <li><strong>Pagination formula:</strong> <code>LIMIT page_size OFFSET (page - 1) * page_size</code></li>
+                        <li>Always pair <code>LIMIT</code> with <code>ORDER BY</code> for predictable results</li>
+                        <li>SQL clause order: <strong>SELECT → FROM → WHERE → ORDER BY → LIMIT → OFFSET</strong></li>
+                        <li>For large tables, <strong>keyset pagination</strong> (<code>WHERE id > last_id</code>) outperforms <code>OFFSET</code></li>
+                    </ul>
+                </div>
+
+                <h3>Quick Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pattern</th>
+                                <th>Syntax</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Sort ascending</td>
+                                <td><code>ORDER BY col ASC</code></td>
+                            </tr>
+                            <tr>
+                                <td>Sort descending</td>
+                                <td><code>ORDER BY col DESC</code></td>
+                            </tr>
+                            <tr>
+                                <td>Multi-column sort</td>
+                                <td><code>ORDER BY col1 ASC, col2 DESC</code></td>
+                            </tr>
+                            <tr>
+                                <td>NULLs last (ASC)</td>
+                                <td><code>ORDER BY col IS NULL, col ASC</code></td>
+                            </tr>
+                            <tr>
+                                <td>Top N</td>
+                                <td><code>ORDER BY col LIMIT N</code></td>
+                            </tr>
+                            <tr>
+                                <td>Pagination</td>
+                                <td><code>LIMIT size OFFSET (page-1)*size</code></td>
+                            </tr>
+                            <tr>
+                                <td>Keyset pagination</td>
+                                <td><code>WHERE id > last_id LIMIT size</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/order-by-optimization.html" target="_blank" rel="noopener">MySQL Docs — ORDER BY Optimization</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/limit-optimization.html" target="_blank" rel="noopener">MySQL Docs — LIMIT Optimization</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/select.html" target="_blank" rel="noopener">MySQL Docs — SELECT Statement</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>You can now filter, sort, and paginate — but what about asking questions <em>about</em> your data? "How many books do we have?" "What's the average price?" "Which author has the most books?" In the next lesson, you'll learn <strong>aggregate functions</strong> (<code>COUNT</code>, <code>SUM</code>, <code>AVG</code>, <code>MIN</code>, <code>MAX</code>) and <strong>GROUP BY</strong> — the tools that turn raw data into insights.</p>
+
+                <div class="card card-accent" style="text-align: center; padding: 2rem;">
+                    <h3>🎉 Congratulations!</h3>
+                    <p>Your queries now produce polished, organized results. Sorted, limited, and paginated — just like a real application!</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_07.html" class="prev-lesson">← Previous: WHERE Clauses &amp; Filtering</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_09.html" class="next-lesson">Next: Aggregate Functions &amp; GROUP BY →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

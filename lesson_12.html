@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn how MySQL foreign key constraints enforce referential integrity with ON DELETE and ON UPDATE rules — CASCADE, SET NULL, RESTRICT, and more.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Foreign Keys &amp; Referential Integrity - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 4: Relationships &amp; Joins</a></li>
+            <li aria-current="page">Lesson 12: Foreign Keys &amp; Referential Integrity</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🛡️ Lesson 12: Foreign Keys &amp; Referential Integrity</h1>
+                <p class="lead">In the last lesson, you designed tables with foreign key columns — but what stops someone from inserting an order with <code>customer_id = 999</code> when no such customer exists? What happens when you delete a customer who has orders? <strong>Foreign key constraints</strong> are the rules MySQL enforces to keep your data consistent and your relationships trustworthy.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Explain what referential integrity means and why it matters</li>
+                        <li>Create foreign key constraints with <code>FOREIGN KEY ... REFERENCES</code></li>
+                        <li>Choose the right <code>ON DELETE</code> action: CASCADE, SET NULL, RESTRICT, NO ACTION</li>
+                        <li>Choose the right <code>ON UPDATE</code> action for your use case</li>
+                        <li>Add, drop, and modify foreign keys on existing tables</li>
+                        <li>Troubleshoot common foreign key errors</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 45 minutes</p>
+                    <p><strong>Prerequisites:</strong> Table relationships (<a href="lesson_11.html">Lesson 11</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#referential-integrity" class="toc-link">What Is Referential Integrity?</a></li>
+                        <li><a href="#creating-fks" class="toc-link">Creating Foreign Key Constraints</a></li>
+                        <li><a href="#on-delete" class="toc-link">ON DELETE — What Happens When You Delete a Parent</a></li>
+                        <li><a href="#on-update" class="toc-link">ON UPDATE — What Happens When You Change a Parent's Key</a></li>
+                        <li><a href="#choosing-actions" class="toc-link">Choosing the Right Action</a></li>
+                        <li><a href="#alter-table" class="toc-link">Adding &amp; Dropping Foreign Keys</a></li>
+                        <li><a href="#checking-fks" class="toc-link">Viewing Foreign Key Information</a></li>
+                        <li><a href="#troubleshooting" class="toc-link">Troubleshooting FK Errors</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: Referential Integrity -->
+            <section id="referential-integrity" class="lesson-section">
+                <h2>What Is Referential Integrity?</h2>
+                <p><strong>Referential integrity</strong> means every foreign key value in a child table must match an existing primary key value in the parent table (or be NULL, if the FK allows NULLs). In plain English: <em>you can't reference something that doesn't exist.</em></p>
+
+                <div class="mermaid">
+                    graph LR
+                        subgraph Valid["✅ Valid — customer 1 exists"]
+                            O1["Order: customer_id = 1"] -->|"references"| C1["Customer: id = 1"]
+                        end
+                        subgraph Invalid["⛔ Invalid — customer 999 doesn't exist"]
+                            O2["Order: customer_id = 999"] -->|"references ???"| C2["No customer with id 999"]
+                        end
+                </div>
+
+                <h3>Without Foreign Key Constraints</h3>
+                <p>Without constraints, MySQL happily accepts bad data:</p>
+
+                <pre><code class="language-sql">
+-- Without a FK constraint, this succeeds even though customer 999 doesn't exist!
+INSERT INTO orders (customer_id, order_date, total)
+VALUES (999, '2026-04-15', 29.99);
+-- No error — but now you have an "orphan" order pointing to nobody
+                </code></pre>
+
+                <h3>With Foreign Key Constraints</h3>
+                <p>With constraints, MySQL blocks invalid references:</p>
+
+                <pre><code class="language-sql">
+-- With a FK constraint, this FAILS:
+INSERT INTO orders (customer_id, order_date, total)
+VALUES (999, '2026-04-15', 29.99);
+-- ERROR 1452: Cannot add or update a child row:
+-- a foreign key constraint fails
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ What Referential Integrity Guarantees</h4>
+                    <ul>
+                        <li><strong>No orphan records</strong> — every child row points to a real parent</li>
+                        <li><strong>No broken links</strong> — you can't delete a parent while children still reference it (unless you specify what should happen)</li>
+                        <li><strong>Data consistency</strong> — relationships are always valid, enforced at the database level</li>
+                        <li><strong>Application safety</strong> — even if application code has bugs, the database prevents corruption</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section 2: Creating FKs -->
+            <section id="creating-fks" class="lesson-section">
+                <h2>Creating Foreign Key Constraints</h2>
+
+                <h3>Inline Syntax (During CREATE TABLE)</h3>
+
+                <pre><code class="language-sql">
+CREATE TABLE orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    order_date DATE NOT NULL,
+    total DECIMAL(10, 2) DEFAULT 0,
+
+    -- Foreign key constraint
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
+                </code></pre>
+
+                <h3>Named Constraints</h3>
+                <p>Giving your constraints explicit names makes them easier to manage later:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    order_date DATE NOT NULL,
+    total DECIMAL(10, 2) DEFAULT 0,
+
+    -- Named foreign key constraint
+    CONSTRAINT fk_orders_customer
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Naming Convention</h4>
+                    <p>A common pattern is <code>fk_childtable_parenttable</code> or <code>fk_childtable_column</code>. For example:</p>
+                    <ul>
+                        <li><code>fk_orders_customer</code> — orders table's FK to customers</li>
+                        <li><code>fk_order_items_order</code> — order_items table's FK to orders</li>
+                        <li><code>fk_order_items_book</code> — order_items table's FK to books</li>
+                    </ul>
+                    <p>If you don't name them, MySQL generates names like <code>orders_ibfk_1</code> — not very helpful when debugging.</p>
+                </div>
+
+                <h3>Requirements for Foreign Keys</h3>
+                <p>Both the FK column and the referenced column must:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Requirement</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Same data type</td>
+                                <td><code>INT</code> must reference <code>INT</code>, not <code>VARCHAR</code></td>
+                            </tr>
+                            <tr>
+                                <td>Same size/sign</td>
+                                <td><code>INT UNSIGNED</code> must reference <code>INT UNSIGNED</code></td>
+                            </tr>
+                            <tr>
+                                <td>Referenced column must be indexed</td>
+                                <td>Primary keys are automatically indexed; other columns need an explicit index</td>
+                            </tr>
+                            <tr>
+                                <td>InnoDB engine</td>
+                                <td>Foreign keys only work with InnoDB (MySQL's default engine)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 3: ON DELETE -->
+            <section id="on-delete" class="lesson-section">
+                <h2>ON DELETE — What Happens When You Delete a Parent</h2>
+                <p>The big question: what should MySQL do when you try to delete a customer who has orders? You have four choices:</p>
+
+                <div class="mermaid">
+                    graph TD
+                        A["DELETE FROM customers WHERE id = 1"] --> B{"Customer has orders?"}
+                        B -->|"No"| C["Row deleted ✅"]
+                        B -->|"Yes"| D{"ON DELETE action?"}
+                        D -->|"RESTRICT"| E["Block the delete ⛔"]
+                        D -->|"CASCADE"| F["Delete customer AND all their orders"]
+                        D -->|"SET NULL"| G["Delete customer, set orders.customer_id = NULL"]
+                        D -->|"NO ACTION"| H["Same as RESTRICT in MySQL"]
+                </div>
+
+                <h3>RESTRICT (The Default)</h3>
+                <p>Blocks the delete entirely if any child rows exist:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    CONSTRAINT fk_orders_customer
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+        ON DELETE RESTRICT
+);
+
+-- If customer 1 has orders:
+DELETE FROM customers WHERE id = 1;
+-- ERROR 1451: Cannot delete or update a parent row:
+-- a foreign key constraint fails
+                </code></pre>
+
+                <p>This is the safest option — it forces you to deal with the child rows first.</p>
+
+                <h3>CASCADE — Delete Everything</h3>
+                <p>Automatically deletes all child rows when the parent is deleted:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    CONSTRAINT fk_orders_customer
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+        ON DELETE CASCADE
+);
+
+-- Deleting customer 1 ALSO deletes all their orders automatically
+DELETE FROM customers WHERE id = 1;
+-- Customer gone, all their orders gone too
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ CASCADE Can Be Dangerous</h4>
+                    <p>CASCADE can trigger chain reactions. If orders cascade-delete, and order_items also cascade on orders, then deleting one customer wipes out the customer + all their orders + all their order items. This might be exactly what you want (cleaning up a test user) — or it might be disastrous (accidentally deleting years of sales history).</p>
+                    <p><strong>Rule of thumb:</strong> Only use CASCADE when the child data truly has no meaning without the parent.</p>
+                </div>
+
+                <h3>SET NULL — Preserve the Child, Break the Link</h3>
+                <p>Keeps the child rows but sets their FK column to NULL:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT,   -- Must allow NULL for SET NULL to work!
+    CONSTRAINT fk_orders_customer
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+        ON DELETE SET NULL
+);
+
+-- Deleting customer 1 sets their orders' customer_id to NULL
+DELETE FROM customers WHERE id = 1;
+-- Customer gone, but orders still exist with customer_id = NULL
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 SET NULL Requires a Nullable Column</h4>
+                    <p>If the FK column is <code>NOT NULL</code>, <code>ON DELETE SET NULL</code> will fail with an error. Make sure the column allows NULLs if you use this option.</p>
+                </div>
+
+                <h3>NO ACTION</h3>
+                <p>In MySQL, <code>NO ACTION</code> is functionally identical to <code>RESTRICT</code> — it blocks the delete. The distinction matters in other databases that support deferred constraint checking, but in MySQL they behave the same way.</p>
+
+                <h3>Comparison</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>Parent Deleted?</th>
+                                <th>Child Rows</th>
+                                <th>When to Use</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>RESTRICT</code></td>
+                                <td>No — blocked</td>
+                                <td>Unchanged</td>
+                                <td>Must manually handle children first</td>
+                            </tr>
+                            <tr>
+                                <td><code>CASCADE</code></td>
+                                <td>Yes</td>
+                                <td>Deleted automatically</td>
+                                <td>Children meaningless without parent</td>
+                            </tr>
+                            <tr>
+                                <td><code>SET NULL</code></td>
+                                <td>Yes</td>
+                                <td>FK set to NULL</td>
+                                <td>Children should survive, link is optional</td>
+                            </tr>
+                            <tr>
+                                <td><code>NO ACTION</code></td>
+                                <td>No — blocked</td>
+                                <td>Unchanged</td>
+                                <td>Same as RESTRICT in MySQL</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 4: ON UPDATE -->
+            <section id="on-update" class="lesson-section">
+                <h2>ON UPDATE — What Happens When You Change a Parent's Key</h2>
+                <p><code>ON UPDATE</code> controls what happens when you change a parent's primary key value. The options are the same as ON DELETE:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    CONSTRAINT fk_orders_customer
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE    -- if customer.id changes, update all orders too
+);
+                </code></pre>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>What Happens</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>RESTRICT</code></td>
+                                <td>Blocks the update if any children reference this PK</td>
+                            </tr>
+                            <tr>
+                                <td><code>CASCADE</code></td>
+                                <td>Updates all child FK values to match the new PK</td>
+                            </tr>
+                            <tr>
+                                <td><code>SET NULL</code></td>
+                                <td>Sets child FK values to NULL</td>
+                            </tr>
+                            <tr>
+                                <td><code>NO ACTION</code></td>
+                                <td>Same as RESTRICT in MySQL</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 In Practice, ON UPDATE Is Rarely Needed</h4>
+                    <p>If your primary keys use <code>AUTO_INCREMENT</code> (as they should in most cases), you'll almost never change a PK value. The ID is just a surrogate key — it has no real-world meaning to change. So <code>ON UPDATE CASCADE</code> is mostly a safety net.</p>
+                    <p>If you use natural keys (like an email address as a PK), then <code>ON UPDATE CASCADE</code> becomes very useful — emails do change.</p>
+                </div>
+
+                <h3>Combining ON DELETE and ON UPDATE</h3>
+
+                <pre><code class="language-sql">
+-- A practical combination
+CREATE TABLE order_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    book_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    price_at_time DECIMAL(6, 2) NOT NULL,
+
+    CONSTRAINT fk_items_order
+        FOREIGN KEY (order_id) REFERENCES orders(id)
+        ON DELETE CASCADE       -- delete items when order is deleted
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_items_book
+        FOREIGN KEY (book_id) REFERENCES books(id)
+        ON DELETE RESTRICT      -- can't delete a book that's been ordered
+        ON UPDATE CASCADE
+);
+                </code></pre>
+
+                <p>Notice how different relationships use different rules: order items should disappear with their order (CASCADE), but you shouldn't be able to delete a book that appears in past orders (RESTRICT).</p>
+            </section>
+
+            <!-- Section 5: Choosing the Right Action -->
+            <section id="choosing-actions" class="lesson-section">
+                <h2>Choosing the Right Action</h2>
+                <p>Here's a decision framework for choosing your ON DELETE action:</p>
+
+                <div class="mermaid">
+                    graph TD
+                        A["Can the child exist without the parent?"] -->|"No"| B["CASCADE"]
+                        A -->|"Yes"| C["Should the child keep a record of the parent?"]
+                        C -->|"No — just break the link"| D["SET NULL"]
+                        C -->|"Yes — prevent deletion"| E["RESTRICT"]
+                </div>
+
+                <h3>Common Patterns</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Scenario</th>
+                                <th>ON DELETE</th>
+                                <th>Reasoning</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Order → Order Items</td>
+                                <td>CASCADE</td>
+                                <td>Line items are meaningless without their order</td>
+                            </tr>
+                            <tr>
+                                <td>Customer → Orders</td>
+                                <td>RESTRICT</td>
+                                <td>Don't lose sales history; deactivate instead of deleting</td>
+                            </tr>
+                            <tr>
+                                <td>Book → Order Items</td>
+                                <td>RESTRICT</td>
+                                <td>Can't delete a book that's part of order history</td>
+                            </tr>
+                            <tr>
+                                <td>Author → Books</td>
+                                <td>RESTRICT</td>
+                                <td>Don't delete an author with published books</td>
+                            </tr>
+                            <tr>
+                                <td>Post → Comments</td>
+                                <td>CASCADE</td>
+                                <td>Comments belong to the post</td>
+                            </tr>
+                            <tr>
+                                <td>User → Posts</td>
+                                <td>SET NULL</td>
+                                <td>Keep posts but show "deleted user"</td>
+                            </tr>
+                            <tr>
+                                <td>Department → Employees</td>
+                                <td>SET NULL</td>
+                                <td>Employees still exist if department is dissolved</td>
+                            </tr>
+                            <tr>
+                                <td>Book ↔ Categories (junction)</td>
+                                <td>CASCADE</td>
+                                <td>Remove links when either side is deleted</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ The Golden Rule</h4>
+                    <p><strong>When in doubt, use RESTRICT.</strong> It's the safest default — it prevents accidental data loss and forces you to think about the consequences. You can always change it later, but you can't un-delete cascaded rows.</p>
+                </div>
+            </section>
+
+            <!-- Section 6: ALTER TABLE -->
+            <section id="alter-table" class="lesson-section">
+                <h2>Adding &amp; Dropping Foreign Keys</h2>
+                <p>You can add foreign keys to existing tables with <code>ALTER TABLE</code>:</p>
+
+                <h3>Adding a Foreign Key</h3>
+
+                <pre><code class="language-sql">
+-- Add a FK to an existing table
+ALTER TABLE orders
+    ADD CONSTRAINT fk_orders_customer
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Existing Data Must Be Valid</h4>
+                    <p>If the <code>orders</code> table already has rows with <code>customer_id</code> values that don't exist in <code>customers</code>, the ALTER TABLE will fail. You must fix the invalid data first:</p>
+                    <pre><code class="language-sql">
+-- Find orphan orders
+SELECT o.id, o.customer_id
+FROM orders o
+LEFT JOIN customers c ON o.customer_id = c.id
+WHERE c.id IS NULL;
+
+-- Fix them (delete or update) before adding the constraint
+DELETE FROM orders WHERE customer_id NOT IN (SELECT id FROM customers);
+                    </code></pre>
+                </div>
+
+                <h3>Dropping a Foreign Key</h3>
+
+                <pre><code class="language-sql">
+-- Drop by constraint name
+ALTER TABLE orders DROP FOREIGN KEY fk_orders_customer;
+
+-- If you also want to drop the index MySQL created:
+ALTER TABLE orders DROP INDEX fk_orders_customer;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Why Drop a FK?</h4>
+                    <p>Common reasons include: changing the constraint rules (drop and re-add), bulk importing data where temporary constraint violations are expected, or restructuring the schema. Always re-add constraints after bulk operations.</p>
+                </div>
+
+                <h3>Changing a Foreign Key's Rules</h3>
+                <p>You can't directly modify an FK constraint — you have to drop and recreate it:</p>
+
+                <pre><code class="language-sql">
+-- Step 1: Drop the old constraint
+ALTER TABLE orders DROP FOREIGN KEY fk_orders_customer;
+
+-- Step 2: Add it back with new rules
+ALTER TABLE orders
+    ADD CONSTRAINT fk_orders_customer
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
+    ON DELETE CASCADE       -- changed from RESTRICT to CASCADE
+    ON UPDATE CASCADE;
+                </code></pre>
+
+                <h3>Temporarily Disabling FK Checks</h3>
+                <p>For bulk data operations, you can temporarily disable FK checking:</p>
+
+                <pre><code class="language-sql">
+-- Disable FK checks
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Perform bulk operations...
+-- (imports, migrations, table restructuring)
+
+-- Re-enable FK checks
+SET FOREIGN_KEY_CHECKS = 1;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Always Re-Enable!</h4>
+                    <p>Forgetting to turn FK checks back on leaves your database unprotected. Invalid data can sneak in and cause problems later. Make it a habit to pair every <code>SET FOREIGN_KEY_CHECKS = 0</code> with a matching <code>SET FOREIGN_KEY_CHECKS = 1</code>.</p>
+                </div>
+            </section>
+
+            <!-- Section 7: Viewing FK Info -->
+            <section id="checking-fks" class="lesson-section">
+                <h2>Viewing Foreign Key Information</h2>
+                <p>Several ways to see what foreign keys exist on a table:</p>
+
+                <h3>SHOW CREATE TABLE</h3>
+                <pre><code class="language-sql">
+SHOW CREATE TABLE orders;
+-- Shows the full CREATE TABLE including all constraints
+                </code></pre>
+
+                <h3>Information Schema</h3>
+                <pre><code class="language-sql">
+-- List all FKs for a specific table
+SELECT
+    CONSTRAINT_NAME,
+    COLUMN_NAME,
+    REFERENCED_TABLE_NAME,
+    REFERENCED_COLUMN_NAME
+FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+WHERE TABLE_SCHEMA = 'bookstore'
+    AND TABLE_NAME = 'orders'
+    AND REFERENCED_TABLE_NAME IS NOT NULL;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++---------------------+-------------+-----------------------+------------------------+
+| CONSTRAINT_NAME     | COLUMN_NAME | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME |
++---------------------+-------------+-----------------------+------------------------+
+| fk_orders_customer  | customer_id | customers             | id                     |
++---------------------+-------------+-----------------------+------------------------+
+                    </code></pre>
+                </div>
+
+                <h3>Checking ON DELETE/ON UPDATE Rules</h3>
+
+                <pre><code class="language-sql">
+-- See the actual rules for each FK
+SELECT
+    CONSTRAINT_NAME,
+    DELETE_RULE,
+    UPDATE_RULE
+FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = 'bookstore'
+    AND TABLE_NAME = 'orders';
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++---------------------+-------------+-------------+
+| CONSTRAINT_NAME     | DELETE_RULE | UPDATE_RULE |
++---------------------+-------------+-------------+
+| fk_orders_customer  | RESTRICT    | CASCADE     |
++---------------------+-------------+-------------+
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Section 8: Troubleshooting -->
+            <section id="troubleshooting" class="lesson-section">
+                <h2>Troubleshooting FK Errors</h2>
+                <p>Foreign key errors are among the most common MySQL frustrations. Here's how to handle each one:</p>
+
+                <h3>Error 1452: Cannot Add or Update a Child Row</h3>
+                <pre><code class="language-sql">
+-- ERROR 1452: Cannot add or update a child row:
+-- a foreign key constraint fails
+
+-- Cause: You're inserting a FK value that doesn't exist in the parent table
+INSERT INTO orders (customer_id, order_date) VALUES (999, '2026-04-15');
+-- Fix: Use a customer_id that actually exists
+INSERT INTO orders (customer_id, order_date) VALUES (1, '2026-04-15');
+                </code></pre>
+
+                <h3>Error 1451: Cannot Delete or Update a Parent Row</h3>
+                <pre><code class="language-sql">
+-- ERROR 1451: Cannot delete or update a parent row:
+-- a foreign key constraint fails
+
+-- Cause: You're deleting a parent that has children (RESTRICT is active)
+DELETE FROM customers WHERE id = 1;
+-- Fix: Delete or reassign children first
+DELETE FROM orders WHERE customer_id = 1;
+DELETE FROM customers WHERE id = 1;
+                </code></pre>
+
+                <h3>Error 1215: Cannot Add Foreign Key Constraint</h3>
+                <pre><code class="language-sql">
+-- ERROR 1215: Cannot add foreign key constraint
+
+-- Common causes:
+-- 1. Data type mismatch
+ALTER TABLE orders ADD FOREIGN KEY (customer_id) REFERENCES customers(id);
+-- customer_id is INT but customers.id is INT UNSIGNED → FAIL
+
+-- 2. Referenced column isn't indexed
+-- (Primary keys are automatically indexed — this happens with non-PK references)
+
+-- 3. Referenced table doesn't exist yet
+-- Fix: Create parent table first
+
+-- 4. Different character sets/collations on the columns
+-- Fix: Ensure both use the same charset
+                </code></pre>
+
+                <h3>Debugging with SHOW ENGINE</h3>
+                <pre><code class="language-sql">
+-- Get detailed FK error information
+SHOW ENGINE INNODB STATUS;
+-- Look for the "LATEST FOREIGN KEY ERROR" section
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ FK Error Checklist</h4>
+                    <ol>
+                        <li>Do the data types match exactly (including UNSIGNED)?</li>
+                        <li>Does the referenced table and column exist?</li>
+                        <li>Is the referenced column indexed (PK or explicit index)?</li>
+                        <li>Are both tables using InnoDB?</li>
+                        <li>Does the existing data satisfy the constraint?</li>
+                        <li>Do the character sets and collations match?</li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- Section 9: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: Create Tables with FK Constraints</h3>
+                    <p>Write the CREATE TABLE statements for the following, including named foreign key constraints with appropriate ON DELETE rules:</p>
+                    <ol>
+                        <li>A <code>departments</code> table (id, name)</li>
+                        <li>An <code>employees</code> table (id, name, email, department_id) — if a department is deleted, set the employee's department to NULL</li>
+                        <li>An <code>assignments</code> table (id, employee_id, project_name) — if an employee is deleted, delete their assignments too</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+CREATE TABLE departments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE employees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    department_id INT,
+    CONSTRAINT fk_employees_department
+        FOREIGN KEY (department_id) REFERENCES departments(id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+);
+
+CREATE TABLE assignments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT NOT NULL,
+    project_name VARCHAR(200) NOT NULL,
+    CONSTRAINT fk_assignments_employee
+        FOREIGN KEY (employee_id) REFERENCES employees(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: Choose the Right ON DELETE</h3>
+                    <p>For each scenario, choose the most appropriate ON DELETE action and explain why:</p>
+                    <ol>
+                        <li>A <code>reviews</code> table linked to a <code>products</code> table — what happens to reviews when a product is deleted?</li>
+                        <li>A <code>messages</code> table linked to a <code>users</code> table — what happens to messages when a user is deleted?</li>
+                        <li>A <code>invoices</code> table linked to a <code>clients</code> table — what happens to invoices when a client is deleted?</li>
+                        <li>A <code>student_courses</code> junction table linked to <code>students</code> — what happens to enrollments when a student is deleted?</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <ol>
+                            <li><strong>CASCADE</strong> — Reviews are about that specific product; they're meaningless without it. Or <strong>RESTRICT</strong> if you want to archive products rather than delete them.</li>
+                            <li><strong>SET NULL</strong> — Messages should be preserved (for the other participants) but show "deleted user." Or <strong>CASCADE</strong> if messages should disappear with the user (like private DMs).</li>
+                            <li><strong>RESTRICT</strong> — Invoices are legal/financial records and should never be automatically deleted. Deactivate the client instead.</li>
+                            <li><strong>CASCADE</strong> — Enrollment records link to the student; if the student is removed, their enrollments should go too.</li>
+                        </ol>
+                        <p><em>Note: These are common choices, but the "right" answer depends on your specific business requirements. The important thing is that you can justify your choice.</em></p>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: Alter Existing Tables</h3>
+                    <p>Write the SQL to:</p>
+                    <ol>
+                        <li>Add a foreign key named <code>fk_books_author</code> to the books table, linking <code>author_id</code> to <code>authors(id)</code> with ON DELETE RESTRICT</li>
+                        <li>Drop that foreign key</li>
+                        <li>Re-add it with ON DELETE SET NULL (assume you've made author_id nullable)</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1. Add the FK
+ALTER TABLE books
+    ADD CONSTRAINT fk_books_author
+    FOREIGN KEY (author_id) REFERENCES authors(id)
+    ON DELETE RESTRICT;
+
+-- 2. Drop it
+ALTER TABLE books DROP FOREIGN KEY fk_books_author;
+
+-- 3. Make column nullable and re-add with SET NULL
+ALTER TABLE books MODIFY author_id INT NULL;
+
+ALTER TABLE books
+    ADD CONSTRAINT fk_books_author
+    FOREIGN KEY (author_id) REFERENCES authors(id)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What is the default ON DELETE behavior if you don't specify one?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="CASCADE would automatically delete child rows — that's not the default because it could cause unexpected data loss.">
+                                A) CASCADE
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The default is RESTRICT — MySQL blocks the delete if any child rows reference the parent. This is the safest behavior.">
+                                B) RESTRICT
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="SET NULL would change FK values to NULL — this isn't the default because it could break NOT NULL constraints.">
+                                C) SET NULL
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> What does ON DELETE CASCADE do?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="That's what SET NULL does, not CASCADE.">
+                                A) Sets the child's FK column to NULL
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! CASCADE automatically deletes all child rows that reference the deleted parent. It 'cascades' the deletion down the relationship chain.">
+                                B) Automatically deletes all child rows referencing the deleted parent
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="That's what RESTRICT does. CASCADE allows the delete and handles the consequences automatically.">
+                                C) Prevents the parent from being deleted
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> What must be true about a column to use ON DELETE SET NULL?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! SET NULL sets the FK column to NULL — if the column has a NOT NULL constraint, MySQL can't do that and the operation fails.">
+                                A) The FK column must allow NULL values
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="AUTO_INCREMENT is for primary keys. SET NULL works on any nullable FK column.">
+                                B) The FK column must be AUTO_INCREMENT
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="SET NULL works with any indexed column. It doesn't require a unique constraint.">
+                                C) The FK column must be UNIQUE
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> Error 1452 means you tried to:</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Error 1452 fires when you insert or update a child row with a FK value that doesn't exist in the parent table. For example, inserting an order with customer_id = 999 when no customer has id 999.">
+                                A) Insert a child row referencing a non-existent parent
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Deleting a parent that has children triggers Error 1451, not 1452.">
+                                B) Delete a parent that has children
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Adding a constraint with invalid data causes Error 1215 or 1452 depending on the scenario, but this question is specifically about inserting child rows.">
+                                C) Create a table with mismatched data types
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 10: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li><strong>Referential integrity</strong> ensures every FK value points to a real parent row</li>
+                        <li><strong>FOREIGN KEY ... REFERENCES</strong> creates the constraint; name your constraints for easier management</li>
+                        <li><strong>ON DELETE RESTRICT</strong> (default) blocks parent deletion if children exist — safest option</li>
+                        <li><strong>ON DELETE CASCADE</strong> auto-deletes children with the parent — use when children are meaningless alone</li>
+                        <li><strong>ON DELETE SET NULL</strong> preserves children but breaks the link — requires a nullable FK column</li>
+                        <li><strong>ON UPDATE CASCADE</strong> is useful for natural keys that might change</li>
+                        <li>When in doubt, <strong>use RESTRICT</strong> — you can always change it later</li>
+                        <li>Use <code>ALTER TABLE</code> to add/drop FKs on existing tables</li>
+                        <li><code>SET FOREIGN_KEY_CHECKS = 0/1</code> temporarily disables checks for bulk operations</li>
+                        <li>Error 1452 = bad child data; Error 1451 = trying to delete a referenced parent; Error 1215 = constraint creation failed</li>
+                    </ul>
+                </div>
+
+                <h3>Quick Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pattern</th>
+                                <th>Syntax</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Create FK</td>
+                                <td><code>FOREIGN KEY (col) REFERENCES parent(id)</code></td>
+                            </tr>
+                            <tr>
+                                <td>Named FK</td>
+                                <td><code>CONSTRAINT name FOREIGN KEY (col) REFERENCES parent(id)</code></td>
+                            </tr>
+                            <tr>
+                                <td>With rules</td>
+                                <td><code>ON DELETE CASCADE ON UPDATE CASCADE</code></td>
+                            </tr>
+                            <tr>
+                                <td>Add FK</td>
+                                <td><code>ALTER TABLE t ADD CONSTRAINT name FOREIGN KEY ...</code></td>
+                            </tr>
+                            <tr>
+                                <td>Drop FK</td>
+                                <td><code>ALTER TABLE t DROP FOREIGN KEY name</code></td>
+                            </tr>
+                            <tr>
+                                <td>Disable checks</td>
+                                <td><code>SET FOREIGN_KEY_CHECKS = 0;</code></td>
+                            </tr>
+                            <tr>
+                                <td>View FKs</td>
+                                <td><code>SHOW CREATE TABLE t;</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html" target="_blank" rel="noopener">MySQL Docs — Foreign Key Constraints</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-foreign-key-constraints.html" target="_blank" rel="noopener">MySQL Docs — InnoDB Foreign Key Constraints</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_foreign_key_checks" target="_blank" rel="noopener">MySQL Docs — foreign_key_checks Variable</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>You've built the relationships and enforced them with constraints. Now it's time to <strong>use</strong> them! In the next lesson, you'll learn <strong>JOINs</strong> — the SQL technique for querying data across multiple related tables in a single statement. INNER JOIN, LEFT JOIN, RIGHT JOIN, CROSS JOIN, and self-joins — the most powerful (and most-asked-about-in-interviews) topic in SQL.</p>
+
+                <div class="card card-accent" style="text-align: center; padding: 2rem;">
+                    <h3>🎉 Congratulations!</h3>
+                    <p>Your database now has a safety net. Foreign key constraints ensure your data stays consistent, even when applications have bugs. The database protects itself!</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_11.html" class="prev-lesson">← Previous: Table Relationships</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_13.html" class="next-lesson">Next: Joins →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn to import and export MySQL data — mysqldump for backups, importing .sql files, CSV import/export with LOAD DATA and INTO OUTFILE, and real-world backup strategies.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Importing &amp; Exporting Data - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 7: Real-World Skills</a></li>
+            <li aria-current="page">Lesson 20: Importing &amp; Exporting Data</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>📦 Lesson 20: Importing &amp; Exporting Data</h1>
+                <p class="lead">Databases don't exist in isolation. You'll need to back them up before risky changes, migrate data between servers, share datasets with colleagues, load spreadsheet data into tables, and export query results for reports. This lesson covers the essential tools and techniques for moving data in and out of MySQL — from full database dumps to row-level CSV imports.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Create full and partial database backups with <code>mysqldump</code></li>
+                        <li>Restore databases and tables from <code>.sql</code> dump files</li>
+                        <li>Export query results to CSV files with <code>SELECT ... INTO OUTFILE</code></li>
+                        <li>Import CSV data into tables with <code>LOAD DATA INFILE</code></li>
+                        <li>Use <code>mysqlimport</code> for command-line CSV loading</li>
+                        <li>Import and export through phpMyAdmin</li>
+                        <li>Design a practical backup strategy</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 45 minutes</p>
+                    <p><strong>Prerequisites:</strong> User Management &amp; Permissions (<a href="lesson_19.html">Lesson 19</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#overview" class="toc-link">The Big Picture: Why Import/Export?</a></li>
+                        <li><a href="#mysqldump" class="toc-link">Exporting with mysqldump</a></li>
+                        <li><a href="#restoring" class="toc-link">Restoring from a Dump File</a></li>
+                        <li><a href="#csv-export" class="toc-link">Exporting to CSV</a></li>
+                        <li><a href="#csv-import" class="toc-link">Importing from CSV</a></li>
+                        <li><a href="#mysqlimport" class="toc-link">mysqlimport (CLI CSV Loading)</a></li>
+                        <li><a href="#phpmyadmin" class="toc-link">Import/Export with phpMyAdmin</a></li>
+                        <li><a href="#backup-strategies" class="toc-link">Backup Strategies</a></li>
+                        <li><a href="#troubleshooting" class="toc-link">Common Issues &amp; Troubleshooting</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: Overview -->
+            <section id="overview" class="lesson-section">
+                <h2>The Big Picture: Why Import/Export?</h2>
+                <p>Here are the most common scenarios where you'll need to move data in or out of MySQL:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Scenario</th>
+                                <th>Direction</th>
+                                <th>Tool</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Back up a database before making changes</td>
+                                <td>Export</td>
+                                <td><code>mysqldump</code></td>
+                            </tr>
+                            <tr>
+                                <td>Restore a database after a disaster</td>
+                                <td>Import</td>
+                                <td><code>mysql</code> (CLI)</td>
+                            </tr>
+                            <tr>
+                                <td>Migrate a database to a new server</td>
+                                <td>Both</td>
+                                <td><code>mysqldump</code> → <code>mysql</code></td>
+                            </tr>
+                            <tr>
+                                <td>Load spreadsheet data into a table</td>
+                                <td>Import</td>
+                                <td><code>LOAD DATA INFILE</code></td>
+                            </tr>
+                            <tr>
+                                <td>Export query results for a report</td>
+                                <td>Export</td>
+                                <td><code>SELECT ... INTO OUTFILE</code></td>
+                            </tr>
+                            <tr>
+                                <td>Share data with a non-technical colleague</td>
+                                <td>Export</td>
+                                <td>CSV via phpMyAdmin or <code>INTO OUTFILE</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mermaid">
+                    graph LR
+                        subgraph export["Export (Out of MySQL)"]
+                            D["mysqldump<br/>.sql files"]
+                            C["INTO OUTFILE<br/>.csv files"]
+                            P1["phpMyAdmin<br/>GUI export"]
+                        end
+                        subgraph mysql["MySQL Server"]
+                            DB["Databases &amp; Tables"]
+                        end
+                        subgraph import_["Import (Into MySQL)"]
+                            I1["mysql CLI<br/>.sql files"]
+                            I2["LOAD DATA INFILE<br/>.csv files"]
+                            I3["mysqlimport<br/>.csv files"]
+                            I4["phpMyAdmin<br/>GUI import"]
+                        end
+                        DB --> D
+                        DB --> C
+                        DB --> P1
+                        I1 --> DB
+                        I2 --> DB
+                        I3 --> DB
+                        I4 --> DB
+                </div>
+            </section>
+
+            <!-- Section 2: mysqldump -->
+            <section id="mysqldump" class="lesson-section">
+                <h2>Exporting with mysqldump</h2>
+                <p><code>mysqldump</code> is the most important backup tool in the MySQL toolkit. It creates a <code>.sql</code> file containing all the SQL statements needed to recreate your database — <code>CREATE TABLE</code>, <code>INSERT INTO</code>, indexes, constraints, everything. Run it from <strong>your terminal</strong> (not inside the MySQL prompt).</p>
+
+                <h3>Dump an Entire Database</h3>
+
+                <pre><code class="language-bash">
+# Dump the entire bookstore database to a file
+mysqldump -u root -p bookstore > bookstore_backup.sql
+                </code></pre>
+
+                <p>This creates a file called <code>bookstore_backup.sql</code> in your current directory. The file contains:</p>
+                <ul>
+                    <li><code>DROP TABLE IF EXISTS</code> statements (so the restore can replace existing tables)</li>
+                    <li><code>CREATE TABLE</code> statements with all columns, constraints, and indexes</li>
+                    <li><code>INSERT INTO</code> statements with all row data</li>
+                    <li>View definitions, triggers, and routines (if present)</li>
+                </ul>
+
+                <h3>Dump Specific Tables</h3>
+
+                <pre><code class="language-bash">
+# Dump only the books and authors tables
+mysqldump -u root -p bookstore books authors > books_authors_backup.sql
+                </code></pre>
+
+                <h3>Dump Multiple Databases</h3>
+
+                <pre><code class="language-bash">
+# Dump two databases into one file
+mysqldump -u root -p --databases bookstore school > multi_db_backup.sql
+                </code></pre>
+
+                <h3>Dump All Databases</h3>
+
+                <pre><code class="language-bash">
+# Dump every database on the server (full server backup)
+mysqldump -u root -p --all-databases > full_server_backup.sql
+                </code></pre>
+
+                <h3>Structure Only (No Data)</h3>
+
+                <pre><code class="language-bash">
+# Dump table definitions only — useful for creating empty copies
+mysqldump -u root -p --no-data bookstore > bookstore_schema.sql
+                </code></pre>
+
+                <h3>Data Only (No Structure)</h3>
+
+                <pre><code class="language-bash">
+# Dump row data only — tables must already exist at the destination
+mysqldump -u root -p --no-create-info bookstore > bookstore_data.sql
+                </code></pre>
+
+                <h3>Useful Options</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Option</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>--no-data</code></td>
+                                <td>Schema only, no row data</td>
+                            </tr>
+                            <tr>
+                                <td><code>--no-create-info</code></td>
+                                <td>Data only, no CREATE TABLE</td>
+                            </tr>
+                            <tr>
+                                <td><code>--databases db1 db2</code></td>
+                                <td>Include CREATE DATABASE statements</td>
+                            </tr>
+                            <tr>
+                                <td><code>--all-databases</code></td>
+                                <td>Dump every database on the server</td>
+                            </tr>
+                            <tr>
+                                <td><code>--routines</code></td>
+                                <td>Include stored procedures and functions</td>
+                            </tr>
+                            <tr>
+                                <td><code>--triggers</code></td>
+                                <td>Include triggers (on by default)</td>
+                            </tr>
+                            <tr>
+                                <td><code>--single-transaction</code></td>
+                                <td>Consistent snapshot without locking (InnoDB)</td>
+                            </tr>
+                            <tr>
+                                <td><code>--add-drop-database</code></td>
+                                <td>Add DROP DATABASE before each CREATE</td>
+                            </tr>
+                            <tr>
+                                <td><code>--result-file=path</code></td>
+                                <td>Write to a specific file (Windows-friendly)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Production-Quality Dump</h3>
+
+                <pre><code class="language-bash">
+# A robust backup command for InnoDB databases
+mysqldump -u root -p \
+    --single-transaction \
+    --routines \
+    --triggers \
+    --databases bookstore \
+    > bookstore_$(date +%Y%m%d_%H%M%S).sql
+                </code></pre>
+
+                <p>The <code>$(date +%Y%m%d_%H%M%S)</code> part adds a timestamp to the filename, producing something like <code>bookstore_20260416_143000.sql</code>. This makes it easy to identify when each backup was taken.</p>
+
+                <div class="card card-info">
+                    <h4>💡 --single-transaction</h4>
+                    <p>This is critical for production backups of InnoDB tables. Without it, <code>mysqldump</code> locks tables while dumping, which blocks writes and can stall your application. With <code>--single-transaction</code>, the dump uses a consistent snapshot — no locks, no downtime, and the data is consistent even if writes happen during the dump.</p>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Terminal, Not MySQL Prompt</h4>
+                    <p><code>mysqldump</code> is a command-line utility — run it from your <strong>terminal/bash</strong>, not from inside the <code>mysql&gt;</code> prompt. If you see <code>ERROR 1064</code>, you're probably inside MySQL. Type <code>exit;</code> first, then run the command.</p>
+                </div>
+            </section>
+
+            <!-- Section 3: Restoring from a Dump -->
+            <section id="restoring" class="lesson-section">
+                <h2>Restoring from a Dump File</h2>
+                <p>A <code>.sql</code> dump file is just a script full of SQL statements. To restore it, you feed it into the <code>mysql</code> client.</p>
+
+                <h3>Restore an Entire Database</h3>
+
+                <pre><code class="language-bash">
+# Create the database first (if the dump doesn't include CREATE DATABASE)
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS bookstore;"
+
+# Restore the dump into the bookstore database
+mysql -u root -p bookstore < bookstore_backup.sql
+                </code></pre>
+
+                <h3>Restore from a Multi-Database Dump</h3>
+
+                <pre><code class="language-bash">
+# If the dump used --databases or --all-databases, it includes
+# CREATE DATABASE statements — no need to specify a database name
+mysql -u root -p < multi_db_backup.sql
+                </code></pre>
+
+                <h3>Restore a Single Table</h3>
+                <p>If you only need one table from a full database dump, you can't directly extract it with the <code>mysql</code> client. Instead, use <code>grep</code> or a text editor to pull out the relevant section, or use a purpose-built approach:</p>
+
+                <pre><code class="language-bash">
+# Dump just the one table you need (easier than extracting from a full dump)
+mysqldump -u root -p bookstore books > books_only.sql
+
+# Then restore it
+mysql -u root -p bookstore < books_only.sql
+                </code></pre>
+
+                <h3>Test Your Backups!</h3>
+                <p>A backup you've never restored is a backup you can't trust. Periodically test your dumps:</p>
+
+                <pre><code class="language-bash">
+# Create a temporary test database
+mysql -u root -p -e "CREATE DATABASE bookstore_test;"
+
+# Restore the backup into the test database
+mysql -u root -p bookstore_test < bookstore_backup.sql
+
+# Verify the data
+mysql -u root -p -e "SELECT COUNT(*) FROM bookstore_test.books;"
+
+# Clean up
+mysql -u root -p -e "DROP DATABASE bookstore_test;"
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ The Golden Rule of Backups</h4>
+                    <p><strong>Untested backups are not backups.</strong> Schedule regular test restores to confirm your dump files actually work. Discovering a corrupted backup during a real disaster is the worst possible time.</p>
+                </div>
+            </section>
+
+            <!-- Section 4: CSV Export -->
+            <section id="csv-export" class="lesson-section">
+                <h2>Exporting to CSV</h2>
+                <p>CSV (Comma-Separated Values) files are the universal data exchange format. Everyone can open them — Excel, Google Sheets, Python, R, other databases. MySQL offers two main ways to export CSV.</p>
+
+                <h3>Method 1: SELECT ... INTO OUTFILE</h3>
+                <p>Run this <strong>inside the MySQL prompt</strong>:</p>
+
+                <pre><code class="language-sql">
+-- Export all books to a CSV file
+SELECT id, title, price, publication_year
+INTO OUTFILE '/tmp/books_export.csv'
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+FROM books;
+                </code></pre>
+
+                <p>This creates a clean CSV file at <code>/tmp/books_export.csv</code>:</p>
+
+                <div class="card card-output">
+                    <h4>Output File:</h4>
+                    <pre><code>
+"1","The Great Gatsby","12.99","1925"
+"2","To Kill a Mockingbird","14.99","1960"
+"3","1984","11.99","1949"
+                    </code></pre>
+                </div>
+
+                <h4>Adding a Header Row</h4>
+                <p><code>INTO OUTFILE</code> doesn't include column headers by default. Use a UNION to add them:</p>
+
+                <pre><code class="language-sql">
+-- Export with a header row
+SELECT 'id', 'title', 'price', 'publication_year'
+UNION ALL
+SELECT id, title, price, publication_year
+INTO OUTFILE '/tmp/books_with_header.csv'
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+FROM books;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ INTO OUTFILE Restrictions</h4>
+                    <ul>
+                        <li>The file <strong>must not already exist</strong> — MySQL won't overwrite. Delete the old file first or use a new name.</li>
+                        <li>The file is written by the <strong>MySQL server process</strong>, so it goes where the server has write permission (typically <code>/tmp</code> or the MySQL data directory).</li>
+                        <li>You need the <code>FILE</code> privilege to use <code>INTO OUTFILE</code>.</li>
+                        <li>If <code>secure_file_priv</code> is set, you can only write to that directory.</li>
+                    </ul>
+                </div>
+
+                <h3>Method 2: mysql Client with Redirect</h3>
+                <p>From the <strong>terminal</strong> (not inside MySQL), use the <code>-e</code> flag with output redirection:</p>
+
+                <pre><code class="language-bash">
+# Tab-separated output (default)
+mysql -u root -p bookstore -e "SELECT id, title, price FROM books;" > books.tsv
+
+# For true CSV, pipe through sed or tr
+mysql -u root -p bookstore -e "SELECT id, title, price FROM books;" \
+    | tr '\t' ',' > books.csv
+
+# Batch mode with no headers
+mysql -u root -p -N bookstore -e "SELECT id, title, price FROM books;" \
+    | tr '\t' ',' > books_no_header.csv
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Which Method to Choose?</h4>
+                    <p><code>INTO OUTFILE</code> gives you precise control over delimiters, quoting, and escaping — ideal for clean, predictable CSV output. The <code>mysql</code> redirect method is simpler and works without FILE privileges, but the output is tab-separated by default and may need post-processing.</p>
+                </div>
+
+                <h3>Check secure_file_priv</h3>
+                <p>MySQL restricts where <code>INTO OUTFILE</code> and <code>LOAD DATA INFILE</code> can read/write files. Check this setting:</p>
+
+                <pre><code class="language-sql">
+SHOW VARIABLES LIKE 'secure_file_priv';
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Possible Results:</h4>
+                    <pre><code>
++------------------+------------------------+
+| Variable_name    | Value                  |
++------------------+------------------------+
+| secure_file_priv | /var/lib/mysql-files/   |  -- Can only use this directory
+| secure_file_priv |                        |  -- Empty = any directory
+| secure_file_priv | NULL                   |  -- Disabled entirely
++------------------+------------------------+
+                    </code></pre>
+                </div>
+            </section>
+
+            <!-- Section 5: CSV Import -->
+            <section id="csv-import" class="lesson-section">
+                <h2>Importing from CSV</h2>
+                <p>Got a spreadsheet full of data? Save it as CSV and load it directly into MySQL with <code>LOAD DATA INFILE</code>.</p>
+
+                <h3>Basic CSV Import</h3>
+
+                <pre><code class="language-sql">
+-- Import a CSV file into the books table
+LOAD DATA INFILE '/tmp/new_books.csv'
+INTO TABLE books
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;    -- Skip the header row
+                </code></pre>
+
+                <p>The <code>IGNORE 1 ROWS</code> tells MySQL to skip the first line — which is typically column headers in a CSV.</p>
+
+                <h3>Map CSV Columns to Table Columns</h3>
+                <p>If the CSV columns don't match the table columns in order (or you only want to import some columns):</p>
+
+                <pre><code class="language-sql">
+-- CSV has: title, author_name, price, year
+-- Table has: id (auto_increment), title, author_id, price, publication_year
+LOAD DATA INFILE '/tmp/new_books.csv'
+INTO TABLE books
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(title, @author_name, price, publication_year)
+SET author_id = (SELECT id FROM authors WHERE name = @author_name LIMIT 1);
+                </code></pre>
+
+                <p>The <code>@author_name</code> is a user variable — the CSV value is loaded into it, and the <code>SET</code> clause uses a subquery to look up the matching <code>author_id</code>.</p>
+
+                <h3>Using LOAD DATA LOCAL INFILE</h3>
+                <p>If the CSV file is on your <strong>client machine</strong> (not the MySQL server), use <code>LOCAL</code>:</p>
+
+                <pre><code class="language-sql">
+-- Load from the client's local filesystem
+LOAD DATA LOCAL INFILE '/home/practicalace/data/new_books.csv'
+INTO TABLE books
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ LOCAL INFILE Security</h4>
+                    <p><code>LOAD DATA LOCAL INFILE</code> must be enabled on both the server and client:</p>
+                    <pre><code class="language-bash">
+# Check if it's enabled
+mysql -u root -p -e "SHOW VARIABLES LIKE 'local_infile';"
+
+# Enable it on the server (requires restart or SET GLOBAL)
+SET GLOBAL local_infile = 1;
+
+# Connect with LOCAL enabled
+mysql -u root -p --local-infile=1 bookstore
+                    </code></pre>
+                </div>
+
+                <h3>Handling Common CSV Issues</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Issue</th>
+                                <th>Solution</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Windows line endings (<code>\r\n</code>)</td>
+                                <td><code>LINES TERMINATED BY '\r\n'</code></td>
+                            </tr>
+                            <tr>
+                                <td>Tab-separated (TSV)</td>
+                                <td><code>FIELDS TERMINATED BY '\t'</code></td>
+                            </tr>
+                            <tr>
+                                <td>Semicolon-separated (European CSVs)</td>
+                                <td><code>FIELDS TERMINATED BY ';'</code></td>
+                            </tr>
+                            <tr>
+                                <td>Fields with commas inside quotes</td>
+                                <td><code>ENCLOSED BY '"'</code> handles this</td>
+                            </tr>
+                            <tr>
+                                <td>Escaped quotes inside fields</td>
+                                <td><code>ESCAPED BY '\\'</code></td>
+                            </tr>
+                            <tr>
+                                <td>Empty values should be NULL</td>
+                                <td>Use <code>SET col = NULLIF(@var, '')</code></td>
+                            </tr>
+                            <tr>
+                                <td>Skip bad rows instead of aborting</td>
+                                <td>Check warnings: <code>SHOW WARNINGS;</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Handling NULLs and Empty Values</h3>
+
+                <pre><code class="language-sql">
+-- Treat empty strings as NULL for specific columns
+LOAD DATA INFILE '/tmp/books.csv'
+INTO TABLE books
+FIELDS TERMINATED BY ',' ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(title, @price, @pub_year)
+SET
+    price = NULLIF(@price, ''),
+    publication_year = NULLIF(@pub_year, '');
+                </code></pre>
+            </section>
+
+            <!-- Section 6: mysqlimport -->
+            <section id="mysqlimport" class="lesson-section">
+                <h2>mysqlimport (CLI CSV Loading)</h2>
+                <p><code>mysqlimport</code> is a command-line wrapper around <code>LOAD DATA INFILE</code>. It's convenient for quick imports from the terminal.</p>
+
+                <h3>Basic Usage</h3>
+
+                <pre><code class="language-bash">
+# The filename (minus extension) must match the table name!
+# books.csv → imported into the "books" table
+mysqlimport -u root -p \
+    --local \
+    --fields-terminated-by=',' \
+    --fields-enclosed-by='"' \
+    --lines-terminated-by='\n' \
+    --ignore-lines=1 \
+    bookstore /tmp/books.csv
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 File Name = Table Name</h4>
+                    <p><code>mysqlimport</code> determines the target table from the filename. A file called <code>books.csv</code> loads into the <code>books</code> table. A file called <code>order_items.csv</code> loads into the <code>order_items</code> table. Rename your file if needed before importing.</p>
+                </div>
+
+                <h3>Useful mysqlimport Options</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Option</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>--local</code></td>
+                                <td>Read file from the client machine</td>
+                            </tr>
+                            <tr>
+                                <td><code>--ignore-lines=N</code></td>
+                                <td>Skip the first N lines (headers)</td>
+                            </tr>
+                            <tr>
+                                <td><code>--replace</code></td>
+                                <td>Replace rows with duplicate keys</td>
+                            </tr>
+                            <tr>
+                                <td><code>--ignore</code></td>
+                                <td>Skip rows with duplicate keys</td>
+                            </tr>
+                            <tr>
+                                <td><code>--columns=col1,col2</code></td>
+                                <td>Specify which columns the CSV maps to</td>
+                            </tr>
+                            <tr>
+                                <td><code>--delete</code></td>
+                                <td>Empty the table before importing</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 7: phpMyAdmin -->
+            <section id="phpmyadmin" class="lesson-section">
+                <h2>Import/Export with phpMyAdmin</h2>
+                <p>If you prefer a GUI, phpMyAdmin provides point-and-click import and export. This is especially handy for quick one-off tasks.</p>
+
+                <h3>Exporting via phpMyAdmin</h3>
+                <ol>
+                    <li>Select your database in the left sidebar</li>
+                    <li>Click the <strong>Export</strong> tab</li>
+                    <li>Choose export method:
+                        <ul>
+                            <li><strong>Quick</strong> — exports everything with defaults (usually fine)</li>
+                            <li><strong>Custom</strong> — pick tables, format, options</li>
+                        </ul>
+                    </li>
+                    <li>Choose format: <strong>SQL</strong> (for backups) or <strong>CSV</strong> (for spreadsheets)</li>
+                    <li>Click <strong>Go</strong> — the file downloads to your computer</li>
+                </ol>
+
+                <h3>Importing via phpMyAdmin</h3>
+                <ol>
+                    <li>Select your database in the left sidebar</li>
+                    <li>Click the <strong>Import</strong> tab</li>
+                    <li>Click <strong>Choose File</strong> and select your <code>.sql</code> or <code>.csv</code> file</li>
+                    <li>For CSV imports, set the format options (delimiter, enclosure, escape character)</li>
+                    <li>Click <strong>Go</strong></li>
+                </ol>
+
+                <div class="card card-warning">
+                    <h4>⚠️ phpMyAdmin File Size Limits</h4>
+                    <p>phpMyAdmin is limited by PHP's <code>upload_max_filesize</code> and <code>post_max_size</code> settings (often 2 MB or 8 MB by default). For large databases, use the command-line tools (<code>mysqldump</code> / <code>mysql</code>) instead. You can increase the limits in <code>php.ini</code> if needed.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ When to Use phpMyAdmin vs CLI</h4>
+                    <p><strong>phpMyAdmin</strong> is great for small files, quick exports, and when you want to visually verify the data. <strong>Command-line tools</strong> are better for large databases, automated backups, scripted workflows, and anything in production.</p>
+                </div>
+            </section>
+
+            <!-- Section 8: Backup Strategies -->
+            <section id="backup-strategies" class="lesson-section">
+                <h2>Backup Strategies</h2>
+                <p>Having the tools is one thing — using them wisely is another. A good backup strategy answers: <em>How often? Where do I store them? How long do I keep them? How fast can I restore?</em></p>
+
+                <h3>The 3-2-1 Rule</h3>
+                <p>A widely-used framework for data protection:</p>
+                <ul>
+                    <li><strong>3</strong> copies of your data (the original + 2 backups)</li>
+                    <li><strong>2</strong> different storage types (e.g., local disk + cloud)</li>
+                    <li><strong>1</strong> copy offsite (in case of physical disaster)</li>
+                </ul>
+
+                <div class="mermaid">
+                    graph TD
+                        ORIG["Original Database<br/>(MySQL Server)"]
+                        B1["Backup Copy 1<br/>(Local disk / NAS)"]
+                        B2["Backup Copy 2<br/>(Cloud storage / S3)"]
+                        ORIG --> B1
+                        ORIG --> B2
+                </div>
+
+                <h3>Automated Daily Backups (Cron Job)</h3>
+                <p>On Linux, use <code>cron</code> to schedule automatic backups:</p>
+
+                <pre><code class="language-bash">
+# Create a backup script
+# File: /home/practicalace/scripts/mysql_backup.sh
+
+#!/bin/bash
+BACKUP_DIR="/home/practicalace/backups/mysql"
+DATE=$(date +%Y%m%d_%H%M%S)
+DB_NAME="bookstore"
+
+# Create backup directory if it doesn't exist
+mkdir -p "$BACKUP_DIR"
+
+# Dump the database
+mysqldump -u backup_user -pBackupPass123 \
+    --single-transaction \
+    --routines \
+    --triggers \
+    "$DB_NAME" > "$BACKUP_DIR/${DB_NAME}_${DATE}.sql"
+
+# Compress the backup
+gzip "$BACKUP_DIR/${DB_NAME}_${DATE}.sql"
+
+# Delete backups older than 30 days
+find "$BACKUP_DIR" -name "*.sql.gz" -mtime +30 -delete
+
+echo "Backup completed: ${DB_NAME}_${DATE}.sql.gz"
+                </code></pre>
+
+                <pre><code class="language-bash">
+# Make the script executable
+chmod +x /home/practicalace/scripts/mysql_backup.sh
+
+# Add to crontab (runs daily at 2:00 AM)
+crontab -e
+# Add this line:
+0 2 * * * /home/practicalace/scripts/mysql_backup.sh >> /home/practicalace/logs/backup.log 2>&1
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Passwords in Scripts</h4>
+                    <p>Putting passwords in scripts is a security risk. For production, use a MySQL option file (<code>~/.my.cnf</code>) instead:</p>
+                    <pre><code class="language-ini">
+# File: ~/.my.cnf (chmod 600!)
+[mysqldump]
+user=backup_user
+password=BackupPass123
+                    </code></pre>
+                    <p>Then <code>mysqldump</code> reads credentials automatically — no <code>-p</code> flag needed.</p>
+                </div>
+
+                <h3>Backup Comparison</h3>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Approach</th>
+                                <th>Speed</th>
+                                <th>Size</th>
+                                <th>Flexibility</th>
+                                <th>Best For</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>mysqldump</code> (logical)</td>
+                                <td>Slower</td>
+                                <td>Larger (text)</td>
+                                <td>Very flexible</td>
+                                <td>Small–medium databases, portability</td>
+                            </tr>
+                            <tr>
+                                <td><code>mysqldump</code> + gzip</td>
+                                <td>Slower</td>
+                                <td>Much smaller</td>
+                                <td>Flexible</td>
+                                <td>Storage-conscious backups</td>
+                            </tr>
+                            <tr>
+                                <td>File-system copy (physical)</td>
+                                <td>Fastest</td>
+                                <td>Exact size</td>
+                                <td>Less flexible</td>
+                                <td>Large databases, same server version</td>
+                            </tr>
+                            <tr>
+                                <td>Replication</td>
+                                <td>Real-time</td>
+                                <td>Full copy</td>
+                                <td>Complex setup</td>
+                                <td>High availability, disaster recovery</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 9: Troubleshooting -->
+            <section id="troubleshooting" class="lesson-section">
+                <h2>Common Issues &amp; Troubleshooting</h2>
+
+                <div class="card card-warning">
+                    <h3>❌ ERROR 1290: --secure-file-priv</h3>
+                    <p><strong>Message:</strong> <code>The MySQL server is running with the --secure-file-priv option so it cannot execute this statement</code></p>
+                    <p><strong>Cause:</strong> You're trying to use <code>INTO OUTFILE</code> or <code>LOAD DATA INFILE</code> with a path outside the allowed directory.</p>
+                    <p><strong>Fix:</strong> Check the allowed directory with <code>SHOW VARIABLES LIKE 'secure_file_priv';</code> and use that path, or modify <code>my.cnf</code> to change it.</p>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>❌ ERROR 1064 with mysqldump</h3>
+                    <p><strong>Message:</strong> Syntax error when running <code>mysqldump</code>.</p>
+                    <p><strong>Cause:</strong> You're running <code>mysqldump</code> from inside the MySQL prompt.</p>
+                    <p><strong>Fix:</strong> Type <code>exit;</code> to leave MySQL, then run <code>mysqldump</code> from the terminal.</p>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>❌ File Already Exists (INTO OUTFILE)</h3>
+                    <p><strong>Message:</strong> <code>File '/tmp/export.csv' already exists</code></p>
+                    <p><strong>Cause:</strong> <code>INTO OUTFILE</code> refuses to overwrite existing files for safety.</p>
+                    <p><strong>Fix:</strong> Delete the old file from the terminal: <code>rm /tmp/export.csv</code>, then re-run.</p>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>❌ LOAD DATA LOCAL INFILE Disabled</h3>
+                    <p><strong>Message:</strong> <code>Loading local data is disabled; this must be enabled on both the client and server side</code></p>
+                    <p><strong>Fix:</strong> Enable on the server: <code>SET GLOBAL local_infile = 1;</code> and reconnect with <code>mysql --local-infile=1</code>.</p>
+                </div>
+
+                <div class="card card-warning">
+                    <h3>❌ Character Encoding Issues</h3>
+                    <p><strong>Symptoms:</strong> Garbled characters (mojibake) after import.</p>
+                    <p><strong>Fix:</strong> Specify the character set during import:</p>
+                    <pre><code class="language-sql">
+LOAD DATA INFILE '/tmp/data.csv'
+INTO TABLE my_table
+CHARACTER SET utf8mb4
+FIELDS TERMINATED BY ',' ENCLOSED BY '"'
+LINES TERMINATED BY '\n';
+                    </code></pre>
+                    <p>For <code>mysqldump</code>, use: <code>mysqldump --default-character-set=utf8mb4</code></p>
+                </div>
+            </section>
+
+            <!-- Section 10: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: mysqldump Backup &amp; Restore</h3>
+                    <p>Practice backing up and restoring the bookstore database:</p>
+                    <ol>
+                        <li>Dump the entire <code>bookstore</code> database to <code>bookstore_backup.sql</code></li>
+                        <li>Dump only the <code>books</code> table to <code>books_only.sql</code></li>
+                        <li>Dump the schema (no data) to <code>bookstore_schema.sql</code></li>
+                        <li>Create a test database called <code>bookstore_test</code> and restore the full backup into it</li>
+                        <li>Verify the restore by querying the books table</li>
+                        <li>Clean up by dropping <code>bookstore_test</code></li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-bash">
+# 1. Full dump
+mysqldump -u root -p bookstore > bookstore_backup.sql
+
+# 2. Single table
+mysqldump -u root -p bookstore books > books_only.sql
+
+# 3. Schema only
+mysqldump -u root -p --no-data bookstore > bookstore_schema.sql
+
+# 4. Create test DB and restore
+mysql -u root -p -e "CREATE DATABASE bookstore_test;"
+mysql -u root -p bookstore_test < bookstore_backup.sql
+
+# 5. Verify
+mysql -u root -p -e "SELECT COUNT(*) AS total_books FROM bookstore_test.books;"
+
+# 6. Clean up
+mysql -u root -p -e "DROP DATABASE bookstore_test;"
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: CSV Export</h3>
+                    <p>Export data from the bookstore database to CSV:</p>
+                    <ol>
+                        <li>Check your <code>secure_file_priv</code> setting</li>
+                        <li>Export the books table (id, title, price) to a CSV in the allowed directory</li>
+                        <li>Alternatively, use the <code>mysql</code> client redirect method to create a CSV in your home directory</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1. Check the allowed directory
+SHOW VARIABLES LIKE 'secure_file_priv';
+-- Let's assume: /var/lib/mysql-files/
+
+-- 2. Export via INTO OUTFILE
+SELECT id, title, price
+INTO OUTFILE '/var/lib/mysql-files/books_export.csv'
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+FROM books;
+                        </code></pre>
+                        <pre><code class="language-bash">
+# 3. Alternative: mysql client redirect
+mysql -u root -p bookstore \
+    -e "SELECT id, title, price FROM books;" \
+    | tr '\t' ',' > ~/books_export.csv
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: CSV Import</h3>
+                    <p>Create a CSV file and import it into a new table:</p>
+                    <ol>
+                        <li>Create a CSV file called <code>new_authors.csv</code> with columns: name, country, birth_year</li>
+                        <li>Add 3–5 rows of data (with a header row)</li>
+                        <li>Create a table called <code>imported_authors</code> with matching columns</li>
+                        <li>Import the CSV using <code>LOAD DATA INFILE</code> (or <code>LOCAL INFILE</code>)</li>
+                        <li>Verify the import with a SELECT query</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-bash">
+# 1-2. Create the CSV file
+cat > /tmp/new_authors.csv << 'EOF'
+name,country,birth_year
+"Gabriel García Márquez","Colombia",1927
+"Haruki Murakami","Japan",1949
+"Chimamanda Ngozi Adichie","Nigeria",1977
+"Isabel Allende","Chile",1942
+EOF
+                        </code></pre>
+                        <pre><code class="language-sql">
+-- 3. Create the target table
+CREATE TABLE imported_authors (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    country VARCHAR(50),
+    birth_year INT
+);
+
+-- 4. Import the CSV
+LOAD DATA INFILE '/tmp/new_authors.csv'
+INTO TABLE imported_authors
+FIELDS TERMINATED BY ',' ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(name, country, birth_year);
+
+-- 5. Verify
+SELECT * FROM imported_authors;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> Where do you run <code>mysqldump</code>?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="If you see ERROR 1064, that means you're inside the MySQL prompt. mysqldump is a terminal command.">
+                                A) Inside the mysql&gt; prompt
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! mysqldump is a command-line utility that runs from your terminal/shell, not from inside the MySQL prompt. It connects to MySQL, reads the data, and writes it to a file.">
+                                B) From the terminal/bash shell
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="While phpMyAdmin has an Export feature, mysqldump itself is a command-line tool.">
+                                C) In phpMyAdmin
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> What does <code>--single-transaction</code> do in a <code>mysqldump</code> command?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="--single-transaction actually AVOIDS locking. Without it, tables may be locked during the dump.">
+                                A) Locks all tables during the dump
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! --single-transaction uses a consistent snapshot to dump data without locking tables. This means your application can keep reading and writing while the backup runs. It works with InnoDB tables.">
+                                B) Creates a consistent snapshot without locking tables (for InnoDB)
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="--single-transaction has nothing to do with limiting what's dumped. Use --no-data for schema-only dumps.">
+                                C) Dumps only one table at a time
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> What does <code>IGNORE 1 ROWS</code> do in a <code>LOAD DATA INFILE</code> statement?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! IGNORE 1 ROWS tells MySQL to skip the first line of the file, which is typically the header row containing column names. Without it, MySQL would try to insert 'name,country,year' as actual data.">
+                                A) Skips the header row in the CSV file
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="IGNORE 1 ROWS doesn't delete anything from the table — it only skips lines in the input file.">
+                                B) Deletes the first row from the table before importing
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="All rows are imported in one operation. IGNORE 1 ROWS simply skips the first line of the input file.">
+                                C) Imports only 1 row at a time for safety
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> What is the 3-2-1 backup rule?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="The 3-2-1 rule is about copies and storage, not about a rotation schedule.">
+                                A) Back up 3 databases, 2 times a day, keeping 1 week of history
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="The 3-2-1 rule isn't about types of data or methods. It's about copies, storage types, and locations.">
+                                B) Export 3 formats (SQL, CSV, JSON), keep 2 local, 1 in cloud
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The 3-2-1 rule means: 3 total copies of your data, on 2 different storage types, with 1 copy stored offsite. This protects against hardware failure, local disasters, and corruption.">
+                                C) 3 copies of your data, on 2 different storage types, with 1 offsite
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 11: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li><code>mysqldump</code> creates <code>.sql</code> backup files — run it from the <strong>terminal</strong>, not the MySQL prompt</li>
+                        <li>Restore with <code>mysql -u root -p database_name &lt; backup.sql</code></li>
+                        <li>Use <code>--single-transaction</code> for non-locking InnoDB backups</li>
+                        <li><code>SELECT ... INTO OUTFILE</code> exports query results to CSV (inside MySQL)</li>
+                        <li><code>LOAD DATA INFILE</code> imports CSV data into tables (inside MySQL)</li>
+                        <li><code>IGNORE 1 ROWS</code> skips the header row in CSV imports</li>
+                        <li><code>mysqlimport</code> is a CLI shortcut for <code>LOAD DATA INFILE</code></li>
+                        <li>phpMyAdmin offers GUI import/export for smaller files</li>
+                        <li>Check <code>secure_file_priv</code> if file operations fail</li>
+                        <li>Follow the <strong>3-2-1 backup rule</strong> and <strong>always test your restores</strong></li>
+                    </ul>
+                </div>
+
+                <h3>Quick Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Command</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Dump a database</td>
+                                <td><code>mysqldump -u root -p dbname > file.sql</code></td>
+                            </tr>
+                            <tr>
+                                <td>Dump specific tables</td>
+                                <td><code>mysqldump -u root -p dbname tbl1 tbl2 > file.sql</code></td>
+                            </tr>
+                            <tr>
+                                <td>Dump all databases</td>
+                                <td><code>mysqldump -u root -p --all-databases > file.sql</code></td>
+                            </tr>
+                            <tr>
+                                <td>Schema only</td>
+                                <td><code>mysqldump -u root -p --no-data dbname > file.sql</code></td>
+                            </tr>
+                            <tr>
+                                <td>Restore a dump</td>
+                                <td><code>mysql -u root -p dbname < file.sql</code></td>
+                            </tr>
+                            <tr>
+                                <td>Export to CSV</td>
+                                <td><code>SELECT ... INTO OUTFILE '/path/file.csv' ...</code></td>
+                            </tr>
+                            <tr>
+                                <td>Import from CSV</td>
+                                <td><code>LOAD DATA INFILE '/path/file.csv' INTO TABLE ...</code></td>
+                            </tr>
+                            <tr>
+                                <td>CLI CSV import</td>
+                                <td><code>mysqlimport -u root -p --local dbname file.csv</code></td>
+                            </tr>
+                            <tr>
+                                <td>Check file path restriction</td>
+                                <td><code>SHOW VARIABLES LIKE 'secure_file_priv';</code></td>
+                            </tr>
+                            <tr>
+                                <td>Compress a backup</td>
+                                <td><code>gzip backup.sql</code> → <code>backup.sql.gz</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html" target="_blank" rel="noopener">MySQL Docs — mysqldump</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/load-data.html" target="_blank" rel="noopener">MySQL Docs — LOAD DATA Statement</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/select-into.html" target="_blank" rel="noopener">MySQL Docs — SELECT ... INTO OUTFILE</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlimport.html" target="_blank" rel="noopener">MySQL Docs — mysqlimport</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/backup-and-recovery.html" target="_blank" rel="noopener">MySQL Docs — Backup and Recovery</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>In the final lesson, <a href="lesson_21.html">Lesson 21: Next Steps &amp; Best Practices</a>, we'll review everything you've learned across the entire course, highlight key best practices for working with MySQL, and map out where to go from here — from PHP and Python connectors to ORMs and beyond.</p>
+
+                <div class="card card-accent" style="text-align: center; padding: 2rem;">
+                    <h3>🎉 Almost There!</h3>
+                    <p>You now know how to move data in and out of MySQL like a pro — backups, restores, CSV imports, and exports. One more lesson to go!</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_19.html" class="prev-lesson">← Previous: User Management &amp; Permissions</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_21.html" class="next-lesson">Next: Next Steps &amp; Best Practices →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

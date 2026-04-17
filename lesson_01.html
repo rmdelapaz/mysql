@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn what databases are, why they matter, and how relational databases organize data into tables, rows, and columns.">
+    <meta name="author" content="Ray De La Paz">
+    <title>What Is a Database? - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <!-- Mermaid — initialized by course-enhancements.js for theme awareness -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <!-- Progress indicator -->
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">
+                ☰
+            </button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 1: Getting Started</a></li>
+            <li aria-current="page">Lesson 1: What Is a Database?</li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main-content">
+        <div class="container">
+            <!-- Lesson Header -->
+            <header>
+                <h1>🗄️ Lesson 1: What Is a Database?</h1>
+                <p class="lead">Before you write a single line of SQL, let's understand what databases are, why they exist, and how relational databases organize information into tables, rows, and columns.</p>
+
+                <!-- Learning objectives -->
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Explain what a database is and why applications need one</li>
+                        <li>Distinguish between different types of databases (relational vs. non-relational)</li>
+                        <li>Define key relational database terminology: table, row, column, primary key</li>
+                        <li>Describe what SQL is and what it's used for</li>
+                        <li>Explain why MySQL is a popular choice for web development</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 30 minutes</p>
+                </div>
+            </header>
+
+            <!-- Table of Contents -->
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#why-databases" class="toc-link">Why Do We Need Databases?</a></li>
+                        <li><a href="#types" class="toc-link">Types of Databases</a></li>
+                        <li><a href="#relational" class="toc-link">Relational Databases Up Close</a></li>
+                        <li><a href="#sql-intro" class="toc-link">What Is SQL?</a></li>
+                        <li><a href="#why-mysql" class="toc-link">Why MySQL?</a></li>
+                        <li><a href="#real-world" class="toc-link">Real-World Example: An Online Bookstore</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: Why Databases -->
+            <section id="why-databases" class="lesson-section">
+                <h2>Why Do We Need Databases?</h2>
+                <p>Imagine you run a small online store. You need to keep track of your products, your customers, and every order that comes in. Where do you put all that information?</p>
+
+                <p>You <em>could</em> use a spreadsheet. And for a handful of products and a few customers, that might work fine. But what happens when you have 10,000 products, 50,000 customers, and hundreds of orders per day? Spreadsheets start to break down:</p>
+
+                <ul>
+                    <li><strong>Duplicate data everywhere</strong> — the same customer address copied into every order row</li>
+                    <li><strong>No rules enforced</strong> — nothing stops someone from entering "abc" in a price field</li>
+                    <li><strong>Slow searches</strong> — finding all orders from last Tuesday means scanning every row</li>
+                    <li><strong>No multi-user access</strong> — two people editing the same file leads to conflicts</li>
+                    <li><strong>No security</strong> — everyone who opens the file sees everything</li>
+                </ul>
+
+                <p>A <strong>database</strong> solves all of these problems. At its core, a database is an organized collection of data that is stored, managed, and retrieved electronically. But it's much more than just storage — a database also provides:</p>
+
+                <div class="card card-accent">
+                    <h4>📖 What a Database Provides</h4>
+                    <ul>
+                        <li><strong>Structure</strong> — data is organized into well-defined formats</li>
+                        <li><strong>Integrity</strong> — rules ensure data stays valid and consistent</li>
+                        <li><strong>Efficiency</strong> — indexes and query optimizers make searches fast, even across millions of rows</li>
+                        <li><strong>Concurrency</strong> — multiple users can read and write data at the same time</li>
+                        <li><strong>Security</strong> — permissions control who can see or change which data</li>
+                        <li><strong>Durability</strong> — data survives crashes, power failures, and hardware problems</li>
+                    </ul>
+                </div>
+
+                <p>A <strong>Database Management System (DBMS)</strong> is the software that creates, manages, and provides access to a database. When people say "MySQL" or "PostgreSQL," they're referring to a DBMS. The database itself is the data; the DBMS is the program that manages it.</p>
+
+                <div class="mermaid">
+                    graph LR
+                        A["Your Application<br/>(website, app, script)"] -->|"SQL queries"| B["DBMS<br/>(MySQL)"]
+                        B -->|"reads/writes"| C["Database<br/>(your data on disk)"]
+                        B -->|"results"| A
+                </div>
+            </section>
+
+            <!-- Section 2: Types of Databases -->
+            <section id="types" class="lesson-section">
+                <h2>Types of Databases</h2>
+                <p>Not all databases work the same way. The two main categories you'll encounter are <strong>relational</strong> and <strong>non-relational</strong> databases.</p>
+
+                <h3>Relational Databases (SQL)</h3>
+                <p>Relational databases store data in <strong>tables</strong> with predefined columns and data types — much like a well-organized spreadsheet. The key difference is that tables can be <strong>related</strong> to each other through shared keys. This is the type of database you'll learn in this course.</p>
+                <p>Popular relational databases include:</p>
+                <ul>
+                    <li><strong>MySQL</strong> — open-source, widely used in web development (what we'll learn)</li>
+                    <li><strong>PostgreSQL</strong> — open-source, known for advanced features and standards compliance</li>
+                    <li><strong>SQLite</strong> — lightweight, file-based, great for mobile apps and small projects</li>
+                    <li><strong>Microsoft SQL Server</strong> — enterprise-focused, common in corporate environments</li>
+                    <li><strong>Oracle Database</strong> — enterprise-grade, used in large-scale business applications</li>
+                </ul>
+
+                <h3>Non-Relational Databases (NoSQL)</h3>
+                <p>Non-relational databases (often called NoSQL) store data in formats other than tables — documents, key-value pairs, graphs, or wide columns. They're designed for specific use cases where the rigid structure of tables isn't ideal.</p>
+                <p>Popular non-relational databases include:</p>
+                <ul>
+                    <li><strong>MongoDB</strong> — stores data as JSON-like documents</li>
+                    <li><strong>Redis</strong> — in-memory key-value store, extremely fast</li>
+                    <li><strong>Firebase</strong> — real-time document database by Google</li>
+                    <li><strong>Neo4j</strong> — graph database for relationship-heavy data</li>
+                </ul>
+
+                <div class="card card-info">
+                    <h4>💡 Which Type Should You Learn?</h4>
+                    <p>For web development, <strong>relational databases are the foundation</strong>. The vast majority of web applications — WordPress, Shopify, most business apps — run on relational databases. Once you understand relational concepts and SQL, picking up a NoSQL database later is straightforward. That's why this course focuses entirely on MySQL.</p>
+                </div>
+
+                <h3>Comparison at a Glance</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>Relational (SQL)</th>
+                                <th>Non-Relational (NoSQL)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Data format</td>
+                                <td>Tables with rows and columns</td>
+                                <td>Documents, key-value, graphs</td>
+                            </tr>
+                            <tr>
+                                <td>Schema</td>
+                                <td>Fixed — defined before inserting data</td>
+                                <td>Flexible — can vary per record</td>
+                            </tr>
+                            <tr>
+                                <td>Query language</td>
+                                <td>SQL (standardized)</td>
+                                <td>Varies by database</td>
+                            </tr>
+                            <tr>
+                                <td>Relationships</td>
+                                <td>Built-in (foreign keys, joins)</td>
+                                <td>Typically handled in application code</td>
+                            </tr>
+                            <tr>
+                                <td>Best for</td>
+                                <td>Structured data, complex queries, transactions</td>
+                                <td>Unstructured data, horizontal scaling, real-time apps</td>
+                            </tr>
+                            <tr>
+                                <td>Examples</td>
+                                <td>MySQL, PostgreSQL, SQLite</td>
+                                <td>MongoDB, Redis, Firebase</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 3: Relational Databases Up Close -->
+            <section id="relational" class="lesson-section">
+                <h2>Relational Databases Up Close</h2>
+                <p>Since this entire course is about relational databases, let's make sure the core vocabulary is crystal clear. Every term here will come up again and again.</p>
+
+                <h3>Tables</h3>
+                <p>A <strong>table</strong> (sometimes called a <em>relation</em>) is a collection of related data organized into rows and columns. Each table represents one type of thing — customers, products, orders, employees, etc.</p>
+
+                <h3>Columns (Fields)</h3>
+                <p>A <strong>column</strong> defines a single piece of information that every row in the table must have. Each column has a <strong>name</strong> and a <strong>data type</strong> (text, number, date, etc.). Think of columns as the headers in a spreadsheet.</p>
+
+                <h3>Rows (Records)</h3>
+                <p>A <strong>row</strong> (also called a <em>record</em>) is one entry in the table — one customer, one product, one order. Each row contains a value for every column.</p>
+
+                <h3>Primary Key</h3>
+                <p>A <strong>primary key</strong> is a column (or combination of columns) whose value uniquely identifies each row. No two rows can have the same primary key, and it can never be empty. The most common pattern is an auto-incrementing integer ID.</p>
+
+                <h3>Putting It All Together</h3>
+                <p>Here's what a <code>customers</code> table might look like:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>id (PK)</th>
+                                <th>first_name</th>
+                                <th>last_name</th>
+                                <th>email</th>
+                                <th>city</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Maria</td>
+                                <td>Santos</td>
+                                <td>maria@email.com</td>
+                                <td>Manila</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>James</td>
+                                <td>Chen</td>
+                                <td>james@email.com</td>
+                                <td>Taipei</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>Aiko</td>
+                                <td>Tanaka</td>
+                                <td>aiko@email.com</td>
+                                <td>Tokyo</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>In this table:</p>
+                <ul>
+                    <li>The table name is <code>customers</code></li>
+                    <li>There are 5 <strong>columns</strong>: id, first_name, last_name, email, city</li>
+                    <li>There are 3 <strong>rows</strong> (three individual customers)</li>
+                    <li>The <strong>primary key</strong> is the <code>id</code> column — each value (1, 2, 3) is unique</li>
+                </ul>
+
+                <div class="mermaid">
+                    erDiagram
+                        CUSTOMERS {
+                            int id PK
+                            varchar first_name
+                            varchar last_name
+                            varchar email
+                            varchar city
+                        }
+                </div>
+
+                <div class="card card-accent">
+                    <h4>📖 Key Terminology Quick Reference</h4>
+                    <ul>
+                        <li><strong>Database</strong> — a collection of related tables</li>
+                        <li><strong>Table</strong> — a structured set of rows and columns storing one type of data</li>
+                        <li><strong>Column / Field</strong> — a named attribute with a data type (e.g., <code>email VARCHAR(255)</code>)</li>
+                        <li><strong>Row / Record</strong> — a single entry in a table</li>
+                        <li><strong>Primary Key (PK)</strong> — a column that uniquely identifies each row</li>
+                        <li><strong>Schema</strong> — the blueprint that defines a database's tables, columns, and relationships</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section 4: What Is SQL? -->
+            <section id="sql-intro" class="lesson-section">
+                <h2>What Is SQL?</h2>
+                <p><strong>SQL</strong> (Structured Query Language, often pronounced "sequel") is the standard language for communicating with relational databases. When you want to create a table, insert data, search for records, update values, or delete rows, you write SQL statements to tell the database what to do.</p>
+
+                <p>SQL has been around since the 1970s and is used by virtually every relational database in existence. While each database (MySQL, PostgreSQL, SQLite) has minor dialect differences, the core SQL syntax is the same everywhere. Learn it once, and you can work with any relational database.</p>
+
+                <h3>The Four Main Operations: CRUD</h3>
+                <p>Most of what you'll do with SQL falls into four categories, often referred to by the acronym <strong>CRUD</strong>:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Operation</th>
+                                <th>SQL Command</th>
+                                <th>What It Does</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>C</strong>reate</td>
+                                <td><code>INSERT</code></td>
+                                <td>Add new rows to a table</td>
+                            </tr>
+                            <tr>
+                                <td><strong>R</strong>ead</td>
+                                <td><code>SELECT</code></td>
+                                <td>Retrieve data from one or more tables</td>
+                            </tr>
+                            <tr>
+                                <td><strong>U</strong>pdate</td>
+                                <td><code>UPDATE</code></td>
+                                <td>Modify existing rows</td>
+                            </tr>
+                            <tr>
+                                <td><strong>D</strong>elete</td>
+                                <td><code>DELETE</code></td>
+                                <td>Remove rows from a table</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>A Taste of SQL</h3>
+                <p>Don't worry about memorizing any of this yet — you'll learn each command in detail in later lessons. For now, just get a feel for what SQL looks like:</p>
+
+                <pre><code class="language-sql">
+-- Create a table
+CREATE TABLE customers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(100),
+    city VARCHAR(50)
+);
+
+-- Insert a row
+INSERT INTO customers (first_name, last_name, email, city)
+VALUES ('Maria', 'Santos', 'maria@email.com', 'Manila');
+
+-- Read data
+SELECT first_name, last_name, city
+FROM customers
+WHERE city = 'Manila';
+
+-- Update a row
+UPDATE customers
+SET city = 'Quezon City'
+WHERE id = 1;
+
+-- Delete a row
+DELETE FROM customers
+WHERE id = 3;
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ Key Insight</h4>
+                    <p>Notice how SQL reads almost like English: <em>"SELECT first_name FROM customers WHERE city equals Manila."</em> This readability is one of SQL's greatest strengths — it's one of the most approachable programming languages you'll ever learn.</p>
+                </div>
+
+                <h3>Beyond CRUD: Other SQL Capabilities</h3>
+                <p>SQL can do much more than basic CRUD. Throughout this course you'll also learn to:</p>
+                <ul>
+                    <li><strong>Define structure</strong> — create databases, tables, indexes, and views</li>
+                    <li><strong>Enforce rules</strong> — set constraints like "this column can't be empty" or "this value must be unique"</li>
+                    <li><strong>Join tables</strong> — combine data from multiple related tables in a single query</li>
+                    <li><strong>Aggregate data</strong> — calculate totals, averages, counts, and more</li>
+                    <li><strong>Control access</strong> — grant or revoke permissions for different users</li>
+                    <li><strong>Manage transactions</strong> — group operations so they either all succeed or all fail</li>
+                </ul>
+            </section>
+
+            <!-- Section 5: Why MySQL? -->
+            <section id="why-mysql" class="lesson-section">
+                <h2>Why MySQL?</h2>
+                <p>There are many relational databases to choose from, so why learn MySQL specifically?</p>
+
+                <ul>
+                    <li><strong>Most popular open-source database</strong> — MySQL powers a huge share of the web. WordPress, Drupal, Joomla, and countless custom applications run on it.</li>
+                    <li><strong>Free and open-source</strong> — the Community Edition is completely free to download, use, and deploy.</li>
+                    <li><strong>Part of the LAMP stack</strong> — Linux, Apache, MySQL, PHP is one of the most common web development stacks in the world. Learning MySQL slots perfectly into this ecosystem.</li>
+                    <li><strong>Huge community</strong> — decades of tutorials, Stack Overflow answers, books, and tools.</li>
+                    <li><strong>Industry demand</strong> — MySQL skills are sought after in job postings for web developers, backend engineers, and database administrators.</li>
+                    <li><strong>Proven at scale</strong> — companies like Facebook, Twitter, YouTube, Netflix, and Airbnb use (or have used) MySQL in production.</li>
+                </ul>
+
+                <div class="card card-info">
+                    <h4>💡 MySQL vs. MariaDB</h4>
+                    <p>You may hear about <strong>MariaDB</strong>, which is a fork of MySQL created by MySQL's original developer after Oracle acquired MySQL. MariaDB is highly compatible with MySQL — most SQL you write for one works on the other. Everything in this course applies to MariaDB as well.</p>
+                </div>
+
+                <div class="mermaid">
+                    graph TD
+                        A["LAMP Stack"] --> B["Linux<br/>Operating System"]
+                        A --> C["Apache<br/>Web Server"]
+                        A --> D["MySQL<br/>Database"]
+                        A --> E["PHP<br/>Programming Language"]
+                        style D fill:#3b82f6,stroke:#1e40af,color:#fff
+                </div>
+                <p style="text-align: center;"><em>MySQL is the "M" in the LAMP stack — you're learning one of the core pillars of web development.</em></p>
+            </section>
+
+            <!-- Section 6: Real-World Example -->
+            <section id="real-world" class="lesson-section">
+                <h2>Real-World Example: An Online Bookstore</h2>
+                <p>Let's tie everything together with a concrete example. Imagine you're building a database for an online bookstore. You'd need to track books, customers, and orders. Here's how that might break down into tables:</p>
+
+                <div class="mermaid">
+                    erDiagram
+                        BOOKS {
+                            int id PK
+                            varchar title
+                            varchar author
+                            decimal price
+                            int stock
+                        }
+                        CUSTOMERS {
+                            int id PK
+                            varchar name
+                            varchar email
+                            varchar city
+                        }
+                        ORDERS {
+                            int id PK
+                            int customer_id FK
+                            date order_date
+                            decimal total
+                        }
+                        ORDER_ITEMS {
+                            int id PK
+                            int order_id FK
+                            int book_id FK
+                            int quantity
+                        }
+                        CUSTOMERS ||--o{ ORDERS : "places"
+                        ORDERS ||--o{ ORDER_ITEMS : "contains"
+                        BOOKS ||--o{ ORDER_ITEMS : "listed in"
+                </div>
+
+                <p>Notice how the tables are <strong>related</strong> to each other:</p>
+                <ul>
+                    <li>Each <strong>order</strong> belongs to one <strong>customer</strong> (via <code>customer_id</code>)</li>
+                    <li>Each order can contain multiple <strong>order items</strong></li>
+                    <li>Each order item references one <strong>book</strong> (via <code>book_id</code>)</li>
+                </ul>
+
+                <p>This is the power of a relational database — instead of repeating the full customer address in every order, you store the customer once and just reference their ID. Instead of repeating the book title and price in every order, you reference the book's ID. This eliminates redundancy and keeps your data clean.</p>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Don't Worry About the Details Yet</h4>
+                    <p>If the diagram above looks complex, that's perfectly normal. You'll learn every piece of it step by step: creating tables in Lesson 4, data types in Lesson 5, relationships in Lesson 11, and foreign keys in Lesson 12. For now, just notice the pattern: separate tables connected by shared IDs.</p>
+                </div>
+            </section>
+
+            <!-- Section 7: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: Identify the Parts</h3>
+                    <p>Look at this table and identify each component:</p>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>id</th>
+                                    <th>title</th>
+                                    <th>author</th>
+                                    <th>price</th>
+                                    <th>in_stock</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Noli Me Tangere</td>
+                                    <td>José Rizal</td>
+                                    <td>12.99</td>
+                                    <td>true</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Dune</td>
+                                    <td>Frank Herbert</td>
+                                    <td>15.99</td>
+                                    <td>true</td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td>Neuromancer</td>
+                                    <td>William Gibson</td>
+                                    <td>11.49</td>
+                                    <td>false</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p>Answer these questions:</p>
+                    <ol>
+                        <li>What is the name of this table?</li>
+                        <li>How many columns does it have? Name them.</li>
+                        <li>How many rows does it have?</li>
+                        <li>Which column is most likely the primary key? Why?</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <ol>
+                            <li>The table could be called <code>books</code> (since each row represents a book).</li>
+                            <li>It has 5 columns: <code>id</code>, <code>title</code>, <code>author</code>, <code>price</code>, <code>in_stock</code>.</li>
+                            <li>It has 3 rows (three individual books).</li>
+                            <li>The <code>id</code> column is the primary key — each value is unique (1, 2, 3), and it serves no purpose other than identifying the row.</li>
+                        </ol>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: Design Your Own Table</h3>
+                    <p>Think of a real-world collection of data — your favorite movies, a list of recipes, a roster of game characters, a music playlist, etc.</p>
+                    <p>On paper or in a text file, sketch out a table:</p>
+                    <ol>
+                        <li>Give your table a name (e.g., <code>movies</code>, <code>recipes</code>, <code>characters</code>)</li>
+                        <li>Define 4–6 columns with names that describe each piece of information</li>
+                        <li>Fill in 3–5 example rows</li>
+                        <li>Decide which column is the primary key</li>
+                    </ol>
+
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>If you're stuck, try a <code>video_games</code> table with columns like: <code>id</code>, <code>title</code>, <code>platform</code>, <code>genre</code>, <code>release_year</code>, <code>rating</code>.</p>
+                    </details>
+
+                    <details>
+                        <summary>✅ Example Solution</summary>
+                        <p>Table name: <code>video_games</code></p>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>id (PK)</th>
+                                        <th>title</th>
+                                        <th>platform</th>
+                                        <th>genre</th>
+                                        <th>release_year</th>
+                                        <th>rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>1</td>
+                                        <td>Elden Ring</td>
+                                        <td>PC</td>
+                                        <td>Action RPG</td>
+                                        <td>2022</td>
+                                        <td>9.5</td>
+                                    </tr>
+                                    <tr>
+                                        <td>2</td>
+                                        <td>Stardew Valley</td>
+                                        <td>Switch</td>
+                                        <td>Simulation</td>
+                                        <td>2016</td>
+                                        <td>9.0</td>
+                                    </tr>
+                                    <tr>
+                                        <td>3</td>
+                                        <td>Hades</td>
+                                        <td>PC</td>
+                                        <td>Roguelike</td>
+                                        <td>2020</td>
+                                        <td>9.3</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p>Primary key: <code>id</code> — unique integer that identifies each game.</p>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What does DBMS stand for?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Close, but the 'M' stands for Management.">
+                                A) Database Main System
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! A DBMS is the software (like MySQL) that manages databases.">
+                                B) Database Management System
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="'Data' is close but the full term starts with 'Database'.">
+                                C) Data Backup and Migration Service
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> Which column in a table uniquely identifies each row?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="A foreign key references a row in another table.">
+                                A) Foreign key
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="An index speeds up searches but doesn't guarantee uniqueness by itself.">
+                                B) Index
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! A primary key uniquely identifies each row and can never be null or duplicated.">
+                                C) Primary key
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> What does CRUD stand for?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! These are the four fundamental database operations.">
+                                A) Create, Read, Update, Delete
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Think about the four basic operations you do with data.">
+                                B) Copy, Rename, Upload, Download
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="While connecting and running are things you do, CRUD is specifically about data operations.">
+                                C) Connect, Run, Use, Deploy
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> Which SQL command is used to retrieve data from a table?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="GET is used in HTTP, not SQL.">
+                                A) GET
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="FETCH exists in some SQL contexts but isn't the standard command for reading data.">
+                                B) FETCH
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! SELECT is the SQL command for reading/retrieving data from tables.">
+                                C) SELECT
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 8: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li>A <strong>database</strong> is an organized collection of data managed by a <strong>DBMS</strong> (like MySQL)</li>
+                        <li><strong>Relational databases</strong> store data in tables with rows and columns, connected by shared keys</li>
+                        <li>Key terms: <strong>table</strong>, <strong>column/field</strong>, <strong>row/record</strong>, <strong>primary key</strong>, <strong>schema</strong></li>
+                        <li><strong>SQL</strong> is the standard language for working with relational databases</li>
+                        <li><strong>CRUD</strong> (Create, Read, Update, Delete) describes the four basic data operations</li>
+                        <li><strong>MySQL</strong> is open-source, free, widely used, and the "M" in the LAMP stack</li>
+                    </ul>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/what-is-mysql.html" target="_blank" rel="noopener">MySQL Official Docs — What Is MySQL?</a></li>
+                    <li><a href="https://www.w3schools.com/mysql/mysql_intro.asp" target="_blank" rel="noopener">W3Schools — Introduction to MySQL</a></li>
+                    <li><a href="https://en.wikipedia.org/wiki/Relational_database" target="_blank" rel="noopener">Wikipedia — Relational Database</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>Now that you understand what databases are and why they matter, it's time to get your hands dirty. In the next lesson, you'll install MySQL on your machine using the LAMP stack and verify that everything is running. Let's go!</p>
+
+                <div class="card card-accent" style="text-align: center; padding: 2rem;">
+                    <h3>🎉 Congratulations!</h3>
+                    <p>You've completed Lesson 1. You now know the fundamentals of what databases are, how relational databases organize data, and what SQL is all about. Onward!</p>
+                </div>
+            </section>
+
+            <!-- Lesson Navigation -->
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <span class="prev-lesson" style="visibility: hidden;">← Previous</span>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_02.html" class="next-lesson">Next: Installing MySQL (LAMP Stack) →</a>
+            </nav>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

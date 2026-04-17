@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn to create, modify, and delete databases and tables in MySQL using CREATE DATABASE, CREATE TABLE, ALTER TABLE, and DROP statements.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Creating Databases &amp; Tables - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 2: Tables &amp; Data Types</a></li>
+            <li aria-current="page">Lesson 4: Creating Databases &amp; Tables</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🏗️ Lesson 4: Creating Databases &amp; Tables</h1>
+                <p class="lead">Time to build something. In this lesson you'll create your first database, define tables with columns, and learn to modify and delete structures — the foundation for everything that follows.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Create and drop databases with <code>CREATE DATABASE</code> and <code>DROP DATABASE</code></li>
+                        <li>Create tables with columns using <code>CREATE TABLE</code></li>
+                        <li>Modify existing tables with <code>ALTER TABLE</code> (add, modify, rename, drop columns)</li>
+                        <li>Rename and delete tables with <code>RENAME TABLE</code> and <code>DROP TABLE</code></li>
+                        <li>Use <code>IF EXISTS</code> and <code>IF NOT EXISTS</code> to write safe, repeatable SQL</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 45 minutes</p>
+                    <p><strong>Prerequisites:</strong> MySQL running, comfortable with CLI or phpMyAdmin (<a href="lesson_03.html">Lesson 3</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#databases" class="toc-link">Creating and Managing Databases</a></li>
+                        <li><a href="#naming" class="toc-link">Naming Conventions</a></li>
+                        <li><a href="#create-table" class="toc-link">Creating Tables</a></li>
+                        <li><a href="#practice-db" class="toc-link">Building Our Practice Database</a></li>
+                        <li><a href="#alter-table" class="toc-link">Modifying Tables with ALTER TABLE</a></li>
+                        <li><a href="#rename-drop" class="toc-link">Renaming and Dropping Tables</a></li>
+                        <li><a href="#show-create" class="toc-link">Inspecting Your Work</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: Databases -->
+            <section id="databases" class="lesson-section">
+                <h2>Creating and Managing Databases</h2>
+                <p>A MySQL server can hold many databases, and each database holds many tables. Think of it like a filing cabinet: the server is the cabinet, each database is a drawer, and each table is a folder inside that drawer.</p>
+
+                <div class="mermaid">
+                    graph TD
+                        A["MySQL Server"] --> B["Database: bookstore"]
+                        A --> C["Database: blog"]
+                        A --> D["Database: school"]
+                        B --> E["Table: books"]
+                        B --> F["Table: customers"]
+                        B --> G["Table: orders"]
+                        C --> H["Table: posts"]
+                        C --> I["Table: comments"]
+                </div>
+
+                <h3>CREATE DATABASE</h3>
+                <p>To create a new database:</p>
+
+                <pre><code class="language-sql">
+CREATE DATABASE bookstore;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
+Query OK, 1 row affected (0.01 sec)
+                    </code></pre>
+                </div>
+
+                <p>Verify it exists:</p>
+
+                <pre><code class="language-sql">
+SHOW DATABASES;
+                </code></pre>
+
+                <p>You should see <code>bookstore</code> in the list alongside the system databases.</p>
+
+                <h3>CREATE DATABASE IF NOT EXISTS</h3>
+                <p>If you try to create a database that already exists, MySQL throws an error. To avoid this, use the <code>IF NOT EXISTS</code> clause:</p>
+
+                <pre><code class="language-sql">
+-- Safe version — won't error if it already exists
+CREATE DATABASE IF NOT EXISTS bookstore;
+                </code></pre>
+
+                <div class="card card-success">
+                    <h4>✅ Best Practice</h4>
+                    <p>Always use <code>IF NOT EXISTS</code> when creating databases (and tables). It makes your SQL scripts <strong>idempotent</strong> — safe to run multiple times without errors. This is especially important for setup scripts and deployment.</p>
+                </div>
+
+                <h3>USE — Switch to Your Database</h3>
+                <p>After creating a database, switch to it:</p>
+
+                <pre><code class="language-sql">
+USE bookstore;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
+Database changed
+                    </code></pre>
+                </div>
+
+                <p>Now all <code>CREATE TABLE</code>, <code>SELECT</code>, and other commands will operate inside <code>bookstore</code>.</p>
+
+                <h3>DROP DATABASE</h3>
+                <p>To permanently delete a database and <strong>all its tables and data</strong>:</p>
+
+                <pre><code class="language-sql">
+DROP DATABASE bookstore;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ This Is Permanent!</h4>
+                    <p><code>DROP DATABASE</code> immediately and permanently deletes the database and everything in it. There is no confirmation prompt, no undo, and no recycle bin. <strong>Always double-check</strong> before running this command, especially on a production server.</p>
+                </div>
+
+                <p>The safe version:</p>
+
+                <pre><code class="language-sql">
+DROP DATABASE IF EXISTS bookstore;
+                </code></pre>
+
+                <h3>Character Set and Collation</h3>
+                <p>When creating a database, you can specify a <strong>character set</strong> (which characters can be stored) and <strong>collation</strong> (how those characters are sorted and compared). The modern default is <code>utf8mb4</code>, which supports all Unicode characters including emoji:</p>
+
+                <pre><code class="language-sql">
+CREATE DATABASE IF NOT EXISTS bookstore
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 utf8mb4 vs. utf8</h4>
+                    <p>MySQL's <code>utf8</code> is actually a 3-byte subset that can't store emoji or some Asian characters. <code>utf8mb4</code> is true 4-byte UTF-8. Always use <code>utf8mb4</code> for new databases — it's been the default since MySQL 8.0.</p>
+                </div>
+            </section>
+
+            <!-- Section 2: Naming Conventions -->
+            <section id="naming" class="lesson-section">
+                <h2>Naming Conventions</h2>
+                <p>Good names make databases easy to understand and maintain. Here are the conventions used by most professionals:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rule</th>
+                                <th>Good Example</th>
+                                <th>Bad Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Use <strong>lowercase</strong> for everything</td>
+                                <td><code>customers</code></td>
+                                <td><code>Customers</code>, <code>CUSTOMERS</code></td>
+                            </tr>
+                            <tr>
+                                <td>Use <strong>snake_case</strong> for multi-word names</td>
+                                <td><code>order_items</code></td>
+                                <td><code>orderItems</code>, <code>OrderItems</code></td>
+                            </tr>
+                            <tr>
+                                <td>Table names should be <strong>plural nouns</strong></td>
+                                <td><code>books</code>, <code>categories</code></td>
+                                <td><code>book</code>, <code>category</code></td>
+                            </tr>
+                            <tr>
+                                <td>Column names should be <strong>singular and descriptive</strong></td>
+                                <td><code>first_name</code>, <code>email</code></td>
+                                <td><code>fn</code>, <code>e</code>, <code>data1</code></td>
+                            </tr>
+                            <tr>
+                                <td>Primary keys named <strong>id</strong></td>
+                                <td><code>id</code></td>
+                                <td><code>bookID</code>, <code>pk_book</code></td>
+                            </tr>
+                            <tr>
+                                <td>Foreign keys named <strong>referenced_table_id</strong></td>
+                                <td><code>customer_id</code></td>
+                                <td><code>custID</code>, <code>cust</code></td>
+                            </tr>
+                            <tr>
+                                <td>Avoid <strong>reserved words</strong> as names</td>
+                                <td><code>order_records</code></td>
+                                <td><code>order</code>, <code>select</code>, <code>table</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-accent">
+                    <h4>📖 Why Lowercase?</h4>
+                    <p>Table names are case-sensitive on Linux but case-insensitive on macOS and Windows. Using all lowercase avoids cross-platform bugs. It's also the industry standard for SQL identifiers.</p>
+                </div>
+
+                <blockquote>
+                    <strong>💡 Tip:</strong> When in doubt, ask yourself: "If a new developer looked at this name, would they immediately understand what it holds?" If yes, it's a good name.
+                </blockquote>
+            </section>
+
+            <!-- Section 3: Creating Tables -->
+            <section id="create-table" class="lesson-section">
+                <h2>Creating Tables</h2>
+                <p>The <code>CREATE TABLE</code> statement defines a new table — its name, its columns, and each column's data type. Here's the general syntax:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE table_name (
+    column1  datatype  [constraints],
+    column2  datatype  [constraints],
+    column3  datatype  [constraints],
+    ...
+);
+                </code></pre>
+
+                <p>Let's break this down with a real example:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE books (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    title       VARCHAR(200) NOT NULL,
+    author      VARCHAR(100) NOT NULL,
+    price       DECIMAL(8, 2) NOT NULL,
+    pages       INT,
+    published   DATE,
+    in_stock    BOOLEAN DEFAULT TRUE
+);
+                </code></pre>
+
+                <p>Here's what each part means:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Column</th>
+                                <th>Type</th>
+                                <th>What It Means</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>id</code></td>
+                                <td><code>INT AUTO_INCREMENT PRIMARY KEY</code></td>
+                                <td>Integer that auto-generates (1, 2, 3...) and uniquely identifies each row</td>
+                            </tr>
+                            <tr>
+                                <td><code>title</code></td>
+                                <td><code>VARCHAR(200) NOT NULL</code></td>
+                                <td>Variable-length text up to 200 characters; cannot be empty</td>
+                            </tr>
+                            <tr>
+                                <td><code>author</code></td>
+                                <td><code>VARCHAR(100) NOT NULL</code></td>
+                                <td>Variable-length text up to 100 characters; cannot be empty</td>
+                            </tr>
+                            <tr>
+                                <td><code>price</code></td>
+                                <td><code>DECIMAL(8, 2) NOT NULL</code></td>
+                                <td>Exact decimal number with up to 8 digits total and 2 after the decimal point (e.g., 999999.99)</td>
+                            </tr>
+                            <tr>
+                                <td><code>pages</code></td>
+                                <td><code>INT</code></td>
+                                <td>Integer; allows NULL (we might not know the page count)</td>
+                            </tr>
+                            <tr>
+                                <td><code>published</code></td>
+                                <td><code>DATE</code></td>
+                                <td>Date value (YYYY-MM-DD format); allows NULL</td>
+                            </tr>
+                            <tr>
+                                <td><code>in_stock</code></td>
+                                <td><code>BOOLEAN DEFAULT TRUE</code></td>
+                                <td>True/false value; defaults to TRUE if not specified</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 Data Types Preview</h4>
+                    <p>We'll cover data types in full detail in <a href="lesson_05.html">Lesson 5</a>. For now, just know the basics: <code>INT</code> = whole number, <code>VARCHAR(n)</code> = variable-length text, <code>DECIMAL(m,d)</code> = exact decimal, <code>DATE</code> = date, <code>BOOLEAN</code> = true/false.</p>
+                </div>
+
+                <h3>CREATE TABLE IF NOT EXISTS</h3>
+                <p>Just like databases, you can guard against errors:</p>
+
+                <pre><code class="language-sql">
+CREATE TABLE IF NOT EXISTS books (
+    id     INT AUTO_INCREMENT PRIMARY KEY,
+    title  VARCHAR(200) NOT NULL,
+    author VARCHAR(100) NOT NULL,
+    price  DECIMAL(8, 2) NOT NULL
+);
+                </code></pre>
+
+                <h3>Understanding the Key Constraints</h3>
+                <p>You saw a few keywords after the data types. Here's a quick reference — we'll explore these deeply in Lesson 5:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Constraint</th>
+                                <th>What It Does</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>PRIMARY KEY</code></td>
+                                <td>Uniquely identifies each row; cannot be NULL or duplicated</td>
+                                <td><code>id INT PRIMARY KEY</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>AUTO_INCREMENT</code></td>
+                                <td>Automatically assigns the next integer (1, 2, 3...)</td>
+                                <td><code>id INT AUTO_INCREMENT</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>NOT NULL</code></td>
+                                <td>Column cannot contain NULL (empty) values</td>
+                                <td><code>title VARCHAR(200) NOT NULL</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>DEFAULT</code></td>
+                                <td>Provides a value if none is specified during INSERT</td>
+                                <td><code>in_stock BOOLEAN DEFAULT TRUE</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>UNIQUE</code></td>
+                                <td>No two rows can have the same value in this column</td>
+                                <td><code>email VARCHAR(100) UNIQUE</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 4: Practice Database -->
+            <section id="practice-db" class="lesson-section">
+                <h2>Building Our Practice Database</h2>
+                <p>Let's build a database we'll use throughout the rest of this course — an online bookstore. We'll start with three tables and expand them in later lessons.</p>
+
+                <div class="mermaid">
+                    erDiagram
+                        BOOKS {
+                            int id PK
+                            varchar title
+                            varchar author
+                            decimal price
+                            int pages
+                            date published
+                            boolean in_stock
+                        }
+                        CUSTOMERS {
+                            int id PK
+                            varchar first_name
+                            varchar last_name
+                            varchar email
+                            varchar city
+                            date created_at
+                        }
+                        CATEGORIES {
+                            int id PK
+                            varchar name
+                            varchar description
+                        }
+                </div>
+
+                <div class="card card-accent">
+                    <h4>📖 Follow Along!</h4>
+                    <p>Open your MySQL CLI (<code>mysql -u root -p</code>) and type each command as you read. Building the muscle memory of typing SQL is just as important as understanding the concepts.</p>
+                </div>
+
+                <h3>Step 1: Create the Database</h3>
+
+                <pre><code class="language-sql">
+CREATE DATABASE IF NOT EXISTS bookstore
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
+USE bookstore;
+                </code></pre>
+
+                <h3>Step 2: Create the Books Table</h3>
+
+                <pre><code class="language-sql">
+CREATE TABLE IF NOT EXISTS books (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    title       VARCHAR(200) NOT NULL,
+    author      VARCHAR(100) NOT NULL,
+    price       DECIMAL(8, 2) NOT NULL,
+    pages       INT,
+    published   DATE,
+    in_stock    BOOLEAN DEFAULT TRUE
+);
+                </code></pre>
+
+                <h3>Step 3: Create the Customers Table</h3>
+
+                <pre><code class="language-sql">
+CREATE TABLE IF NOT EXISTS customers (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    first_name  VARCHAR(50) NOT NULL,
+    last_name   VARCHAR(50) NOT NULL,
+    email       VARCHAR(100) NOT NULL UNIQUE,
+    city        VARCHAR(50),
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+                </code></pre>
+
+                <p>Notice the new pieces:</p>
+                <ul>
+                    <li><code>UNIQUE</code> on <code>email</code> — no two customers can share the same email address</li>
+                    <li><code>DATETIME DEFAULT CURRENT_TIMESTAMP</code> — automatically records when the row was created</li>
+                </ul>
+
+                <h3>Step 4: Create the Categories Table</h3>
+
+                <pre><code class="language-sql">
+CREATE TABLE IF NOT EXISTS categories (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(50) NOT NULL UNIQUE,
+    description VARCHAR(255)
+);
+                </code></pre>
+
+                <h3>Step 5: Verify Your Work</h3>
+
+                <pre><code class="language-sql">
+-- List all tables in bookstore
+SHOW TABLES;
+
+-- Check each table's structure
+DESCRIBE books;
+DESCRIBE customers;
+DESCRIBE categories;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Expected Output for SHOW TABLES:</h4>
+                    <pre><code>
++---------------------+
+| Tables_in_bookstore |
++---------------------+
+| books               |
+| categories          |
+| customers           |
++---------------------+
+3 rows in set (0.00 sec)
+                    </code></pre>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ You Just Built a Database!</h4>
+                    <p>Three tables, properly named, with appropriate data types and constraints. This <code>bookstore</code> database will be our playground for the rest of the course. We'll add data in Lesson 6, query it in Lessons 7–10, add relationships in Lessons 11–13, and much more.</p>
+                </div>
+            </section>
+
+            <!-- Section 5: ALTER TABLE -->
+            <section id="alter-table" class="lesson-section">
+                <h2>Modifying Tables with ALTER TABLE</h2>
+                <p>Requirements change. You'll often need to add new columns, rename existing ones, change data types, or remove columns that are no longer needed. The <code>ALTER TABLE</code> statement handles all of this.</p>
+
+                <h3>ADD a Column</h3>
+
+                <pre><code class="language-sql">
+-- Add a 'phone' column to the customers table
+ALTER TABLE customers
+ADD COLUMN phone VARCHAR(20);
+                </code></pre>
+
+                <p>By default, the new column is added at the end. You can control placement:</p>
+
+                <pre><code class="language-sql">
+-- Add 'phone' after the 'email' column
+ALTER TABLE customers
+ADD COLUMN phone VARCHAR(20) AFTER email;
+
+-- Add a column at the very beginning
+ALTER TABLE customers
+ADD COLUMN member_id VARCHAR(10) FIRST;
+                </code></pre>
+
+                <h3>MODIFY a Column (change its type or constraints)</h3>
+
+                <pre><code class="language-sql">
+-- Make 'phone' longer and require it
+ALTER TABLE customers
+MODIFY COLUMN phone VARCHAR(30) NOT NULL;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Be Careful with MODIFY</h4>
+                    <p>If the table already has data, changing a column's type can fail or lose data. For example, you can't change a <code>VARCHAR</code> to an <code>INT</code> if the column contains text like "hello". Always check your data first.</p>
+                </div>
+
+                <h3>RENAME a Column</h3>
+
+                <pre><code class="language-sql">
+-- Rename 'phone' to 'phone_number'
+ALTER TABLE customers
+RENAME COLUMN phone TO phone_number;
+                </code></pre>
+
+                <h3>CHANGE a Column (rename + change type in one step)</h3>
+
+                <pre><code class="language-sql">
+-- Rename 'phone_number' to 'mobile' AND change its type
+ALTER TABLE customers
+CHANGE COLUMN phone_number mobile VARCHAR(25);
+                </code></pre>
+
+                <p>The difference between <code>RENAME COLUMN</code> and <code>CHANGE COLUMN</code>:</p>
+                <ul>
+                    <li><code>RENAME COLUMN</code> — just renames (simpler, MySQL 8.0+)</li>
+                    <li><code>CHANGE COLUMN</code> — renames AND lets you change the data type (works in all versions)</li>
+                </ul>
+
+                <h3>DROP a Column</h3>
+
+                <pre><code class="language-sql">
+-- Remove the 'mobile' column entirely
+ALTER TABLE customers
+DROP COLUMN mobile;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Dropping Columns Is Permanent</h4>
+                    <p>Like <code>DROP DATABASE</code>, this is immediate and irreversible. All data in that column is gone.</p>
+                </div>
+
+                <h3>Multiple Changes in One Statement</h3>
+                <p>You can combine multiple alterations in a single <code>ALTER TABLE</code>:</p>
+
+                <pre><code class="language-sql">
+ALTER TABLE books
+    ADD COLUMN isbn VARCHAR(13) UNIQUE AFTER id,
+    ADD COLUMN language VARCHAR(30) DEFAULT 'English',
+    MODIFY COLUMN pages INT UNSIGNED;
+                </code></pre>
+
+                <p>This is more efficient than running three separate <code>ALTER TABLE</code> commands because MySQL only rebuilds the table once.</p>
+
+                <h3>ALTER TABLE Quick Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Operation</th>
+                                <th>Syntax</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Add a column</td>
+                                <td><code>ALTER TABLE t ADD COLUMN col TYPE;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Add a column at a position</td>
+                                <td><code>ALTER TABLE t ADD COLUMN col TYPE AFTER other_col;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Modify a column's type</td>
+                                <td><code>ALTER TABLE t MODIFY COLUMN col NEW_TYPE;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Rename a column</td>
+                                <td><code>ALTER TABLE t RENAME COLUMN old TO new;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Rename + retype</td>
+                                <td><code>ALTER TABLE t CHANGE COLUMN old new NEW_TYPE;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Drop a column</td>
+                                <td><code>ALTER TABLE t DROP COLUMN col;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Rename the table</td>
+                                <td><code>ALTER TABLE t RENAME TO new_name;</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 6: Rename and Drop Tables -->
+            <section id="rename-drop" class="lesson-section">
+                <h2>Renaming and Dropping Tables</h2>
+
+                <h3>RENAME TABLE</h3>
+
+                <pre><code class="language-sql">
+-- Rename a table
+RENAME TABLE categories TO genres;
+
+-- Rename it back
+RENAME TABLE genres TO categories;
+                </code></pre>
+
+                <p>You can also rename multiple tables in a single statement:</p>
+
+                <pre><code class="language-sql">
+RENAME TABLE
+    old_name1 TO new_name1,
+    old_name2 TO new_name2;
+                </code></pre>
+
+                <h3>DROP TABLE</h3>
+                <p>Permanently deletes a table and all its data:</p>
+
+                <pre><code class="language-sql">
+-- Dangerous — no undo!
+DROP TABLE categories;
+
+-- Safer — won't error if the table doesn't exist
+DROP TABLE IF EXISTS categories;
+                </code></pre>
+
+                <h3>TRUNCATE TABLE</h3>
+                <p>If you want to <strong>keep the table structure but delete all rows</strong>, use <code>TRUNCATE</code>:</p>
+
+                <pre><code class="language-sql">
+-- Removes all data but keeps the table
+TRUNCATE TABLE books;
+                </code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 TRUNCATE vs. DELETE</h4>
+                    <p><code>TRUNCATE TABLE</code> is faster than <code>DELETE FROM table</code> because it doesn't scan rows individually — it drops and recreates the table structure. However, <code>TRUNCATE</code> can't be rolled back in a transaction and resets <code>AUTO_INCREMENT</code> back to 1. Use <code>DELETE</code> when you need fine-grained control; use <code>TRUNCATE</code> when you want to wipe everything quickly.</p>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Let's Undo Our Experiments</h4>
+                    <p>If you ran any <code>ALTER TABLE</code> or <code>DROP</code> commands on the bookstore tables during this lesson, let's rebuild them cleanly. The easiest way is to drop and recreate:</p>
+                    <pre><code class="language-sql">
+DROP DATABASE IF EXISTS bookstore;
+
+-- Then re-run the CREATE statements from the
+-- "Building Our Practice Database" section above.
+                    </code></pre>
+                    <p>We want clean tables for Lesson 5 and beyond.</p>
+                </div>
+            </section>
+
+            <!-- Section 7: Inspecting Your Work -->
+            <section id="show-create" class="lesson-section">
+                <h2>Inspecting Your Work</h2>
+                <p>After creating or modifying tables, you'll often want to verify the results. Here are the most useful inspection commands:</p>
+
+                <h3>DESCRIBE — Column Overview</h3>
+
+                <pre><code class="language-sql">
+DESCRIBE books;
+-- Shorthand:
+DESC books;
+                </code></pre>
+
+                <p>Shows columns, types, nullability, keys, and defaults in a quick table.</p>
+
+                <h3>SHOW CREATE TABLE — Full Definition</h3>
+
+                <pre><code class="language-sql">
+SHOW CREATE TABLE books\G
+                </code></pre>
+
+                <p>This shows the <em>exact</em> SQL that would recreate the table, including all constraints, defaults, character sets, and engine settings. It's the most complete view of a table's definition:</p>
+
+                <div class="card card-output">
+                    <h4>Output (abbreviated):</h4>
+                    <pre><code>
+*************************** 1. row ***************************
+       Table: books
+Create Table: CREATE TABLE `books` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `title` varchar(200) NOT NULL,
+  `author` varchar(100) NOT NULL,
+  `price` decimal(8,2) NOT NULL,
+  `pages` int DEFAULT NULL,
+  `published` date DEFAULT NULL,
+  `in_stock` tinyint(1) DEFAULT '1',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 Notice the Differences</h4>
+                    <p>MySQL may adjust your definitions slightly: <code>BOOLEAN</code> becomes <code>tinyint(1)</code> (MySQL doesn't have a native boolean type — it uses a tiny integer where 0 = false and 1 = true). <code>DEFAULT TRUE</code> becomes <code>DEFAULT '1'</code>. These are equivalent.</p>
+                </div>
+
+                <h3>SHOW COLUMNS — Alternative to DESCRIBE</h3>
+
+                <pre><code class="language-sql">
+SHOW COLUMNS FROM books;
+
+-- With more detail:
+SHOW FULL COLUMNS FROM books;
+                </code></pre>
+
+                <p><code>SHOW FULL COLUMNS</code> adds the collation, privileges, and any column comments.</p>
+
+                <h3>In phpMyAdmin</h3>
+                <p>Click on a table → <strong>Structure</strong> tab to see the same information visually. The <strong>SQL</strong> tab with <code>SHOW CREATE TABLE books;</code> works here too.</p>
+            </section>
+
+            <!-- Section 8: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: Build the Bookstore</h3>
+                    <p>If you haven't already, create the complete bookstore database from scratch. Write a single <code>.sql</code> file that:</p>
+                    <ol>
+                        <li>Creates the <code>bookstore</code> database (with utf8mb4)</li>
+                        <li>Switches to it with <code>USE</code></li>
+                        <li>Creates the <code>books</code> table</li>
+                        <li>Creates the <code>customers</code> table</li>
+                        <li>Creates the <code>categories</code> table</li>
+                    </ol>
+                    <p>Save it as <code>create_bookstore.sql</code> and run it with <code>SOURCE</code>.</p>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- create_bookstore.sql
+-- Sets up the bookstore database from scratch
+
+CREATE DATABASE IF NOT EXISTS bookstore
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
+USE bookstore;
+
+CREATE TABLE IF NOT EXISTS books (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    title       VARCHAR(200) NOT NULL,
+    author      VARCHAR(100) NOT NULL,
+    price       DECIMAL(8, 2) NOT NULL,
+    pages       INT,
+    published   DATE,
+    in_stock    BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS customers (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    first_name  VARCHAR(50) NOT NULL,
+    last_name   VARCHAR(50) NOT NULL,
+    email       VARCHAR(100) NOT NULL UNIQUE,
+    city        VARCHAR(50),
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS categories (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(50) NOT NULL UNIQUE,
+    description VARCHAR(255)
+);
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: ALTER TABLE Practice</h3>
+                    <p>Using ALTER TABLE, make the following changes to the bookstore tables:</p>
+                    <ol>
+                        <li>Add a <code>rating</code> column to <code>books</code> (DECIMAL(3,2), allows NULL — ratings like 4.75)</li>
+                        <li>Add a <code>phone</code> column to <code>customers</code> after <code>email</code></li>
+                        <li>Rename the <code>description</code> column in <code>categories</code> to <code>summary</code></li>
+                        <li>Verify each change with <code>DESCRIBE</code></li>
+                        <li><strong>Undo all changes</strong> so the tables match the original definitions</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- Make changes
+ALTER TABLE books ADD COLUMN rating DECIMAL(3,2);
+ALTER TABLE customers ADD COLUMN phone VARCHAR(20) AFTER email;
+ALTER TABLE categories RENAME COLUMN description TO summary;
+
+-- Verify
+DESCRIBE books;
+DESCRIBE customers;
+DESCRIBE categories;
+
+-- Undo changes
+ALTER TABLE books DROP COLUMN rating;
+ALTER TABLE customers DROP COLUMN phone;
+ALTER TABLE categories RENAME COLUMN summary TO description;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: Design Your Own Table</h3>
+                    <p>Inside the <code>bookstore</code> database, create a <code>publishers</code> table with:</p>
+                    <ul>
+                        <li><code>id</code> — auto-incrementing primary key</li>
+                        <li><code>name</code> — up to 100 characters, required, unique</li>
+                        <li><code>country</code> — up to 50 characters</li>
+                        <li><code>founded_year</code> — integer (e.g., 1925)</li>
+                        <li><code>website</code> — up to 200 characters</li>
+                    </ul>
+                    <p>After creating it, verify with <code>DESCRIBE</code> and <code>SHOW CREATE TABLE</code>.</p>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+CREATE TABLE IF NOT EXISTS publishers (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    name          VARCHAR(100) NOT NULL UNIQUE,
+    country       VARCHAR(50),
+    founded_year  INT,
+    website       VARCHAR(200)
+);
+
+DESCRIBE publishers;
+SHOW CREATE TABLE publishers\G
+                        </code></pre>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What does <code>IF NOT EXISTS</code> do in a CREATE statement?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="It doesn't change existing structures — it just prevents errors.">
+                                A) Updates the table if it already exists
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! It silently does nothing if the database/table already exists, instead of throwing an error.">
+                                B) Skips creation without error if it already exists
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Dropping and recreating would lose all data — IF NOT EXISTS is non-destructive.">
+                                C) Drops and recreates the table
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> Which command shows the exact SQL used to create a table?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="DESCRIBE shows a summary of columns — not the original CREATE statement.">
+                                A) DESCRIBE table_name;
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! SHOW CREATE TABLE outputs the full CREATE TABLE statement including all constraints, defaults, and engine settings.">
+                                B) SHOW CREATE TABLE table_name;
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="SHOW TABLES lists table names, not their definitions.">
+                                C) SHOW TABLES;
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> What's the difference between DROP TABLE and TRUNCATE TABLE?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Actually, it's the opposite — TRUNCATE is generally faster.">
+                                A) DROP is faster than TRUNCATE
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! DROP removes the table entirely (structure + data). TRUNCATE removes all rows but keeps the table structure intact.">
+                                B) DROP removes the table entirely; TRUNCATE removes all rows but keeps the structure
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="They're very different — one destroys the table, the other empties it.">
+                                C) They do the same thing
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> What's the recommended naming convention for MySQL tables?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="camelCase is common in JavaScript, not in databases.">
+                                A) camelCase singular (customerOrder)
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Lowercase snake_case avoids cross-platform issues, and plural names clearly indicate the table holds multiple records.">
+                                B) lowercase snake_case plural (customer_orders)
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="PascalCase is used in C# and some ORMs, but the SQL convention is lowercase.">
+                                C) PascalCase singular (CustomerOrder)
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 9: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li><code>CREATE DATABASE</code> creates a new database; <code>USE</code> switches to it</li>
+                        <li><code>CREATE TABLE</code> defines a table with columns, data types, and constraints</li>
+                        <li>Always use <code>IF NOT EXISTS</code> / <code>IF EXISTS</code> for safe, repeatable scripts</li>
+                        <li>Use <code>utf8mb4</code> character set for full Unicode support</li>
+                        <li>Follow naming conventions: <strong>lowercase, snake_case, plural table names</strong></li>
+                        <li><code>ALTER TABLE</code> lets you add, modify, rename, and drop columns on existing tables</li>
+                        <li><code>DROP TABLE</code> removes a table entirely; <code>TRUNCATE TABLE</code> empties data but keeps the structure</li>
+                        <li><code>DESCRIBE</code> gives a quick column overview; <code>SHOW CREATE TABLE</code> shows the full definition</li>
+                        <li>The <code>bookstore</code> database with <code>books</code>, <code>customers</code>, and <code>categories</code> tables is our course practice environment</li>
+                    </ul>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/create-database.html" target="_blank" rel="noopener">MySQL Docs — CREATE DATABASE</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/create-table.html" target="_blank" rel="noopener">MySQL Docs — CREATE TABLE</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/alter-table.html" target="_blank" rel="noopener">MySQL Docs — ALTER TABLE</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>You've built the structure — now let's understand the building blocks. In the next lesson, you'll dive deep into <strong>data types and constraints</strong> — choosing the right type for each column, enforcing rules on your data, and understanding how MySQL stores numbers, text, dates, and more.</p>
+
+                <div class="card card-accent" style="text-align: center; padding: 2rem;">
+                    <h3>🎉 Congratulations!</h3>
+                    <p>You've created your first database and tables from scratch. This is the foundation everything else builds on — great work!</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_03.html" class="prev-lesson">← Previous: MySQL CLI &amp; phpMyAdmin</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_05.html" class="next-lesson">Next: Data Types &amp; Constraints →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

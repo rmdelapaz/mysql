@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Install MySQL on Windows, macOS, and Linux (Ubuntu/WSL). Set up the LAMP stack and verify your database server is running.">
+    <meta name="author" content="Ray De La Paz">
+    <title>Installing MySQL (LAMP Stack) - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <!-- Mermaid — initialized by course-enhancements.js for theme awareness -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <!-- Progress indicator -->
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">
+                ☰
+            </button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 1: Getting Started</a></li>
+            <li aria-current="page">Lesson 2: Installing MySQL (LAMP Stack)</li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main-content">
+        <div class="container">
+            <!-- Lesson Header -->
+            <header>
+                <h1>🔧 Lesson 2: Installing MySQL (LAMP Stack)</h1>
+                <p class="lead">Time to get MySQL running on your machine. This lesson walks you through installation on Windows (via WSL), macOS (via Homebrew), and native Linux — plus setting up Apache, PHP, and phpMyAdmin so you have a complete local development environment.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Install MySQL on your operating system (Windows, macOS, or Linux)</li>
+                        <li>Start and stop the MySQL server</li>
+                        <li>Set a secure root password</li>
+                        <li>Install Apache and PHP for phpMyAdmin (optional on macOS/Windows)</li>
+                        <li>Verify that MySQL is running and accepting connections</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 45 minutes</p>
+                    <p><strong>What You'll Need:</strong> A computer with an internet connection and admin/sudo access</p>
+                </div>
+            </header>
+
+            <!-- Table of Contents -->
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#overview" class="toc-link">The Big Picture: What We're Installing</a></li>
+                        <li><a href="#choose-path" class="toc-link">Choose Your Installation Path</a></li>
+                        <li><a href="#windows" class="toc-link">Windows: Installing via WSL (Ubuntu)</a></li>
+                        <li><a href="#macos" class="toc-link">macOS: Installing via Homebrew</a></li>
+                        <li><a href="#linux" class="toc-link">Linux (Native Ubuntu/Debian)</a></li>
+                        <li><a href="#secure" class="toc-link">Securing Your Installation</a></li>
+                        <li><a href="#phpmyadmin" class="toc-link">Installing phpMyAdmin</a></li>
+                        <li><a href="#verify" class="toc-link">Verifying Everything Works</a></li>
+                        <li><a href="#troubleshooting" class="toc-link">Troubleshooting Common Issues</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: The Big Picture -->
+            <section id="overview" class="lesson-section">
+                <h2>The Big Picture: What We're Installing</h2>
+                <p>In Lesson 1, we mentioned the <strong>LAMP stack</strong> — Linux, Apache, MySQL, PHP. Here's what each piece does and why we need it:</p>
+
+                <div class="mermaid">
+                    graph TD
+                        A["LAMP Stack"] --> B["<strong>L</strong>inux<br/>Operating System<br/><em>The foundation</em>"]
+                        A --> C["<strong>A</strong>pache<br/>Web Server<br/><em>Serves web pages</em>"]
+                        A --> D["<strong>M</strong>ySQL<br/>Database Server<br/><em>Stores your data</em>"]
+                        A --> E["<strong>P</strong>HP<br/>Scripting Language<br/><em>Powers phpMyAdmin</em>"]
+                        style D fill:#3b82f6,stroke:#1e40af,color:#fff
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>What It Does</th>
+                                <th>Why We Need It</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Linux</strong></td>
+                                <td>Operating system</td>
+                                <td>MySQL runs natively on Linux; Windows users get it through WSL</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Apache</strong></td>
+                                <td>Web server</td>
+                                <td>Serves the phpMyAdmin interface in your browser</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MySQL</strong></td>
+                                <td>Database server</td>
+                                <td>This is what we're here to learn — the star of the show</td>
+                            </tr>
+                            <tr>
+                                <td><strong>PHP</strong></td>
+                                <td>Server-side language</td>
+                                <td>phpMyAdmin is written in PHP, so we need PHP to run it</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 Do I Need the Full LAMP Stack?</h4>
+                    <p>Strictly speaking, you only <em>need</em> MySQL to follow this course — you can do everything from the command line. Apache and PHP are only required if you want to use <strong>phpMyAdmin</strong>, a visual browser-based tool for managing databases. We highly recommend it, especially for beginners, but it's optional. If you prefer the command line only, you can skip the Apache/PHP steps.</p>
+                </div>
+            </section>
+
+            <!-- Section 2: Choose Your Path -->
+            <section id="choose-path" class="lesson-section">
+                <h2>Choose Your Installation Path</h2>
+                <p>Pick the section that matches your operating system:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Your OS</th>
+                                <th>Installation Method</th>
+                                <th>Jump To</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Windows 10/11</strong></td>
+                                <td>WSL 2 + Ubuntu (recommended)</td>
+                                <td><a href="#windows">Windows Section ↓</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong>macOS</strong></td>
+                                <td>Homebrew</td>
+                                <td><a href="#macos">macOS Section ↓</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ubuntu / Debian Linux</strong></td>
+                                <td>APT (native)</td>
+                                <td><a href="#linux">Linux Section ↓</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-accent">
+                    <h4>📖 Why WSL for Windows?</h4>
+                    <p>While MySQL does offer a native Windows installer, using <strong>WSL (Windows Subsystem for Linux)</strong> gives you a real Linux environment inside Windows. This is the industry-standard approach for web development on Windows — it matches what you'd use on a production server, makes Apache/PHP/phpMyAdmin setup smoother, and means the Linux commands you learn here work exactly the same in deployment. Most professional developers on Windows use WSL.</p>
+                </div>
+            </section>
+
+            <!-- Section 3: Windows via WSL -->
+            <section id="windows" class="lesson-section">
+                <h2>Windows: Installing via WSL (Ubuntu)</h2>
+
+                <h3>Step 1: Install WSL and Ubuntu</h3>
+                <p>If you don't already have WSL set up, open <strong>PowerShell as Administrator</strong> (right-click the Start button → "Terminal (Admin)" or "PowerShell (Admin)") and run:</p>
+
+                <pre><code class="language-bash">
+wsl --install
+                </code></pre>
+
+                <p>This installs WSL 2 with Ubuntu as the default Linux distribution. When it finishes:</p>
+                <ol>
+                    <li><strong>Restart your computer</strong> when prompted</li>
+                    <li>After reboot, Ubuntu will launch automatically and ask you to create a <strong>username and password</strong> — this is your Linux user account (separate from your Windows login)</li>
+                    <li>Remember this password! You'll need it for <code>sudo</code> commands</li>
+                </ol>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Already Have WSL?</h4>
+                    <p>If you already have WSL and Ubuntu installed, just open your Ubuntu terminal and skip to Step 2. You can check by running <code>wsl --list</code> in PowerShell.</p>
+                </div>
+
+                <h3>Step 2: Update Your System</h3>
+                <p>Open your Ubuntu terminal (search "Ubuntu" in the Start menu) and update your package lists:</p>
+
+                <pre><code class="language-bash">
+sudo apt update && sudo apt upgrade -y
+                </code></pre>
+
+                <h3>Step 3: Install MySQL Server</h3>
+
+                <pre><code class="language-bash">
+sudo apt install mysql-server -y
+                </code></pre>
+
+                <h3>Step 4: Start MySQL</h3>
+                <p>In WSL, services don't auto-start like on a regular Linux server. Start MySQL manually:</p>
+
+                <pre><code class="language-bash">
+sudo service mysql start
+                </code></pre>
+
+                <p>Check that it's running:</p>
+
+                <pre><code class="language-bash">
+sudo service mysql status
+                </code></pre>
+
+                <p>You should see output indicating the service is <strong>active (running)</strong>.</p>
+
+                <div class="card card-success">
+                    <h4>✅ WSL Tip: Auto-Starting MySQL</h4>
+                    <p>Since WSL doesn't auto-start services on boot, you'll need to run <code>sudo service mysql start</code> each time you open a new Ubuntu session. You can add it to your <code>~/.bashrc</code> file to automate this:</p>
+                    <pre><code class="language-bash">
+echo "sudo service mysql start" >> ~/.bashrc
+                    </code></pre>
+                    <p>You may also want to configure <a href="https://learn.microsoft.com/en-us/windows/wsl/wsl-config#boot-settings" target="_blank" rel="noopener">WSL boot commands</a> for a cleaner solution.</p>
+                </div>
+
+                <h3>Step 5: Install Apache and PHP (for phpMyAdmin)</h3>
+                <p>If you want to use phpMyAdmin (recommended), install Apache and PHP:</p>
+
+                <pre><code class="language-bash">
+sudo apt install apache2 php php-mysql libapache2-mod-php -y
+                </code></pre>
+
+                <p>Start Apache:</p>
+
+                <pre><code class="language-bash">
+sudo service apache2 start
+                </code></pre>
+
+                <p>Verify Apache is working by opening your browser and visiting <a href="http://localhost" target="_blank">http://localhost</a>. You should see the Apache default page.</p>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Port Conflict?</h4>
+                    <p>If <code>http://localhost</code> doesn't load, another program may be using port 80. Common culprits on Windows include IIS, Skype, or other web servers. You can check with <code>sudo lsof -i :80</code> in WSL or change Apache's port in <code>/etc/apache2/ports.conf</code>.</p>
+                </div>
+
+                <p>Now skip ahead to the <a href="#secure">Securing Your Installation</a> section.</p>
+            </section>
+
+            <!-- Section 4: macOS via Homebrew -->
+            <section id="macos" class="lesson-section">
+                <h2>macOS: Installing via Homebrew</h2>
+
+                <h3>Step 1: Install Homebrew (if needed)</h3>
+                <p><a href="https://brew.sh/" target="_blank" rel="noopener">Homebrew</a> is the standard package manager for macOS. If you don't have it, open <strong>Terminal</strong> (Applications → Utilities → Terminal) and run:</p>
+
+                <pre><code class="language-bash">
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                </code></pre>
+
+                <p>Follow the prompts. When it finishes, you may need to add Homebrew to your PATH. The installer will tell you exactly what to run — it's usually something like:</p>
+
+                <pre><code class="language-bash">
+# For Apple Silicon Macs (M1/M2/M3/M4):
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+# For Intel Macs:
+echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zprofile
+eval "$(/usr/local/bin/brew shellenv)"
+                </code></pre>
+
+                <p>Verify Homebrew is working:</p>
+
+                <pre><code class="language-bash">
+brew --version
+                </code></pre>
+
+                <h3>Step 2: Install MySQL</h3>
+
+                <pre><code class="language-bash">
+brew install mysql
+                </code></pre>
+
+                <h3>Step 3: Start MySQL</h3>
+                <p>Start MySQL and configure it to launch automatically on login:</p>
+
+                <pre><code class="language-bash">
+brew services start mysql
+                </code></pre>
+
+                <p>Verify it's running:</p>
+
+                <pre><code class="language-bash">
+brew services list
+                </code></pre>
+
+                <p>You should see <code>mysql</code> listed with a status of <strong>started</strong>.</p>
+
+                <div class="card card-info">
+                    <h4>💡 Homebrew Services</h4>
+                    <p>Using <code>brew services start</code> sets MySQL to auto-start whenever you log in. If you prefer manual control, use <code>mysql.server start</code> and <code>mysql.server stop</code> instead.</p>
+                </div>
+
+                <h3>Step 4: Install Apache and PHP (for phpMyAdmin)</h3>
+                <p>macOS comes with Apache pre-installed, but for a cleaner setup with PHP, use Homebrew:</p>
+
+                <pre><code class="language-bash">
+# Install PHP
+brew install php
+
+# Start the built-in Apache (macOS already has it)
+sudo apachectl start
+                </code></pre>
+
+                <p>Verify Apache by visiting <a href="http://localhost" target="_blank">http://localhost</a> in your browser. You should see an "It works!" page.</p>
+
+                <div class="card card-accent">
+                    <h4>📖 Alternative: Skip Apache/PHP</h4>
+                    <p>On macOS, many developers skip the full LAMP setup and just use MySQL from the command line. If you'd prefer not to install Apache and PHP, that's perfectly fine — you can follow this entire course using just the MySQL CLI. The phpMyAdmin setup is optional.</p>
+                </div>
+
+                <p>Now skip ahead to the <a href="#secure">Securing Your Installation</a> section.</p>
+            </section>
+
+            <!-- Section 5: Native Linux -->
+            <section id="linux" class="lesson-section">
+                <h2>Linux (Native Ubuntu/Debian)</h2>
+                <p>If you're running Ubuntu or Debian natively (not through WSL), the process is the same as the WSL instructions but services auto-start.</p>
+
+                <h3>Step 1: Update Your System</h3>
+
+                <pre><code class="language-bash">
+sudo apt update && sudo apt upgrade -y
+                </code></pre>
+
+                <h3>Step 2: Install the Full LAMP Stack</h3>
+                <p>You can install everything in one command:</p>
+
+                <pre><code class="language-bash">
+sudo apt install apache2 mysql-server php php-mysql libapache2-mod-php -y
+                </code></pre>
+
+                <h3>Step 3: Verify Services Are Running</h3>
+                <p>On native Linux, services usually start automatically after installation:</p>
+
+                <pre><code class="language-bash">
+# Check MySQL
+sudo systemctl status mysql
+
+# Check Apache
+sudo systemctl status apache2
+                </code></pre>
+
+                <p>Both should show <strong>active (running)</strong>. If not, start them:</p>
+
+                <pre><code class="language-bash">
+sudo systemctl start mysql
+sudo systemctl start apache2
+                </code></pre>
+
+                <p>Enable them to start on boot:</p>
+
+                <pre><code class="language-bash">
+sudo systemctl enable mysql
+sudo systemctl enable apache2
+                </code></pre>
+
+                <p>Now continue to the <a href="#secure">Securing Your Installation</a> section.</p>
+            </section>
+
+            <!-- Section 6: Securing Your Installation -->
+            <section id="secure" class="lesson-section">
+                <h2>Securing Your Installation</h2>
+                <p>By default, MySQL's root account may have no password or use a socket-based authentication method. Let's secure it.</p>
+
+                <h3>Run the Security Script</h3>
+                <p>MySQL ships with a built-in security script that walks you through hardening your installation:</p>
+
+                <pre><code class="language-bash">
+sudo mysql_secure_installation
+                </code></pre>
+
+                <p>The script will ask you several questions. Here are the recommended answers for a development environment:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Prompt</th>
+                                <th>Recommended Answer</th>
+                                <th>Why</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>VALIDATE PASSWORD component?</td>
+                                <td><strong>No</strong></td>
+                                <td>Keeps things simple for development; use Yes for production</td>
+                            </tr>
+                            <tr>
+                                <td>Set root password?</td>
+                                <td><strong>Yes</strong> — choose a password you'll remember</td>
+                                <td>Secures the root account</td>
+                            </tr>
+                            <tr>
+                                <td>Remove anonymous users?</td>
+                                <td><strong>Yes</strong></td>
+                                <td>Prevents unauthenticated access</td>
+                            </tr>
+                            <tr>
+                                <td>Disallow root login remotely?</td>
+                                <td><strong>Yes</strong></td>
+                                <td>Root should only connect from localhost</td>
+                            </tr>
+                            <tr>
+                                <td>Remove test database?</td>
+                                <td><strong>Yes</strong></td>
+                                <td>Removes the insecure default test database</td>
+                            </tr>
+                            <tr>
+                                <td>Reload privilege tables?</td>
+                                <td><strong>Yes</strong></td>
+                                <td>Applies all changes immediately</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Set Up Password Authentication for Root</h3>
+                <p>On Ubuntu, MySQL's root user defaults to <strong>auth_socket</strong> authentication (login via <code>sudo</code> without a password). For this course, we'll switch to password authentication so you can log in from phpMyAdmin and other tools:</p>
+
+                <pre><code class="language-bash">
+# Log in as root (uses sudo/socket auth)
+sudo mysql
+                </code></pre>
+
+                <p>Now run these SQL commands inside the MySQL prompt:</p>
+
+                <pre><code class="language-sql">
+-- Switch root to password authentication
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'your_password_here';
+
+-- Apply changes
+FLUSH PRIVILEGES;
+
+-- Exit
+EXIT;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Choose a Real Password</h4>
+                    <p>Replace <code>your_password_here</code> with an actual password. For a local development environment, something simple but memorable is fine (e.g., <code>mysql_dev_2026</code>). <strong>Never use a blank password or "password"</strong>, even for development.</p>
+                </div>
+
+                <p>Test that password login works:</p>
+
+                <pre><code class="language-bash">
+mysql -u root -p
+                </code></pre>
+
+                <p>You'll be prompted for the password you just set. If you see the <code>mysql></code> prompt, you're in! Type <code>EXIT;</code> to leave.</p>
+
+                <div class="card card-info">
+                    <h4>💡 macOS Homebrew Note</h4>
+                    <p>On macOS with Homebrew, MySQL typically starts with no root password. Run <code>mysql_secure_installation</code> the same way. If you get an error about connecting, try <code>mysql -u root</code> first (no <code>sudo</code> needed on macOS), set the password, then proceed with the security script.</p>
+                </div>
+            </section>
+
+            <!-- Section 7: Installing phpMyAdmin -->
+            <section id="phpmyadmin" class="lesson-section">
+                <h2>Installing phpMyAdmin</h2>
+                <p><strong>phpMyAdmin</strong> is a free, web-based tool for managing MySQL databases. It lets you create databases, design tables, run queries, import/export data, and manage users — all from your browser. It's especially helpful when you're learning because you can <em>see</em> your data visually.</p>
+
+                <h3>Ubuntu / WSL Installation</h3>
+
+                <pre><code class="language-bash">
+sudo apt install phpmyadmin -y
+                </code></pre>
+
+                <p>During installation, you'll see some prompts:</p>
+                <ol>
+                    <li><strong>Web server to reconfigure automatically:</strong> Select <code>apache2</code> (use spacebar to select, then Enter)</li>
+                    <li><strong>Configure database for phpmyadmin with dbconfig-common?</strong> Select <strong>Yes</strong></li>
+                    <li><strong>Password for phpMyAdmin's database user:</strong> Choose a password (this is for phpMyAdmin's own internal database, not your root password)</li>
+                </ol>
+
+                <p>If Apache doesn't pick up phpMyAdmin automatically, enable it manually:</p>
+
+                <pre><code class="language-bash">
+sudo ln -s /etc/phpmyadmin/apache.conf /etc/apache2/conf-available/phpmyadmin.conf
+sudo a2enconf phpmyadmin
+sudo service apache2 reload
+                </code></pre>
+
+                <p>Now open your browser and visit <a href="http://localhost/phpmyadmin" target="_blank">http://localhost/phpmyadmin</a>. Log in with:</p>
+                <ul>
+                    <li><strong>Username:</strong> <code>root</code></li>
+                    <li><strong>Password:</strong> the root password you set in the previous section</li>
+                </ul>
+
+                <h3>macOS Installation</h3>
+                <p>On macOS, the easiest approach is to download phpMyAdmin manually:</p>
+
+                <ol>
+                    <li>Download the latest version from <a href="https://www.phpmyadmin.net/downloads/" target="_blank" rel="noopener">phpmyadmin.net/downloads</a></li>
+                    <li>Extract the archive and rename the folder to <code>phpmyadmin</code></li>
+                    <li>Move it to your web server's document root:
+                        <pre><code class="language-bash">
+# Default Apache document root on macOS
+sudo mv ~/Downloads/phpmyadmin /Library/WebServer/Documents/phpmyadmin
+                        </code></pre>
+                    </li>
+                    <li>Create a configuration file:
+                        <pre><code class="language-bash">
+cd /Library/WebServer/Documents/phpmyadmin
+cp config.sample.inc.php config.inc.php
+                        </code></pre>
+                    </li>
+                    <li>Edit <code>config.inc.php</code> and set a blowfish secret (any random 32-character string):
+                        <pre><code class="language-php">
+$cfg['blowfish_secret'] = 'put-a-random-32-character-string-here!!';
+                        </code></pre>
+                    </li>
+                    <li>Restart Apache: <code>sudo apachectl restart</code></li>
+                    <li>Visit <a href="http://localhost/phpmyadmin" target="_blank">http://localhost/phpmyadmin</a></li>
+                </ol>
+
+                <div class="card card-accent">
+                    <h4>📖 macOS Alternative: Use MySQL Workbench</h4>
+                    <p>If setting up Apache/PHP on macOS feels like overkill, consider using <a href="https://www.mysql.com/products/workbench/" target="_blank" rel="noopener">MySQL Workbench</a> instead — it's a free, native macOS app from Oracle that provides a visual database editor. Download it from the MySQL website or install via Homebrew: <code>brew install --cask mysqlworkbench</code></p>
+                </div>
+            </section>
+
+            <!-- Section 8: Verify Everything Works -->
+            <section id="verify" class="lesson-section">
+                <h2>Verifying Everything Works</h2>
+                <p>Let's run through a quick checklist to make sure your entire setup is working.</p>
+
+                <h3>1. MySQL Is Running</h3>
+
+                <pre><code class="language-bash">
+# Ubuntu / WSL
+sudo service mysql status
+
+# macOS (Homebrew)
+brew services list
+
+# Native Linux
+sudo systemctl status mysql
+                </code></pre>
+
+                <p>You should see <strong>active</strong> or <strong>started</strong>.</p>
+
+                <h3>2. You Can Log In</h3>
+
+                <pre><code class="language-bash">
+mysql -u root -p
+                </code></pre>
+
+                <p>Enter your password. If you see the <code>mysql></code> prompt, run a quick test:</p>
+
+                <pre><code class="language-sql">
+-- Check MySQL version
+SELECT VERSION();
+
+-- List existing databases
+SHOW DATABASES;
+
+-- Exit
+EXIT;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Expected Output:</h4>
+                    <pre><code>
+mysql> SELECT VERSION();
++-----------+
+| VERSION() |
++-----------+
+| 8.0.xx    |
++-----------+
+1 row in set (0.00 sec)
+
+mysql> SHOW DATABASES;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+4 rows in set (0.01 sec)
+                    </code></pre>
+                </div>
+
+                <p>Those four databases are MySQL's built-in system databases — you'll never need to touch them directly. Your own databases will appear in this list as you create them.</p>
+
+                <h3>3. Apache Is Serving Pages (if installed)</h3>
+                <p>Open your browser and go to <a href="http://localhost" target="_blank">http://localhost</a>. You should see a default Apache page.</p>
+
+                <h3>4. phpMyAdmin Is Accessible (if installed)</h3>
+                <p>Visit <a href="http://localhost/phpmyadmin" target="_blank">http://localhost/phpmyadmin</a> and log in with your root credentials. You should see the phpMyAdmin dashboard with your databases listed on the left.</p>
+
+                <div class="card card-success">
+                    <h4>✅ All Systems Go!</h4>
+                    <p>If all four checks pass, congratulations — your development environment is fully set up! You have MySQL running, you can log in via the command line, and (optionally) you have phpMyAdmin for visual database management.</p>
+                </div>
+            </section>
+
+            <!-- Section 9: Troubleshooting -->
+            <section id="troubleshooting" class="lesson-section">
+                <h2>Troubleshooting Common Issues</h2>
+
+                <div class="card card-warning">
+                    <h4>⚠️ "Can't connect to local MySQL server through socket"</h4>
+                    <p>This usually means MySQL isn't running. Start it:</p>
+                    <pre><code class="language-bash">
+# WSL / Ubuntu
+sudo service mysql start
+
+# macOS
+brew services start mysql
+
+# Native Linux
+sudo systemctl start mysql
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ "Access denied for user 'root'@'localhost'"</h4>
+                    <p>Your password is wrong, or root is still using socket authentication. Try:</p>
+                    <pre><code class="language-bash">
+# Log in via sudo (bypasses password)
+sudo mysql
+
+# Then reset the password inside MySQL:
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'new_password';
+FLUSH PRIVILEGES;
+EXIT;
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ phpMyAdmin shows a blank page or error</h4>
+                    <p>Make sure the PHP MySQL extension is installed and Apache is reloaded:</p>
+                    <pre><code class="language-bash">
+sudo apt install php-mysql php-mbstring php-zip php-gd php-json php-curl -y
+sudo service apache2 restart
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ "dpkg: error processing package mysql-server"</h4>
+                    <p>If the MySQL install fails on Ubuntu/WSL, try:</p>
+                    <pre><code class="language-bash">
+sudo apt --fix-broken install
+sudo apt install mysql-server -y
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ macOS: "ERROR 2002 (HY000): Can't connect"</h4>
+                    <p>If you installed via Homebrew and get connection errors:</p>
+                    <pre><code class="language-bash">
+# Make sure MySQL is running
+brew services restart mysql
+
+# Try connecting without sudo
+mysql -u root
+                    </code></pre>
+                    <p>On macOS, you typically don't use <code>sudo</code> with MySQL commands.</p>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ WSL: localhost not loading in browser</h4>
+                    <p>Newer versions of WSL2 may use a different IP. Try:</p>
+                    <pre><code class="language-bash">
+# Find your WSL IP
+hostname -I
+                    </code></pre>
+                    <p>Then visit <code>http://&lt;that-ip&gt;/phpmyadmin</code> instead of <code>http://localhost/phpmyadmin</code>. Alternatively, check that <a href="https://learn.microsoft.com/en-us/windows/wsl/networking" target="_blank" rel="noopener">WSL networking</a> is configured for localhost forwarding.</p>
+                </div>
+            </section>
+
+            <!-- Section 10: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: Confirm Your Setup</h3>
+                    <p>Run through this checklist and verify each item:</p>
+                    <ol>
+                        <li>Open your terminal and run <code>mysql --version</code> — what version are you running?</li>
+                        <li>Log into MySQL with <code>mysql -u root -p</code></li>
+                        <li>Run <code>SELECT VERSION();</code> — does it match?</li>
+                        <li>Run <code>SHOW DATABASES;</code> — how many system databases do you see?</li>
+                        <li>Type <code>EXIT;</code> to leave</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ What You Should See</summary>
+                        <ul>
+                            <li><code>mysql --version</code> shows something like <code>mysql Ver 8.0.xx</code></li>
+                            <li><code>SELECT VERSION();</code> returns the same version number</li>
+                            <li><code>SHOW DATABASES;</code> shows 4 system databases: information_schema, mysql, performance_schema, sys</li>
+                        </ul>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: Explore phpMyAdmin (if installed)</h3>
+                    <ol>
+                        <li>Open <a href="http://localhost/phpmyadmin" target="_blank">http://localhost/phpmyadmin</a> and log in</li>
+                        <li>Click on any system database in the left sidebar (try <code>mysql</code>)</li>
+                        <li>Click the <strong>SQL</strong> tab at the top</li>
+                        <li>Type <code>SELECT VERSION();</code> and click <strong>Go</strong></li>
+                        <li>Observe the result — you just ran your first query in phpMyAdmin!</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ What You Should See</summary>
+                        <p>The SQL tab should show a text area where you can type queries. After clicking Go, the result appears below with your MySQL version number in a table format. This is the same query you ran from the command line — phpMyAdmin is just a visual wrapper around the MySQL CLI.</p>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What does the "M" in LAMP stand for?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="MongoDB is a NoSQL database, not part of LAMP.">
+                                A) MongoDB
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! LAMP = Linux, Apache, MySQL, PHP.">
+                                B) MySQL
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="MariaDB is compatible with MySQL but the acronym specifically refers to MySQL.">
+                                C) MariaDB
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> Which command logs you into MySQL from the command line?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="This starts the MySQL service, but doesn't log you in.">
+                                A) sudo service mysql start
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The -u flag specifies the user, and -p prompts for the password.">
+                                B) mysql -u root -p
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="This would open MySQL's config file, not log you in.">
+                                C) mysql --config
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> What SQL command shows all databases on the server?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="SELECT retrieves data from a table, not a list of databases.">
+                                A) SELECT DATABASES;
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="LIST is not a standard SQL command.">
+                                B) LIST DATABASES;
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! SHOW DATABASES; lists every database on the server.">
+                                C) SHOW DATABASES;
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 11: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li>The <strong>LAMP stack</strong> (Linux, Apache, MySQL, PHP) is the classic web development environment</li>
+                        <li><strong>Windows</strong> users install MySQL through WSL (Ubuntu) for a real Linux environment</li>
+                        <li><strong>macOS</strong> users install MySQL through Homebrew with <code>brew install mysql</code></li>
+                        <li><strong>Linux</strong> users install directly with <code>sudo apt install mysql-server</code></li>
+                        <li>Always run <code>mysql_secure_installation</code> to set a root password and remove defaults</li>
+                        <li>Switch root from socket auth to password auth with <code>ALTER USER</code> so phpMyAdmin can connect</li>
+                        <li><strong>phpMyAdmin</strong> provides a visual, browser-based interface for managing databases</li>
+                        <li>Use <code>mysql -u root -p</code> to log in from the command line</li>
+                    </ul>
+                </div>
+
+                <h3>🚀 What's Next?</h3>
+                <p>Your database server is up and running. In the next lesson, you'll learn to navigate both the <strong>MySQL command-line interface (CLI)</strong> and <strong>phpMyAdmin</strong> — running queries, exploring databases, and getting comfortable with the tools you'll use throughout this course.</p>
+
+                <div class="card card-accent" style="text-align: center; padding: 2rem;">
+                    <h3>🎉 Congratulations!</h3>
+                    <p>You've installed MySQL and set up your development environment. The hardest part of any course is getting the tools working — and you've done it. Let's put them to use!</p>
+                </div>
+            </section>
+
+            <!-- Lesson Navigation -->
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_01.html" class="prev-lesson">← Previous: What Is a Database?</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_03.html" class="next-lesson">Next: MySQL CLI &amp; phpMyAdmin →</a>
+            </nav>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn the four fundamental SQL operations — INSERT, SELECT, UPDATE, and DELETE — to create, read, modify, and remove data in MySQL tables.">
+    <meta name="author" content="Ray De La Paz">
+    <title>CRUD Operations - MySQL Foundations</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = localStorage.getItem('theme') === 'dark' ||
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <div class="progress-indicator" role="progressbar" aria-label="Page scroll progress">
+        <div class="progress-bar"></div>
+    </div>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 2: Tables &amp; Data Types</a></li>
+            <li aria-current="page">Lesson 6: CRUD Operations</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🔄 Lesson 6: CRUD Operations</h1>
+                <p class="lead">CRUD — Create, Read, Update, Delete — is the heartbeat of every database application. Whether it's a shopping cart, a social media feed, or a banking system, everything boils down to these four operations. In this lesson, you'll master them all.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li><strong>Create</strong> data with <code>INSERT INTO</code> (single row, multiple rows, and with defaults)</li>
+                        <li><strong>Read</strong> data with <code>SELECT</code> (all columns, specific columns, and aliases)</li>
+                        <li><strong>Update</strong> data with <code>UPDATE ... SET ... WHERE</code></li>
+                        <li><strong>Delete</strong> data with <code>DELETE FROM ... WHERE</code></li>
+                        <li>Understand the critical role of <code>WHERE</code> in preventing accidental mass changes</li>
+                        <li>Use <code>REPLACE</code> and <code>INSERT ... ON DUPLICATE KEY UPDATE</code> for upsert patterns</li>
+                    </ul>
+                    <p><strong>Estimated Time:</strong> 50 minutes</p>
+                    <p><strong>Prerequisites:</strong> Data types and constraints (<a href="lesson_05.html">Lesson 5</a>)</p>
+                </div>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary>
+                    <h2 style="display: inline; margin: 0;">📑 In This Lesson</h2>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#what-is-crud" class="toc-link">What Is CRUD?</a></li>
+                        <li><a href="#setup" class="toc-link">Setting Up Our Data</a></li>
+                        <li><a href="#insert" class="toc-link">CREATE — INSERT INTO</a></li>
+                        <li><a href="#select" class="toc-link">READ — SELECT</a></li>
+                        <li><a href="#update" class="toc-link">UPDATE — Modifying Data</a></li>
+                        <li><a href="#delete" class="toc-link">DELETE — Removing Data</a></li>
+                        <li><a href="#upsert" class="toc-link">Upsert Patterns</a></li>
+                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
+                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <!-- Section 1: What Is CRUD? -->
+            <section id="what-is-crud" class="lesson-section">
+                <h2>What Is CRUD?</h2>
+                <p>CRUD is an acronym for the four basic operations you can perform on data:</p>
+
+                <div class="mermaid">
+                    graph LR
+                        C["🟢 Create<br/>INSERT INTO"] --> R["🔵 Read<br/>SELECT"]
+                        R --> U["🟡 Update<br/>UPDATE ... SET"]
+                        U --> D["🔴 Delete<br/>DELETE FROM"]
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CRUD Operation</th>
+                                <th>SQL Statement</th>
+                                <th>What It Does</th>
+                                <th>Real-World Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Create</strong></td>
+                                <td><code>INSERT INTO</code></td>
+                                <td>Adds new rows to a table</td>
+                                <td>A new customer signs up</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Read</strong></td>
+                                <td><code>SELECT</code></td>
+                                <td>Retrieves data from a table</td>
+                                <td>Viewing your order history</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Update</strong></td>
+                                <td><code>UPDATE</code></td>
+                                <td>Modifies existing rows</td>
+                                <td>Changing your email address</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Delete</strong></td>
+                                <td><code>DELETE</code></td>
+                                <td>Removes rows from a table</td>
+                                <td>Cancelling an account</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>Every web application, mobile app, and API you've ever used is performing these four operations behind the scenes. Learning them well is the foundation for everything else in SQL.</p>
+            </section>
+
+            <!-- Section 2: Setup -->
+            <section id="setup" class="lesson-section">
+                <h2>Setting Up Our Data</h2>
+                <p>We'll work with the <code>bookstore</code> database from Lesson 4. If you need to rebuild it, run this first:</p>
+
+                <pre><code class="language-sql">
+CREATE DATABASE IF NOT EXISTS bookstore
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
+USE bookstore;
+
+-- Drop existing tables so we start fresh
+DROP TABLE IF EXISTS books;
+DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS categories;
+
+CREATE TABLE books (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    title       VARCHAR(200) NOT NULL,
+    author      VARCHAR(100) NOT NULL,
+    price       DECIMAL(8, 2) NOT NULL,
+    pages       INT,
+    published   DATE,
+    in_stock    BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE customers (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    first_name  VARCHAR(50) NOT NULL,
+    last_name   VARCHAR(50) NOT NULL,
+    email       VARCHAR(100) NOT NULL UNIQUE,
+    city        VARCHAR(50),
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE categories (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(50) NOT NULL UNIQUE,
+    description VARCHAR(255)
+);
+                </code></pre>
+
+                <div class="card card-accent">
+                    <h4>📖 Follow Along!</h4>
+                    <p>Open your MySQL CLI (<code>mysql -u root -p</code>) and run each command as you read. This lesson is hands-on — you'll learn best by doing.</p>
+                </div>
+            </section>
+
+            <!-- Section 3: INSERT -->
+            <section id="insert" class="lesson-section">
+                <h2>CREATE — INSERT INTO</h2>
+                <p>The <code>INSERT INTO</code> statement adds new rows to a table. There are several ways to use it.</p>
+
+                <h3>Insert a Single Row</h3>
+                <p>The most common form — specify the columns and their values:</p>
+
+                <pre><code class="language-sql">
+INSERT INTO books (title, author, price, pages, published)
+VALUES ('Dune', 'Frank Herbert', 12.99, 412, '1965-08-01');
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
+Query OK, 1 row affected (0.01 sec)
+                    </code></pre>
+                </div>
+
+                <p>Notice what we <em>didn't</em> include:</p>
+                <ul>
+                    <li><code>id</code> — handled by <code>AUTO_INCREMENT</code> (MySQL assigns 1 automatically)</li>
+                    <li><code>in_stock</code> — handled by <code>DEFAULT TRUE</code></li>
+                </ul>
+
+                <h3>Verify It Worked</h3>
+
+                <pre><code class="language-sql">
+SELECT * FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++----+------+----------------+-------+-------+------------+----------+
+| id | title| author         | price | pages | published  | in_stock |
++----+------+----------------+-------+-------+------------+----------+
+|  1 | Dune | Frank Herbert  | 12.99 |   412 | 1965-08-01 |        1 |
++----+------+----------------+-------+-------+------------+----------+
+                    </code></pre>
+                </div>
+
+                <h3>Insert Multiple Rows at Once</h3>
+                <p>You can insert several rows in a single statement — much faster than individual inserts:</p>
+
+                <pre><code class="language-sql">
+INSERT INTO books (title, author, price, pages, published) VALUES
+    ('1984', 'George Orwell', 9.99, 328, '1949-06-08'),
+    ('To Kill a Mockingbird', 'Harper Lee', 11.99, 281, '1960-07-11'),
+    ('The Great Gatsby', 'F. Scott Fitzgerald', 8.99, 180, '1925-04-10'),
+    ('Pride and Prejudice', 'Jane Austen', 7.99, 432, '1813-01-28'),
+    ('The Hobbit', 'J.R.R. Tolkien', 10.99, 310, '1937-09-21');
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
+Query OK, 5 rows affected (0.01 sec)
+Records: 5  Duplicates: 0  Warnings: 0
+                    </code></pre>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ Performance Tip</h4>
+                    <p>Multi-row <code>INSERT</code> is significantly faster than individual inserts because MySQL processes them in a single transaction. When loading data, always batch your inserts.</p>
+                </div>
+
+                <h3>Insert with All Columns (No Column List)</h3>
+                <p>If you provide values for <em>every</em> column in order, you can skip the column list:</p>
+
+                <pre><code class="language-sql">
+-- Works, but not recommended:
+INSERT INTO books
+VALUES (NULL, 'Fahrenheit 451', 'Ray Bradbury', 10.49, 158, '1953-10-19', TRUE);
+                </code></pre>
+
+                <p>The <code>NULL</code> for <code>id</code> tells MySQL to use <code>AUTO_INCREMENT</code>.</p>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Always Name Your Columns</h4>
+                    <p>Skipping the column list is fragile — if someone adds or reorders columns, your insert breaks. <strong>Always explicitly list the columns</strong> for clarity and safety:</p>
+                    <pre><code class="language-sql">
+-- Always prefer this:
+INSERT INTO books (title, author, price, pages, published)
+VALUES ('Fahrenheit 451', 'Ray Bradbury', 10.49, 158, '1953-10-19');
+                    </code></pre>
+                </div>
+
+                <h3>Now Let's Add Customers and Categories</h3>
+
+                <pre><code class="language-sql">
+-- Add some customers
+INSERT INTO customers (first_name, last_name, email, city) VALUES
+    ('Alice', 'Johnson', 'alice@email.com', 'New York'),
+    ('Bob', 'Smith', 'bob@email.com', 'Chicago'),
+    ('Carol', 'Williams', 'carol@email.com', 'Los Angeles'),
+    ('Dave', 'Brown', 'dave@email.com', 'Houston'),
+    ('Eve', 'Davis', 'eve@email.com', NULL);
+
+-- Add some categories
+INSERT INTO categories (name, description) VALUES
+    ('Fiction', 'Novels, short stories, and other imaginative works'),
+    ('Science Fiction', 'Stories exploring futuristic or scientific concepts'),
+    ('Classic', 'Timeless literary works recognized across generations'),
+    ('Fantasy', 'Stories set in imaginary worlds with magical elements'),
+    ('Dystopian', 'Stories about oppressive societies and dark futures');
+                </code></pre>
+
+                <p>Notice that Eve has <code>NULL</code> for <code>city</code> — we don't know where she lives, and that's OK because <code>city</code> allows NULL.</p>
+            </section>
+
+            <!-- Section 4: SELECT -->
+            <section id="select" class="lesson-section">
+                <h2>READ — SELECT</h2>
+                <p><code>SELECT</code> is the most-used SQL statement by far — it retrieves data from tables. You'll write more <code>SELECT</code> queries than any other type of SQL.</p>
+
+                <h3>SELECT * — All Columns</h3>
+                <p>The asterisk (<code>*</code>) means "give me everything":</p>
+
+                <pre><code class="language-sql">
+SELECT * FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++----+-----------------------+---------------------+-------+-------+------------+----------+
+| id | title                 | author              | price | pages | published  | in_stock |
++----+-----------------------+---------------------+-------+-------+------------+----------+
+|  1 | Dune                  | Frank Herbert       | 12.99 |   412 | 1965-08-01 |        1 |
+|  2 | 1984                  | George Orwell       |  9.99 |   328 | 1949-06-08 |        1 |
+|  3 | To Kill a Mockingbird | Harper Lee          | 11.99 |   281 | 1960-07-11 |        1 |
+|  4 | The Great Gatsby      | F. Scott Fitzgerald |  8.99 |   180 | 1925-04-10 |        1 |
+|  5 | Pride and Prejudice   | Jane Austen         |  7.99 |   432 | 1813-01-28 |        1 |
+|  6 | The Hobbit            | J.R.R. Tolkien      | 10.99 |   310 | 1937-09-21 |        1 |
+|  7 | Fahrenheit 451        | Ray Bradbury        | 10.49 |   158 | 1953-10-19 |        1 |
++----+-----------------------+---------------------+-------+-------+------------+----------+
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 When to Use SELECT *</h4>
+                    <p><code>SELECT *</code> is great for quick exploration and debugging, but in production code you should always name the columns you need. Fetching unnecessary columns wastes bandwidth and memory, especially with <code>TEXT</code> or <code>BLOB</code> columns.</p>
+                </div>
+
+                <h3>SELECT Specific Columns</h3>
+                <p>Name only the columns you need:</p>
+
+                <pre><code class="language-sql">
+SELECT title, author, price FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-----------------------+---------------------+-------+
+| title                 | author              | price |
++-----------------------+---------------------+-------+
+| Dune                  | Frank Herbert       | 12.99 |
+| 1984                  | George Orwell       |  9.99 |
+| To Kill a Mockingbird | Harper Lee          | 11.99 |
+| The Great Gatsby      | F. Scott Fitzgerald |  8.99 |
+| Pride and Prejudice   | Jane Austen         |  7.99 |
+| The Hobbit            | J.R.R. Tolkien      | 10.99 |
+| Fahrenheit 451        | Ray Bradbury        | 10.49 |
++-----------------------+---------------------+-------+
+                    </code></pre>
+                </div>
+
+                <h3>Column Aliases with AS</h3>
+                <p>Rename columns in the output using <code>AS</code>:</p>
+
+                <pre><code class="language-sql">
+SELECT
+    title AS book_title,
+    author AS written_by,
+    price AS cost_usd
+FROM books;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-----------------------+---------------------+----------+
+| book_title            | written_by          | cost_usd |
++-----------------------+---------------------+----------+
+| Dune                  | Frank Herbert       |    12.99 |
+| 1984                  | George Orwell       |     9.99 |
+| ...                   | ...                 |      ... |
++-----------------------+---------------------+----------+
+                    </code></pre>
+                </div>
+
+                <p>Aliases don't change the actual column names — they only change the output labels. They're useful for making results more readable, especially in reports and joins (covered later).</p>
+
+                <h3>SELECT with Expressions</h3>
+                <p>You can do calculations and transformations right in the SELECT:</p>
+
+                <pre><code class="language-sql">
+-- Calculate price with 10% tax
+SELECT
+    title,
+    price,
+    price * 1.10 AS price_with_tax
+FROM books;
+
+-- Combine first and last name
+SELECT
+    CONCAT(first_name, ' ', last_name) AS full_name,
+    email
+FROM customers;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>CONCAT Output:</h4>
+                    <pre><code>
++-----------------+-------------------+
+| full_name       | email             |
++-----------------+-------------------+
+| Alice Johnson   | alice@email.com   |
+| Bob Smith       | bob@email.com     |
+| Carol Williams  | carol@email.com   |
+| Dave Brown      | dave@email.com    |
+| Eve Davis       | eve@email.com     |
++-----------------+-------------------+
+                    </code></pre>
+                </div>
+
+                <h3>SELECT DISTINCT — Remove Duplicates</h3>
+                <p><code>DISTINCT</code> returns only unique values:</p>
+
+                <pre><code class="language-sql">
+-- All unique cities (removes duplicate values)
+SELECT DISTINCT city FROM customers;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------------+
+| city        |
++-------------+
+| New York    |
+| Chicago     |
+| Los Angeles |
+| Houston     |
+| NULL        |
++-------------+
+                    </code></pre>
+                </div>
+
+                <p>Note that <code>NULL</code> appears in the results — Eve's unknown city. <code>DISTINCT</code> treats all NULLs as one group.</p>
+
+                <h3>Quick WHERE Preview</h3>
+                <p>You can filter results with <code>WHERE</code> — this is so important it gets its own full lesson (<a href="lesson_07.html">Lesson 7</a>). Here's a quick taste:</p>
+
+                <pre><code class="language-sql">
+-- Books under $10
+SELECT title, price FROM books WHERE price < 10;
+
+-- A specific customer
+SELECT * FROM customers WHERE email = 'bob@email.com';
+
+-- Books with more than 300 pages
+SELECT title, pages FROM books WHERE pages > 300;
+                </code></pre>
+            </section>
+
+            <!-- Section 5: UPDATE -->
+            <section id="update" class="lesson-section">
+                <h2>UPDATE — Modifying Data</h2>
+                <p><code>UPDATE</code> changes the values of existing rows. It always has three parts: which table, which columns to change, and which rows to change.</p>
+
+                <div class="mermaid">
+                    graph LR
+                        A["UPDATE tablename"] --> B["SET column = value"]
+                        B --> C["WHERE condition"]
+                        style C fill:#f87171,stroke:#991b1b,color:#fff
+                </div>
+
+                <h3>Update a Single Row</h3>
+
+                <pre><code class="language-sql">
+-- Change the price of "Dune"
+UPDATE books
+SET price = 14.99
+WHERE id = 1;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
+Query OK, 1 row affected (0.01 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+                    </code></pre>
+                </div>
+
+                <p>Verify:</p>
+
+                <pre><code class="language-sql">
+SELECT title, price FROM books WHERE id = 1;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++-------+-------+
+| title | price |
++-------+-------+
+| Dune  | 14.99 |
++-------+-------+
+                    </code></pre>
+                </div>
+
+                <h3>Update Multiple Columns</h3>
+                <p>Separate column assignments with commas:</p>
+
+                <pre><code class="language-sql">
+-- Update Bob's city and email
+UPDATE customers
+SET city = 'San Francisco',
+    email = 'bob.smith@newemail.com'
+WHERE id = 2;
+                </code></pre>
+
+                <h3>Update Multiple Rows</h3>
+                <p>A <code>WHERE</code> clause that matches multiple rows will update all of them:</p>
+
+                <pre><code class="language-sql">
+-- Give a 10% discount on all books over $10
+UPDATE books
+SET price = price * 0.90
+WHERE price > 10;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
+Query OK, 4 rows affected (0.01 sec)
+Rows matched: 4  Changed: 4  Warnings: 0
+                    </code></pre>
+                </div>
+
+                <p>Check the "Rows matched" and "Changed" counts — they tell you exactly how many rows were affected.</p>
+
+                <h3>Mark a Book as Out of Stock</h3>
+
+                <pre><code class="language-sql">
+UPDATE books
+SET in_stock = FALSE
+WHERE title = 'The Great Gatsby';
+
+-- Verify
+SELECT title, in_stock FROM books WHERE title = 'The Great Gatsby';
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
++------------------+----------+
+| title            | in_stock |
++------------------+----------+
+| The Great Gatsby |        0 |
++------------------+----------+
+                    </code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ The Golden Rule: Never UPDATE Without WHERE</h4>
+                    <p>If you forget the <code>WHERE</code> clause, <strong>every row in the table</strong> gets updated:</p>
+                    <pre><code class="language-sql">
+-- ⛔ DANGER — this changes EVERY book's price!
+UPDATE books SET price = 0.00;
+                    </code></pre>
+                    <p>This is one of the most common and costly mistakes in SQL. <strong>Always write your <code>WHERE</code> clause first</strong>, or run a <code>SELECT</code> with the same <code>WHERE</code> to preview which rows will be affected before you <code>UPDATE</code>.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ Safe Update Pattern</h4>
+                    <p>Before running an UPDATE, preview the affected rows with SELECT:</p>
+                    <pre><code class="language-sql">
+-- Step 1: Preview — which rows will change?
+SELECT id, title, price FROM books WHERE price > 10;
+
+-- Step 2: Looks right? Now update.
+UPDATE books SET price = price * 0.90 WHERE price > 10;
+                    </code></pre>
+                    <p>This "SELECT first, UPDATE second" pattern saves careers.</p>
+                </div>
+            </section>
+
+            <!-- Section 6: DELETE -->
+            <section id="delete" class="lesson-section">
+                <h2>DELETE — Removing Data</h2>
+                <p><code>DELETE</code> removes rows from a table. Like <code>UPDATE</code>, the <code>WHERE</code> clause is critical.</p>
+
+                <h3>Delete a Single Row</h3>
+
+                <pre><code class="language-sql">
+-- Delete the book "Fahrenheit 451"
+DELETE FROM books WHERE id = 7;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
+Query OK, 1 row affected (0.01 sec)
+                    </code></pre>
+                </div>
+
+                <pre><code class="language-sql">
+-- Verify it's gone
+SELECT * FROM books WHERE id = 7;
+                </code></pre>
+
+                <div class="card card-output">
+                    <h4>Output:</h4>
+                    <pre><code>
+Empty set (0.00 sec)
+                    </code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 AUTO_INCREMENT After DELETE</h4>
+                    <p>When you delete row 7, the ID number 7 is <em>not</em> reused. The next insert will get ID 8. Gaps in IDs are normal and expected — don't try to "fill" them.</p>
+                </div>
+
+                <h3>Delete Multiple Rows</h3>
+
+                <pre><code class="language-sql">
+-- Delete all books under $9
+DELETE FROM books WHERE price < 9;
+                </code></pre>
+
+                <h3>Delete All Rows</h3>
+                <p>Omitting <code>WHERE</code> deletes every row in the table:</p>
+
+                <pre><code class="language-sql">
+-- ⛔ DANGER — deletes ALL customers!
+DELETE FROM customers;
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ The Same Golden Rule: Never DELETE Without WHERE</h4>
+                    <p>Without <code>WHERE</code>, <code>DELETE</code> removes <strong>every single row</strong> from the table. The table structure remains, but all data is gone. Use the same "SELECT first" pattern:</p>
+                    <pre><code class="language-sql">
+-- Step 1: Who are we about to delete?
+SELECT * FROM customers WHERE city IS NULL;
+
+-- Step 2: OK, delete those.
+DELETE FROM customers WHERE city IS NULL;
+                    </code></pre>
+                </div>
+
+                <h3>DELETE vs. TRUNCATE vs. DROP</h3>
+                <p>Three ways to remove data, each with different effects:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>What It Removes</th>
+                                <th>Table Structure?</th>
+                                <th>WHERE Clause?</th>
+                                <th>Resets AUTO_INCREMENT?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>DELETE FROM t WHERE ...</code></td>
+                                <td>Matching rows</td>
+                                <td>Kept</td>
+                                <td>Yes</td>
+                                <td>No</td>
+                            </tr>
+                            <tr>
+                                <td><code>DELETE FROM t</code></td>
+                                <td>All rows</td>
+                                <td>Kept</td>
+                                <td>No (all rows)</td>
+                                <td>No</td>
+                            </tr>
+                            <tr>
+                                <td><code>TRUNCATE TABLE t</code></td>
+                                <td>All rows</td>
+                                <td>Kept</td>
+                                <td>Not available</td>
+                                <td>Yes</td>
+                            </tr>
+                            <tr>
+                                <td><code>DROP TABLE t</code></td>
+                                <td>All rows + table</td>
+                                <td>Removed</td>
+                                <td>Not available</td>
+                                <td>N/A</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 7: Upsert Patterns -->
+            <section id="upsert" class="lesson-section">
+                <h2>Upsert Patterns</h2>
+                <p>Sometimes you want to insert a row if it doesn't exist, or update it if it does. This is called an <strong>upsert</strong> (update + insert). MySQL provides two ways to do this.</p>
+
+                <h3>INSERT ... ON DUPLICATE KEY UPDATE</h3>
+                <p>If the insert would violate a <code>UNIQUE</code> or <code>PRIMARY KEY</code> constraint, it updates the existing row instead:</p>
+
+                <pre><code class="language-sql">
+-- Try to insert a category that might already exist
+INSERT INTO categories (name, description)
+VALUES ('Fiction', 'Updated description for fiction')
+ON DUPLICATE KEY UPDATE
+    description = VALUES(description);
+                </code></pre>
+
+                <p>Since "Fiction" already exists (and <code>name</code> is <code>UNIQUE</code>), this updates its description instead of throwing an error.</p>
+
+                <div class="card card-info">
+                    <h4>💡 When to Use Upserts</h4>
+                    <p>Upserts are common in these scenarios:</p>
+                    <ul>
+                        <li>Syncing data from an external source (import scripts)</li>
+                        <li>Updating settings or preferences (insert if first time, update if exists)</li>
+                        <li>Counters and statistics (increment if exists, create if new)</li>
+                    </ul>
+                </div>
+
+                <h3>REPLACE INTO</h3>
+                <p><code>REPLACE</code> is more aggressive — if the row exists, it <strong>deletes it first</strong> and then inserts the new one:</p>
+
+                <pre><code class="language-sql">
+REPLACE INTO categories (name, description)
+VALUES ('Fiction', 'Novels and imaginative prose');
+                </code></pre>
+
+                <div class="card card-warning">
+                    <h4>⚠️ REPLACE Deletes and Re-inserts</h4>
+                    <p><code>REPLACE</code> works by deleting the conflicting row and inserting a new one. This means:</p>
+                    <ul>
+                        <li>The <code>AUTO_INCREMENT</code> ID changes (you get a new ID)</li>
+                        <li>Any foreign key references to the old row may break</li>
+                        <li>Columns not specified in the REPLACE get their default values, not the old values</li>
+                    </ul>
+                    <p>In most cases, <code>INSERT ... ON DUPLICATE KEY UPDATE</code> is the safer choice.</p>
+                </div>
+            </section>
+
+            <!-- Section 8: Exercises -->
+            <section id="exercises" class="lesson-section">
+                <h2>Exercises</h2>
+
+                <div class="card card-accent">
+                    <h4>📖 Reset Before Starting</h4>
+                    <p>If your data has gotten messy from experimenting, rebuild it by running the setup SQL from the <a href="#setup">"Setting Up Our Data"</a> section at the top of this lesson.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 1: Insert Data</h3>
+                    <p>Add the following books to the <code>books</code> table:</p>
+                    <ol>
+                        <li>"Brave New World" by Aldous Huxley, $9.49, 311 pages, published 1932-01-01</li>
+                        <li>"The Catcher in the Rye" by J.D. Salinger, $8.99, 234 pages, published 1951-07-16</li>
+                        <li>"Lord of the Rings" by J.R.R. Tolkien, $15.99, 1178 pages, published 1954-07-29</li>
+                    </ol>
+                    <p>Use a single INSERT statement. Then verify with <code>SELECT * FROM books;</code></p>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+INSERT INTO books (title, author, price, pages, published) VALUES
+    ('Brave New World', 'Aldous Huxley', 9.49, 311, '1932-01-01'),
+    ('The Catcher in the Rye', 'J.D. Salinger', 8.99, 234, '1951-07-16'),
+    ('Lord of the Rings', 'J.R.R. Tolkien', 15.99, 1178, '1954-07-29');
+
+SELECT * FROM books;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 2: SELECT Practice</h3>
+                    <p>Write queries to answer each question:</p>
+                    <ol>
+                        <li>Show only the <code>title</code> and <code>author</code> of all books</li>
+                        <li>Show each book's title and price with 8% tax added (alias the calculated column as <code>price_with_tax</code>)</li>
+                        <li>Show all unique cities from the customers table</li>
+                        <li>Show each customer's full name (first + last) and email</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1. Title and author only
+SELECT title, author FROM books;
+
+-- 2. Price with 8% tax
+SELECT title, price, price * 1.08 AS price_with_tax FROM books;
+
+-- 3. Unique cities
+SELECT DISTINCT city FROM customers;
+
+-- 4. Full name and email
+SELECT
+    CONCAT(first_name, ' ', last_name) AS full_name,
+    email
+FROM customers;
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 3: UPDATE Practice</h3>
+                    <p>Perform the following updates:</p>
+                    <ol>
+                        <li>Change Alice's city to "Brooklyn"</li>
+                        <li>Increase the price of all books with more than 400 pages by $2.00</li>
+                        <li>Mark "1984" as out of stock</li>
+                        <li>Update Eve's city to "Denver" and her email to "eve.davis@email.com"</li>
+                    </ol>
+                    <p><strong>Remember:</strong> Preview each update with a SELECT first!</p>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1. Change Alice's city
+SELECT * FROM customers WHERE first_name = 'Alice'; -- Preview
+UPDATE customers SET city = 'Brooklyn' WHERE id = 1;
+
+-- 2. Increase price for long books
+SELECT title, pages, price FROM books WHERE pages > 400; -- Preview
+UPDATE books SET price = price + 2.00 WHERE pages > 400;
+
+-- 3. Mark 1984 as out of stock
+UPDATE books SET in_stock = FALSE WHERE title = '1984';
+
+-- 4. Update Eve
+UPDATE customers
+SET city = 'Denver', email = 'eve.davis@email.com'
+WHERE first_name = 'Eve' AND last_name = 'Davis';
+                        </code></pre>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏋️ Exercise 4: DELETE Practice</h3>
+                    <p>Perform the following deletions:</p>
+                    <ol>
+                        <li>Delete the customer with email "dave@email.com"</li>
+                        <li>Delete all books priced under $9.00</li>
+                        <li>Verify each deletion with a SELECT</li>
+                    </ol>
+
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">
+-- 1. Delete Dave
+SELECT * FROM customers WHERE email = 'dave@email.com'; -- Preview
+DELETE FROM customers WHERE email = 'dave@email.com';
+SELECT * FROM customers; -- Verify
+
+-- 2. Delete cheap books
+SELECT title, price FROM books WHERE price < 9.00; -- Preview
+DELETE FROM books WHERE price < 9.00;
+SELECT * FROM books; -- Verify
+                        </code></pre>
+                    </details>
+                </div>
+
+                <!-- Quiz -->
+                <div class="card quiz-container">
+                    <h3>🎯 Quick Quiz</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What happens if you run <code>UPDATE books SET price = 0;</code> (no WHERE)?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL won't stop you — it'll happily update every row.">
+                                A) MySQL shows an error
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Without a WHERE clause, UPDATE changes EVERY row in the table. This would set every book's price to $0.00.">
+                                B) Every book's price becomes $0.00
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="It doesn't affect the first row only — it affects ALL rows.">
+                                C) Only the first row is updated
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> Which is the best way to insert multiple rows?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Individual inserts work but are slower because each one is a separate transaction.">
+                                A) Separate INSERT statements for each row
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! A single INSERT with multiple value sets is processed in one transaction, making it significantly faster.">
+                                B) One INSERT with multiple VALUES sets
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="UPDATE changes existing rows — it can't create new ones.">
+                                C) Using UPDATE to add new rows
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> What does <code>SELECT DISTINCT city FROM customers;</code> do?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="DISTINCT removes duplicates — it doesn't sort the results.">
+                                A) Shows all cities sorted alphabetically
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! DISTINCT removes duplicate values so each city appears only once in the results, even if multiple customers share the same city.">
+                                B) Shows each unique city only once
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="DISTINCT doesn't filter out NULLs — they appear as one group.">
+                                C) Shows cities excluding NULL values
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> What's the safe pattern before running an UPDATE or DELETE?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Running a SELECT with the same WHERE clause lets you preview exactly which rows will be affected, preventing accidental mass changes.">
+                                A) Run a SELECT with the same WHERE clause first
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Backups are good practice but aren't a substitute for previewing what you're about to change.">
+                                B) Always make a backup first
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="While adding LIMIT can help, it doesn't show you which specific rows will be affected.">
+                                C) Use LIMIT 1 to test on one row
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> What happens to the AUTO_INCREMENT value when you delete a row?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL doesn't reuse deleted ID numbers with AUTO_INCREMENT.">
+                                A) The deleted ID is reused for the next insert
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Correct! AUTO_INCREMENT always moves forward. If you delete ID 5, the next insert gets ID 6 (or whatever comes next). Gaps are normal.">
+                                B) The ID is never reused — gaps are normal
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="AUTO_INCREMENT doesn't reset on DELETE — only TRUNCATE resets it.">
+                                C) The counter resets to the lowest available number
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 9: Summary -->
+            <section id="summary" class="lesson-section">
+                <h2>Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎉 Key Takeaways</h3>
+                    <ul>
+                        <li><strong>INSERT INTO</strong> adds new rows — always name your columns explicitly</li>
+                        <li>Multi-row <code>INSERT</code> (one statement, multiple <code>VALUES</code> sets) is faster than individual inserts</li>
+                        <li><strong>SELECT</strong> retrieves data — use <code>*</code> for exploration, named columns for production</li>
+                        <li><code>AS</code> creates column aliases; <code>DISTINCT</code> removes duplicates; <code>CONCAT</code> combines strings</li>
+                        <li><strong>UPDATE ... SET ... WHERE</strong> modifies existing rows — <strong>never omit WHERE</strong></li>
+                        <li><strong>DELETE FROM ... WHERE</strong> removes rows — <strong>never omit WHERE</strong></li>
+                        <li>The <strong>"SELECT first" pattern</strong>: preview affected rows before UPDATE or DELETE</li>
+                        <li><code>INSERT ... ON DUPLICATE KEY UPDATE</code> provides safe upsert behavior</li>
+                        <li><code>REPLACE</code> deletes-then-inserts — usually less safe than <code>ON DUPLICATE KEY UPDATE</code></li>
+                        <li>Deleted <code>AUTO_INCREMENT</code> IDs are never reused — gaps are expected</li>
+                    </ul>
+                </div>
+
+                <h3>CRUD Quick Reference</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Operation</th>
+                                <th>Syntax</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Insert one row</td>
+                                <td><code>INSERT INTO t (cols) VALUES (vals);</code></td>
+                            </tr>
+                            <tr>
+                                <td>Insert multiple rows</td>
+                                <td><code>INSERT INTO t (cols) VALUES (v1), (v2), (v3);</code></td>
+                            </tr>
+                            <tr>
+                                <td>Select all</td>
+                                <td><code>SELECT * FROM t;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Select specific columns</td>
+                                <td><code>SELECT col1, col2 FROM t;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Select with alias</td>
+                                <td><code>SELECT col AS alias FROM t;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Select unique values</td>
+                                <td><code>SELECT DISTINCT col FROM t;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Update rows</td>
+                                <td><code>UPDATE t SET col = val WHERE condition;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Delete rows</td>
+                                <td><code>DELETE FROM t WHERE condition;</code></td>
+                            </tr>
+                            <tr>
+                                <td>Upsert</td>
+                                <td><code>INSERT INTO t (cols) VALUES (vals) ON DUPLICATE KEY UPDATE col = val;</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>📚 Additional Resources</h3>
+                <ul>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/insert.html" target="_blank" rel="noopener">MySQL Docs — INSERT</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/select.html" target="_blank" rel="noopener">MySQL Docs — SELECT</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/update.html" target="_blank" rel="noopener">MySQL Docs — UPDATE</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/delete.html" target="_blank" rel="noopener">MySQL Docs — DELETE</a></li>
+                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html" target="_blank" rel="noopener">MySQL Docs — INSERT ... ON DUPLICATE KEY UPDATE</a></li>
+                </ul>
+
+                <h3>🚀 What's Next?</h3>
+                <p>You can now create, read, update, and delete data — the four pillars of database work. But so far, <code>SELECT</code> has been returning <em>everything</em>. In the next lesson, you'll learn to filter your results precisely with <strong>WHERE clauses, comparison operators, and pattern matching</strong> — the tools that let you ask your database exactly the right question.</p>
+
+                <div class="card card-accent" style="text-align: center; padding: 2rem;">
+                    <h3>🎉 Congratulations!</h3>
+                    <p>You've completed Module 2! You can now create databases, design tables with proper types and constraints, and perform all four CRUD operations. That's a solid SQL foundation — time to build on it!</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_05.html" class="prev-lesson">← Previous: Data Types &amp; Constraints</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_07.html" class="next-lesson">Next: WHERE Clauses &amp; Filtering →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray De La Paz / PetalFawnStudio. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>
