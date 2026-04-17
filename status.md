@@ -148,19 +148,18 @@ MySQL Foundations → PHP Foundations → PHP & WordPress (existing, rays-php-wo
   - [x] Lesson 19: User Management & Permissions ✅
   - [x] Lesson 20: Importing & Exporting Data ✅
   - [x] Lesson 21: Next Steps & Best Practices ✅
-- [ ] Step 4 — Supplementary pages (troubleshooting, glossary, cheat sheet, common errors)
+- [x] Step 4 — Supplementary pages (troubleshooting, glossary, cheat sheet, common errors) ✅
 - [ ] Step 5 — Favicon creation
 - [ ] Step 6 — Browser testing
 - [ ] Step 7 — Verify prev/next navigation links
-- [ ] Step 8 — Update Ray's House of Fun with course link
+- [x] Step 8 — Update Ray's House of Fun with course link ✅
 
 ---
 
 ## What to Do Next
 
-**All 21 lessons are complete!** Remaining steps:
-1. Step 4 — Build supplementary pages (troubleshooting, glossary, cheat sheet, common errors)
-2. Step 5 — Create favicon
-3. Step 6 — Browser testing
-4. Step 7 — Verify prev/next navigation links across all 21 lessons
-5. Step 8 — Update Ray's House of Fun with course link
+**All 21 lessons and supplementary pages are complete!** Remaining steps:
+1. Step 5 — Create favicon
+2. Step 6 — Browser testing
+3. Step 7 — Verify prev/next navigation links across all 21 lessons
+4. Step 8 — Update Ray's House of Fun with course link
