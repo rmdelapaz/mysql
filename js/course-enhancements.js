@@ -1,17 +1,15 @@
 /**
  * Course Enhancement JavaScript
- * Interactive features, progress tracking, theme toggle, Mermaid dark mode
+ * Interactive features, theme toggle, Mermaid dark mode
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     initThemeToggle();        // must run first — sets data-theme
-    initProgressIndicator();
     initSmoothScrolling();
     initCodeCopyButtons();
     initInteractiveTOC();
     initSearchFunctionality();
     initKeyboardShortcuts();
-    initLessonProgress();
     initQuizInteractivity();
     initMobileMenu();
     initAccessibilityFeatures();
@@ -27,7 +25,8 @@ function initThemeToggle() {
     const toggle = document.getElementById('theme-toggle');
 
     // Determine initial theme
-    const saved = localStorage.getItem('theme');
+    let saved = null;
+    try { saved = localStorage.getItem('theme'); } catch (_) { /* storage unavailable */ }
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const theme = saved || (prefersDark ? 'dark' : 'light');
 
@@ -38,7 +37,7 @@ function initThemeToggle() {
             const current = document.documentElement.getAttribute('data-theme') || 'light';
             const next = current === 'light' ? 'dark' : 'light';
             applyTheme(next);
-            localStorage.setItem('theme', next);
+            try { localStorage.setItem('theme', next); } catch (_) { /* storage unavailable */ }
         });
     }
 }
@@ -84,24 +83,6 @@ function reinitMermaid(theme) {
     });
 
     try { mermaid.run(); } catch (_) { /* diagram may not exist on this page */ }
-}
-
-/* ===========================
-   Progress Indicator
-   =========================== */
-
-function initProgressIndicator() {
-    const bar = document.querySelector('.progress-bar');
-    if (!bar) return;
-
-    const update = () => {
-        const docH = document.documentElement.scrollHeight - window.innerHeight;
-        if (docH <= 0) return;
-        bar.style.width = Math.min((window.scrollY / docH) * 100, 100) + '%';
-    };
-
-    window.addEventListener('scroll', throttle(update, 50));
-    update();
 }
 
 /* ===========================
@@ -273,56 +254,6 @@ function showShortcutsModal() {
     document.body.appendChild(modal);
     modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-}
-
-/* ===========================
-   Lesson Progress
-   =========================== */
-
-function initLessonProgress() {
-    const page = window.location.pathname.split('/').pop().replace('.html', '') || 'index';
-    const progress = JSON.parse(localStorage.getItem('lessonProgress') || '{}');
-
-    progress[page] = { visited: true, lastVisited: new Date().toISOString(), scrollPosition: 0 };
-    localStorage.setItem('lessonProgress', JSON.stringify(progress));
-
-    if (page === 'index') updateProgressIndicators(progress);
-
-    // Save scroll on leave
-    window.addEventListener('beforeunload', () => {
-        progress[page].scrollPosition = window.scrollY;
-        localStorage.setItem('lessonProgress', JSON.stringify(progress));
-    });
-
-    // Restore scroll
-    const saved = progress[page]?.scrollPosition;
-    if (saved > 0) setTimeout(() => window.scrollTo(0, saved), 100);
-}
-
-function updateProgressIndicators(progress) {
-    const links = document.querySelectorAll('.lesson-link');
-    let done = 0;
-    links.forEach(link => {
-        const name = link.getAttribute('href')?.replace('.html', '');
-        if (progress[name]?.visited) {
-            link.classList.add('visited');
-            done++;
-            if (!link.querySelector('.checkmark')) {
-                const cm = document.createElement('span');
-                cm.className = 'checkmark';
-                cm.textContent = ' ✓';
-                link.appendChild(cm);
-            }
-        }
-    });
-    const total = links.length;
-    const pct = total ? Math.round((done / total) * 100) : 0;
-    const el = document.getElementById('overall-progress');
-    if (el) {
-        el.innerHTML = `<h3>Your Progress</h3>
-            <div class="progress-bar-container"><div class="progress-bar" style="width:${pct}%"></div></div>
-            <p>${done} of ${total} lessons completed (${pct}%)</p>`;
-    }
 }
 
 /* ===========================

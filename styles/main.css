@@ -643,26 +643,6 @@ label { display: block; margin-bottom: var(--spacing-xs); font-weight: 600; }
     border: 0;
 }
 
-/* ===========================
-   Progress Indicator
-   =========================== */
-
-.progress-indicator {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background: var(--border-color);
-    z-index: 1000;
-}
-.progress-bar {
-    height: 100%;
-    background: var(--primary-gradient);
-    width: 0;
-    transition: width 0.3s ease;
-}
-
 /* Skip to main content */
 .skip-to-main {
     position: absolute;
@@ -751,24 +731,54 @@ label { display: block; margin-bottom: var(--spacing-xs); font-weight: 600; }
 .breadcrumb [aria-current="page"] { color: var(--text-light); font-weight: 500; }
 
 /* ===========================
-   Sticky Table of Contents
+   Sticky Table of Contents ("In This Lesson")
+   Open:   full sticky card under the nav
+   Closed: small round floating button (FAB), upper-left, just below nav
+   Pairs with the span-based markup:
+     <details class="card toc-card" open>
+       <summary aria-label="Toggle table of contents">
+         <span class="toc-icon" aria-hidden="true">[icon]</span>
+         <span class="toc-label">In This Lesson</span>
+         <span class="toc-chevron" aria-hidden="true">[chevron]</span>
+       </summary>
+       <nav aria-label="Table of Contents"> ... </nav>
+     </details>
    =========================== */
 
 .toc-card {
     position: sticky;
-    top: 70px;
-    z-index: 100;
+    top: 80px;                 /* clears the sticky main nav */
+    z-index: 90;               /* below nav (100), above content */
     background: var(--card-bg);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     margin-bottom: var(--spacing-xl);
-    transition: background-color 0.3s ease;
+    transition: box-shadow 0.3s ease, transform 0.2s ease, background-color 0.3s;
 }
+
+/* Hide native disclosure marker — we render our own chevron */
+.toc-card summary { list-style: none; }
+.toc-card summary::-webkit-details-marker { display: none; }
+.toc-card summary::marker { content: ''; }
+
 .toc-card summary {
     cursor: pointer;
-    font-weight: 700;
+    font-weight: bold;
     padding: var(--spacing-sm) var(--spacing-md);
     user-select: none;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
 }
+.toc-card .toc-icon  { font-size: 1.25rem; line-height: 1; }
+.toc-card .toc-label { font-size: 1.1rem; font-weight: bold; }
+.toc-card .toc-chevron {
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    transition: transform 0.3s ease;
+}
+.toc-card[open] .toc-chevron { transform: rotate(180deg); }
+
 .toc-card nav {
     padding: 0 var(--spacing-md) var(--spacing-md);
 }
@@ -782,6 +792,63 @@ label { display: block; margin-bottom: var(--spacing-xs); font-weight: 600; }
 .toc-link.active {
     color: var(--primary-color);
     font-weight: 600;
+}
+
+/* ---- Collapsed state: floating action button (upper-left, below nav) ---- */
+.toc-card:not([open]) {
+    position: fixed;
+    top: 76px;
+    left: var(--spacing-lg);
+    right: auto;
+    bottom: auto;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 95;
+    overflow: hidden;
+}
+.toc-card:not([open]):hover {
+    transform: scale(1.08);
+    background: var(--primary-hover);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.toc-card:not([open]) summary {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    justify-content: center;
+    color: white;
+}
+.toc-card:not([open]) .toc-icon { font-size: 1.25rem; color: white; }
+
+/* Keep label/chevron for screen readers but hide them visually in FAB mode */
+.toc-card:not([open]) .toc-label,
+.toc-card:not([open]) .toc-chevron {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* On small screens, hug the left edge a little tighter */
+@media (max-width: 767px) {
+    .toc-card:not([open]) {
+        top: 68px;
+        left: var(--spacing-md);
+        width: 40px;
+        height: 40px;
+    }
+    .toc-card:not([open]) .toc-icon { font-size: 1.1rem; }
 }
 
 /* ===========================
@@ -961,33 +1028,7 @@ svg .svg-bg { fill: var(--card-bg); }
 }
 .shortcuts-content dd { margin: 0; }
 
-/* ===========================
-   Progress bar (index page)
-   =========================== */
-
-.progress-bar-container {
-    width: 100%;
-    height: 8px;
-    background: var(--border-color);
-    border-radius: 4px;
-    overflow: hidden;
-    margin: var(--spacing-sm) 0;
-}
-.progress-bar-container .progress-bar {
-    height: 100%;
-    background: var(--primary-gradient);
-    border-radius: 4px;
-    transition: width 0.5s ease;
-}
-
-/* Lesson link visited checkmark */
 .lesson-link { text-decoration: none; }
-.lesson-link.visited { opacity: 0.8; }
-.checkmark {
-    color: var(--success-border);
-    margin-left: var(--spacing-sm);
-    font-weight: 700;
-}
 
 /* ===========================
    Responsive Design
@@ -1046,7 +1087,7 @@ svg .svg-bg { fill: var(--card-bg); }
 
 @media print {
     body { background: #fff; color: #000; }
-    nav, .lesson-nav, .progress-indicator, .skip-to-main,
+    nav, .lesson-nav, .skip-to-main,
     .mobile-menu-toggle, .copy-button, button, #theme-toggle { display: none !important; }
     h1, h2, h3, h4, h5, h6 {
         background: none !important;
