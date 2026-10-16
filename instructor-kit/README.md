@@ -97,6 +97,7 @@ the three books and re-render their PDFs.
 | File | Audience | Purpose |
 |------|----------|---------|
 | `setup-guide.html` | Learner (+ a facilitator page) | Before-you-begin sheet: MySQL 9.7 LTS on Windows (MSI + MySQL Configurator), macOS (`brew install mysql@9.7` or the DMG), Linux (MySQL's APT or Yum repository) or Docker (`mysql:9.7`); the course folder `~/mysql-course` and where `labs/` goes; the environment check; common install problems; a room-setup checklist with a USB fallback. Send it a week before Session 1 with the `l1_0-orientation` check files |
+| `quick-setup.html` | Learner | Two-page quick setup: install MySQL 9.7 (Windows MSI, macOS Homebrew, Ubuntu APT, Docker), check the version, make `~/mysql-course`, run the environment check. Send it with the full setup guide, which covers every other path, problems and the facilitator room setup |
 | `final-assessment.html` | Instructor | The **Part 1 assessment** (the Riverside Cooking School: 60 minutes, open book, five-row rubric, scoring sheet, answer notes with the reference run) and the **final project** (Lesson 8.2's Maple Street Tool Library: brief, timeline, the lesson's 100-point rubric, scoring guidance, submission rules and reference numbers for every milestone, measured on MySQL 9.7) (confidential) |
 | `sell-sheet.html` | Prospective instructors | One-page overview: who it is for, outcomes, format (full program and Part 1 only), what is included, prerequisites, license tiers |
 | `README.md` · `LICENSE.md` | — | This overview and the tiered license template |
@@ -132,7 +133,7 @@ instructor-kit/
 ├─ participant-workbook.{html,pdf}   ← canonical hand-out books (all 14 sessions, Part dividers)
 ├─ facilitator-guide.{html,pdf}
 ├─ answer-key.{html,pdf}
-├─ setup-guide / final-assessment / sell-sheet  (.html + .pdf)
+├─ setup-guide / quick-setup / final-assessment / sell-sheet  (.html + .pdf)
 ├─ slides/            one self-contained deck per session: module-NN-<slug>.html (NN = 01 … 14)
 ├─ labs/              check_labs.py, README.md, _states/ (bookstore.sql, flat.sql, schema.sql),
 │                     and module-01/ … module-14/: per lesson a folder lM_N-<slug>/ with
