@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 13</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 13: Final Project Kickoff and Studio I</h1>
+    <p class="sub">Answers and reasoning for every Session 13 item: the warm-up, the self-check, the predict-then-run items, what a passed milestone check-in looks like, the lab reference outputs and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>13</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Warm-up</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">W1</div><div class="qt">The treasurer's account was granted the reporting role, but every SELECT gives ERROR 1142. What was forgotten? <i>(Lesson 7.4)</i></div><div class="opts"><div class="opt correct">The role was never activated: <code class="inline">SET DEFAULT ROLE ... TO ...</code> (or <code class="inline">SET ROLE</code> in the session). Lesson 7.4's silent Common Mistake 5; Milestone 6 has the line for both accounts.</div></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Someone types <code class="inline">mysqldump -u root -p bookstore &gt; backup.sql</code> at the <code class="inline">mysql&gt;</code> prompt. What happens? <i>(Lesson 8.1)</i></div><div class="opts"><div class="opt correct"><code class="inline">ERROR 1064</code>: mysqldump is a separate program, typed in the terminal, not at the mysql> prompt (Lesson 8.1, Common Mistake 1).</div></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">A dump of one database restores perfectly on a new laptop, but the web form cannot log in. Why? <i>(Lesson 8.1)</i></div><div class="opts"><div class="opt correct">A single-database dump has no accounts and no grants: they live in the mysql system database. Keep them in a script of their own (the project's 05_security.sql).</div></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">Which mysqldump option puts the stored procedures into the dump? <i>(Lesson 8.1)</i></div><div class="opts"><div class="opt correct"><code class="inline">--routines</code> (and <code class="inline">--events</code> for events; <code class="inline">--single-transaction</code> gives a consistent copy without locking). Milestone 7 uses all three, plus <code class="inline">--set-gtid-purged=OFF</code>.</div></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">From Rosa's brief: name the tables you would build, and one rule that cannot be a CHECK constraint. <i>(the brief)</i></div><div class="opts"><div class="opt correct">members, categories, safety_courses, tools, loans, plus the junction member_courses. Rules that look at other rows cannot be a CHECK: one open loan per tool, at most three per member, no course no chainsaw, nothing while in repair or suspended.</div></div></div>
+
+  <div class="sec"><h2>8.2 · Final Project: Design and Build a Database: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Rosa's rule "a tool can only be out with one person at a time": where does the reference design enforce it?</div><div class="opts"><div class="opt">A) A <code class="inline">CHECK</code> constraint on <code class="inline">loans</code></div><div class="opt">B) <code class="inline">UNIQUE (tool_id)</code> on <code class="inline">loans</code></div><div class="opt correct">C) In <code class="inline">checkout_tool</code>, inside a transaction that locks the tool's row</div><div class="opt">D) An <code class="inline">is_available</code> column on <code class="inline">tools</code>, set to 0 on check-out</div></div><div class="why"><b>Why:</b> The rule looks at OTHER rows (is there an open loan for this tool?), so no single-row constraint can hold it. The procedure checks it inside a transaction, after locking the tool's row with SELECT ... FOR UPDATE, so two desk volunteers cannot both lend the drill.<br><b>A</b> is wrong: A CHECK sees only the row being written; it cannot look for other open loans.<br><b>B</b> is wrong: A tool has many loans over time (all returned but one), so a plain UNIQUE would refuse the second loan ever.<br><b>D</b> is wrong: That stores derived data twice; a missed reset makes the flag and the loans disagree (the lesson's FAQ).</div></div>
+  <div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">In the reference design, which fact belongs in the junction table <code class="inline">member_courses</code> and nowhere else?</div><div class="opts"><div class="opt">A) The member's email</div><div class="opt correct">B) <code class="inline">completed_on</code>, the date the member finished the course</div><div class="opt">C) The course's name</div><div class="opt">D) The member's status</div></div><div class="why"><b>Why:</b> The completion date is a fact about the PAIR (this member, this course): it has no home in members or in safety_courses. That is why the junction table carries its own column.<br><b>A</b> is wrong: The email is a fact about the member alone: it lives in members, once.<br><b>C</b> is wrong: The course name is a fact about the course: safety_courses.<br><b>D</b> is wrong: The status is a fact about the member alone.</div></div>
+  <div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">What does the last statement print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> riders (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">20</span>));
+<span class="k">CREATE</span> <span class="k">TABLE</span> rides  (rider_id <span class="k">INT</span>, started_on <span class="k">DATE</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> riders <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Ana'</span>), (<span class="s">2</span>, <span class="s">'Ben'</span>), (<span class="s">3</span>, <span class="s">'Cy'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> rides  <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'2026-06-03'</span>), (<span class="s">1</span>, <span class="s">'2026-06-09'</span>), (<span class="s">2</span>, <span class="s">'2026-05-28'</span>);
+
+<span class="k">SELECT</span> r.name, COUNT(x.rider_id) <span class="k">AS</span> june_rides
+<span class="k">FROM</span> riders <span class="k">AS</span> r
+<span class="k">LEFT</span> <span class="k">JOIN</span> rides <span class="k">AS</span> x <span class="k">ON</span> x.rider_id = r.id
+<span class="k">WHERE</span> x.started_on &gt;= <span class="s">'2026-06-01'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> r.id, r.name
+<span class="k">ORDER</span> <span class="k">BY</span> r.name;</pre><div class="opts"><div class="opt correct">One row only: <code class="inline">Ana</code> with <code class="inline">2</code> (Ben and Cy are gone)</div></div><div class="why"><b>Why:</b> WHERE runs after the join. Cy has no rides, so x.started_on is NULL and fails the test; Ben's only ride is from May. The LEFT no longer does anything: the lesson's silent Common Mistake 5. Move the date test into ON and all three riders come back (Ben 0, Cy 0).</div></div>
+  <div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">What happens when this runs?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> tools (id <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">50</span>));
+<span class="k">CREATE</span> <span class="k">TABLE</span> loans (
+    id      <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    tool_id <span class="k">INT</span> <span class="k">UNSIGNED</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> fk_loans_tool <span class="k">FOREIGN</span> <span class="k">KEY</span> (tool_id) <span class="k">REFERENCES</span> tools (id)
+);</pre><div class="opts"><div class="opt">A) Both tables are created</div><div class="opt correct">B) <code class="inline">ERROR 3780 (HY000): Referencing column 'tool_id' and referenced column 'id' in foreign key constraint 'fk_loans_tool' are incompatible.</code></div><div class="opt">C) <code class="inline">ERROR 1824 (HY000): Failed to open the referenced table 'tools'</code></div><div class="opt">D) <code class="inline">ERROR 1452 (23000): Cannot add or update a child row</code></div></div><div class="why"><b>Why:</b> A foreign key and the key it points to must have the same type AND signedness: INT and INT UNSIGNED clash. Pick one key type at the start (the reference uses INT everywhere) and use it for every id and every column that points at one.<br><b>A</b> is wrong: tools is created, but loans is refused: its foreign key is incompatible.<br><b>C</b> is wrong: 1824 means the parent table does not exist yet; tools exists here.<br><b>D</b> is wrong: 1452 is about a ROW whose value has no parent; no row is inserted here.</div></div>
+  <div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">Why does the reference <code class="inline">01_schema.sql</code> begin with <code class="inline">DROP DATABASE IF EXISTS tool_library;</code>?</div><div class="opts"><div class="opt correct">A) So the script can be run again from scratch and always gives the same result</div><div class="opt">B) Because MySQL cannot create a table in a database that has data in it</div><div class="opt">C) To delete the test rows the constraint tests left behind</div><div class="opt">D) So that the backup in Milestone 7 is smaller</div></div><div class="why"><b>Why:</b> A re-runnable script is the project's safety net: fix a column, run the whole file again, get a clean, identical database. The rubric's Schema row asks for exactly that ("runs twice without errors"), and Milestone 8 rebuilds everything from the files.<br><b>B</b> is wrong: MySQL creates tables in databases that hold data all the time.<br><b>C</b> is wrong: The tests run inside a transaction and ROLLBACK removes their rows; nothing is left to delete.<br><b>D</b> is wrong: The backup copies whatever is there; the DROP plays no part in it.</div></div>
+  <div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt">Which of these should NOT be a column in the tool library's tables?</div><div class="opts"><div class="opt">A) <code class="inline">tools.replacement_value</code></div><div class="opt">B) <code class="inline">loans.due_on</code></div><div class="opt correct">C) The number of days a loan is overdue</div><div class="opt">D) <code class="inline">members.joined_on</code></div></div><div class="why"><b>Why:</b> "Days overdue" depends on today's date and the loan's dates, so it changes every day: compute it in the query (DATEDIFF(@today, due_on)). A stored copy would be wrong tomorrow. The same goes for "available" and "times borrowed".<br><b>A</b> is wrong: A fact Rosa gave about each tool; nothing else can compute it.<br><b>B</b> is wrong: The due date is decided when the loan is made (normally a week later) and must be kept: it is the basis of "overdue".<br><b>D</b> is wrong: A fact about the member, recorded once.</div></div>
+  <div class="q" data-sc="7" data-kind="short"><div class="qn">Q7</div><div class="qt">What does the last statement print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> courses (
+    id    <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    seats <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> chk_courses_seats <span class="k">CHECK</span> (seats &gt; <span class="s">0</span>)
+);
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">INSERT</span> <span class="k">INTO</span> courses <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">12</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> courses <span class="k">VALUES</span> (<span class="s">2</span>, <span class="s">0</span>);
+<span class="k">ROLLBACK</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> courses_left <span class="k">FROM</span> courses;</pre><div class="opts"><div class="opt correct"><code class="inline">0</code> (in a column named <code class="inline">courses_left</code>)</div></div><div class="why"><b>Why:</b> The second INSERT is refused (3819, the CHECK on seats) and undoes only itself; the transaction stays open with course 1 in it. ROLLBACK then removes course 1 too. That is the lesson's pattern for constraint tests: run them in a transaction, roll it back, and no test row ever stays.</div></div>
+  <div class="q" data-sc="8"><div class="qn">Q8</div><div class="qt">In which order can 01_schema.sql create these tables without an error?</div><div class="opts"><div class="opt">A) <code class="inline">loans</code>, <code class="inline">tools</code>, <code class="inline">members</code>, <code class="inline">categories</code></div><div class="opt correct">B) <code class="inline">categories</code>, <code class="inline">members</code>, <code class="inline">tools</code>, <code class="inline">loans</code></div><div class="opt">C) <code class="inline">tools</code>, <code class="inline">categories</code>, <code class="inline">loans</code>, <code class="inline">members</code></div><div class="opt">D) Any order: MySQL checks foreign keys only when rows are inserted</div></div><div class="why"><b>Why:</b> Parents first: a foreign key can only point at a table that already exists (error 1824 otherwise). categories and members point at nothing; tools points at categories; loans points at tools and members, so it comes last. Drop in the reverse order.<br><b>A</b> is wrong: loans points at tools and members, which do not exist yet: 1824.<br><b>C</b> is wrong: tools points at categories before categories exists: 1824.<br><b>D</b> is wrong: CREATE TABLE checks the referenced table immediately (1824).</div></div>
+  <div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">Rosa: "Nobody should be able to delete the loan history." How does the reference solution make sure?</div><div class="opts"><div class="opt correct">A) The loans foreign keys have no ON DELETE rule (refuse), and no account is granted DELETE</div><div class="opt">B) <code class="inline">ON DELETE CASCADE</code> on both foreign keys of <code class="inline">loans</code></div><div class="opt">C) A <code class="inline">CHECK (deleted = 0)</code> constraint on <code class="inline">loans</code></div><div class="opt">D) The desk volunteers are asked not to delete rows</div></div><div class="why"><b>Why:</b> Two layers: a member or tool with history cannot be deleted (the foreign keys refuse), and neither tl_desk nor tl_reports holds DELETE, so the history rows themselves cannot be removed. Members are suspended instead of deleted.<br><b>B</b> is wrong: CASCADE does the opposite: deleting a member would silently delete their loans.<br><b>C</b> is wrong: A CHECK cannot stop a DELETE; it only tests rows being written.<br><b>D</b> is wrong: A rule only people follow is not enforced; the brief asks the database to enforce it.</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">Your overdue query and your "never borrowed" query both return nothing on your test data. What is the most likely problem?</div><div class="opts"><div class="opt">A) Both queries need ORDER BY</div><div class="opt">B) <code class="inline">@today</code> was set to the wrong year</div><div class="opt">C) MySQL caches empty results</div><div class="opt correct">D) The test data has no overdue loan and every member has borrowed something</div></div><div class="why"><b>Why:</b> Empty results prove nothing unless the data contains rows that SHOULD come back. Milestone 3 asks you to plant the edge cases (an overdue loan, a member who never borrowed, a tie, a tool in repair) so a broken query is caught.<br><b>A</b> is wrong: ORDER BY changes the order of rows, never whether they appear.<br><b>B</b> is wrong: Possible for the overdue query, but it would not empty the "never borrowed" one, which uses no date.<br><b>C</b> is wrong: There is no such cache: every query reads the current data.</div></div>
+  <div class="q" data-sc="11" data-kind="short"><div class="qn">Q11</div><div class="qt">The reference uses an ENUM for <code class="inline">tool_condition</code> but a table for categories. Give the reason in one sentence.</div><div class="opts"><div class="opt correct">The library adds and lists categories (they are data); the conditions are a fixed list the code relies on</div></div><div class="why"><b>Why:</b> Both choices are defensible; the rubric rewards writing the reason down. A lookup table is right when the list grows or carries its own facts; an ENUM is fine for a short list that only changes with the application.</div></div>
+  <div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">What happens when this runs?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> gear (
+    id        <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    condition <span class="k">VARCHAR</span>(<span class="s">10</span>)
+);</pre><div class="opts"><div class="opt correct">A) <code class="inline">ERROR 1064 (42000): You have an error in your SQL syntax ... near 'condition VARCHAR(10)</code></div><div class="opt">B) The table is created with a column named condition</div><div class="opt">C) <code class="inline">ERROR 3814 (HY000): ... disallowed function</code></div><div class="opt">D) MySQL renames the column to condition_1</div></div><div class="why"><b>Why:</b> CONDITION is a reserved word (used in stored programs), so the parser stops there. Rename it (tool_condition). Backticks would work too, but then every query forever needs them.<br><b>B</b> is wrong: A reserved word cannot be a bare column name.<br><b>C</b> is wrong: 3814 is about functions inside a CHECK constraint; there is no CHECK here.<br><b>D</b> is wrong: MySQL never renames your columns.</div></div>
+
+  <div class="sec"><h2>8.2: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> kit_teams (
+    id    <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    group <span class="k">VARCHAR</span>(<span class="s">10</span>)
+);</pre><div class="opts"><div class="opt correct"><pre class="out">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'group VARCHAR(10)
+)' at line 3</pre></div></div><div class="why"><b>Why:</b> GROUP is a reserved word (GROUP BY), so the parser stops at it. Rename the column (<code class="inline">team_group</code>, <code class="inline">division</code>).</div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> plots (
+    id          <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    gardener_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> fk_plots_gardener <span class="k">FOREIGN</span> <span class="k">KEY</span> (gardener_id) <span class="k">REFERENCES</span> gardeners (id)
+);</pre><div class="opts"><div class="opt correct"><pre class="out">ERROR 1824 (HY000): Failed to open the referenced table 'gardeners'</pre></div></div><div class="why"><b>Why:</b> The parent table <code class="inline">gardeners</code> does not exist yet. Create it first (parents first), or drop and recreate in the right order.</div></div>
+
+  <div class="sec"><h2>Milestones 1 to 3: what a passed check-in looks like</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Milestone 1:</b> all eight requirements have a home. The reference mapping (lesson, hidden block): 1 to 4 = columns, NOT NULL, UNIQUE, ENUMs, foreign keys; 5 = <code class="inline">checkout_tool</code> in a transaction with a row lock; 6 = <code class="inline">03_queries.sql</code> and the view <code class="inline">v_open_loans</code>; 7 = roles <code class="inline">tl_desk</code> and <code class="inline">tl_reports</code>, no DELETE granted, loans foreign keys that refuse deleting a member or tool with history; 8 = mysqldump, a tested restore, scripts kept in version control.</li>
+  <li><b>Milestone 2:</b> the reference <code class="inline">01_schema.sql</code> runs twice without an error (measured: the second run prints the same six tables). Its four tests are refused with 3819 (<code class="inline">chk_loans_due</code>), 3819 (<code class="inline">chk_tools_value</code>), 1452 (<code class="inline">fk_tools_category</code>) and 1062 (<code class="inline">members.uq_members_email</code>), and <code class="inline">members_left</code> is 0 after ROLLBACK.</li>
+  <li><b>Milestone 3:</b> the reference counts are members 8, categories 5, safety_courses 2, member_courses 7, tools 12, loans 16. Edge cases: Victor (8) suspended; Tessa (7) never borrowed; the tile cutter (12) in repair and never lent; the hammer and the socket set tied in Hand Tools; loan 5 returned two days late; loans 13 to 16 still out.</li>
+  <li>Scoring, the full rubric, the reference numbers for every milestone and how to grade a design that differs from the reference: <code class="inline">final-assessment.html</code>, Part 2.</li>
+</ul>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Lab 8.2-A: labs/module-13/l8_2-final-project/gift_cards_starter.sql → gift_cards_solution.sql</div>
+<p>As shipped, the starter prints four constraints, one CHECK clause and a TODO line:</p>
+<pre class="out">+----------------+-----------------------+-----------------+
+| TABLE_NAME     | CONSTRAINT_NAME       | CONSTRAINT_TYPE |
++----------------+-----------------------+-----------------+
+| gift_card_uses | fk_gcu_card           | FOREIGN KEY     |
+| gift_card_uses | fk_gcu_order          | FOREIGN KEY     |
+| gift_cards     | chk_gift_cards_amount | CHECK           |
+| gift_cards     | PRIMARY               | PRIMARY KEY     |
++----------------+-----------------------+-----------------+
++-----------------------+----------------+
+| CONSTRAINT_NAME       | CHECK_CLAUSE   |
++-----------------------+----------------+
+| chk_gift_cards_amount | (`amount` &gt; 0) |
++-----------------------+----------------+
++--------------------------+
+| todo                     |
++--------------------------+
+| TODO 5: balance per card |
++--------------------------+</pre><p>The solution prints:</p>
+<pre class="out">+----------------+------------------------+-----------------+
+| TABLE_NAME     | CONSTRAINT_NAME        | CONSTRAINT_TYPE |
++----------------+------------------------+-----------------+
+| gift_card_uses | chk_gcu_amount         | CHECK           |
+| gift_card_uses | fk_gcu_card            | FOREIGN KEY     |
+| gift_card_uses | fk_gcu_order           | FOREIGN KEY     |
+| gift_card_uses | PRIMARY                | PRIMARY KEY     |
+| gift_cards     | chk_gift_cards_amount  | CHECK           |
+| gift_cards     | chk_gift_cards_dates   | CHECK           |
+| gift_cards     | fk_gift_cards_customer | FOREIGN KEY     |
+| gift_cards     | PRIMARY                | PRIMARY KEY     |
+| gift_cards     | uq_gift_cards_code     | UNIQUE          |
++----------------+------------------------+-----------------+
++-----------------------+------------------------------+
+| CONSTRAINT_NAME       | CHECK_CLAUSE                 |
++-----------------------+------------------------------+
+| chk_gcu_amount        | (`amount_used` &gt; 0)          |
+| chk_gift_cards_amount | (`amount` &gt; 0)               |
+| chk_gift_cards_dates  | (`expires_on` &gt; `issued_on`) |
++-----------------------+------------------------------+
++----------+--------+-------+---------+
+| code     | amount | used  | balance |
++----------+--------+-------+---------+
+| GC7Q2M4K |  25.00 |  0.00 |   25.00 |
+| GC3X9P1T |  50.00 | 18.98 |   31.02 |
+| GC8L5V2N |  20.00 |  0.00 |   20.00 |
++----------+--------+-------+---------+</pre><p>Reading it: nine constraints, named so every error explains itself (the starter's PRIMARY keys are the only unnamed ones: MySQL always calls them PRIMARY). <code class="inline">ORDER BY CONSTRAINT_TYPE</code> sorts the types alphabetically. The balance is derived (amount minus the SUM of uses, COALESCE for a card never used): Frank's card GC3X9P1T paid 18.98 toward his order 10. Common slips: a comma missing before an added CONSTRAINT line (1064); <code class="inline">CHECK (expires_on &gt; CURDATE())</code> (3814); the PRIMARY KEY on gift_card_id alone (then each card could pay only ONE order ever: ask why the pair is the key).</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-13/l8_2-final-project/debug_gift_card_proofs.sql (a test file that must fail)</div>
+<p>It prints:</p>
+<pre class="out">ERROR 3819 (HY000): Check constraint 'chk_gift_cards_amount' is violated.
+ERROR 3819 (HY000): Check constraint 'chk_gift_cards_dates' is violated.
+ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (`bookstore`.`gift_cards`, CONSTRAINT `fk_gift_cards_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`))
+ERROR 1062 (23000): Duplicate entry 'GCTEST01' for key 'gift_cards.uq_gift_cards_code'
+ERROR 1265 (01000): Data truncated for column 'status' at row 1
+ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (`bookstore`.`gift_card_uses`, CONSTRAINT `fk_gcu_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`))
++----------------------+
+| cards_in_transaction |
++----------------------+
+|                    1 |
++----------------------+
++----------------------+
+| cards_after_rollback |
++----------------------+
+|                    0 |
++----------------------+</pre><ol class="steps">
+  <li><b>Test A, 3819</b> <code class="inline">chk_gift_cards_amount</code>: a card worth 0.</li>
+  <li><b>Test B, 3819</b> <code class="inline">chk_gift_cards_dates</code>: expires before it is issued.</li>
+  <li><b>Test C, 1452</b> <code class="inline">fk_gift_cards_customer</code>: customer 99 does not exist.</li>
+  <li><b>Test D, 1062</b> <code class="inline">uq_gift_cards_code</code>: the code GCTEST01 is taken.</li>
+  <li><b>Test E, 1265</b> <code class="inline">Data truncated for column 'status'</code>: 'lost' is not in the ENUM (strict mode refuses it; without strict mode it would become '' with a warning).</li>
+  <li><b>Test F, 1452</b> <code class="inline">fk_gcu_order</code>: order 999 does not exist.</li>
+</ol>
+<p><code class="inline">cards_in_transaction</code> 1 (only the good row) and <code class="inline">cards_after_rollback</code> 0. With the STARTER's tables, tests B, C and D would be accepted silently: that is the point of writing the tests.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 8.2-B (homework): labs/module-13/l8_2-final-project/edge_cases_starter.sql → edge_cases_solution.sql</div>
+<p>As shipped, the starter prints (query 1 is an empty result: an inner join cannot find a missing row):</p>
+<pre class="out">Empty set
++--------------------------+
+| todo                     |
++--------------------------+
+| TODO 2: books never sold |
++--------------------------+
++---------------+---------------+
+| customer      | recent_orders |
++---------------+---------------+
+| Alice Johnson |             1 |
+| Dave Brown    |             1 |
+| Eve Davis     |             1 |
+| Frank Miller  |             1 |
+| Grace Wilson  |             1 |
++---------------+---------------+
++-----------------+------------+--------+
+| category        | title      | orders |
++-----------------+------------+--------+
+| Classic         | 1984       |      3 |
+| Dystopian       | 1984       |      3 |
+| Fantasy         | The Hobbit |      2 |
+| Fiction         | 1984       |      3 |
+| Science Fiction | Dune       |      3 |
++-----------------+------------+--------+</pre><p>The solution prints:</p>
+<pre class="out">+----+----------------+
+| id | customer       |
++----+----------------+
+|  3 | Carol Williams |
+|  8 | Hank Taylor    |
++----+----------------+
++----+------------------------+
+| id | title                  |
++----+------------------------+
+|  4 | The Great Gatsby       |
+|  8 | The Catcher in the Rye |
++----+------------------------+
++----------------+---------------+
+| customer       | recent_orders |
++----------------+---------------+
+| Alice Johnson  |             1 |
+| Dave Brown     |             1 |
+| Eve Davis      |             1 |
+| Frank Miller   |             1 |
+| Grace Wilson   |             1 |
+| Bob Smith      |             0 |
+| Carol Williams |             0 |
+| Hank Taylor    |             0 |
++----------------+---------------+
++-----------------+-------------------+--------+
+| category        | title             | orders |
++-----------------+-------------------+--------+
+| Classic         | 1984              |      3 |
+| Dystopian       | 1984              |      3 |
+| Fantasy         | Lord of the Rings |      2 |
+| Fantasy         | The Hobbit        |      2 |
+| Fiction         | 1984              |      3 |
+| Fiction         | Dune              |      3 |
+| Science Fiction | Dune              |      3 |
++-----------------+-------------------+--------+</pre><p>What each TODO teaches, with the Milestone 4 query it prepares: (1) LEFT JOIN ... IS NULL for "never" (Saturday question 5: Tessa and Victor); (2) the same for books (Gatsby and Catcher were never sold: both are out of stock); (3) a condition on the right-hand table belongs in ON, or the zero rows vanish (5 rows instead of 8, the lesson's Mistake 5); (4) RANK keeps ties, ROW_NUMBER silently drops one (Saturday question 3: the hammer and the socket set). Query 4 counts ORDERS that include a book, not copies: by copies there is no tie in the bookstore data.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-13/l8_2-final-project/debug_build_order.sql (deliberately broken)</div>
+<p>As shipped:</p>
+<pre class="out">Database changed
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'range INT         NOT NULL
+)' at line 4
+ERROR 3780 (HY000): Referencing column 'rider_id' and referenced column 'id' in foreign key constraint 'fk_rides_rider' are incompatible.
+ERROR 3814 (HY000): An expression of a check constraint 'chk_plans_start' contains disallowed function: curdate.
+ERROR 1824 (HY000): Failed to open the referenced table 'parts'
++-------------------------+
+| Tables_in_kit_s13_bikes |
++-------------------------+
+| parts                   |
+| riders                  |
++-------------------------+</pre><ol class="steps">
+  <li><b>Bug A, 1064:</b> <code class="inline">range</code> is a reserved word. Fix: <code class="inline">range_km</code>.</li>
+  <li><b>Bug B, 3780:</b> <code class="inline">rider_id BIGINT</code> against <code class="inline">riders.id INT</code>. Fix: <code class="inline">rider_id INT</code>.</li>
+  <li><b>Bug C, 3814:</b> <code class="inline">CURDATE()</code> in a CHECK. Fix: drop the CHECK (a time rule goes in the code that inserts plans) or compare two columns, e.g. an <code class="inline">ends_on</code> with <code class="inline">CHECK (ends_on &gt; starts_on)</code>.</li>
+  <li><b>Bug D, 1824:</b> <code class="inline">repair_parts</code> before <code class="inline">parts</code>. Fix: move <code class="inline">CREATE TABLE parts</code> above it.</li>
+</ol>
+<p>Fixed: no ERROR lines and SHOW TABLES lists six tables (bikes, parts, price_plans, repair_parts, rides, riders). As shipped only parts and riders exist.</p>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>A rule for a procedure:</b> one open loan per tool, at most three per member, the chainsaw course, not while in repair, not while suspended. Each needs other rows (open loans, the member's status, member_courses) and a CHECK sees only the row being written.</li>
+  <li><b>Re-runnable:</b> the first line <code class="inline">DROP DATABASE IF EXISTS tool_library;</code> then <code class="inline">CREATE DATABASE</code> and <code class="inline">USE</code>, and every table created again (or DROP TABLE IF EXISTS, children first).</li>
+  <li><b>A test:</b> <code class="inline">INSERT INTO loans (tool_id, member_id, loaned_on, due_on) VALUES (1, 1, '2026-06-10', '2026-06-03');</code> must give <code class="inline">ERROR 3819 (HY000): Check constraint 'chk_loans_due' is violated.</code> (or the learner's own constraint name). Inside a transaction, then ROLLBACK.</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q1 B (UNIQUE (tool_id)).</b> Sees the rule as a property of the table, not of OPEN loans. Ask how many loans the drill has had (four). The lesson's Exercise 4 shows the clever version (a generated column), after Milestone 5.</li>
+  <li><b>Q3 "three rows".</b> Expects LEFT JOIN to protect the rows whatever WHERE does: the lesson's silent mistake. Send them to <code class="inline">edge_cases_starter.sql</code> TODO 3.</li>
+  <li><b>Q6 B (due_on).</b> Confuses "decided once" with "computed": the due date is a fact recorded at check-out; overdue is computed from it.</li>
+  <li><b>Q8 D (any order).</b> Thinks foreign keys are checked only on INSERT. Run Mistake 4 again: 1824 at CREATE time.</li>
+  <li><b>Q9 B (CASCADE).</b> Reads ON DELETE CASCADE as "protects". It deletes the history: the opposite of Rosa's requirement 7.</li>
+  <li><b>Q10 A or B.</b> Looks for a syntax cause for an empty result. The data has to contain what the query should find.</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 13 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

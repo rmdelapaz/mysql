@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 8</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 8: CTEs and Window Functions</h1>
+    <p class="sub">Answers and reasoning for every Session 8 item: the Part 1 refresher, both self-checks, the predict-then-run items, the lab reference outputs (environment check included), the debug handouts, the lesson pages' own quizzes and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>8</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Start Here · Part 1 Refresher</h2><span class="rule"></span></div>
+<p>Answers to W1 to W5 (not graded). W1 and W2 with MySQL's real output on the freshly loaded bookstore:</p>
+<div class="q"><div class="qn">W1</div><div class="qt">Which customers have never placed an order? Say the query shape, then the names.</div><div class="opts"><div class="opt correct">A LEFT JOIN from customers to orders, keeping the customers whose orders side is NULL (or HAVING COUNT(o.id) = 0): Carol and Hank. Lesson 4.3, the anti-join.</div></div><div class="why"><pre class="out">+------------+--------+
+| first_name | orders |
++------------+--------+
+| Carol      |      0 |
+| Hank       |      0 |
++------------+--------+</pre></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">employees has a manager_id. How do you show each employee next to their manager's name? Who is Sofia's manager?</div><div class="opts"><div class="opt correct">A self-join: the table twice with two aliases, ON m.id = e.manager_id. Sofia (id 7) reports to Marcus.</div></div><div class="why"><pre class="out">+----------+---------+
+| employee | manager |
++----------+---------+
+| Sofia    | Marcus  |
++----------+---------+</pre></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">SELECT a.name, COUNT(*) FROM authors a LEFT JOIN books b ON b.author_id = a.id GROUP BY a.id, a.name: what does it say for Isaac Asimov, who has no books, and how do you fix it?</div><div class="opts"><div class="opt correct">1, because COUNT(*) counts the NULL-padded row the LEFT JOIN made. Count a column of the right table, COUNT(b.id), which skips NULL: 0. (Lesson 4.3, Common Mistake 4.)</div></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">Books per author and copies sold in one query: Orwell shows 5 books, but he wrote 2. What happened?</div><div class="opts"><div class="opt correct">Fan-out: joining order_items repeats each book once per order line. COUNT(DISTINCT b.id) fixes it. Ask what one row of the join stands for. (Lesson 4.3, Common Mistake 5.)</div></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">A subquery in FROM (a derived table) fails with error 1248. What is missing?</div><div class="opts"><div class="opt correct">An alias: every derived table needs its own name, ( ... ) AS t (Lesson 3.4). Today's CTEs give such steps a name up front, and read top to bottom.</div></div></div>
+
+  <div class="sec"><h2>5.1 · CTEs &amp; Recursive Queries: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">A statement starts <code class="inline">WITH monthly AS (...)</code>. How long does <code class="inline">monthly</code> exist?</div><div class="opts"><div class="opt">A) Until you disconnect</div><div class="opt correct">B) Only while that one statement runs</div><div class="opt">C) Until you <code class="inline">DROP</code> it</div><div class="opt">D) Until the next <code class="inline">COMMIT</code></div></div><div class="why"><b>Why:</b> A CTE is a named result that belongs to the one statement it is written in. After the semicolon it is gone: a second <code class="inline">SELECT * FROM monthly;</code> answers 1146 (the lesson's Common Mistake 4).<br><b>A</b> is wrong: That is a user variable (@name) or a temporary table.<br><b>C</b> is wrong: Only stored objects (tables, views) are dropped; a CTE is never stored.<br><b>D</b> is wrong: Transactions have nothing to do with a CTE's lifetime.</div></div>
+  <div class="q" data-sc="2" data-kind="short"><div class="qn">Q2</div><div class="qt">What does this print?</div><pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> s <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="s">2</span> <span class="k">AS</span> n
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> n * <span class="s">2</span> <span class="k">FROM</span> s <span class="k">WHERE</span> n &lt; <span class="s">20</span>
+)
+<span class="k">SELECT</span> GROUP_CONCAT(n <span class="k">ORDER</span> <span class="k">BY</span> n) <span class="k">AS</span> series <span class="k">FROM</span> s;</pre><div class="opts"><div class="opt correct"><code class="inline">2,4,8,16,32</code> (one row, column <code class="inline">series</code>)</div></div><div class="why"><b>Why:</b> Each round doubles the row the previous round made: 2, 4, 8, 16. The round that reads 16 still passes n < 20 and makes 32; the round that reads 32 fails the test, makes no row, and the recursion stops. The stop condition tests the row a round reads, so the last row can be past the limit.</div></div>
+  <div class="q" data-sc="3"><div class="qn">Q3</div><div class="qt">A CTE named <code class="inline">org</code> joins to itself, but the statement starts <code class="inline">WITH org AS (</code> without RECURSIVE. What happens?</div><div class="opts"><div class="opt correct">A) <code class="inline">ERROR 1146 (42S02): Table 'bookstore.org' doesn't exist</code></div><div class="opt">B) <code class="inline">ERROR 3636 (HY000): Recursive query aborted after 1001 iterations</code></div><div class="opt">C) It runs, but only the anchor's rows come back</div><div class="opt">D) <code class="inline">ERROR 1406 (22001): Data too long for column</code></div></div><div class="why"><b>Why:</b> Without RECURSIVE a CTE cannot see its own name, so the JOIN inside it looks for a real table called org (the live demo's last step, and the debug handout's query A).<br><b>B</b> is wrong: 3636 needs a working recursion that never stops.<br><b>C</b> is wrong: MySQL does not quietly drop the recursive member; it refuses the statement.<br><b>D</b> is wrong: 1406 is a column too narrow for what the recursive member builds.</div></div>
+  <div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">A recursive CTE named <code class="inline">chain</code> starts from one employee. Which condition in the recursive member walks UP to the owner?</div><div class="opts"><div class="opt">A) <code class="inline">JOIN chain c ON e.manager_id = c.id</code></div><div class="opt">B) <code class="inline">JOIN chain c ON e.id = c.id</code></div><div class="opt correct">C) <code class="inline">JOIN chain c ON e.id = c.manager_id</code></div><div class="opt">D) <code class="inline">JOIN chain c ON e.manager_id = c.manager_id</code></div></div><div class="why"><b>Why:</b> "Who is this person's manager?": the next row is the employee whose id is the manager_id of the row found last. That is how the demo climbs from Sofia to Marcus, Daniel and Maria.<br><b>A</b> is wrong: That walks DOWN: "whose manager is this person?" (the org chart).<br><b>B</b> is wrong: It finds the same person again every round: the recursion would never move.<br><b>D</b> is wrong: It finds colleagues with the same manager, not the manager.</div></div>
+  <div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">The bookstore has 10 employees. This query prints 30. What is wrong?</div><pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> org <span class="k">AS</span> (
+    <span class="k">SELECT</span> id, <span class="s">1</span> <span class="k">AS</span> level <span class="k">FROM</span> employees
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> e.id, o.level + <span class="s">1</span>
+    <span class="k">FROM</span> employees e <span class="k">JOIN</span> org o <span class="k">ON</span> e.manager_id = o.id
+)
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> rows_back <span class="k">FROM</span> org;</pre><div class="opts"><div class="opt">A) RECURSIVE is missing</div><div class="opt">B) <code class="inline">UNION ALL</code> should be <code class="inline">UNION</code></div><div class="opt">C) The recursion limit is too low</div><div class="opt correct">D) The anchor has no WHERE, so every employee starts a walk of their own</div></div><div class="why"><b>Why:</b> With no <code class="inline">WHERE manager_id IS NULL</code> in the anchor, all ten employees are starting points, and each deeper person is found again under every manager above them. No error: the lesson's silent Common Mistake 5. Check with COUNT(*) against COUNT(DISTINCT id).<br><b>A</b> is wrong: RECURSIVE is there, and without it the query would fail with 1146.<br><b>B</b> is wrong: UNION would hide some duplicates and the wrong anchor with them: fix the anchor instead.<br><b>C</b> is wrong: The limit is 1000 rounds; this walk needs four.</div></div>
+  <div class="q" data-sc="6" data-kind="short"><div class="qn">Q6</div><div class="qt">In one sentence: why does a monthly report LEFT JOIN a generated calendar of months to the orders, instead of grouping the orders by month directly?</div><div class="opts"><div class="opt correct">GROUP BY over orders can only show months that have orders; the recursive calendar has every month, and the LEFT JOIN keeps the empty ones (July shows 0)</div></div><div class="why"><b>Why:</b> Real data has holes. The series comes first, then the data is hung on it; <code class="inline">COUNT(o.id)</code> counts 0 for a month with no matching order.</div></div>
+
+  <div class="sec"><h2>5.1 · CTEs &amp; Recursive Queries: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> countdown <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="s">10</span> <span class="k">AS</span> n
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> n - <span class="s">3</span> <span class="k">FROM</span> countdown <span class="k">WHERE</span> n &gt; <span class="s">3</span>
+)
+<span class="k">SELECT</span> n <span class="k">FROM</span> countdown;</pre><div class="opts"><div class="opt correct"><pre class="out">+------+
+| n    |
++------+
+|   10 |
+|    7 |
+|    4 |
+|    1 |
++------+</pre></div></div><div class="why"><b>Why:</b> Anchor 10; each round subtracts 3 while the row it reads is above 3: 7, 4, 1. The round that reads 1 fails n &gt; 3 and stops.</div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">WITH</span> by_city <span class="k">AS</span> (
+    <span class="k">SELECT</span> city, COUNT(*) <span class="k">AS</span> customers
+    <span class="k">FROM</span> customers
+    <span class="k">GROUP</span> <span class="k">BY</span> city
+)
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> city_groups, SUM(customers) <span class="k">AS</span> customers
+<span class="k">FROM</span> by_city;</pre><div class="opts"><div class="opt correct"><pre class="out">+-------------+-----------+
+| city_groups | customers |
++-------------+-----------+
+|           5 |         8 |
++-------------+-----------+</pre></div></div><div class="why"><b>Why:</b> GROUP BY city makes one group per city, and the two customers with no city (Eve, Hank) form one more group: NULL. Five groups, eight customers. (The column is not called <code class="inline">groups</code>: GROUPS is a reserved word in MySQL 8 and later, error 1064.)</div></div>
+
+  <div class="sec"><h2>5.2 · Window Functions: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt"><code class="inline">employees</code> has 10 rows in 4 departments. How many rows does this return? <code class="inline">SELECT first_name, AVG(salary) OVER (PARTITION BY department) FROM employees;</code></div><div class="opts"><div class="opt">A) 4</div><div class="opt">B) 1</div><div class="opt correct">C) 10</div><div class="opt">D) None: <code class="inline">ERROR 1140</code> (a column without GROUP BY)</div></div><div class="why"><b>Why:</b> A window function never collapses rows: every employee comes back, each with their own department's average. GROUP BY department would return 4.<br><b>A</b> is wrong: That is GROUP BY department.<br><b>B</b> is wrong: That is AVG(salary) without OVER.<br><b>D</b> is wrong: OVER makes the mix of a plain column and an aggregate legal.</div></div>
+  <div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">Copies sold, best first, are 5, 4, 4 and 3. What do <code class="inline">RANK()</code> and <code class="inline">DENSE_RANK()</code> (both <code class="inline">OVER (ORDER BY copies DESC)</code>) give the book with 3?</div><div class="opts"><div class="opt correct"><code class="inline">RANK</code> 4, <code class="inline">DENSE_RANK</code> 3</div></div><div class="why"><b>Why:</b> RANK skips after a tie (1, 2, 2, 4: three books are ahead); DENSE_RANK does not (1, 2, 2, 3). ROW_NUMBER would give 4 too, but it would also give the tied books 2 and 3.</div></div>
+  <div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt"><code class="inline">SELECT title FROM books WHERE RANK() OVER (ORDER BY price DESC) &lt;= 3;</code> fails with error 3593. What is the standard fix?</div><div class="opts"><div class="opt">A) Move the condition to <code class="inline">HAVING</code></div><div class="opt correct">B) Compute the rank in a CTE, then filter on it in the outer query</div><div class="opt">C) Replace <code class="inline">WHERE</code> with <code class="inline">QUALIFY</code></div><div class="opt">D) Give the rank a column alias and filter on the alias in WHERE</div></div><div class="why"><b>Why:</b> Window functions run after WHERE, GROUP BY and HAVING, so none of those can see them. One step computes the window, the next filters it: a CTE (or a derived table) is that next step.<br><b>A</b> is wrong: HAVING runs before the windows too (3593 again).<br><b>C</b> is wrong: QUALIFY is error 6037 on MySQL 9.7 (hypergraph optimizer only) and 1064 on MariaDB.<br><b>D</b> is wrong: WHERE cannot see SELECT aliases: error 1054, Unknown column.</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">In <code class="inline">SUM(price) OVER (ORDER BY price)</code>, The Catcher in the Rye and The Great Gatsby (both 8.99) show the same running total, 34.46. Why?</div><div class="opts"><div class="opt">A) <code class="inline">SUM</code> skips duplicate values</div><div class="opt">B) Prices are sorted as text</div><div class="opt">C) The window has no <code class="inline">PARTITION BY</code></div><div class="opt correct">D) The default frame is RANGE: rows with the same ORDER BY value are added in one step</div></div><div class="why"><b>Why:</b> With ORDER BY and no frame, the frame is RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW, which lumps ties together. Write <code class="inline">ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</code> and make the order unique (<code class="inline">ORDER BY price, title</code>): 25.47 then 34.46.<br><b>A</b> is wrong: Both prices are added (34.46 includes both); the problem is when.<br><b>B</b> is wrong: price is DECIMAL; the order is numeric.<br><b>C</b> is wrong: PARTITION BY would restart the total per group; it does not change how ties are handled.</div></div>
+  <div class="q" data-sc="11" data-kind="short"><div class="qn">Q11</div><div class="qt">Bob (customer 2) has two orders. What does this print?</div><pre class="code"><span class="k">SELECT</span> id,
+       order_date,
+       LEAD(order_date) <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> order_date) <span class="k">AS</span> next_order
+<span class="k">FROM</span> orders
+<span class="k">WHERE</span> customer_id = <span class="s">2</span>
+<span class="k">ORDER</span> <span class="k">BY</span> order_date;</pre><div class="opts"><div class="opt correct">Two rows: order 3, 2026-03-10, next_order 2026-03-28; order 7, 2026-03-28, next_order <code class="inline">NULL</code></div></div><div class="why"><b>Why:</b> LEAD reads the next row of the window. Order 7 is Bob's last, so there is no next row and LEAD returns NULL (a third argument, LEAD(order_date, 1, ...), would replace it).</div></div>
+  <div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">You need exactly one top earner per department, even if two salaries ever tie. Which function numbers the rows?</div><div class="opts"><div class="opt correct">A) <code class="inline">ROW_NUMBER()</code> with a tie-breaker, e.g. <code class="inline">ORDER BY salary DESC, id</code></div><div class="opt">B) <code class="inline">RANK()</code></div><div class="opt">C) <code class="inline">DENSE_RANK()</code></div><div class="opt">D) <code class="inline">NTILE(1)</code></div></div><div class="why"><b>Why:</b> ROW_NUMBER never ties, so pos = 1 is exactly one row per partition; the tie-breaker makes the choice repeatable. RANK and DENSE_RANK would return both tied people.<br><b>B</b> is wrong: Two tied top salaries both get rank 1.<br><b>C</b> is wrong: Same: both get 1.<br><b>D</b> is wrong: NTILE(1) puts every row in bucket 1.</div></div>
+
+  <div class="sec"><h2>5.2 · Window Functions: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> first_name,
+       COUNT(*) <span class="k">OVER</span> ()                        <span class="k">AS</span> everyone,
+       COUNT(*) <span class="k">OVER</span> (<span class="k">PARTITION</span> <span class="k">BY</span> department) <span class="k">AS</span> in_dept
+<span class="k">FROM</span> employees
+<span class="k">WHERE</span> department = <span class="s">'support'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre><div class="opts"><div class="opt correct"><pre class="out">+------------+----------+---------+
+| first_name | everyone | in_dept |
++------------+----------+---------+
+| James      |        2 |       2 |
+| Nina       |        2 |       2 |
++------------+----------+---------+</pre></div></div><div class="why"><b>Why:</b> WHERE keeps only the two support employees BEFORE the windows are computed, so even OVER () sees two rows. Windows never see rows WHERE removed.</div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> id,
+       LAG(id, <span class="s">1</span>, <span class="s">0</span>) <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> id) <span class="k">AS</span> previous_id
+<span class="k">FROM</span> orders
+<span class="k">WHERE</span> customer_id = <span class="s">1</span>
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre><div class="opts"><div class="opt correct"><pre class="out">+----+-------------+
+| id | previous_id |
++----+-------------+
+|  1 |           0 |
+|  2 |           1 |
+|  8 |           2 |
++----+-------------+</pre></div></div><div class="why"><b>Why:</b> LAG's third argument replaces the NULL on the first row: 0. Alice's orders are 1, 2 and 8, so the previous ids are 0, 1, 2.</div></div>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Part 2 environment check: labs/module-08/l5_0-part2-start/check_environment.sql (+ .sh / .ps1)</div>
+<p>A tool, not an exercise. On a ready MySQL 9.7 server with a freshly loaded bookstore it prints (the <code class="inline">.sh</code> and <code class="inline">.ps1</code> helpers first print the client version line):</p>
+<pre class="out">+----------------+------------------------------+
+| server_version | edition                      |
++----------------+------------------------------+
+| 9.7.2          | MySQL Community Server - GPL |
++----------------+------------------------------+
++---------------------------------------------------+
+| server_check                                      |
++---------------------------------------------------+
+| OK     MySQL 9.7 LTS, the version the course uses |
++---------------------------------------------------+
++-------------------------------+--------------------------------+
+| charset_check                 | sql_mode_check                 |
++-------------------------------+--------------------------------+
+| OK     utf8mb4 (full Unicode) | OK     default strict SQL mode |
++-------------------------------+--------------------------------+
++----------------------------------------------------------------+
+| write_check                                                    |
++----------------------------------------------------------------+
+| OK     created a database and a table, and read back: it works |
++----------------------------------------------------------------+
++-----------------------------------+
+| bookstore_check                   |
++-----------------------------------+
+| OK     bookstore has its 8 tables |
++-----------------------------------+
++-------------------------------------------------------------------------+
+| data_check                                                              |
++-------------------------------------------------------------------------+
+| OK     fresh row counts: 11 books, 8 customers, 12 orders, 10 employees |
++-------------------------------------------------------------------------+
++------------------+
+| verdict          |
++------------------+
+| READY for Part 2 |
++------------------+</pre><p>Without bookstore: <code class="inline">NOT READY  no bookstore database</code> and the verdict <code class="inline">NOT READY: load bookstore.sql</code>. With a leftover ninth table: <code class="inline">NOT READY  bookstore has 9 tables</code>. With changed rows (for example after Lesson 2.3 practice): <code class="inline">CHECK  not a fresh copy</code>. On 8.4 or MariaDB the verdict is <code class="inline">READY WITH NOTES</code>.</p>
+</div>
+<div class="blk lab"><div class="h">Part 1 refresher: labs/module-08/l5_0-part2-start/refresher_starter.sql → refresher_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+----------+------------+-------------------+----------+
+| order_id | first_name | title             | quantity |
++----------+------------+-------------------+----------+
+|        1 | Alice      | 1984              |        2 |
+|        1 | Alice      | Dune              |        1 |
+|        4 | Dave       | Lord of the Rings |        1 |
+|        4 | Dave       | The Hobbit        |        1 |
++----------+------------+-------------------+----------+
++------------+--------+
+| first_name | orders |
++------------+--------+
+| Alice      |      3 |
+| Bob        |      2 |
+| Dave       |      2 |
+| Frank      |      2 |
+| Grace      |      2 |
+| Eve        |      1 |
+| Carol      |      0 |
+| Hank       |      0 |
++------------+--------+
++------------+-------+
+| first_name | spent |
++------------+-------+
+| Alice      | 58.95 |
+| Dave       | 45.96 |
+| Frank      | 41.96 |
++------------+-------+
++----------+---------+
+| employee | manager |
++----------+---------+
+| Ben      | Priya   |
+| Lena     | Priya   |
+| Priya    | Daniel  |
+| Tom      | Priya   |
++----------+---------+</pre><p>Sticking points: TODO 1 learners add the join but keep <code class="inline">ORDER BY o.id, oi.id</code> (fine, a different order); TODO 2 with LEFT JOIN but COUNT(*) gives Carol and Hank 1 (W3); TODO 4 the ON line <code class="inline">m.id = e.manager_id</code> versus <code class="inline">e.id = m.manager_id</code> (the second lists each manager's reports instead).</p>
+</div>
+<div class="blk lab"><div class="h">Lab 5.1-A: labs/module-08/l5_1-ctes/staff_tree_starter.sql → staff_tree_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+-----------+--------+
+| month_num | copies |
++-----------+--------+
+|         1 |      5 |
+|         2 |      5 |
+|         3 |      3 |
+|         4 |      3 |
+|         5 |      3 |
+|         6 |      2 |
+|         7 |      0 |
+|         8 |      0 |
+|         9 |      0 |
+|        10 |      0 |
+|        11 |      0 |
+|        12 |      0 |
++-----------+--------+
++-------+------------+----------+
+| level | first_name | division |
++-------+------------+----------+
+|     1 | Maria      | (owner)  |
+|     2 | Daniel     | Daniel   |
+|     3 | Marcus     | Daniel   |
+|     3 | Priya      | Daniel   |
+|     4 | Ben        | Daniel   |
+|     4 | Lena       | Daniel   |
+|     4 | Sofia      | Daniel   |
+|     4 | Tom        | Daniel   |
+|     2 | James      | James    |
+|     3 | Nina       | James    |
++-------+------------+----------+
++----------+--------+-----------+
+| division | people | payroll   |
++----------+--------+-----------+
+| Daniel   |      7 | 310500.00 |
+| James    |      2 |  88500.00 |
++----------+--------+-----------+</pre><p>Reading it: the month series has 12 rows because the round that reads 12 fails <code class="inline">month_num &lt; 12</code>; months 7 to 12 have no orders, and the LEFT JOINs keep them with COALESCE turning NULL into 0. In the tree, the anchor's <code class="inline">CAST(NULL AS CHAR(50))</code> makes the division column wide enough (a bare NULL would make a useless column type); level 2 starts a division with COALESCE, everyone below copies it. The aggregate runs in the main query after the recursion: Daniel's division is everyone under him plus himself (7 people), James's is 2; Maria (the owner) has no division and is filtered out.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 5.1-B: labs/module-08/l5_1-ctes/category_steps_starter.sql → category_steps_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+-----------------+--------+---------+
+| category        | copies | revenue |
++-----------------+--------+---------+
+| Fiction         |     21 |  237.29 |
+| Classic         |     10 |   96.90 |
+| Science Fiction |      6 |   75.44 |
+| Dystopian       |      7 |   70.43 |
+| Fantasy         |      5 |   64.95 |
++-----------------+--------+---------+
++----------+---------+-------------+
+| category | revenue | avg_revenue |
++----------+---------+-------------+
+| Fiction  |  237.29 |      109.00 |
++----------+---------+-------------+
++-----------+--------+---------+------------+
+| month_num | orders | busiest | is_busiest |
++-----------+--------+---------+------------+
+|         1 |      2 |       3 |          0 |
+|         2 |      3 |       3 |          1 |
+|         3 |      2 |       3 |          0 |
+|         4 |      2 |       3 |          0 |
+|         5 |      2 |       3 |          0 |
+|         6 |      1 |       3 |          0 |
++-----------+--------+---------+------------+</pre><p>Every book is in Fiction, so Fiction's revenue (237.29) is the whole half year, and the other categories overlap (a book in two categories counts in both). Only Fiction beats the average category (109.00): a good moment to ask whether "average category" is a meaningful number when categories overlap. Query 3 reads monthly three times; <code class="inline">is_busiest</code> is a comparison, so it prints 1 or 0.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-08/l5_1-ctes/debug_ctes.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 1146 (42S02): Table 'bookstore.countdown' doesn't exist
+ERROR 3636 (HY000): Recursive query aborted after 1001 iterations. Try increasing @@cte_max_recursion_depth to a larger value.
+ERROR 1406 (22001): Data too long for column 'path' at row 1</pre><ol class="steps">
+  <li><b>A, 1146:</b> the CTE names itself without RECURSIVE. Fix: <code class="inline">WITH RECURSIVE countdown AS (...)</code>: 3, 2, 1.</li>
+  <li><b>B, 3636:</b> nothing stops the series. Fix: <code class="inline">SELECT d + INTERVAL 1 DAY FROM days WHERE d &lt; '2026-12-31'</code>: 365.</li>
+  <li><b>C, 1406:</b> the anchor's literal <code class="inline">'Maria'</code> fixed a five-character column, and <code class="inline">Maria &gt; Daniel</code> does not fit. Fix: <code class="inline">CAST('Maria' AS CHAR(200))</code> or, better, <code class="inline">CAST(first_name AS CHAR(200))</code>.</li>
+</ol>
+<p>The checker runs these in a scratch database, so its 1146 message names that database instead of <code class="inline">bookstore</code>. On MariaDB, query B does not fail: it returns 1001 with warning 1931.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 5.2-A: labs/module-08/l5_2-window-functions/leaderboards_starter.sql → leaderboards_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+------------+--------+---------+----------+-----------+
+| first_name | copies | row_num | rank_num | dense_num |
++------------+--------+---------+----------+-----------+
+| Alice      |      5 |       1 |        1 |         1 |
+| Dave       |      4 |       2 |        2 |         2 |
+| Frank      |      4 |       3 |        2 |         2 |
+| Bob        |      3 |       4 |        4 |         3 |
+| Grace      |      3 |       5 |        4 |         3 |
+| Eve        |      2 |       6 |        6 |         4 |
++------------+--------+---------+----------+-----------+
++-----------------+-----+---------------------+-------+
+| category        | pos | title               | price |
++-----------------+-----+---------------------+-------+
+| Classic         |   1 | Pride and Prejudice |  7.99 |
+| Classic         |   2 | Animal Farm         |  8.49 |
+| Dystopian       |   1 | Brave New World     |  9.49 |
+| Dystopian       |   2 | 1984                |  9.99 |
+| Fantasy         |   1 | The Hobbit          | 10.99 |
+| Fantasy         |   2 | Lord of the Rings   | 15.99 |
+| Fiction         |   1 | Pride and Prejudice |  7.99 |
+| Fiction         |   2 | Animal Farm         |  8.49 |
+| Science Fiction |   1 | Brave New World     |  9.49 |
+| Science Fiction |   2 | Fahrenheit 451      | 10.49 |
++-----------------+-----+---------------------+-------+
++------------+------------+----------+--------------+-------------+
+| department | first_name | salary   | dept_payroll | pct_of_dept |
++------------+------------+----------+--------------+-------------+
+| sales      | Priya      | 46000.00 |    158500.00 |        29.0 |
+| sales      | Lena       | 39500.00 |    158500.00 |        24.9 |
+| sales      | Tom        | 38000.00 |    158500.00 |        24.0 |
+| sales      | Ben        | 35000.00 |    158500.00 |        22.1 |
+| inventory  | Marcus     | 47000.00 |     84000.00 |        56.0 |
+| inventory  | Sofia      | 37000.00 |     84000.00 |        44.0 |
++------------+------------+----------+--------------+-------------+</pre><p>Reading it: RANK skips after the ties (1, 2, 2, 4, 4, 6), DENSE_RANK does not (1, 2, 2, 3, 3, 4); ROW_NUMBER separates ties by the tie-breaker (first name). In the top-2 query Pride and Prejudice appears in Classic and in Fiction: a book in two categories is ranked in both partitions. The payroll shares add up to 100 within each department (sales 29.0 + 24.9 + 24.0 + 22.1).</p>
+</div>
+<div class="blk lab"><div class="h">Lab 5.2-B: labs/module-08/l5_2-window-functions/order_trends_starter.sql → order_trends_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+----+------------+-------+---------------+
+| id | order_date | total | running_total |
++----+------------+-------+---------------+
+|  1 | 2026-01-15 | 34.97 |         34.97 |
+|  4 | 2026-01-22 | 26.98 |         61.95 |
+|  5 | 2026-02-03 | 19.98 |         81.93 |
+|  6 | 2026-02-14 | 23.98 |        105.91 |
+|  2 | 2026-02-20 |  7.99 |        113.90 |
+|  3 | 2026-03-10 | 14.99 |        128.89 |
+|  7 | 2026-03-28 | 18.48 |        147.37 |
+|  8 | 2026-04-05 | 15.99 |        163.36 |
+|  9 | 2026-04-18 | 22.98 |        186.34 |
+| 10 | 2026-05-02 | 21.98 |        208.32 |
+| 11 | 2026-05-19 |  9.99 |        218.31 |
+| 12 | 2026-06-07 | 18.98 |        237.29 |
++----+------------+-------+---------------+
++------------+----------+------------+-------+------------------+
+| first_name | order_no | order_date | total | change_from_last |
++------------+----------+------------+-------+------------------+
+| Alice      |        1 | 2026-01-15 | 34.97 |             NULL |
+| Alice      |        2 | 2026-02-20 |  7.99 |           -26.98 |
+| Alice      |        3 | 2026-04-05 | 15.99 |             8.00 |
+| Bob        |        1 | 2026-03-10 | 14.99 |             NULL |
+| Bob        |        2 | 2026-03-28 | 18.48 |             3.49 |
+| Dave       |        1 | 2026-01-22 | 26.98 |             NULL |
+| Dave       |        2 | 2026-06-07 | 18.98 |            -8.00 |
+| Eve        |        1 | 2026-04-18 | 22.98 |             NULL |
+| Frank      |        1 | 2026-02-03 | 19.98 |             NULL |
+| Frank      |        2 | 2026-05-02 | 21.98 |             2.00 |
+| Grace      |        1 | 2026-02-14 | 23.98 |             NULL |
+| Grace      |        2 | 2026-05-19 |  9.99 |           -13.99 |
++------------+----------+------------+-------+------------------+
++------------+----------+------------+
+| first_name | order_id | order_date |
++------------+----------+------------+
+| Alice      |        1 | 2026-01-15 |
+| Dave       |        4 | 2026-01-22 |
+| Frank      |        5 | 2026-02-03 |
+| Grace      |        6 | 2026-02-14 |
+| Bob        |        3 | 2026-03-10 |
+| Eve        |        9 | 2026-04-18 |
++------------+----------+------------+</pre><p>The running total passes 61.95 after order 4 (all of January) and ends at 237.29, the lesson's half-year revenue. <code class="inline">ORDER BY order_date, id</code> with ROWS makes the order unique, so no two orders share a running total. In query 2 every customer's first row is NULL: LAG has no previous row in that customer's partition. Query 3 is the top-1-per-group pattern; WHERE order_no = 1 works only because the numbering happened in the CTE.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-08/l5_2-window-functions/debug_windows.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 3593 (HY000): You cannot use the window function 'row_number' in this context.'
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'rank
+FROM books
+ORDER BY price DESC
+LIMIT 3' at line 1
+ERROR 6037 (HY000): 'QUALIFY clause' can be used only if the hypergraph optimizer is enabled.</pre><ol class="steps">
+  <li><b>A, 3593:</b> a window function in WHERE. Fix: <code class="inline">WITH priced AS (SELECT title, price, ROW_NUMBER() OVER (ORDER BY price DESC) AS pos FROM books) SELECT title, price FROM priced WHERE pos &lt;= 3 ORDER BY pos;</code> (Lord of the Rings, Dune, To Kill a Mockingbird).</li>
+  <li><b>B, 1064:</b> <code class="inline">rank</code> is a reserved word. Fix: <code class="inline">AS rank_num</code> (or backticks).</li>
+  <li><b>C, 6037:</b> QUALIFY runs only under the hypergraph optimizer. Fix: the CTE pattern from A.</li>
+</ol>
+<p>On MariaDB: A is error 4015, B runs (MariaDB still accepts <code class="inline">AS rank</code>), C is 1064.</p>
+</div>
+
+  <div class="sec"><h2>The Lesson Pages' Own Quick Quizzes</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Lesson 5.1 · CTEs &amp; Recursive Queries</div>
+<ol class="steps" data-lesson-quiz="5.1">
+  <li><b>B</b> Error 1146: the table does not exist: A CTE exists only inside the statement it is written in. After the semicolon it is gone, so MySQL looks for a real table named monthly and reports error 1146.</li>
+  <li><b>A</b> The anchor, before UNION ALL: The anchor, the query before UNION ALL, produces the starting rows once. The recursive member then runs round after round until a round produces no rows.</li>
+  <li><b>C</b> 4: The anchor gives 1, then the rounds give 2, 3 and 4. The round that reads 4 fails n less than 4, produces nothing, and the recursion stops: 1, 2, 3, 4.</li>
+  <li><b>B</b> Widen the column in the anchor, for example CAST('Maria' AS CHAR(200)): The anchor fixes each column's type and width, and the recursive member can never widen it. CAST('Maria' AS CHAR(200)) in the anchor gives the path room to grow.</li>
+  <li><b>C</b> In a view, stored once in the database: A view is stored in the database, so every script and every person can read it by name. CTEs are best for steps that belong to one query.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Lesson 5.2 · Window Functions</div>
+<ol class="steps" data-lesson-quiz="5.2">
+  <li><b>C</b> 11: A window function never collapses rows. OVER () makes the whole result the window, so each of the 11 books gets the same average next to its title.</li>
+  <li><b>A</b> 4: RANK gives the two books with 3 copies the same rank, 2, then skips: three books are ahead of the one with 2 copies, so it gets 4. DENSE_RANK would give 3.</li>
+  <li><b>B</b> Compute the row number in a CTE and filter it in the outer query: Window functions are computed after WHERE, GROUP BY and HAVING. Compute ROW_NUMBER in a CTE, then filter its result with WHERE in the outer query.</li>
+  <li><b>C</b> NULL: January is the first row of the window, so there is no previous row and LAG returns NULL. LAG(revenue, 1, 0) would return 0 instead.</li>
+  <li><b>A</b> 1: The frame asks for two rows before January, but there are none, so the frame holds only January itself. February averages two months, and from March on every row averages three.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>Recursive skeleton:</b> <code class="inline">WITH RECURSIVE s AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM s WHERE n &lt; 10) SELECT n FROM s;</code> Anchor = <code class="inline">SELECT 1 AS n</code> (runs once); recursive member = <code class="inline">SELECT n + 1 FROM s ...</code> (runs per round); stop condition = <code class="inline">WHERE n &lt; 10</code>. Accept <code class="inline">&lt;= 9</code>; reject a stop condition in the outer SELECT (it would not stop the recursion).</li>
+  <li><b>GROUP BY vs PARTITION BY:</b> one row per department versus every employee row with the department's figure added. Accept "collapses" versus "keeps the rows".</li>
+  <li><b>WHERE and windows:</b> windows are computed after WHERE (and GROUP BY, HAVING), so WHERE cannot see them (3593); compute the window in a CTE (or derived table) and filter in the outer query.</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q1 A ("until you disconnect").</b> Mixes a CTE with a user variable or a temporary table. Show the 1146 from the demo's step 5 again.</li>
+  <li><b>Q2 <code class="inline">2,4,8,16</code>.</b> Reads the stop condition as a filter on the output. Draw the rounds: the round that reads 16 still makes 32.</li>
+  <li><b>Q4 A.</b> Walks down instead of up: the most common hierarchy slip. Say the two questions aloud: "whose manager is this?" (down) versus "who is this person's manager?" (up).</li>
+  <li><b>Q7 A (4 rows).</b> Still thinks of grouping. Run it: ten rows.</li>
+  <li><b>Q8 "3 and 3" or "4 and 4".</b> Mixed up which function skips. The board table: 1, 2, 2, 4 / 1, 2, 2, 3.</li>
+  <li><b>Q9 A (HAVING).</b> HAVING runs before windows too; the CTE is the only portable fix.</li>
+  <li><b>Exit ticket 1 with the WHERE in the outer SELECT.</b> The recursion has no stop condition at all (3636). Worth two minutes at the start of Session 9.</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 8 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

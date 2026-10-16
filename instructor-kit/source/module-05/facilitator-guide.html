@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 5</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 5: Aggregates and Subqueries</h1>
+    <p class="sub">How to teach the fifth session of MySQL Foundations: from rows to numbers. Aggregates and GROUP BY turn the books and customers into counts, totals and averages per group (with WHERE before the piles and HAVING after), then subqueries answer two-step questions in one statement: above average, the row behind the maximum, a list for IN, the NOT IN / NULL trap, correlated lookups, NOT EXISTS and derived tables.</p>
+    <div class="meta-row">
+      <span class="chip"><b>2</b> lessons</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lessons <b>3.3–3.4</b></span>
+      <span class="chip">Session <b>5</b> of 14 · Part 1</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Same rhythm for both lessons: frame (one mental model) → live demo (you type, they follow) → guided lab (a kit lab: new practice on the lesson's ideas, never the lesson project) → start the lesson's own project. The lesson exercises, quiz and journal are homework.</li>
+  <li>Type, do not paste. Every SQL block below was run on MySQL 9.7.2 in the flat bookstore of Module 3 (Lesson 3.1's setup script, <code class="inline">labs/_states/flat.sql</code>) to produce the output printed under it. Ask for a prediction before every statement that prints something; read every error number aloud.</li>
+  <li>The lessons are the reference: keep <code class="inline">lesson_09.html</code> and <code class="inline">lesson_10.html</code> open for the diagrams (piles, the run order, inner and outer query). Labs live in <code class="inline">labs/module-05/</code>: <code class="inline">_starter.sql</code> files are handouts, <code class="inline">_solution.sql</code> files are yours.</li>
+  <li>This is the session where SQL turns from "show me rows" into "tell me something about the rows". Two ideas carry it: <b>the piles</b> (WHERE before, HAVING after) and <b>inside out</b> (the inner query answers first). Draw both and leave them on the board all session.</li>
+  <li>Part 1 (Sessions 1 to 7) can run on its own as a short course; nothing here depends on Part 2. Teal blocks are hands-on, amber blocks are watch-outs.</li>
+</ul>
+<div class="note warn"><div class="t">The #1 risk of Session 5: correlated subqueries eat the second half</div>
+<p>Lesson 3.4 is 100 minutes for a solo learner and the most abstract hour of Part 1. Learners who follow the scalar subquery and the IN list often stall at the correlated one, and a room can lose twenty minutes on why <code class="inline">author = author</code> is always true. <b>Protect</b> the scalar subquery, the NOT IN trap and the walk-through of one correlated row (Steps 2, 5 to 8): those are what Session 6 and 7 lean on (Lesson 4.1 uses correlated lookups before joins exist). ANY/ALL is deliberately not in the demo (it is in the lesson and the lab); keep the derived table to one example, and send the price review's Steps 3 to 6 home. If the room is still lost at 2:00, do the correlated step of the project (Step 2) together on the projector, inner query first, instead of the lab's TODO 2.</p>
+</div>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Checkpoint 1:</b> scored with the 5-row rubric in Session 4's Answer Key, one sentence of advice per learner; you return it in the warm-up. Learners under 5 points get a one-to-one before Lesson 4.1 (Session 6).</li>
+  <li>☐ <b>Data:</b> every machine has the flat bookstore of Module 3 (10 books with a text author column, 8 customers). A learner whose data drifted runs <code class="inline">SOURCE labs/_states/flat.sql</code> (it drops and rebuilds <code class="inline">bookstore</code>). Do NOT let anyone load <code class="inline">bookstore.sql</code> yet: that is the relational database Lesson 4.1 builds in Session 6, and every count today would change (11 books, an authors table).</li>
+  <li>☐ <b>Files to hand out:</b> <code class="inline">labs/module-05/</code> without the <code class="inline">*_solution.sql</code> files. Check the folder once: <code class="inline">python3 labs/check_labs.py module-05</code> (10 files, a few seconds, every line PASS).</li>
+  <li>☐ <b>Projector machine:</b> MySQL 9.7 with the flat bookstore loaded, a terminal in the course folder at 18 pt or larger, already in the <code class="inline">mysql&gt;</code> client with <code class="inline">USE bookstore;</code>. Browser tabs: <code class="inline">lesson_09.html</code>, <code class="inline">lesson_10.html</code>.</li>
+  <li>☐ <b>Board, before learners arrive:</b> the run order as a column of seven boxes (FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT) with "rows in" beside WHERE and "piles out" beside HAVING; a second area headed "inside out" with <code class="inline">WHERE price &gt; ( ___ )</code> and an arrow from a small box labeled "inner query" into the blank.</li>
+  <li>☐ <b>Print or share:</b> the workbook (warm-up, worked examples, predict-then-run, self-check), the two debug handouts for the error clinic, sticky notes for the exit ticket.</li>
+</ul>
+<div class="blk warn"><div class="h">Known traps today</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>Counts differ from the slides (11 books, <code class="inline">author</code> column missing)</td><td>The learner loaded <code class="inline">bookstore.sql</code> (the Module 4 database) early</td><td><code class="inline">SOURCE labs/_states/flat.sql</code>, then rerun.</td></tr>
+<tr><td><code class="inline">ERROR 1055</code> on a query that "works on my friend's laptop"</td><td>The friend runs MariaDB (XAMPP), which has no ONLY_FULL_GROUP_BY</td><td>Fix the query; never <code class="inline">SET sql_mode = ''</code>. The lesson's Common Mistake 2 shows the MariaDB output.</td></tr>
+<tr><td>Groups come out in a different order than the lesson</td><td>No ORDER BY (MySQL 8.0+ does not sort groups); or MariaDB, which does</td><td>Add ORDER BY. Every grouped query in a report ends with one.</td></tr>
+<tr><td><code class="inline">ERROR 1064 ... near ''</code> with a subquery in FROM</td><td>MariaDB's wording for a derived table without an alias (MySQL says 1248)</td><td>Add <code class="inline">AS name</code> after the closing parenthesis.</td></tr>
+<tr><td>A correlated query returns the same number on every row</td><td>No aliases, so <code class="inline">author = author</code> compares the inner row with itself</td><td>Alias both copies and qualify every column: <code class="inline">b2.author = b.author</code>.</td></tr>
+<tr><td><code class="inline">Failed to open file</code> after SOURCE</td><td>The client was started in another folder</td><td><code class="inline">exit</code>, <code class="inline">cd</code> into the course folder (the one with <code class="inline">labs/</code>), log in again.</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 5 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">10</td><td>Warm-up</td><td>Five retrieval questions on Lessons 3.1 and 3.2 (AND before OR, IS NULL, LIMIT and OFFSET, a NULL inside NOT IN); homework check.</td></tr>
+      <tr><td class="t">0:10</td><td class="t">10</td><td><b>3.3</b> Frame and mental model</td><td>From rows to one number: the cashier's end-of-day slip; piles, then one answer per pile.</td></tr>
+      <tr><td class="t">0:20</td><td class="t">25</td><td><b>3.3</b> Live demo</td><td>COUNT three ways, SUM and AVG, MIN and MAX, GROUP BY, HAVING, then errors 1140, 1055 and 1111 on purpose.</td></tr>
+      <tr><td class="t">0:45</td><td class="t">15</td><td><b>3.3</b> Guided lab</td><td><code class="inline">labs/module-05/l3_3-aggregate-functions/customer_summary_starter.sql</code> in pairs: summarize the customers.</td></tr>
+      <tr><td class="t">1:00</td><td class="t">10</td><td><b>3.3</b> Start the lesson project</td><td>The inventory report, Steps 1 and 2; Steps 3 to 6 go home.</td></tr>
+      <tr><td class="t">1:10</td><td class="t">10</td><td>Break</td><td>Leave the run-order diagram (FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY, LIMIT) on the board.</td></tr>
+      <tr><td class="t">1:20</td><td class="t">10</td><td><b>3.4</b> Frame and mental model</td><td>Fill in the blank: the inner query works out the value, the outer query uses it; three shapes of result.</td></tr>
+      <tr><td class="t">1:30</td><td class="t">30</td><td><b>3.4</b> Live demo</td><td>Above average, the row behind MAX, IN with GROUP BY, the NOT IN trap, correlated, NOT EXISTS, a derived table, errors 1242 and 1248.</td></tr>
+      <tr><td class="t">2:00</td><td class="t">25</td><td><b>3.4</b> Guided lab</td><td><code class="inline">labs/module-05/l3_4-subqueries/page_checks_starter.sql</code>, then <code class="inline">city_neighbors_starter.sql</code> in pairs.</td></tr>
+      <tr><td class="t">2:25</td><td class="t">15</td><td><b>3.4</b> Start the lesson project</td><td>The price review, Steps 1 and 2 (the correlated subquery built inner query first).</td></tr>
+      <tr><td class="t">2:40</td><td class="t">10</td><td>Error clinic</td><td>One debug handout per table: eight numbered errors, one fix each, said aloud.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up</td><td>Exit ticket (3 questions), homework, bring list for Session 6.</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> The lesson pages estimate 90 + 100 = 190 minutes for a solo learner; after the warm-up, the break, the error clinic and the wrap-up the room has 140. Both lessons keep their full shape (model, demo, lab, project start). Lesson 3.4 gets the larger share because correlated subqueries are where learners need a person in the room.</p>
+<p><b>Goes home (about 2 to 3 hours).</b> The inventory report Steps 3 to 6 and the price review Steps 3 to 6; each lesson's Hands-on Exercises; both Quick Quizzes; both journal entries; the labs not finished in class (<code class="inline">page_report_starter.sql</code>, <code class="inline">city_neighbors_starter.sql</code>).</p>
+<p><b>Protect, in this order:</b> the 3.4 scalar subquery and the NOT IN trap (Steps 2, 5 to 7); one correlated row walked through aloud (Step 8); the 3.3 WHERE-versus-HAVING pair (Steps 7 and 8); the 3.3 lab TODOs 1 and 3. <b>Cut first:</b> the error clinic (hand out both debug files as homework), then the 3.4 lab's second file, then 3.3 demo Step 4 (aggregates over no rows: it is in the workbook's self-check, Q3).</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Warm-up: Filtering, Sorting and Limiting</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">6m</td><td>Five retrieval questions on Lessons 3.1 and 3.2, answered in the workbook, then on the projector</td></tr>
+<tr><td class="t">4m</td><td>Checkpoint 1 scores returned (the 5-row rubric, one sentence of advice each); homework check: the storefront queries (3.2 project)</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Retrieval questions and answers</div>
+<p>Put the five questions on the slide; learners answer in the workbook's Warm-up box without running anything, then you run the SQL ones. The real output is below each.</p>
+<ol class="steps">
+  <li><b>Who comes back, and why?</b> (AND binds before OR.) <pre class="code"><span class="k">SELECT</span> first_name, city, id
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'Chicago'</span> <span class="k">OR</span> city = <span class="s">'Houston'</span> <span class="k">AND</span> id &gt; <span class="s">5</span>
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre><pre class="out">+------------+---------+----+
+| first_name | city    | id |
++------------+---------+----+
+| Bob        | Chicago |  2 |
+| Grace      | Chicago |  7 |
++------------+---------+----+</pre><b>Answer:</b> Bob and Grace. AND is evaluated first, so the condition reads <code class="inline">city = 'Chicago' OR (city = 'Houston' AND id &gt; 5)</code>; Dave (Houston) has id 4. Parentheses say what you mean.</li>
+  <li><b>Why does this find nobody, although two customers have no city?</b> <pre class="code"><span class="k">SELECT</span> first_name <span class="k">FROM</span> customers <span class="k">WHERE</span> city = <span class="k">NULL</span>;</pre><pre class="out">Empty set</pre><b>Answer:</b> nothing is equal to NULL, not even NULL. Write <code class="inline">WHERE city IS NULL</code> (Eve and Hank).</li>
+  <li><b>In which order must you write WHERE, ORDER BY and LIMIT?</b> <b>Answer:</b> WHERE, then ORDER BY, then LIMIT (LIMIT always last). Today adds GROUP BY and HAVING between WHERE and ORDER BY.</li>
+  <li><b>Which three books does this show?</b> <pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">DESC</span>, title
+<span class="k">LIMIT</span> <span class="s">3</span> <span class="k">OFFSET</span> <span class="s">2</span>;</pre><pre class="out">+-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| To Kill a Mockingbird | 11.99 |
+| The Hobbit            | 10.99 |
+| Fahrenheit 451        | 10.49 |
++-----------------------+-------+</pre><b>Answer:</b> the 3rd to 5th most expensive: OFFSET 2 skips Lord of the Rings and Dune. The tie-breaker <code class="inline">title</code> makes the order repeatable.</li>
+  <li><b>Predict: how many customers outside Chicago?</b> <pre class="code"><span class="k">SELECT</span> first_name
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="s">'Chicago'</span>, <span class="k">NULL</span>);</pre><pre class="out">Empty set</pre><b>Answer:</b> none. Lesson 3.1 warned: a NULL inside a NOT IN list makes every row unknown. Keep this one in mind: after the break, the same trap hides inside a subquery.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">How to read the warm-up</div>
+<ul class="tick">
+  <li><b>Q1 wrong</b> (Dave included, or Bob only): precedence is shaky. Today's HAVING conditions combine AND and OR (the lesson project's Step 4); say "parentheses" every time you see both.</li>
+  <li><b>Q2 wrong:</b> spend one minute on NULL now: it is the main character of both lessons today (COUNT(column), AVG skipping NULL, the NOT IN trap).</li>
+  <li><b>Q5 right</b> from more than half the room: say "you already know the trap; after the break you will meet it where it is harder to see".</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plans</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">3.3</span><h3>Aggregate Functions &amp; GROUP BY</h3><span class="dur">60 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Summarize a table with COUNT, SUM, AVG, MIN and MAX, and predict how each one treats NULL</li>
+  <li>Produce one summary row per group with GROUP BY, sorted with ORDER BY</li>
+  <li>Keep or drop whole groups with HAVING, and explain when to use WHERE instead</li>
+  <li>Read and fix the errors MySQL raises for broken aggregate queries (1140, 1055, 1111)</li>
+  <li>Build a small inventory report as a reusable .sql script</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: the cashier's slip; rows into piles, one answer per pile; the run order</td></tr>
+<tr><td class="t">25m</td><td>Live demo: COUNT three ways, SUM, AVG, MIN, MAX, GROUP BY, HAVING, errors 1140, 1055, 1111</td></tr>
+<tr><td class="t">15m</td><td>Guided lab: <code class="inline">customer_summary_starter.sql</code> in pairs</td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: the inventory report, Steps 1 and 2</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Start with the slip: "At the end of the day the cashier does not read every receipt. She reads the totals at the bottom. That is an aggregate: many rows in, one value out. COUNT, SUM, AVG, MIN, MAX."</p>
+<p>Then the piles, drawn on the board: "GROUP BY sorts the rows into piles that share a value, then runs the aggregate once per pile. One pile, one result row. Every column you show must be either the pile's label (the GROUP BY column) or a summary of the pile (an aggregate). Anything else, like one title from a pile of two, is a guess, and MySQL refuses to guess."</p>
+<p>Then the run order, pointing at the seven boxes: "You WRITE SELECT first, but the server RUNS it fifth. WHERE runs before the piles exist, so it cannot count them. HAVING runs after, so it can."</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>The lesson's own examples, typed live in the flat bookstore. Learners type along. Ask for a prediction before each statement and read every error number aloud.</p>
+<ol class="steps">
+  <li><b>COUNT three ways (3m).</b> "A plain SELECT gives one result row per table row. An aggregate reads many rows and gives back ONE value." Ask first: eight customers, two without a city, New York and Chicago twice each: what are the three numbers?
+<pre class="code"><span class="k">SELECT</span>
+    COUNT(*)             <span class="k">AS</span> customers,
+    COUNT(city)          <span class="k">AS</span> with_a_city,
+    COUNT(<span class="k">DISTINCT</span> city) <span class="k">AS</span> cities
+<span class="k">FROM</span> customers;</pre>
+<pre class="out">+-----------+-------------+--------+
+| customers | with_a_city | cities |
++-----------+-------------+--------+
+|         8 |           6 |      4 |
++-----------+-------------+--------+</pre>
+Write the rule on the board: <b>every aggregate skips NULL, except <code class="inline">COUNT(*)</code></b>.</li>
+  <li><b>SUM and AVG (2m).</b> "SUM adds, AVG divides by the number of values. Why six decimals?" Let them guess before you explain: price is DECIMAL(8,2), and MySQL keeps the average exact by adding four places.
+<pre class="code"><span class="k">SELECT</span>
+    SUM(price)           <span class="k">AS</span> one_of_each,
+    AVG(price)           <span class="k">AS</span> avg_price,
+    ROUND(AVG(price), <span class="s">2</span>) <span class="k">AS</span> avg_rounded
+<span class="k">FROM</span> books;</pre>
+<pre class="out">+-------------+-----------+-------------+
+| one_of_each | avg_price | avg_rounded |
++-------------+-----------+-------------+
+|      109.90 | 10.990000 |       10.99 |
++-------------+-----------+-------------+</pre>
+Habit for the rest of the course: <code class="inline">ROUND(AVG(...), 2)</code> whenever a person reads money.</li>
+  <li><b>MIN tells the value, not the row (2m).</b> "MIN says the cheapest price is 7.99. Which book is that?" It cannot say. Sort and take one row, as in Lesson 3.2.
+<pre class="code"><span class="k">SELECT</span> MIN(price) <span class="k">AS</span> cheapest, MAX(price) <span class="k">AS</span> priciest
+<span class="k">FROM</span> books;
+<span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price
+<span class="k">LIMIT</span> <span class="s">1</span>;</pre>
+<pre class="out">+----------+----------+
+| cheapest | priciest |
++----------+----------+
+|     7.99 |    15.99 |
++----------+----------+
++---------------------+-------+
+| title               | price |
++---------------------+-------+
+| Pride and Prejudice |  7.99 |
++---------------------+-------+</pre>
+Leave this open: "what if two books shared the lowest price? LIMIT 1 would hide one." Lesson 3.4 closes the gap after the break.</li>
+  <li><b>Aggregates over no rows (2m).</b> "Nothing costs over $100. COUNT says 0. What does SUM say?"
+<pre class="code"><span class="k">SELECT</span>
+    COUNT(*)   <span class="k">AS</span> books_over_100,
+    SUM(price) <span class="k">AS</span> their_total
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &gt; <span class="s">100</span>;</pre>
+<pre class="out">+----------------+-------------+
+| books_over_100 | their_total |
++----------------+-------------+
+|              0 |        NULL |
++----------------+-------------+</pre>
+COUNT answers 0, the others NULL. A report that adds a NULL to something gets NULL: <code class="inline">COALESCE(SUM(price), 0)</code>.</li>
+  <li><b>GROUP BY: one answer per pile (4m).</b> Draw ten books falling into piles by author, then COUNT on each pile. "Nine authors, so nine piles, so nine rows. I show four."
+<pre class="code"><span class="k">SELECT</span> author, COUNT(*) <span class="k">AS</span> book_count
+<span class="k">FROM</span> books
+<span class="k">GROUP</span> <span class="k">BY</span> author
+<span class="k">ORDER</span> <span class="k">BY</span> book_count <span class="k">DESC</span>, author
+<span class="k">LIMIT</span> <span class="s">4</span>;</pre>
+<pre class="out">+---------------------+------------+
+| author              | book_count |
++---------------------+------------+
+| J.R.R. Tolkien      |          2 |
+| Aldous Huxley       |          1 |
+| F. Scott Fitzgerald |          1 |
+| Frank Herbert       |          1 |
++---------------------+------------+</pre>
+The ORDER BY is not decoration: on MySQL 8.0 and later groups come back in no promised order (the lesson's Common Mistake 5).</li>
+  <li><b>Several aggregates per group (2m).</b> "One pile for in stock, one for out of stock, four numbers each."
+<pre class="code"><span class="k">SELECT</span>
+    in_stock,
+    COUNT(*)             <span class="k">AS</span> books,
+    ROUND(AVG(price), <span class="s">2</span>) <span class="k">AS</span> avg_price,
+    MAX(pages)           <span class="k">AS</span> longest
+<span class="k">FROM</span> books
+<span class="k">GROUP</span> <span class="k">BY</span> in_stock
+<span class="k">ORDER</span> <span class="k">BY</span> in_stock <span class="k">DESC</span>;</pre>
+<pre class="out">+----------+-------+-----------+---------+
+| in_stock | books | avg_price | longest |
++----------+-------+-----------+---------+
+|        1 |     8 |     11.49 |    1178 |
+|        0 |     2 |      8.99 |     234 |
++----------+-------+-----------+---------+</pre>
+in_stock is a BOOLEAN stored as 1 and 0. The two out-of-stock books both cost 8.99.</li>
+  <li><b>HAVING keeps whole piles (3m).</b> "WHERE picks rows going INTO the piles. HAVING picks piles coming OUT." Point at the run-order diagram on the board.
+<pre class="code"><span class="k">SELECT</span> city, COUNT(*) <span class="k">AS</span> customers
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">IS</span> <span class="k">NOT</span> <span class="k">NULL</span>
+<span class="k">GROUP</span> <span class="k">BY</span> city
+<span class="k">HAVING</span> customers &gt; <span class="s">1</span>
+<span class="k">ORDER</span> <span class="k">BY</span> city;</pre>
+<pre class="out">+----------+-----------+
+| city     | customers |
++----------+-----------+
+| Chicago  |         2 |
+| New York |         2 |
++----------+-----------+</pre></li>
+  <li><b>WHERE and HAVING together (3m).</b> Read each line's job aloud: drop out-of-stock books, pile by author, keep piles averaging over $10, most expensive first.
+<pre class="code"><span class="k">SELECT</span> author, ROUND(AVG(price), <span class="s">2</span>) <span class="k">AS</span> avg_price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> in_stock = <span class="k">TRUE</span>
+<span class="k">GROUP</span> <span class="k">BY</span> author
+<span class="k">HAVING</span> AVG(price) &gt; <span class="s">10</span>
+<span class="k">ORDER</span> <span class="k">BY</span> avg_price <span class="k">DESC</span>;</pre>
+<pre class="out">+----------------+-----------+
+| author         | avg_price |
++----------------+-----------+
+| Frank Herbert  |     14.99 |
+| J.R.R. Tolkien |     13.49 |
+| Harper Lee     |     11.99 |
+| Ray Bradbury   |     10.49 |
++----------------+-----------+</pre>
+Rule of thumb on the board: a condition on one row's column goes in WHERE; a condition on a group's aggregate goes in HAVING.</li>
+  <li><b>Error 1140 on purpose (1m).</b> "Ten titles squashed into one row. Which title goes in it?"
+<pre class="code"><span class="k">SELECT</span> title, COUNT(*) <span class="k">FROM</span> books;</pre>
+<pre class="out">ERROR 1140 (42000): In aggregated query without GROUP BY, expression #1 of SELECT list contains nonaggregated column 'bookstore.books.title'; this is incompatible with sql_mode=only_full_group_by</pre></li>
+  <li><b>Error 1055 on purpose (2m).</b> "Tolkien's pile has two titles. Which one?" Read the message from the left: number, then 'not in GROUP BY clause'.
+<pre class="code"><span class="k">SELECT</span> author, title, COUNT(*) <span class="k">AS</span> books
+<span class="k">FROM</span> books
+<span class="k">GROUP</span> <span class="k">BY</span> author;</pre>
+<pre class="out">ERROR 1055 (42000): Expression #2 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'bookstore.books.title' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by</pre>
+Fix: aggregate it (<code class="inline">MIN(title)</code>), group by it, or drop it. Never switch off ONLY_FULL_GROUP_BY to make it go away: MariaDB already does, and silently picks a title.</li>
+  <li><b>Error 1111 on purpose (1m).</b> "WHERE runs before the piles exist. There is nothing to count yet."
+<pre class="code"><span class="k">SELECT</span> author, COUNT(*) <span class="k">AS</span> books
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> COUNT(*) &gt; <span class="s">1</span>
+<span class="k">GROUP</span> <span class="k">BY</span> author;</pre>
+<pre class="out">ERROR 1111 (HY000): Invalid use of group function</pre>
+Fix: <code class="inline">HAVING COUNT(*) &gt; 1</code> after GROUP BY.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>A plain column next to an aggregate.</b> <code class="inline">SELECT title, COUNT(*)</code> (1140) or an extra column with GROUP BY (1055). Coach with the piles: "Point at the pile. Which ONE title belongs in its row?" Then the three fixes: aggregate it, group by it, drop it.</li>
+  <li><b>The aggregate in WHERE.</b> <code class="inline">WHERE COUNT(*) &gt; 1</code> (1111). Coach with the run order: "When WHERE runs, do the piles exist yet?" Then move it to HAVING.</li>
+  <li><b>Trusting the group order, or forgetting ORDER BY.</b> The result looks sorted on one run and not on the next server. Coach: "Who promised you that order?" Every grouped query in the project ends with ORDER BY (the project's checklist says so).</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> learners open <code class="inline">labs/module-05/l3_3-aggregate-functions/customer_summary_starter.sql</code>; your reference is <code class="inline">labs/module-05/l3_3-aggregate-functions/customer_summary_solution.sql</code>. The lesson summarized the books; this lab summarizes the customers: four TODOs, each a small change to a query that already runs.</p>
+<ul class="tick">
+  <li><b>SOURCE it as shipped (1m):</b> <code class="inline">SOURCE labs/module-05/l3_3-aggregate-functions/customer_summary_starter.sql</code>. They see 8 customers with zero placeholders, a TODO line, every known city, and the cities with a NULL group.</li>
+  <li><b>TODO 1 together (4m), TODOs 2 to 4 in pairs (8m).</b> TODO 1 replaces five placeholders with COUNT(city), <code class="inline">COUNT(*) - COUNT(city)</code>, COUNT(DISTINCT city), MIN and MAX of created_at. TODO 2 is written from scratch (GROUP BY a DATE_FORMAT label). TODO 3 adds HAVING. TODO 4 combines WHERE, COALESCE and an ORDER BY on the count.</li>
+  <li><b>Expected:</b> TODO 1: 8 / 6 / 2 / 4 cities, first signup <code class="inline">2026-01-04 10:15:00</code>, latest <code class="inline">2026-02-10 19:12:00</code>; TODO 2: <code class="inline">2026-01</code> 6, <code class="inline">2026-02</code> 2; TODO 3: New York and Chicago, 2 each; TODO 4: New York 2, then <code class="inline">(no city)</code>, Chicago, Houston, Los Angeles with 1 each.</li>
+  <li><b>Circulate for:</b> COALESCE in the SELECT list but not in GROUP BY (it still works on MySQL, since the alias is allowed in GROUP BY; ask them to say why), <code class="inline">HAVING customers &gt; 1</code> written before GROUP BY (1064), and a missing comma between two aggregates.</li>
+  <li><b>Debrief (2m):</b> "In TODO 4, which line picks the rows, and which line makes the piles?" Then: "why is <code class="inline">(no city)</code> a pile at all?" (NULLs land together in one group).</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-05/l3_3-aggregate-functions/page_report_starter.sql</code> (length bands with CASE, pages per author, books per century, WHERE plus HAVING), then <code class="inline">labs/module-05/l3_3-aggregate-functions/debug_group_by.sql</code> (four broken summaries: 1140, 1055, 1111, 1064).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>The Inventory Report</b>: <code class="inline">inventory_report.sql</code>, a five-part summary the owner reruns every Monday. In the room: Steps 1 and 2 (10 minutes).</p>
+<ul class="tick">
+  <li>Step 1: create the file in the course folder with <code class="inline">USE bookstore;</code> and the headline query (titles, in stock, total pages, average price). The <code class="inline">SUM(in_stock)</code> trick deserves one sentence: true is 1, so adding them counts the true rows.</li>
+  <li>Step 2: stock value by status with <code class="inline">IF(in_stock, 'In stock', 'Out of stock')</code> grouped by that label.</li>
+  <li><b>Done in the room</b> = the file runs with SOURCE and prints the 10 / 8 / 3824 / 10.99 headline and the two status rows.</li>
+  <li><b>Goes home:</b> Steps 3 to 6 (price bands, display-table authors, customers by city, running the whole file).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li><code class="inline">COUNT(*)</code> or COUNT(city): which one counts Eve? <b>Answer:</b> <code class="inline">COUNT(*)</code>: it counts rows; COUNT(city) skips her NULL.</li>
+  <li>Where does <code class="inline">price &gt; 10</code> go, and where does <code class="inline">AVG(price) &gt; 10</code> go? <b>Answer:</b> WHERE (one row's column) and HAVING (a group's aggregate).</li>
+  <li>Why does <code class="inline">SELECT author, title, COUNT(*) ... GROUP BY author</code> fail? <b>Answer:</b> Tolkien's pile holds two titles; MySQL will not pick one (1055).</li>
+  <li>What does SUM return when no row matches? <b>Answer:</b> NULL (COUNT returns 0); COALESCE turns it into 0.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6:</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">B) <code class="inline">2</code> and <code class="inline">1</code></span>; <b>Q2</b> <span data-sc="2">C) In <code class="inline">HAVING</code>, after <code class="inline">GROUP BY</code></span>; <b>Q3</b> <span data-sc="3">One row: <code class="inline">n</code> = 0 and <code class="inline">top</code> = NULL</span>; <b>Q4</b> <span data-sc="4">A) <code class="inline">ERROR 1055 (42000)</code>: first_name is not in GROUP BY and not aggregated</span>; <b>Q5</b> <span data-sc="5">D) No: since MySQL 8.0 the order of groups is not guaranteed; add ORDER BY</span>; <b>Q6</b> <span data-sc="6">Two rows: <code class="inline">0 | 2</code> and <code class="inline">1 | 3</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> learners who freeze at an empty editor get the starter's TODO 3 first (only one line to add). Pair a learner who missed warm-up Q2 (NULL) with one who got it: today's TODO 1 is all about NULL.</p>
+<p><b>Stretch:</b> <code class="inline">page_report_starter.sql</code> and <code class="inline">debug_group_by.sql</code>; the lesson's Exercise 4 (books by decade) and the WITH ROLLUP Bonus Challenge (ask: why is the grand total's average not the average of the two group averages?).</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">3.4</span><h3>Subqueries &amp; Nested Queries</h3><span class="dur">80 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Compare every row with an aggregate using a scalar subquery ("above average", "equal to the maximum")</li>
+  <li>Filter with IN, NOT IN, ANY and ALL subqueries, and keep NULLs from emptying a NOT IN</li>
+  <li>Write correlated subqueries and EXISTS / NOT EXISTS checks that compare a row with related rows</li>
+  <li>Build derived tables in FROM and computed columns in SELECT</li>
+  <li>Read and fix the subquery errors 1242, 1241, 1248 and 1235</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: fill in the blank; inside out; the three shapes of result (one value, a list, a table)</td></tr>
+<tr><td class="t">30m</td><td>Live demo: scalar, the MAX row, IN, the NOT IN trap, correlated, NOT EXISTS, a derived table, errors 1242 and 1248</td></tr>
+<tr><td class="t">25m</td><td>Guided lab: <code class="inline">page_checks_starter.sql</code>, then <code class="inline">city_neighbors_starter.sql</code></td></tr>
+<tr><td class="t">15m</td><td>Start the lesson project: the price review, Steps 1 and 2</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Point at the blank on the board: "<code class="inline">WHERE price &gt; ( ___ )</code>. Before the break you would have typed 10.99 there. A subquery is a whole SELECT in that blank: the inner query works out the value, the outer query uses it. Read nested queries from the inside out."</p>
+<p>Then the shapes: "What the blank expects depends on where it is. After <code class="inline">=</code> or <code class="inline">&gt;</code>: ONE value (a scalar). After IN: one column, any number of rows (a list). In FROM: a whole table, and it needs a name. Most subquery errors are a shape mismatch: 1242 is too many rows, 1241 too many columns, 1248 a table without a name."</p>
+<p>Then correlation, slowly: "Every subquery so far could run on its own. A correlated one cannot: it mentions the OUTER row. Picture MySQL walking down the books one at a time and asking the inner question again for each one: what is the average of THIS book's author?"</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>The lesson's examples, typed live. Run every inner query on its own first (select it and run it), then the whole statement: it is the habit that makes nested queries readable.</p>
+<ol class="steps">
+  <li><b>Two steps, by hand (2m).</b> "Which books cost more than average? First the average."
+<pre class="code"><span class="k">SELECT</span> AVG(price) <span class="k">FROM</span> books;</pre>
+<pre class="out">+------------+
+| AVG(price) |
++------------+
+|  10.990000 |
++------------+</pre>
+Type <code class="inline">WHERE price &gt; 10.99</code> once and show it works, then ask: "what happens to that 10.99 next week when a price changes?"</li>
+  <li><b>Put the first query where the number was (3m).</b> "Parentheses, a whole SELECT inside. MySQL works out the inner one first, then uses its value."
+<pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &gt; (<span class="k">SELECT</span> AVG(price) <span class="k">FROM</span> books)
+<span class="k">ORDER</span> <span class="k">BY</span> price;</pre>
+<pre class="out">+-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| To Kill a Mockingbird | 11.99 |
+| Dune                  | 14.99 |
+| Lord of the Rings     | 15.99 |
++-----------------------+-------+</pre>
+Read it inside out, aloud. This is the whole idea of the lesson; everything after is a variation.</li>
+  <li><b>The row behind the maximum (2m).</b> "Lesson 3.3 could not say which book costs the most. Now:"
+<pre class="code"><span class="k">SELECT</span> title, author, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price = (<span class="k">SELECT</span> MAX(price) <span class="k">FROM</span> books);</pre>
+<pre class="out">+-------------------+----------------+-------+
+| title             | author         | price |
++-------------------+----------------+-------+
+| Lord of the Rings | J.R.R. Tolkien | 15.99 |
++-------------------+----------------+-------+</pre>
+Ask: what would <code class="inline">ORDER BY price DESC LIMIT 1</code> do if two books tied? The subquery returns all of them.</li>
+  <li><b>A list: IN with a GROUP BY inside (4m).</b> "One column, several rows: that is a list, and lists go with IN." Run the inner query alone first, highlighted.
+<pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">IN</span> (
+    <span class="k">SELECT</span> city <span class="k">FROM</span> customers
+    <span class="k">GROUP</span> <span class="k">BY</span> city
+    <span class="k">HAVING</span> COUNT(*) &gt; <span class="s">1</span>
+)
+<span class="k">ORDER</span> <span class="k">BY</span> city, first_name;</pre>
+<pre class="out">+------------+----------+
+| first_name | city     |
++------------+----------+
+| Bob        | Chicago  |
+| Grace      | Chicago  |
+| Alice      | New York |
+| Frank      | New York |
++------------+----------+</pre>
+The inner query also returns NULL (Eve and Hank form a group of two). In a plain IN that does no harm.</li>
+  <li><b>NOT IN, and the NULL trap (5m).</b> "Which January customers live in a city where no February customer lives? First, the February cities."
+<pre class="code"><span class="k">SELECT</span> city <span class="k">FROM</span> customers <span class="k">WHERE</span> created_at &gt;= <span class="s">'2026-02-01'</span>;</pre>
+<pre class="out">+---------+
+| city    |
++---------+
+| Chicago |
+| NULL    |
++---------+</pre></li>
+  <li><b>The trap springs.</b> "Predict how many rows." Then run it.
+<pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> created_at &lt; <span class="s">'2026-02-01'</span>
+  <span class="k">AND</span> city <span class="k">NOT</span> <span class="k">IN</span> (
+      <span class="k">SELECT</span> city <span class="k">FROM</span> customers
+      <span class="k">WHERE</span> created_at &gt;= <span class="s">'2026-02-01'</span>
+  );</pre>
+<pre class="out">Empty set</pre>
+No error, no rows. city != 'Chicago' AND city != NULL: the second half is unknown for every row. Write the rule: <b>every NOT IN subquery gets an IS NOT NULL</b>.</li>
+  <li><b>The fix.</b> Add one line inside the subquery.
+<pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> created_at &lt; <span class="s">'2026-02-01'</span>
+  <span class="k">AND</span> city <span class="k">NOT</span> <span class="k">IN</span> (
+      <span class="k">SELECT</span> city <span class="k">FROM</span> customers
+      <span class="k">WHERE</span> created_at &gt;= <span class="s">'2026-02-01'</span>
+        <span class="k">AND</span> city <span class="k">IS</span> <span class="k">NOT</span> <span class="k">NULL</span>
+  )
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre>
+<pre class="out">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Alice      | New York    |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Frank      | New York    |
++------------+-------------+</pre>
+Eve is missing too: her own city is NULL, so NOT IN cannot decide about her. NOT EXISTS treats her differently (Step 9).</li>
+  <li><b>Correlated: above their OWN author's average (5m).</b> "Now the inner query depends on the outer row. b is the book being tested, b2 the scan of the same table." Walk the Hobbit row, then the Lord of the Rings row, out loud.
+<pre class="code"><span class="k">SELECT</span> b.title, b.author, b.price
+<span class="k">FROM</span> books <span class="k">AS</span> b
+<span class="k">WHERE</span> b.price &gt; (
+    <span class="k">SELECT</span> AVG(b2.price)
+    <span class="k">FROM</span> books <span class="k">AS</span> b2
+    <span class="k">WHERE</span> b2.author = b.author
+);</pre>
+<pre class="out">+-------------------+----------------+-------+
+| title             | author         | price |
++-------------------+----------------+-------+
+| Lord of the Rings | J.R.R. Tolkien | 15.99 |
++-------------------+----------------+-------+</pre>
+Every single-book author's average is that book's price, and a price is never above itself: only one row survives.</li>
+  <li><b>NOT EXISTS (3m).</b> "Is there ANOTHER customer in my city? NOT EXISTS keeps the ones where there is not." SELECT 1 means: the columns do not matter.
+<pre class="code"><span class="k">SELECT</span> c.first_name, c.city
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">WHERE</span> <span class="k">NOT</span> <span class="k">EXISTS</span> (
+    <span class="k">SELECT</span> <span class="s">1</span>
+    <span class="k">FROM</span> customers <span class="k">AS</span> other
+    <span class="k">WHERE</span> other.city = c.city
+      <span class="k">AND</span> other.id != c.id
+)
+<span class="k">ORDER</span> <span class="k">BY</span> c.first_name;</pre>
+<pre class="out">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Eve        | NULL        |
+| Hank       | NULL        |
++------------+-------------+</pre>
+Eve and Hank appear: nobody can be found in an unknown city. No NULL trap.</li>
+  <li><b>A derived table: a summary of a summary (3m).</b> "Count per author first, then average the counts. You cannot write AVG(COUNT(*)) in one level."
+<pre class="code"><span class="k">SELECT</span> ROUND(AVG(book_count), <span class="s">2</span>) <span class="k">AS</span> avg_books_per_author,
+       MAX(book_count)            <span class="k">AS</span> most_books
+<span class="k">FROM</span> (
+    <span class="k">SELECT</span> author, COUNT(*) <span class="k">AS</span> book_count
+    <span class="k">FROM</span> books
+    <span class="k">GROUP</span> <span class="k">BY</span> author
+) <span class="k">AS</span> author_counts;</pre>
+<pre class="out">+----------------------+------------+
+| avg_books_per_author | most_books |
++----------------------+------------+
+|                 1.11 |          2 |
++----------------------+------------+</pre></li>
+  <li><b>A whole-table number next to every row (1m).</b> "A subquery in the SELECT list: per-row and whole-table side by side."
+<pre class="code"><span class="k">SELECT</span>
+    title,
+    price,
+    ROUND(price - (<span class="k">SELECT</span> AVG(price) <span class="k">FROM</span> books), <span class="s">2</span>) <span class="k">AS</span> diff_from_avg
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> diff_from_avg <span class="k">DESC</span>, title
+<span class="k">LIMIT</span> <span class="s">4</span>;</pre>
+<pre class="out">+-----------------------+-------+---------------+
+| title                 | price | diff_from_avg |
++-----------------------+-------+---------------+
+| Lord of the Rings     | 15.99 |          5.00 |
+| Dune                  | 14.99 |          4.00 |
+| To Kill a Mockingbird | 11.99 |          1.00 |
+| The Hobbit            | 10.99 |          0.00 |
++-----------------------+-------+---------------+</pre></li>
+  <li><b>Error 1242 on purpose (1m).</b> "= needs ONE value. Two books are out of stock."
+<pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price = (<span class="k">SELECT</span> price <span class="k">FROM</span> books <span class="k">WHERE</span> in_stock = <span class="k">FALSE</span>);</pre>
+<pre class="out">ERROR 1242 (21000): Subquery returns more than 1 row</pre>
+Fix: IN, or MIN/MAX. This one works today and breaks the day a second row arrives.</li>
+  <li><b>Error 1248 on purpose.</b> "A table in FROM must have a name."
+<pre class="code"><span class="k">SELECT</span> AVG(book_count)
+<span class="k">FROM</span> (
+    <span class="k">SELECT</span> author, COUNT(*) <span class="k">AS</span> book_count
+    <span class="k">FROM</span> books
+    <span class="k">GROUP</span> <span class="k">BY</span> author
+);</pre>
+<pre class="out">ERROR 1248 (42000): Every derived table must have its own alias</pre>
+Fix: <code class="inline">AS author_counts</code> after the closing parenthesis.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>A shape mismatch.</b> <code class="inline">=</code> with a list (1242), two columns in an IN list (1241), a derived table without a name (1248). Coach: "Run the inner query alone. How many rows and columns came back? What does the blank expect?"</li>
+  <li><b>NOT IN with a NULL in the list (silent).</b> An empty result and no error. Coach: "Run the inner query alone. Do you see a NULL?" Then the rule: every NOT IN subquery gets <code class="inline">IS NOT NULL</code>, or use NOT EXISTS.</li>
+  <li><b>A correlated subquery without aliases (silent).</b> <code class="inline">WHERE author = author</code> returns the store average. Coach: "Inside the parentheses, which table does <code class="inline">author</code> mean?" Then alias both copies and qualify every column inside the subquery.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>Files:</b> <code class="inline">labs/module-05/l3_4-subqueries/page_checks_starter.sql</code> (scalar, IN and ALL subqueries on dates and page counts), then <code class="inline">labs/module-05/l3_4-subqueries/city_neighbors_starter.sql</code> (correlated, a derived table, the NOT IN trap on new data). References: the matching <code class="inline">_solution.sql</code> files.</p>
+<ul class="tick">
+  <li><b>page_checks (10m, pairs):</b> each TODO replaces a hand-typed placeholder with a subquery, so the file ends with no typed numbers. Expected: Pride and Prejudice (1813-01-28); five quick reads from Fahrenheit 451 (158 pages) to 1984 (328); The Great Gatsby and The Catcher in the Rye; four books after every out-of-stock book, and <code class="inline">same_with_max</code> 4.</li>
+  <li><b>city_neighbors (15m, pairs):</b> TODO 1 and 2 are correlated (count the neighbors; the first signup per city), TODO 3 is a derived table, TODO 4 is the NOT IN trap as shipped: 4a prints nothing until the IS NOT NULL is added. Expected: neighbors 1, 1, 0, 0, 0, 1, 1, 0; first signups Alice, Bob, Carol, Dave (Eve and Hank never match: NULL = NULL is not true); <code class="inline">authors_over_300</code> 5, <code class="inline">longest_total</code> 1488; 4a and 4b both Carol and Dave.</li>
+  <li><b>Coach the build order:</b> inner query first, for ONE example value (<code class="inline">WHERE city = 'Chicago'</code>), check it, then replace the example with the outer column (<code class="inline">= c.city</code>). Say it every time someone is stuck.</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-05/l3_4-subqueries/debug_subqueries.sql</code>: four broken subqueries (1242, 1241, 1248, 1235), one per shape.</li>
+  <li><b>Debrief (2m):</b> "In 4a, why did nothing come back, with no error?" Someone should say "a NULL in the list". Then: "which version would you trust in a monthly report?"</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>The Price Review</b>: <code class="inline">price_review.sql</code>, five queries that recompute themselves after every price change. In the room: Steps 1 and 2 (15 minutes).</p>
+<ul class="tick">
+  <li>Step 1 (5m): the books above the store average, with the average and the difference beside each (three subqueries, none correlated).</li>
+  <li>Step 2 (10m): each author's entry-level book, the correlated subquery. Make everyone write the inner query first for <code class="inline">WHERE author = 'J.R.R. Tolkien'</code>, run it, then correlate it. This is the exact skill the journal prompt asks them to explain.</li>
+  <li><b>Done in the room</b> = Step 1 prints three books (5.00, 4.00, 1.00 above the 10.99 average) and Step 2 prints nine authors, The Hobbit for Tolkien.</li>
+  <li><b>Goes home:</b> Steps 3 to 6 (NOT EXISTS for fully-in-stock authors, the top price tier via a derived table, the headline numbers, running it inside a transaction).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li>What shape does <code class="inline">WHERE price = ( ... )</code> expect? And <code class="inline">IN ( ... )</code>? <b>Answer:</b> one value; one column with any number of rows.</li>
+  <li>Why did the NOT IN query return nothing? <b>Answer:</b> the list held a NULL, and <code class="inline">city != NULL</code> is unknown for every row.</li>
+  <li>What makes a subquery correlated? <b>Answer:</b> it refers to a column of the outer query's current row (<code class="inline">b2.author = b.author</code>).</li>
+  <li>Why does <code class="inline">FROM (SELECT ...)</code> need <code class="inline">AS name</code>? <b>Answer:</b> every table in FROM must have a name (1248).</li>
+</ul>
+<p>Workbook self-check, items Q7 to Q12:</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">B) <code class="inline">6</code></span>; <b>Q8</b> <span data-sc="8">A) <code class="inline">ERROR 1242 (21000): Subquery returns more than 1 row</code></span>; <b>Q9</b> <span data-sc="9"><code class="inline">0</code> (no customer passes the test)</span>; <b>Q10</b> <span data-sc="10">C) <code class="inline">NOT EXISTS (SELECT 1 FROM customers AS other WHERE other.city = c.city AND other.id != c.id)</code></span>; <b>Q11</b> <span data-sc="11"><code class="inline">2</code></span>; <b>Q12</b> <span data-sc="12">D) Both author names refer to the inner table, so author = author is always true and the subquery returns the store average</span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> for learners lost at the correlated step, the workbook's worked example builds one in two runs (one city by hand, then correlated). Let them do page_checks only and leave city_neighbors for home.</p>
+<p><b>Stretch:</b> <code class="inline">debug_subqueries.sql</code>; the lesson's Exercise 4 (cheaper than their author) and the Bonus Challenge (the second-highest price without LIMIT, then the third: watch the nesting grow, a preview of Lesson 5.2's DENSE_RANK).</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2:40</span><h3>Error Clinic: Eight Numbered Errors</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk lab"><div class="h">How it runs</div>
+<p>Half the room runs <code class="inline">labs/module-05/l3_3-aggregate-functions/debug_group_by.sql</code>, the other half <code class="inline">labs/module-05/l3_4-subqueries/debug_subqueries.sql</code>. Each pair takes one ERROR line, writes the number, what MySQL could not decide, and the fix; then one sentence per error, aloud, in error-number order.</p>
+<table class="timing">
+<thead><tr><th>Error</th><th>What MySQL could not decide</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>1140</td><td>which first name goes in the one row of a whole-table COUNT</td><td>aggregate everything, or GROUP BY</td></tr>
+<tr><td>1055</td><td>which last name goes in each city's row</td><td><code class="inline">MIN(last_name)</code>, group by it, or drop it</td></tr>
+<tr><td>1111</td><td>how to count piles that do not exist yet (aggregate in WHERE)</td><td><code class="inline">HAVING COUNT(*) &gt; 1</code> after GROUP BY</td></tr>
+<tr><td>1064</td><td>how to read HAVING before GROUP BY</td><td>GROUP BY, then HAVING</td></tr>
+<tr><td>1242</td><td>which of two dates to compare with <code class="inline">=</code></td><td><code class="inline">IN</code> (or an aggregate)</td></tr>
+<tr><td>1241</td><td>how to compare one author with a two-column row</td><td>select only the author; the SUM stays in HAVING</td></tr>
+<tr><td>1248</td><td>what to call a table in FROM</td><td><code class="inline">AS city_counts</code> after the parenthesis</td></tr>
+<tr><td>1235</td><td>how to apply LIMIT inside an IN list</td><td>wrap the LIMIT query in a derived table</td></tr>
+</tbody>
+</table>
+<p>The fixed versions and their real outputs are in the Answer Key.</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 4 minutes)</div>
+<p>Learners answer in the workbook's Exit Ticket box or on a sticky note. Sort the notes before Session 6: question 2's pile tells you whether to reteach NOT IN in the Session 6 warm-up; question 3's pile tells you who to sit with during the 4.1 migration.</p>
+<ol class="steps">
+  <li>Write one query condition that belongs in WHERE and one that belongs in HAVING, for the books table. <b>Answer:</b> for example <code class="inline">WHERE in_stock = TRUE</code> (one row's column) and <code class="inline">HAVING COUNT(*) &gt; 1</code> or <code class="inline">HAVING AVG(price) &gt; 10</code> (a group's aggregate).</li>
+  <li>A NOT IN subquery returns <code class="inline">('Chicago', NULL)</code>. What does the outer query return, and what are two fixes? <b>Answer:</b> no rows at all. Add <code class="inline">AND city IS NOT NULL</code> inside the subquery, or rewrite with NOT EXISTS.</li>
+  <li>In your own words: what makes a subquery correlated, and why does it need aliases? <b>Answer:</b> it uses a column of the outer query's current row, so it is re-evaluated per row; with the same table twice, aliases (b, b2) are the only way to say which copy each column belongs to.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours)</div>
+<ul class="tick">
+  <li><b>Finish both lesson projects:</b> the inventory report (Steps 3 to 6) and the price review (Steps 3 to 6). Both are scripts: each must run start to finish with SOURCE and no error.</li>
+  <li><b>Lesson exercises.</b> 3.3: Exercises 1 to 3 (Exercise 4 is a stretch). 3.4: Exercises 1 to 3 (Exercise 4 is a stretch).</li>
+  <li><b>Both Quick Quizzes</b> on the lesson pages (answers in the Answer Key).</li>
+  <li><b>Journal:</b> both entries. The 3.4 prompt (explain the correlated subquery as the database walking through the books) is the best preparation for Session 6.</li>
+  <li><b>Labs not finished in class:</b> <code class="inline">page_report_starter.sql</code>, <code class="inline">city_neighbors_starter.sql</code>; the two debug handouts if the clinic was cut.</li>
+  <li><b>Before the Next Lesson (from 3.4):</b> keep the flat bookstore and Lesson 3.1's setup script: Lesson 4.1 starts from this same flat bookstore and turns it into related tables. Download <code class="inline">bookstore.sql</code> into the course folder too (do not run it yet).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Bring list for Session 6</div>
+<ul class="tick">
+  <li>A laptop with the flat bookstore loaded (<code class="inline">SELECT COUNT(*) FROM books;</code> says 10 and books still has an <code class="inline">author</code> column). If not: <code class="inline">SOURCE labs/_states/flat.sql</code> before you arrive.</li>
+  <li><code class="inline">bookstore.sql</code> saved in the course folder (not run yet): Lesson 4.1 ends by comparing with it, and Lesson 4.2 starts by loading it.</li>
+  <li><code class="inline">inventory_report.sql</code> and <code class="inline">price_review.sql</code>, finished, and the course folder with <code class="inline">labs/</code>.</li>
+  <li>The workbook and the journal; paper for an ER sketch.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> 3.4 demo Steps 2 and 5 to 8 (inside out, the NOT IN trap, one correlated row aloud); 3.3 demo Steps 5, 7 and 8 (piles, HAVING, WHERE plus HAVING); 3.3 lab TODOs 1 and 3.</li>
+  <li><b>Cut first (saves 10m):</b> the error clinic. Hand out both debug files as homework; their fixes are in the Answer Key.</li>
+  <li><b>Cut second (saves 10m):</b> the 3.4 lab's second file (<code class="inline">city_neighbors</code>) goes home; keep TODO 4a (the trap) as a 2-minute demo instead.</li>
+  <li><b>Cut third (saves 5m):</b> 3.4 demo Steps 10 and 11 (derived table, SELECT-list subquery): show the slides only.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>Run <code class="inline">debug_subqueries.sql</code> with the whole room and fix Bug D together: the derived-table workaround for LIMIT inside IN.</li>
+  <li>The 3.3 Bonus Challenge live: <code class="inline">GROUP BY in_stock WITH ROLLUP</code>, then label the total row with <code class="inline">GROUPING()</code>.</li>
+  <li>The 3.4 Bonus Challenge on the board: the second-highest price without LIMIT. Collect two different correct answers.</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 5 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

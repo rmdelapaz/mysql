@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides: Session 3</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--ink2:#9fb2cd;--accent:#93c5fd;--accent2:#2563eb;--py:#f6a53b;--lab:#34d3bd;--warn:#fbbf24;--line:#22314c;--code:#0a1526;color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100%;width:100%;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:6vh 8vw;gap:20px}
+  .slide.on{display:flex}
+  h1,h2,h3{font-family:"Archivo",sans-serif;line-height:1.1;text-wrap:balance}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .slide h1{font-size:clamp(2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+  .slide h2{font-size:clamp(1.5rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+  .slide p.lead{font-size:clamp(1.05rem,2.4vw,1.5rem);color:var(--ink2);max-width:34ch}
+  ul,ol.num{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  ul li{position:relative;padding-left:34px;font-size:clamp(1.05rem,2.3vw,1.6rem)}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+  ul.lab li::before{background:var(--lab)}
+  ol.num{counter-reset:n}
+  ol.num li{position:relative;padding-left:46px;font-size:clamp(1rem,2.1vw,1.45rem)}
+  ol.num li::before{counter-increment:n;content:counter(n);position:absolute;left:0;top:.05em;width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#fff;font-family:"JetBrains Mono",monospace;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+  code.k{font-family:"JetBrains Mono",monospace;font-variant-ligatures:none;color:#bfdbfe;font-size:.92em}
+  pre{white-space:pre;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px 24px;font-family:"JetBrains Mono",monospace;font-size:clamp(.8rem,1.7vw,1.15rem);line-height:1.5;overflow:auto;max-width:100%;font-variant-ligatures:none}
+  pre .k{color:#7dd3fc} pre .s{color:#86efac} pre .c{color:#7183a3;font-style:italic}
+  table.ag{border-collapse:collapse;font-size:clamp(.9rem,1.9vw,1.25rem);width:100%;max-width:60rem}
+  table.ag td{padding:7px 12px;border-bottom:1px solid var(--line)}
+  table.ag td.t{font-family:"JetBrains Mono",monospace;color:var(--ink2);white-space:nowrap}
+  table.ag tr.brk td{color:var(--py)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);color:var(--ink2)}
+  .tag .pill{background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;letter-spacing:.06em}
+  .tag .pill.lab{background:var(--lab);color:#062b26} .tag .pill.warn{background:var(--warn);color:#3a2a05}
+  .section{background:linear-gradient(135deg,#0f2a5c,#0b1220)}
+  .section .big{font-size:clamp(3rem,12vw,8rem);font-family:"Archivo";font-weight:800;color:#3b82f6;line-height:.9}
+  .section .big.py{color:var(--py)}
+  .two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:30px;align-items:start}
+  .two pre{font-size:clamp(.72rem,1.35vw,1rem);padding:16px 18px}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .bar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--py));width:0;transition:width .25s;z-index:5}
+  .count{position:fixed;right:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--ink2);z-index:5}
+  .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+  .nav button{pointer-events:auto;background:transparent;border:none;color:transparent;width:22vw;height:100vh;cursor:pointer}
+  .foot{position:fixed;left:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#5d7391;z-index:5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <section class="slide on section">
+    <div class="eyebrow">MySQL Foundations · Part 1 · Session 3 of 14 · 3 hours</div>
+    <h1>Session 3<br>Data Types, Constraints and CRUD</h1>
+    <p class="lead">Rules that keep bad data out, then data in, changed safely.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Today</div>
+    <h2>Three hours, two lessons</h2>
+    <table class="ag">
+      <tr><td class="t">0:00</td><td>Warm-up: Session 2 in five questions</td></tr>
+      <tr><td class="t">0:10</td><td>2.2 Data Types &amp; Constraints: model, demo, lab, project</td></tr>
+      <tr class="brk"><td class="t">1:20</td><td>Break (10 min)</td></tr>
+      <tr><td class="t">1:30</td><td>2.3 CRUD Operations: model, demo, lab</td></tr>
+      <tr><td class="t">2:25</td><td>2.3 Load the bookstore's data</td></tr>
+      <tr><td class="t">2:50</td><td>Exit ticket, homework, what to bring next time</td></tr>
+    </table>
+    <div class="tag"><span class="pill lab">LABS</span> <span>Labs: <code class="k">labs/module-03</code>, run inside bookstore (<code class="k">USE bookstore;</code> first).</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Warm-up · 4 minutes</div>
+    <h2>Session 2 in five questions</h2>
+    <ol class="num">
+      <li>The prompt shows <code class="k">-&gt;</code>: what do you type?</li>
+      <li>1146 Table 'mysql.books' doesn't exist: what do you check?</li>
+      <li>Which one works in phpMyAdmin's SQL tab?</li>
+      <li>MODIFY without NOT NULL: what does Null say?</li>
+      <li>CREATE TABLE fails right after DROP DATABASE: why?</li>
+    </ol>
+    <div class="tag"><span class="pill lab">CHECK</span> <span>Then: <code class="k">USE bookstore; SHOW TABLES;</code> lists three tables on every laptop.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big">2.2</div><h2>Data Types &amp; Constraints</h2><p class="lead">Stop bad data at the door, not in next month's report.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">2.2 · Mental model</div>
+    <h2>A value at the door</h2>
+    <ol class="num">
+      <li>Does it fit the column's <b>type</b>?</li>
+      <li>Does it pass the <b>constraints</b>?</li>
+      <li>Yes and yes: stored · otherwise: refused, with a number</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>Strict mode (<code class="k">STRICT_TRANS_TABLES</code>) is the default: keep it on.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.2 · Choosing</div>
+    <h2>The type that says what the value is</h2>
+    <ul>
+      <li>Ids and counts: <code class="k">INT</code>, <code class="k">UNSIGNED</code> when negatives are nonsense</li>
+      <li>Money: <code class="k">DECIMAL(8, 2)</code>, never <code class="k">FLOAT</code></li>
+      <li>Names, emails, phone numbers: <code class="k">VARCHAR(n)</code> · fixed codes: <code class="k">CHAR(n)</code></li>
+      <li>Dates: <code class="k">DATE</code> · moments: <code class="k">DATETIME</code> (TIMESTAMP ends in 2038)</li>
+      <li>Yes/no: <code class="k">BOOLEAN</code> · a short fixed list: <code class="k">ENUM</code></li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.2 · Code</div>
+    <h2>A number that does not fit</h2>
+    <pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> number_demo (stars) <span class="k">VALUES</span> (<span class="s">200</span>);  <span class="c">-- stars is TINYINT</span></pre>
+    <pre class="code">ERROR 1264 (22003): Out of range value for column 'stars' at row 1</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>TINYINT stops at 127. Strict mode refuses instead of clamping.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.2 · Code</div>
+    <h2>Why money is never FLOAT</h2>
+    <pre class="code"><span class="k">SELECT</span>
+    price * <span class="s">3</span>        <span class="k">AS</span> decimal_times_3,
+    weight_kg * <span class="s">3</span>    <span class="k">AS</span> float_times_3,
+    weight_kg = <span class="s">0.1</span>  <span class="k">AS</span> float_equals_0_1
+<span class="k">FROM</span> number_demo
+<span class="k">WHERE</span> stars = <span class="s">5</span>;</pre>
+    <pre class="code">+-----------------+---------------------+------------------+
+| decimal_times_3 | float_times_3       | float_equals_0_1 |
++-----------------+---------------------+------------------+
+|           44.97 | 0.30000000447034836 |                0 |
++-----------------+---------------------+------------------+</pre>
+    <div class="tag"><span class="pill warn">RULE</span> <span>DECIMAL is exact. FLOAT's crumbs add up to money no report can explain.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.2 · Text, dates, lists</div>
+    <h2>Refused, each with a number</h2>
+    <pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> text_demo (label) <span class="k">VALUES</span> (<span class="s">'Fahrenheit 451'</span>);   <span class="c">-- VARCHAR(5)</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> date_demo (d) <span class="k">VALUES</span> (<span class="s">'2026-02-30'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> date_demo (d) <span class="k">VALUES</span> (<span class="s">'03/10/2026'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> format_demo (title, format) <span class="k">VALUES</span> (<span class="s">'1984'</span>, <span class="s">'audiobook'</span>);</pre>
+    <pre class="code">ERROR 1406 (22001): Data too long for column 'label' at row 1
+ERROR 1292 (22007): Incorrect date value: '2026-02-30' for column 'd' at row 1
+ERROR 1292 (22007): Incorrect date value: '03/10/2026' for column 'd' at row 1
+ERROR 1265 (01000): Data truncated for column 'format' at row 1</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Dates are year first: '2026-03-10'.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.2 · Code</div>
+    <h2>A table with every kind of rule</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> coupons (
+    id           <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    code         <span class="k">VARCHAR</span>(<span class="s">20</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">UNIQUE</span>,
+    percent_off  <span class="k">TINYINT</span> <span class="k">UNSIGNED</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    min_order    <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">DEFAULT</span> <span class="s">0.00</span>,
+    expires      <span class="k">DATE</span>,
+    <span class="k">CONSTRAINT</span> chk_coupon_percent <span class="k">CHECK</span> (percent_off <span class="k">BETWEEN</span> <span class="s">5</span> <span class="k">AND</span> <span class="s">50</span>)
+);</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Name the CHECK: the error then says which rule failed.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.2 · Break every rule</div>
+    <h2>Predict the four numbers</h2>
+    <pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> coupons (code, percent_off) <span class="k">VALUES</span> (<span class="k">NULL</span>, <span class="s">15</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> coupons (code) <span class="k">VALUES</span> (<span class="s">'SPRING15'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> coupons (code, percent_off) <span class="k">VALUES</span> (<span class="s">'WELCOME10'</span>, <span class="s">15</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> coupons (code, percent_off) <span class="k">VALUES</span> (<span class="s">'HALFPRICE'</span>, <span class="s">75</span>);</pre>
+    <pre class="code">ERROR 1048 (23000): Column 'code' cannot be null
+ERROR 1364 (HY000): Field 'percent_off' doesn't have a default value
+ERROR 1062 (23000): Duplicate entry 'WELCOME10' for key 'coupons.code'
+ERROR 3819 (HY000): Check constraint 'chk_coupon_percent' is violated.</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.2 · The silent trap</div>
+    <h2>BOOLEAN is a small number</h2>
+    <pre class="code"><span class="k">SELECT</span> title, in_stock <span class="k">FROM</span> flag_demo <span class="k">WHERE</span> in_stock = <span class="k">TRUE</span>;
+<span class="k">SELECT</span> title, in_stock <span class="k">FROM</span> flag_demo <span class="k">WHERE</span> in_stock;</pre>
+    <pre class="code">+-------+----------+
+| title | in_stock |
++-------+----------+
+| Dune  |        1 |
++-------+----------+
++-------+----------+
+| title | in_stock |
++-------+----------+
+| Dune  |        1 |
+| 1984  |        5 |
++-------+----------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span><code class="k">= TRUE</code> means <code class="k">= 1</code>. Write <code class="k">WHERE in_stock</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.2 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> counts (n <span class="k">TINYINT</span> <span class="k">UNSIGNED</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> counts <span class="k">VALUES</span> (<span class="s">255</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> counts <span class="k">VALUES</span> (<span class="s">256</span>);
+<span class="k">SELECT</span> n <span class="k">FROM</span> counts;</pre>
+    <ul>
+      <li>Does the second row go in?</li>
+      <li>What does the SELECT show?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.2 · Guided lab · 20 minutes</div>
+    <h2>Wrong types, wrong answers, no errors</h2>
+    <ul class="lab">
+      <li><code class="k">types_matter_starter.sql</code> in <code class="k">labs/module-03/l2_2-...</code></li>
+      <li>Run it as it is: which answers are wrong, and why?</li>
+      <li>TODOs 1 to 3: INT UNSIGNED, DECIMAL, DATE</li>
+      <li>Dates from a spreadsheet: <code class="k">STR_TO_DATE(..., '%m/%d/%Y')</code></li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">membership_rules_starter.sql</code>, then <code class="k">debug_bad_rows.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.2 · Project</div>
+    <h2>The staff table</h2>
+    <ul class="lab">
+      <li>Step 1: types and rules on paper first</li>
+      <li>Steps 2 and 3: the table, three staff members</li>
+      <li>Step 4: four rows that must fail: predict 3819, 1062, 1265, 1364</li>
+      <li>Before the break: Step 6's DROP TABLE</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>Step 5 and a rerun go home.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big py">10</div><h2>Break</h2><p class="lead">Back at 1:30. Then the bookstore gets its data.</p></section>
+
+  <section class="slide section"><div class="big">2.3</div><h2>CRUD Operations</h2><p class="lead">Add, read, change and remove exactly the rows you mean.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · Mental model</div>
+    <h2>WHERE picks the rows</h2>
+    <ul>
+      <li><code class="k">INSERT</code> adds · <code class="k">SELECT</code> reads · <code class="k">UPDATE</code> changes · <code class="k">DELETE</code> removes</li>
+      <li>UPDATE and DELETE touch every row the WHERE matches</li>
+      <li>No WHERE: every row in the table. No undo.</li>
+      <li>Preview → same WHERE → compare the counts</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span>Read the second line: Rows matched, Changed.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · Code</div>
+    <h2>Create, then read the new id</h2>
+    <pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> books (title, author, price, pages, published)
+<span class="k">VALUES</span> (<span class="s">'Dune'</span>, <span class="s">'Frank Herbert'</span>, <span class="s">12.99</span>, <span class="s">412</span>, <span class="s">'1965-08-01'</span>);
+<span class="k">SELECT</span> LAST_INSERT_ID();</pre>
+    <pre class="code">+------------------+
+| LAST_INSERT_ID() |
++------------------+
+|                1 |
++------------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>List the columns; id and in_stock fill themselves.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · Code</div>
+    <h2>A calculated column with an alias</h2>
+    <pre class="code"><span class="k">SELECT</span>
+    title,
+    price,
+    ROUND(price * <span class="s">1.08</span>, <span class="s">2</span>) <span class="k">AS</span> price_with_tax
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &gt; <span class="s">11</span>;</pre>
+    <pre class="code">+-----------------------+-------+----------------+
+| title                 | price | price_with_tax |
++-----------------------+-------+----------------+
+| Dune                  | 12.99 |          14.03 |
+| To Kill a Mockingbird | 11.99 |          12.95 |
+| Lord of the Rings     | 15.99 |          17.27 |
++-----------------------+-------+----------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>A calculation never changes the table.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · Code</div>
+    <h2>Update, and read the second line</h2>
+    <pre class="code"><span class="k">UPDATE</span> books
+<span class="k">SET</span> price = <span class="s">14.99</span>
+<span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="c">-- the same statement again</span></pre>
+    <pre class="code">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+Query OK, 0 rows affected
+Rows matched: 1  Changed: 0  Warnings: 0</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Matched 1, Changed 0: the price was already 14.99.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · Code</div>
+    <h2>Preview first, then the same WHERE</h2>
+    <pre class="code"><span class="k">SELECT</span> id, title, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &gt; <span class="s">10</span>
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+    <pre class="code">+----+-----------------------+-------+
+| id | title                 | price |
++----+-----------------------+-------+
+|  1 | Dune                  | 14.99 |
+|  3 | To Kill a Mockingbird | 11.99 |
+|  6 | The Hobbit            | 10.99 |
+|  9 | Lord of the Rings     | 15.99 |
+| 10 | Fahrenheit 451        | 10.49 |
++----+-----------------------+-------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Then <code class="k">UPDATE books SET price = ROUND(price * 0.90, 2) WHERE price &gt; 10;</code>: Rows matched: 5  Changed: 5  Warnings: 0</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · Code</div>
+    <h2>Ids are never reused</h2>
+    <pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> books <span class="k">WHERE</span> id = <span class="s">10</span>;
+<span class="k">INSERT</span> <span class="k">INTO</span> books (title, author, price, pages, published)
+<span class="k">VALUES</span> (<span class="s">'Fahrenheit 451'</span>, <span class="s">'Ray Bradbury'</span>, <span class="s">10.49</span>, <span class="s">158</span>, <span class="s">'1953-10-19'</span>);
+<span class="k">SELECT</span> id, title <span class="k">FROM</span> books <span class="k">WHERE</span> title = <span class="s">'Fahrenheit 451'</span>;</pre>
+    <pre class="code">+----+----------------+
+| id | title          |
++----+----------------+
+| 11 | Fahrenheit 451 |
++----+----------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Never fill gaps: a receipt may still say id 10.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · Upsert</div>
+    <h2>Insert it, or update it</h2>
+    <pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> categories (name, description)
+<span class="k">VALUES</span> (<span class="s">'Fiction'</span>, <span class="s">'Imaginative prose of every kind'</span>) <span class="k">AS</span> new
+<span class="k">ON</span> <span class="k">DUPLICATE</span> <span class="k">KEY</span> <span class="k">UPDATE</span> description = new.description;</pre>
+    <pre class="code">Query OK, 2 rows affected</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>1 inserted · 2 updated · 0 unchanged. MariaDB: VALUES(description).</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · Safety</div>
+    <h2>The switch that catches a missing WHERE</h2>
+    <pre class="code"><span class="k">SET</span> SQL_SAFE_UPDATES = <span class="s">1</span>;
+<span class="k">UPDATE</span> books <span class="k">SET</span> price = <span class="s">0</span>;</pre>
+    <pre class="code">ERROR 1175 (HY000): You are using safe update mode and
+  you tried to update a table without a WHERE that uses a KEY column.</pre>
+    <div class="tag"><span class="pill lab">TIP</span> <span>Permanently: <code class="k">mysql --safe-updates -u root -p</code></span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · The silent trap</div>
+    <h2>AND instead of a comma</h2>
+    <pre class="code"><span class="k">UPDATE</span> books
+<span class="k">SET</span> price = <span class="s">15.99</span> <span class="k">AND</span> in_stock = <span class="k">FALSE</span>
+<span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SELECT</span> title, price, in_stock <span class="k">FROM</span> books <span class="k">WHERE</span> id = <span class="s">1</span>;</pre>
+    <pre class="code">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
++-------+-------+----------+
+| title | price | in_stock |
++-------+-------+----------+
+| Dune  |  0.00 |        1 |
++-------+-------+----------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Assignments are separated by commas: <code class="k">SET price = 15.99, in_stock = FALSE</code></span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> notes (id <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, t <span class="k">VARCHAR</span>(<span class="s">10</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> notes (t) <span class="k">VALUES</span> (<span class="s">'a'</span>), (<span class="s">'b'</span>), (<span class="s">'c'</span>);
+<span class="k">DELETE</span> <span class="k">FROM</span> notes <span class="k">WHERE</span> id = <span class="s">3</span>;
+<span class="k">INSERT</span> <span class="k">INTO</span> notes (t) <span class="k">VALUES</span> (<span class="s">'d'</span>);
+<span class="k">SELECT</span> * <span class="k">FROM</span> notes;</pre>
+    <ul>
+      <li>Which id does d get?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · Guided lab · 20 minutes</div>
+    <h2>New arrivals, changed with care</h2>
+    <ul class="lab">
+      <li><code class="k">new_arrivals_starter.sql</code> in <code class="k">labs/module-03/l2_3-...</code></li>
+      <li>Predict LAST_INSERT_ID after a six-row INSERT</li>
+      <li>TODOs 3 to 6: one gap each; write your prediction first</li>
+      <li><code class="k">ROW_COUNT()</code> must match the preview</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">category_feed_starter.sql</code>, then <code class="k">debug_crud_slips.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">2.3 · Project · 25 minutes</div>
+    <h2>Stock the bookstore</h2>
+    <ul class="lab">
+      <li><code class="k">load_bookstore_data.sql</code> next to create_bookstore.sql</li>
+      <li>Step 1: USE, three TRUNCATEs</li>
+      <li>Steps 2 and 3: 10 books, 8 customers, 5 categories</li>
+      <li>Step 4: check · Step 5: run it twice</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>Module 3 queries exactly these rows.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Wrap-up · 4 minutes</div>
+    <h2>Exit ticket</h2>
+    <ol class="num">
+      <li>Why DECIMAL and never FLOAT for money? One example</li>
+      <li>Rows matched: 3 Changed: 2: what happened to the third row?</li>
+      <li>What do you run before an UPDATE or DELETE on several rows, and why?</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>No notes. Workbook Exit Ticket box or a sticky note.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Before Session 4</div>
+    <h2>Homework and bring list</h2>
+    <ul class="lab">
+      <li>employees.sql Step 5 and a rerun; load_bookstore_data.sql once more</li>
+      <li>Exercises of both lessons; both quizzes; both journals</li>
+      <li>A week with --safe-updates</li>
+      <li>Session 4 ends with Checkpoint 1 on Modules 1 and 2: bring your notes</li>
+    </ul>
+    <div class="tag"><span class="pill">NEXT</span> <span>Session 4: Filtering, Sorting and Limiting.</span></div>
+  </section>
+
+
+</div>
+
+<div class="foot">© 2026 Ray de la Paz · MySQL Foundations</div>
+<div class="count" id="count">1 / 1</div>
+<div class="nav"><button id="prev" aria-label="Previous slide"></button><button id="next" aria-label="Next slide"></button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'), count=document.getElementById('count');
+  let i=0;
+  function show(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%'; count.textContent=(i+1)+' / '+slides.length; }
+  document.getElementById('next').onclick=()=>show(i+1);
+  document.getElementById('prev').onclick=()=>show(i-1);
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0); else if(e.key==='End')show(slides.length-1);
+  });
+  show(0);
+</script>
+</body>
+</html>

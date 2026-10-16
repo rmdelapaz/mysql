@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides: Session 8</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--ink2:#9fb2cd;--accent:#93c5fd;--accent2:#2563eb;--py:#f6a53b;--lab:#34d3bd;--warn:#fbbf24;--line:#22314c;--code:#0a1526;color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100%;width:100%;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:6vh 8vw;gap:20px}
+  .slide.on{display:flex}
+  h1,h2,h3{font-family:"Archivo",sans-serif;line-height:1.1;text-wrap:balance}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .slide h1{font-size:clamp(2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+  .slide h2{font-size:clamp(1.5rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+  .slide p.lead{font-size:clamp(1.05rem,2.4vw,1.5rem);color:var(--ink2);max-width:34ch}
+  ul,ol.num{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  ul li{position:relative;padding-left:34px;font-size:clamp(1.05rem,2.3vw,1.6rem)}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+  ul.lab li::before{background:var(--lab)}
+  ol.num{counter-reset:n}
+  ol.num li{position:relative;padding-left:46px;font-size:clamp(1rem,2.1vw,1.45rem)}
+  ol.num li::before{counter-increment:n;content:counter(n);position:absolute;left:0;top:.05em;width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#fff;font-family:"JetBrains Mono",monospace;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+  code.k{font-family:"JetBrains Mono",monospace;font-variant-ligatures:none;color:#bfdbfe;font-size:.92em}
+  pre{white-space:pre;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px 24px;font-family:"JetBrains Mono",monospace;font-size:clamp(.8rem,1.7vw,1.15rem);line-height:1.5;overflow:auto;max-width:100%;font-variant-ligatures:none}
+  pre .k{color:#7dd3fc} pre .s{color:#86efac} pre .c{color:#7183a3;font-style:italic}
+  table.ag{border-collapse:collapse;font-size:clamp(.9rem,1.9vw,1.25rem);width:100%;max-width:60rem}
+  table.ag td{padding:7px 12px;border-bottom:1px solid var(--line)}
+  table.ag td.t{font-family:"JetBrains Mono",monospace;color:var(--ink2);white-space:nowrap}
+  table.ag tr.brk td{color:var(--py)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);color:var(--ink2)}
+  .tag .pill{background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;letter-spacing:.06em}
+  .tag .pill.lab{background:var(--lab);color:#062b26} .tag .pill.warn{background:var(--warn);color:#3a2a05}
+  .section{background:linear-gradient(135deg,#0f2a5c,#0b1220)}
+  .section .big{font-size:clamp(3rem,12vw,8rem);font-family:"Archivo";font-weight:800;color:#3b82f6;line-height:.9}
+  .section .big.py{color:var(--py)}
+  .two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:30px;align-items:start}
+  .two pre{font-size:clamp(.72rem,1.35vw,1rem);padding:16px 18px}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .bar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--py));width:0;transition:width .25s;z-index:5}
+  .count{position:fixed;right:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--ink2);z-index:5}
+  .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+  .nav button{pointer-events:auto;background:transparent;border:none;color:transparent;width:22vw;height:100vh;cursor:pointer}
+  .foot{position:fixed;left:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#5d7391;z-index:5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <section class="slide on section">
+    <div class="eyebrow">MySQL Foundations · Part 2 · Session 8 of 14 · 3 hours</div>
+    <h1>Session 8<br>CTEs and Window Functions</h1>
+    <p class="lead">Name the steps of a long query, follow chains of rows, and put every row next to its total.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Today</div>
+    <h2>Three hours, two lessons</h2>
+    <table class="ag">
+      <tr><td class="t">0:00</td><td>Welcome to Part 2: check, refresher</td></tr>
+      <tr><td class="t">0:20</td><td>5.1 CTEs: model, demo, lab, project</td></tr>
+      <tr class="brk"><td class="t">1:15</td><td>Break (10 min)</td></tr>
+      <tr><td class="t">1:25</td><td>5.2 Window functions: model, demo</td></tr>
+      <tr><td class="t">2:00</td><td>5.2 Lab and project start</td></tr>
+      <tr><td class="t">2:35</td><td>Debug clinic: six errors</td></tr>
+      <tr><td class="t">2:50</td><td>Exit ticket, homework, bring list</td></tr>
+    </table>
+    <div class="tag"><span class="pill lab">LABS</span> <span>Lab files are in <code class="k">labs/module-08</code>. Open the <code class="k">_starter.sql</code> file, never the solution.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Part 2 · Sessions 8 to 14</div>
+    <h2>Beyond the basics</h2>
+    <ul>
+      <li>8 to 9: better queries, then speed (indexes, views)</li>
+      <li>10 to 11: design, programs inside the database, transactions, JSON</li>
+      <li>12: users, permissions, backups</li>
+      <li>13 to 14: your own database: the final project</li>
+      <li>Every lesson starts from a fresh bookstore.sql</li>
+    </ul>
+    <div class="tag"><span class="pill">NEW?</span> <span>Starting with Part 2? The refresher tells you what to reread.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Opening · 5 minutes</div>
+    <h2>Ready for Part 2?</h2>
+    <ol class="num">
+      <li><code class="k">SOURCE bookstore.sql</code>: eight row counts</li>
+      <li><code class="k">SOURCE labs/module-08/l5_0-part2-start/check_environment.sql</code></li>
+      <li>Last table: <code class="k">READY for Part 2</code></li>
+      <li>NOT READY? Reload bookstore.sql and run it again</li>
+    </ol>
+    <div class="tag"><span class="pill warn">CHECK</span> <span>Part 2 needs all 8 tables, with fresh row counts.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Opening · 12 minutes</div>
+    <h2>Part 1 refresher: five questions</h2>
+    <ol class="num">
+      <li>Which customers never ordered? (the query shape)</li>
+      <li>Each employee next to their manager: how?</li>
+      <li><code class="k">COUNT(*)</code> after a LEFT JOIN: what does Asimov get?</li>
+      <li>Orwell shows 5 books, he wrote 2: why?</li>
+      <li>A derived table fails with 1248: what is missing?</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>No notes. Workbook, Start Here page.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big">5.1</div><h2>CTEs &amp; Recursive Queries</h2><p class="lead">Name each step of a long question, and follow chains of rows.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Mental model</div>
+    <h2>One question, three steps</h2>
+    <ol class="num">
+      <li>Total each customer's orders</li>
+      <li>Average those totals</li>
+      <li>Keep the customers above the average</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>A CTE names a step once, up front. The query reads top to bottom.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Code</div>
+    <h2>The steps, named</h2>
+    <div class="two"><pre class="code"><span class="k">WITH</span> customer_totals <span class="k">AS</span> (
+    <span class="k">SELECT</span> o.customer_id,
+           SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> total
+    <span class="k">FROM</span> orders o
+    <span class="k">JOIN</span> order_items oi <span class="k">ON</span> oi.order_id = o.id
+    <span class="k">GROUP</span> <span class="k">BY</span> o.customer_id
+)
+<span class="k">SELECT</span> customer_id, total
+<span class="k">FROM</span> customer_totals
+<span class="k">WHERE</span> total &gt; (<span class="k">SELECT</span> AVG(total) <span class="k">FROM</span> customer_totals)
+<span class="k">ORDER</span> <span class="k">BY</span> total <span class="k">DESC</span>;</pre><pre class="code">+-------------+-------+
+| customer_id | total |
++-------------+-------+
+|           1 | 58.95 |
+|           4 | 45.96 |
+|           6 | 41.96 |
++-------------+-------+</pre></div>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">customer_totals</code> is written once and read twice.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Several CTEs</div>
+    <h2>One WITH, a list of steps</h2>
+    <ul>
+      <li><code class="k">WITH a AS (...), b AS (SELECT ... FROM a)</code></li>
+      <li>Each CTE can read the ones before it</li>
+      <li>A one-row CTE + <code class="k">CROSS JOIN</code>: its value on every row</li>
+      <li>A CTE can be joined to itself: this month next to last month</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span>Name CTEs after what they hold, test each with SELECT * on its own.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Code</div>
+    <h2>A CTE joined to itself</h2>
+    <div class="two"><pre class="code"><span class="k">WITH</span> monthly <span class="k">AS</span> (
+    <span class="k">SELECT</span> MONTH(o.order_date) <span class="k">AS</span> m,
+           SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> revenue
+    <span class="k">FROM</span> orders o
+    <span class="k">JOIN</span> order_items oi <span class="k">ON</span> oi.order_id = o.id
+    <span class="k">GROUP</span> <span class="k">BY</span> m)
+<span class="k">SELECT</span> cur.m, cur.revenue,
+       prev.revenue <span class="k">AS</span> previous
+<span class="k">FROM</span> monthly cur
+<span class="k">LEFT</span> <span class="k">JOIN</span> monthly prev <span class="k">ON</span> prev.m = cur.m - <span class="s">1</span>
+<span class="k">ORDER</span> <span class="k">BY</span> cur.m;</pre><pre class="code">+------+---------+----------+
+| m    | revenue | previous |
++------+---------+----------+
+|    1 |   61.95 |     NULL |
+|    2 |   51.95 |    61.95 |
+|    3 |   33.47 |    51.95 |
+|    4 |   38.97 |    33.47 |
+|    5 |   31.97 |    38.97 |
+|    6 |   18.98 |    31.97 |
++------+---------+----------+</pre></div>
+    <div class="tag"><span class="pill">WHY</span> <span>After the break: <code class="k">LAG()</code> does this in one line.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Which one?</div>
+    <h2>Derived table, CTE or view?</h2>
+    <ul>
+      <li><b>Derived table</b>: one statement, read inside out, a small one-off step</li>
+      <li><b>CTE</b>: one statement, top to bottom, can read itself (RECURSIVE)</li>
+      <li><b>View</b>: stored until dropped, for the question everyone asks (Session 9)</li>
+      <li>After the semicolon a CTE is gone: <code class="k">ERROR 1146</code></li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Recursion</div>
+    <h2>Rounds, not magic</h2>
+    <pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> numbers <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="s">1</span> <span class="k">AS</span> n                                  <span class="c">-- anchor: runs once</span>
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> n + <span class="s">1</span> <span class="k">FROM</span> numbers <span class="k">WHERE</span> n &lt; <span class="s">5</span>          <span class="c">-- recursive member + stop</span>
+)
+<span class="k">SELECT</span> GROUP_CONCAT(n <span class="k">ORDER</span> <span class="k">BY</span> n) <span class="k">AS</span> rows_made <span class="k">FROM</span> numbers;</pre>
+    <pre class="code">+-----------+
+| rows_made |
++-----------+
+| 1,2,3,4,5 |
++-----------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Round 4 reads 4 and makes 5. Round 5 reads 5, fails n &lt; 5, makes nothing: stop.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Recursion</div>
+    <h2>A calendar that fills the gaps</h2>
+    <pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> months <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="k">DATE</span>(<span class="s">'2026-01-01'</span>) <span class="k">AS</span> month_start
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> month_start + <span class="k">INTERVAL</span> <span class="s">1</span> MONTH
+    <span class="k">FROM</span> months
+    <span class="k">WHERE</span> month_start &lt; <span class="s">'2026-07-01'</span>
+)
+<span class="k">SELECT</span> DATE_FORMAT(m.month_start, <span class="s">'%Y-%m'</span>) <span class="k">AS</span> month,
+       COUNT(o.id)                         <span class="k">AS</span> orders
+<span class="k">FROM</span> months m
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders o
+       <span class="k">ON</span> o.order_date &gt;= m.month_start
+      <span class="k">AND</span> o.order_date &lt;  m.month_start + <span class="k">INTERVAL</span> <span class="s">1</span> MONTH
+<span class="k">GROUP</span> <span class="k">BY</span> m.month_start
+<span class="k">ORDER</span> <span class="k">BY</span> m.month_start;</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>July: 0 orders. Generate the months first, then LEFT JOIN the data.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Output</div>
+    <h2>Every month, even an empty one</h2>
+    <pre class="code">+---------+--------+
+| month   | orders |
++---------+--------+
+| 2026-01 |      2 |
+| 2026-02 |      3 |
+| 2026-03 |      2 |
+| 2026-04 |      2 |
+| 2026-05 |      2 |
+| 2026-06 |      1 |
+| 2026-07 |      0 |
++---------+--------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">COUNT(o.id)</code> counts matched orders only: July is 0.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Hierarchy</div>
+    <h2>The org chart, top down</h2>
+    <pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> org <span class="k">AS</span> (
+    <span class="k">SELECT</span> id, first_name, last_name, department, <span class="s">1</span> <span class="k">AS</span> level,
+           CAST(first_name <span class="k">AS</span> <span class="k">CHAR</span>(<span class="s">200</span>)) <span class="k">AS</span> path
+    <span class="k">FROM</span> employees
+    <span class="k">WHERE</span> manager_id <span class="k">IS</span> <span class="k">NULL</span>
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> e.id, e.first_name, e.last_name, e.department, o.level + <span class="s">1</span>,
+           CONCAT(o.path, <span class="s">' &gt; '</span>, e.first_name)
+    <span class="k">FROM</span> employees e
+    <span class="k">JOIN</span> org o <span class="k">ON</span> e.manager_id = o.id
+)
+<span class="k">SELECT</span> CONCAT(<span class="k">REPEAT</span>(<span class="s">'    '</span>, level - <span class="s">1</span>), first_name, <span class="s">' '</span>, last_name) <span class="k">AS</span> org_chart,
+       department
+<span class="k">FROM</span> org
+<span class="k">ORDER</span> <span class="k">BY</span> path;</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Down: <code class="k">e.manager_id = o.id</code> · the anchor's CAST makes path wide enough</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Output</div>
+    <h2>Ten people, four levels</h2>
+    <pre class="code">+---------------------------+------------+
+| org_chart                 | department |
++---------------------------+------------+
+| Maria Santos              | management |
+|     Daniel Reyes          | management |
+|         Marcus Hill       | inventory  |
+|             Sofia Alvarez | inventory  |
+|         Priya Nair        | sales      |
+|             Ben Carter    | sales      |
+|             Lena Park     | sales      |
+|             Tom Becker    | sales      |
+|     James Okafor          | support    |
+|         Nina Kowalski     | support    |
++---------------------------+------------+</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Hierarchy</div>
+    <h2>A chain of command, bottom up</h2>
+    <div class="two"><pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> chain <span class="k">AS</span> (
+    <span class="k">SELECT</span> id, first_name, manager_id, <span class="s">0</span> <span class="k">AS</span> steps_up
+    <span class="k">FROM</span> employees
+    <span class="k">WHERE</span> id = <span class="s">7</span>
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> e.id, e.first_name, e.manager_id,
+           c.steps_up + <span class="s">1</span>
+    <span class="k">FROM</span> employees e
+    <span class="k">JOIN</span> chain c <span class="k">ON</span> e.id = c.manager_id   <span class="c">-- walk UP</span>
+)
+<span class="k">SELECT</span> steps_up, first_name
+<span class="k">FROM</span> chain
+<span class="k">ORDER</span> <span class="k">BY</span> steps_up;</pre><pre class="code">+----------+------------+
+| steps_up | first_name |
++----------+------------+
+|        0 | Sofia      |
+|        1 | Marcus     |
+|        2 | Daniel     |
+|        3 | Maria      |
++----------+------------+</pre></div>
+    <div class="tag"><span class="pill">WHY</span> <span>Up: <code class="k">e.id = c.manager_id</code>. Maria has no manager: the climb stops.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · The database says no</div>
+    <h2>Three errors to know</h2>
+    <pre class="code"><span class="k">WITH</span> org <span class="k">AS</span> ( ... <span class="k">JOIN</span> org ... )              <span class="c">-- RECURSIVE forgotten</span>
+<span class="k">WITH</span> <span class="k">RECURSIVE</span> numbers <span class="k">AS</span> ( ... )             <span class="c">-- no stop condition</span>
+<span class="k">SELECT</span> <span class="s">'Maria'</span> <span class="k">AS</span> path ... CONCAT(path, ...)  <span class="c">-- anchor too narrow</span></pre>
+    <pre class="code">ERROR 1146 (42S02): Table 'bookstore.org' doesn't exist
+ERROR 3636 (HY000): Recursive query aborted after 1001 iterations. Try
+    increasing @@cte_max_recursion_depth to a larger value.
+ERROR 1406 (22001): Data too long for column 'path' at row 1</pre>
+    <div class="tag"><span class="pill warn">RULE</span> <span>Never raise the limit to silence a missing stop condition.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> countdown <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="s">10</span> <span class="k">AS</span> n
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> n - <span class="s">3</span> <span class="k">FROM</span> countdown <span class="k">WHERE</span> n &gt; <span class="s">3</span>
+)
+<span class="k">SELECT</span> n <span class="k">FROM</span> countdown;</pre>
+    <ul>
+      <li>Which row does each round read?</li>
+      <li>Which round stops, and why?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Guided lab · 15 minutes</div>
+    <h2>The staff tree</h2>
+    <ul class="lab">
+      <li><code class="k">staff_tree_starter.sql</code> in <code class="k">labs/module-08/l5_1-ctes</code></li>
+      <li>TODO 1 together: twelve months, the empty ones too</li>
+      <li>TODO 2 in pairs: a division for every employee</li>
+      <li>Edit the recursive member, not the anchor</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? TODO 3, then <code class="k">category_steps_starter.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.1 · Project</div>
+    <h2>The staff and sales briefing</h2>
+    <ul class="lab">
+      <li><code class="k">org_report.sql</code>: four commented queries</li>
+      <li>Step 1: the indented org chart with levels</li>
+      <li>Step 3: the chain of command for any id</li>
+      <li>Steps 2, 4, 5 at home: team sizes, sales calendar, run it all</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>In class: Steps 1 and 3.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big py">10</div><h2>Break</h2><p class="lead">Back at 1:25. Then: every row, plus its total.</p></section>
+
+  <section class="slide section"><div class="big">5.2</div><h2>Window Functions</h2><p class="lead">Each row next to a total, a rank or its neighbor.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Mental model</div>
+    <h2>Squash, or keep every row</h2>
+    <ul>
+      <li><b>GROUP BY</b>: one row per group, the rows are gone</li>
+      <li><b>OVER</b>: every row stays, each gets the group's number</li>
+      <li><code class="k">PARTITION BY</code>: one window per group</li>
+      <li><code class="k">ORDER BY</code> inside OVER: ranks, running totals, LAG</li>
+      <li>Frame: <code class="k">ROWS BETWEEN 2 PRECEDING AND CURRENT ROW</code></li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Code</div>
+    <h2>Every book, next to the average</h2>
+    <pre class="code"><span class="k">SELECT</span> title, price,
+       ROUND(AVG(price) <span class="k">OVER</span> (), <span class="s">2</span>) <span class="k">AS</span> avg_price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">DESC</span>
+<span class="k">LIMIT</span> <span class="s">4</span>;</pre>
+    <pre class="code">+-----------------------+-------+-----------+
+| title                 | price | avg_price |
++-----------------------+-------+-----------+
+| Lord of the Rings     | 15.99 |     10.76 |
+| Dune                  | 14.99 |     10.76 |
+| To Kill a Mockingbird | 11.99 |     10.76 |
+| The Hobbit            | 10.99 |     10.76 |
++-----------------------+-------+-----------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Eleven rows in, eleven rows out (four shown).</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Code</div>
+    <h2>A window per department</h2>
+    <pre class="code"><span class="k">SELECT</span> first_name, department, salary,
+       ROUND(AVG(salary) <span class="k">OVER</span> (<span class="k">PARTITION</span> <span class="k">BY</span> department), <span class="s">2</span>) <span class="k">AS</span> dept_avg
+<span class="k">FROM</span> employees
+<span class="k">WHERE</span> department <span class="k">IN</span> (<span class="s">'inventory'</span>, <span class="s">'support'</span>)
+<span class="k">ORDER</span> <span class="k">BY</span> department, salary <span class="k">DESC</span>;</pre>
+    <pre class="code">+------------+------------+----------+----------+
+| first_name | department | salary   | dept_avg |
++------------+------------+----------+----------+
+| Marcus     | inventory  | 47000.00 | 42000.00 |
+| Sofia      | inventory  | 37000.00 | 42000.00 |
+| James      | support    | 52000.00 | 44250.00 |
+| Nina       | support    | 36500.00 | 44250.00 |
++------------+------------+----------+----------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Every inventory row sees the inventory average.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Ranking</div>
+    <h2>Three ways to number ties</h2>
+    <pre class="code">+-----------------------+------+---------+----------+-----------+
+| title                 | sold | row_num | rank_num | dense_num |
++-----------------------+------+---------+----------+-----------+
+| 1984                  |    4 |       1 |        1 |         1 |
+| Dune                  |    3 |       2 |        2 |         2 |
+| The Hobbit            |    3 |       3 |        2 |         2 |
+| Animal Farm           |    2 |       4 |        4 |         3 |
+| Fahrenheit 451        |    2 |       5 |        4 |         3 |
+| Lord of the Rings     |    2 |       6 |        4 |         3 |
+| Pride and Prejudice   |    2 |       7 |        4 |         3 |
+| To Kill a Mockingbird |    2 |       8 |        4 |         3 |
+| Brave New World       |    1 |       9 |        9 |         4 |
++-----------------------+------+---------+----------+-----------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>ROW_NUMBER 1 2 3 4 · RANK 1 2 2 4 · DENSE_RANK 1 2 2 3</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Code</div>
+    <h2>Running total and the month before</h2>
+    <div class="two"><pre class="code"><span class="k">WITH</span> monthly <span class="k">AS</span> (
+    <span class="k">SELECT</span> MONTH(o.order_date) <span class="k">AS</span> m,
+           SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> revenue
+    <span class="k">FROM</span> orders o
+    <span class="k">JOIN</span> order_items oi <span class="k">ON</span> oi.order_id = o.id
+    <span class="k">GROUP</span> <span class="k">BY</span> m)
+<span class="k">SELECT</span> m, revenue,
+       SUM(revenue) <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> m) <span class="k">AS</span> running,
+       LAG(revenue) <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> m) <span class="k">AS</span> prev
+<span class="k">FROM</span> monthly
+<span class="k">ORDER</span> <span class="k">BY</span> m;</pre><pre class="code">+------+---------+---------+-------+
+| m    | revenue | running | prev  |
++------+---------+---------+-------+
+|    1 |   61.95 |   61.95 |  NULL |
+|    2 |   51.95 |  113.90 | 61.95 |
+|    3 |   33.47 |  147.37 | 51.95 |
+|    4 |   38.97 |  186.34 | 33.47 |
+|    5 |   31.97 |  218.31 | 38.97 |
+|    6 |   18.98 |  237.29 | 31.97 |
++------+---------+---------+-------+</pre></div>
+    <div class="tag"><span class="pill">WHY</span> <span>Each row adds its month. LAG reads the previous row: January has none.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Top N per group</div>
+    <h2>Number in a CTE, filter outside</h2>
+    <div class="two"><pre class="code"><span class="k">WITH</span> ranked <span class="k">AS</span> (
+    <span class="k">SELECT</span> department, first_name, salary,
+           ROW_NUMBER() <span class="k">OVER</span> (
+               <span class="k">PARTITION</span> <span class="k">BY</span> department
+               <span class="k">ORDER</span> <span class="k">BY</span> salary <span class="k">DESC</span>) <span class="k">AS</span> pos
+    <span class="k">FROM</span> employees)
+<span class="k">SELECT</span> department, first_name, salary
+<span class="k">FROM</span> ranked
+<span class="k">WHERE</span> pos = <span class="s">1</span>
+<span class="k">ORDER</span> <span class="k">BY</span> salary <span class="k">DESC</span>;</pre><pre class="code">+------------+------------+----------+
+| department | first_name | salary   |
++------------+------------+----------+
+| management | Maria      | 92000.00 |
+| support    | James      | 52000.00 |
+| inventory  | Marcus     | 47000.00 |
+| sales      | Priya      | 46000.00 |
++------------+------------+----------+</pre></div>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">pos &lt;= 2</code>: the top two per department.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Why not WHERE?</div>
+    <h2>Windows are computed late</h2>
+    <ol class="num">
+      <li>FROM and JOIN</li>
+      <li>WHERE</li>
+      <li>GROUP BY and HAVING</li>
+      <li><b>window functions</b></li>
+      <li>SELECT list</li>
+      <li>ORDER BY, LIMIT</li>
+    </ol>
+    <div class="tag"><span class="pill warn">RULE</span> <span><code class="k">WHERE ROW_NUMBER() ...</code> = ERROR 3593. One more step: a CTE.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Common mistakes</div>
+    <h2>Three traps</h2>
+    <ul>
+      <li><code class="k">AS rank</code>: a reserved word (1064). Use <code class="k">rank_num</code></li>
+      <li><code class="k">QUALIFY</code> from other databases: 6037 on MySQL 9.7</li>
+      <li>Running total with ties: the default RANGE frame lumps them</li>
+      <li>Fix: <code class="k">ORDER BY price, title ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</code></li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Silent</div>
+    <h2>Same price, same running total</h2>
+    <pre class="code">+------------------------+-------+---------------+
+| title                  | price | running_total |
++------------------------+-------+---------------+
+| Pride and Prejudice    |  7.99 |          7.99 |
+| Animal Farm            |  8.49 |         16.48 |
+| The Catcher in the Rye |  8.99 |         34.46 |
+| The Great Gatsby       |  8.99 |         34.46 |
+| Brave New World        |  9.49 |         43.95 |
++------------------------+-------+---------------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>RANGE: both 8.99 books are added in one step. ROWS gives 25.47, then 34.46.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">SELECT</span> first_name,
+       COUNT(*) <span class="k">OVER</span> ()                        <span class="k">AS</span> everyone,
+       COUNT(*) <span class="k">OVER</span> (<span class="k">PARTITION</span> <span class="k">BY</span> department) <span class="k">AS</span> in_dept
+<span class="k">FROM</span> employees
+<span class="k">WHERE</span> department = <span class="s">'support'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre>
+    <ul>
+      <li>How many rows does OVER () see?</li>
+      <li>Which runs first: WHERE or the window?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Guided lab · 20 minutes</div>
+    <h2>Leaderboards</h2>
+    <ul class="lab">
+      <li><code class="k">leaderboards_starter.sql</code> in <code class="k">labs/module-08/l5_2-...</code></li>
+      <li>TODO 1: predict Dave and Frank, then add RANK and DENSE_RANK</li>
+      <li>TODO 2: top 2 per category: where does numbering restart?</li>
+      <li>TODO 3: each salary's share of its department</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">order_trends_starter.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">5.2 · Project</div>
+    <h2>The sales dashboard</h2>
+    <ul class="lab">
+      <li>Step 1: revenue so far: running total, percent done</li>
+      <li>Step 2: month over month: LAG, moving average, one named window</li>
+      <li>Steps 3 to 5 at home: leaderboard, top customer per city, run it</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>In class: Steps 1 and 2. The running total ends at 237.29.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Debug clinic · 15 minutes</div>
+    <h2>Six errors, one fix each</h2>
+    <ul class="lab">
+      <li><code class="k">debug_ctes.sql</code>: 1146, 3636, 1406</li>
+      <li><code class="k">debug_windows.sql</code>: 3593, 1064, 6037</li>
+      <li>Number, cause, fix: in the workbook table</li>
+      <li>Then rewrite query A with the CTE pattern</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Wrap-up · 4 minutes</div>
+    <h2>Exit ticket</h2>
+    <ol class="num">
+      <li>A recursive CTE from 1 to 10: label anchor, member, stop</li>
+      <li>GROUP BY versus PARTITION BY: which rows come back?</li>
+      <li>Why can't WHERE filter ROW_NUMBER(), and what instead?</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>No notes. Workbook Exit Ticket box or a sticky note.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Before Session 9</div>
+    <h2>Homework and bring list</h2>
+    <ul class="lab">
+      <li>Finish org_report.sql and sales_dashboard.sql</li>
+      <li>Exercises 1 to 3 of both lessons; both quizzes; both journals</li>
+      <li>Labs you did not finish; the debug handouts</li>
+      <li>Bring: a READY laptop with bookstore.sql, labs/, both project files</li>
+    </ul>
+    <div class="tag"><span class="pill">NEXT</span> <span>Session 9: Indexes and Views.</span></div>
+  </section>
+
+
+</div>
+
+<div class="foot">© 2026 Ray de la Paz · MySQL Foundations</div>
+<div class="count" id="count">1 / 1</div>
+<div class="nav"><button id="prev" aria-label="Previous slide"></button><button id="next" aria-label="Next slide"></button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'), count=document.getElementById('count');
+  let i=0;
+  function show(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%'; count.textContent=(i+1)+' / '+slides.length; }
+  document.getElementById('next').onclick=()=>show(i+1);
+  document.getElementById('prev').onclick=()=>show(i-1);
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0); else if(e.key==='End')show(slides.length-1);
+  });
+  show(0);
+</script>
+</body>
+</html>

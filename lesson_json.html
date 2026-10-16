@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Store, query, change, build and index JSON documents in MySQL: the JSON type, the -&gt; and -&gt;&gt; operators, JSON_SET, JSON_ARRAYAGG, JSON_TABLE, generated columns, and when not to use JSON. MySQL Foundations Lesson 7.3.">
+    <meta name="author" content="Ray de la Paz">
+    <title>JSON Columns - MySQL Foundations</title>
+    <script src="js/theme-init.js"></script>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 7: Advanced Features</a></li>
+            <li aria-current="page">Lesson 7.3: JSON Columns</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🧩 Lesson 7.3: JSON Columns</h1>
+                <p class="lead">Every book has a title, a price and an author, so those are columns. But only some books belong to a series, only some won awards, and only some come illustrated. Where do details like that go? This lesson shows how a <code>JSON</code> column holds flexible, per-row details, how to read, change, build and index them with SQL, and, just as important, when a plain column or table is still the better choice.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Add a <code>JSON</code> column and explain how MySQL validates and stores what you put in it</li>
+                        <li>Read values with <code>-&gt;</code>, <code>-&gt;&gt;</code> and <code>JSON_EXTRACT</code>, and filter rows on them</li>
+                        <li>Change parts of a document with <code>JSON_SET</code>, <code>JSON_INSERT</code>, <code>JSON_REMOVE</code> and <code>JSON_ARRAY_APPEND</code></li>
+                        <li>Turn rows into JSON with <code>JSON_OBJECT</code> and <code>JSON_ARRAYAGG</code>, and JSON back into rows with <code>JSON_TABLE</code></li>
+                        <li>Index a JSON path through a generated column, and decide when data belongs in real columns instead</li>
+                    </ul>
+                </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 100 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_18.html">Lesson 7.2: Transactions</a></li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>catalog_feed.sql</code>, a script that tags books, lists award winners and prints a JSON feed for the online store</li>
+                    <li><span class="meta-label">🗄️ Database</span> <code>bookstore</code> freshly loaded from <a href="assets/sql/bookstore.sql" download>bookstore.sql</a>, plus the <code>attributes</code> column you add in this lesson</li>
+                </ul>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary aria-label="Toggle table of contents">
+                    <span class="toc-icon" aria-hidden="true">📑</span>
+                    <span class="toc-label">In This Lesson</span>
+                    <span class="toc-chevron" aria-hidden="true">▾</span>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#why-json" class="toc-link">Why a JSON Column?</a></li>
+                        <li><a href="#json-type" class="toc-link">The JSON Data Type</a></li>
+                        <li><a href="#reading" class="toc-link">Reading JSON: -&gt;, -&gt;&gt; and JSON_EXTRACT</a></li>
+                        <li><a href="#filtering" class="toc-link">Filtering on JSON Values</a></li>
+                        <li><a href="#changing" class="toc-link">Changing JSON: JSON_SET and Friends</a></li>
+                        <li><a href="#building" class="toc-link">Building JSON from Rows</a></li>
+                        <li><a href="#json-table" class="toc-link">JSON_TABLE: From JSON Back to Rows</a></li>
+                        <li><a href="#indexing" class="toc-link">Indexing a JSON Path</a></li>
+                        <li><a href="#when-not" class="toc-link">When Not to Use JSON</a></li>
+                        <li><a href="#other-servers" class="toc-link">JSON on MariaDB and MySQL 8.4</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: The Catalog Feed</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <section id="why-json" class="lesson-section">
+                <h2>🧩 Why a JSON Column?</h2>
+                <p>The bookstore wants to show extra details on its website: the format (paperback or hardcover), the series a book belongs to, the awards it won, whether it is illustrated. Not every book has every detail, and next month the marketing team will invent a new one. You have three ways to store that:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Design</th><th>How it looks</th><th>The catch</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>A column per detail</td><td><code>format</code>, <code>series</code>, <code>illustrated</code>... on <code>books</code></td><td>Mostly <code>NULL</code>, and every new detail is an <code>ALTER TABLE</code></td></tr>
+                            <tr><td>A details table</td><td><code>book_details(book_id, name, value)</code></td><td>Every value becomes text, and reading one book takes many rows</td></tr>
+                            <tr><td>A <code>JSON</code> column</td><td><code>attributes</code> holding <code>{"format": "paperback", ...}</code></td><td>Flexible, but the database checks much less for you</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p><strong>JSON</strong> (JavaScript Object Notation) is the text format that web APIs and JavaScript use to exchange data. It has <strong>objects</strong> (<code>{"key": value}</code>), <strong>arrays</strong> (<code>[1, 2, 3]</code>), strings in double quotes, numbers, <code>true</code>, <code>false</code> and <code>null</code>. A <code>JSON</code> column stores one such document per row, next to the ordinary columns.</p>
+
+                <div class="mermaid">
+graph TD
+    A["books row: Dune"] --> B["regular columns"]
+    A --> C["attributes: JSON"]
+    B --> D["title, price, author_id"]
+    C --> E["format, series"]
+    C --> F["awards: an array"]
+                </div>
+
+                <div class="card card-accent">
+                    <h4>🔑 The rule of thumb for this lesson</h4>
+                    <p>Data that every row has, that you join on, sum up or protect with constraints goes in <strong>columns</strong>. Optional, varied, mostly-for-display details can go in <strong>JSON</strong>. You will test that rule at the end of the lesson.</p>
+                </div>
+            </section>
+
+            <section id="json-type" class="lesson-section">
+                <h2>📦 The JSON Data Type</h2>
+                <p>Start from a clean copy of the bookstore, so your results match the ones shown here. In the mysql client, load the file you downloaded (adjust the path to wherever you saved it):</p>
+                <pre><code class="language-sql">SOURCE ~/mysql-course/bookstore.sql</code></pre>
+                <p>Now add a <code>JSON</code> column called <code>attributes</code> to <code>books</code> and fill it. Dune gets a series and two awards, the two Tolkien books get a series and an "illustrated" flag, and every other book gets a format and an empty awards list:</p>
+                <pre><code class="language-sql">ALTER TABLE books ADD COLUMN attributes JSON;
+UPDATE books SET attributes = '{"format": "paperback", "series": "Dune Chronicles", "awards": ["Hugo", "Nebula"]}' WHERE id = 1;
+UPDATE books SET attributes = '{"format": "hardcover", "series": "Middle-earth", "illustrated": true}' WHERE id IN (6, 9);
+UPDATE books SET attributes = '{"format": "paperback", "awards": []}' WHERE attributes IS NULL;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Query OK, 0 rows affected
+Records: 0  Duplicates: 0  Warnings: 0
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+Query OK, 2 rows affected
+Rows matched: 2  Changed: 2  Warnings: 0
+Query OK, 8 rows affected
+Rows matched: 8  Changed: 8  Warnings: 0</code></pre>
+                </div>
+                <p>You write a JSON document as an ordinary quoted string. Inside it, keys and text values use <strong>double</strong> quotes; the whole document sits inside SQL's single quotes. Look at what was stored:</p>
+                <pre><code class="language-sql">SELECT id, title, attributes
+FROM books
+ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+------------------------+------------------------------------------------------------------------------------+
+| id | title                  | attributes                                                                         |
++----+------------------------+------------------------------------------------------------------------------------+
+|  1 | Dune                   | {"awards": ["Hugo", "Nebula"], "format": "paperback", "series": "Dune Chronicles"} |
+|  2 | 1984                   | {"awards": [], "format": "paperback"}                                              |
+|  3 | To Kill a Mockingbird  | {"awards": [], "format": "paperback"}                                              |
+|  4 | The Great Gatsby       | {"awards": [], "format": "paperback"}                                              |
+|  5 | Pride and Prejudice    | {"awards": [], "format": "paperback"}                                              |
+|  6 | The Hobbit             | {"format": "hardcover", "series": "Middle-earth", "illustrated": true}             |
+|  7 | Brave New World        | {"awards": [], "format": "paperback"}                                              |
+|  8 | The Catcher in the Rye | {"awards": [], "format": "paperback"}                                              |
+|  9 | Lord of the Rings      | {"format": "hardcover", "series": "Middle-earth", "illustrated": true}             |
+| 10 | Fahrenheit 451         | {"awards": [], "format": "paperback"}                                              |
+| 11 | Animal Farm            | {"awards": [], "format": "paperback"}                                              |
++----+------------------------+------------------------------------------------------------------------------------+</code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 Where did my key order go?</h4>
+                    <p>You typed <code>format</code>, <code>series</code>, <code>awards</code>, but Dune shows <code>awards</code> first. MySQL does not keep your text: it parses the document into a compact binary form and sorts the keys of every object (shorter keys first, then alphabetically) so it can find a key quickly. Whitespace is normalized too. The data is identical; only the spelling changed. Never write code that depends on the order of keys inside a JSON object.</p>
+                </div>
+
+                <h3>MySQL refuses invalid JSON</h3>
+                <p>Unlike a <code>TEXT</code> column, a <code>JSON</code> column checks every value you store. Single quotes are not legal JSON, so this fails (you will meet the error again in Common Mistakes):</p>
+                <pre data-raises="ERROR 3140"><code class="language-sql">UPDATE books SET attributes = "{'format': 'ebook'}" WHERE id = 2;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3140 (22032): Invalid JSON text: "Missing a name for object member." at position 1 in value for column 'books.attributes'.</code></pre>
+                </div>
+                <p>To check a string before you store it, or to ask what kind of value sits at a spot, use <code>JSON_VALID()</code> and <code>JSON_TYPE()</code>:</p>
+                <pre><code class="language-sql">SELECT
+    JSON_VALID('{"format": "ebook"}')        AS good_json,
+    JSON_VALID("{'format': 'ebook'}")        AS bad_json,
+    JSON_TYPE(attributes)                    AS whole_doc,
+    JSON_TYPE(attributes-&gt;'$.illustrated')  AS illustrated_flag
+FROM books
+WHERE id = 6;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+----------+-----------+------------------+
+| good_json | bad_json | whole_doc | illustrated_flag |
++-----------+----------+-----------+------------------+
+|         1 |        0 | OBJECT    | BOOLEAN          |
++-----------+----------+-----------+------------------+</code></pre>
+                </div>
+                <p><code>true</code> without quotes is a real JSON boolean, not the text "true". The <code>-&gt;</code> in that query is the next topic.</p>
+            </section>
+
+            <section id="reading" class="lesson-section">
+                <h2>🔎 Reading JSON: -&gt;, -&gt;&gt; and JSON_EXTRACT</h2>
+                <p>To reach inside a document you give a <strong>path</strong>. Every path starts with <code>$</code>, which means "the whole document":</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Path</th><th>Means</th><th>On Dune's attributes</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>'$'</code></td><td>The whole document</td><td>the full object</td></tr>
+                            <tr><td><code>'$.format'</code></td><td>The value of key <code>format</code></td><td><code>"paperback"</code></td></tr>
+                            <tr><td><code>'$.awards'</code></td><td>The value of key <code>awards</code></td><td><code>["Hugo", "Nebula"]</code></td></tr>
+                            <tr><td><code>'$.awards[0]'</code></td><td>The first element (counting from 0)</td><td><code>"Hugo"</code></td></tr>
+                            <tr><td><code>'$.awards[last]'</code></td><td>The last element</td><td><code>"Nebula"</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>MySQL gives you three ways to follow a path. Compare them side by side:</p>
+                <pre><code class="language-sql">SELECT
+    title,
+    JSON_EXTRACT(attributes, '$.format') AS extracted,
+    attributes-&gt;'$.format'               AS arrow,
+    attributes-&gt;&gt;'$.format'              AS double_arrow
+FROM books
+WHERE id IN (1, 6)
+ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+-------------+-------------+--------------+
+| title      | extracted   | arrow       | double_arrow |
++------------+-------------+-------------+--------------+
+| Dune       | "paperback" | "paperback" | paperback    |
+| The Hobbit | "hardcover" | "hardcover" | hardcover    |
++------------+-------------+-------------+--------------+</code></pre>
+                </div>
+
+                <div class="mermaid">
+graph TD
+    A["attributes"] -->|"arrow or JSON_EXTRACT"| B["JSON value: quoted"]
+    A -->|"double arrow"| C["plain text: unquoted"]
+    B --> D["keep working in JSON"]
+    C --> E["compare, sort, display"]
+                </div>
+
+                <ul>
+                    <li><code>JSON_EXTRACT(doc, path)</code> returns a <strong>JSON value</strong>. A JSON string keeps its double quotes.</li>
+                    <li><code>doc-&gt;path</code> is MySQL's shorthand for exactly the same thing.</li>
+                    <li><code>doc-&gt;&gt;path</code> also removes the quotes: it is <code>JSON_UNQUOTE(JSON_EXTRACT(doc, path))</code>, and gives ordinary text you can show to people, compare and sort.</li>
+                </ul>
+
+                <h3>Arrays, nested values and missing keys</h3>
+                <pre><code class="language-sql">SELECT
+    title,
+    attributes-&gt;'$.awards'              AS awards,
+    attributes-&gt;&gt;'$.awards[0]'          AS first_award,
+    JSON_LENGTH(attributes-&gt;'$.awards') AS award_count,
+    attributes-&gt;&gt;'$.series'             AS series
+FROM books
+WHERE id IN (1, 2, 6)
+ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+--------------------+-------------+-------------+-----------------+
+| title      | awards             | first_award | award_count | series          |
++------------+--------------------+-------------+-------------+-----------------+
+| Dune       | ["Hugo", "Nebula"] | Hugo        |           2 | Dune Chronicles |
+| 1984       | []                 | NULL        |           0 | NULL            |
+| The Hobbit | NULL               | NULL        |        NULL | Middle-earth    |
++------------+--------------------+-------------+-------------+-----------------+</code></pre>
+                </div>
+                <p>Three things to notice. An array comes back as JSON (<code>["Hugo", "Nebula"]</code>). 1984 has an <strong>empty</strong> array, so it has no first award (<code>NULL</code>) and a length of 0. The Hobbit has <strong>no</strong> <code>awards</code> key at all, and asking for a key that is not there is not an error: the answer is simply SQL <code>NULL</code>.</p>
+            </section>
+
+            <section id="filtering" class="lesson-section">
+                <h2>🎯 Filtering on JSON Values</h2>
+                <p>Once <code>-&gt;&gt;</code> gives you plain text, filtering looks like any other <code>WHERE</code>:</p>
+                <pre><code class="language-sql">SELECT title, price
+FROM books
+WHERE attributes-&gt;&gt;'$.format' = 'hardcover'
+ORDER BY title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+-------+
+| title             | price |
++-------------------+-------+
+| Lord of the Rings | 15.99 |
+| The Hobbit        | 10.99 |
++-------------------+-------+</code></pre>
+                </div>
+
+                <h3>Is a value inside an array?</h3>
+                <p><code>value MEMBER OF (json_array)</code> answers "is this value one of the array's elements?". <code>JSON_CONTAINS(doc, candidate, path)</code> asks the same with a JSON candidate (note the inner double quotes):</p>
+                <pre><code class="language-sql">SELECT title
+FROM books
+WHERE 'Hugo' MEMBER OF (attributes-&gt;'$.awards');
+
+SELECT title
+FROM books
+WHERE JSON_CONTAINS(attributes, '"Nebula"', '$.awards');</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------+
+| title |
++-------+
+| Dune  |
++-------+
++-------+
+| title |
++-------+
+| Dune  |
++-------+</code></pre>
+                </div>
+
+                <h3>Does a key exist?</h3>
+                <p><code>JSON_CONTAINS_PATH(doc, 'one', path)</code> returns 1 when the path exists, which tells "key missing" apart from "key present but empty":</p>
+                <pre><code class="language-sql">SELECT
+    JSON_CONTAINS_PATH(attributes, 'one', '$.series') AS has_series,
+    COUNT(*) AS books
+FROM books
+GROUP BY has_series
+ORDER BY has_series DESC;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+-------+
+| has_series | books |
++------------+-------+
+|          1 |     3 |
+|          0 |     8 |
++------------+-------+</code></pre>
+                </div>
+                <p>Three books belong to a series (Dune and the two Tolkien books); the other eight have no <code>series</code> key. <code>WHERE attributes-&gt;&gt;'$.series' IS NOT NULL</code> finds the same three.</p>
+            </section>
+
+            <section id="changing" class="lesson-section">
+                <h2>✏️ Changing JSON: JSON_SET and Friends</h2>
+                <p>You rarely rewrite a whole document. MySQL has functions that return a changed copy of a document, and you store that copy with <code>UPDATE</code>. First, see what each one does without changing anything (<code>\G</code> prints one value per line, which is easier to read for wide JSON):</p>
+                <pre><code class="language-sql">SELECT
+    JSON_SET(attributes, '$.format', 'ebook')            AS set_existing,
+    JSON_SET(attributes, '$.edition', 'deluxe')          AS set_new,
+    JSON_INSERT(attributes, '$.format', 'ebook')         AS insert_existing,
+    JSON_REPLACE(attributes, '$.edition', 'deluxe')      AS replace_missing,
+    JSON_REMOVE(attributes, '$.series')                  AS remove_key,
+    JSON_ARRAY_APPEND(attributes, '$.awards', 'Locus')   AS append_award
+FROM books
+WHERE id = 1\G</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>*************************** 1. row ***************************
+   set_existing: {"awards": ["Hugo", "Nebula"], "format": "ebook", "series": "Dune Chronicles"}
+        set_new: {"awards": ["Hugo", "Nebula"], "format": "paperback", "series": "Dune Chronicles", "edition": "deluxe"}
+insert_existing: {"awards": ["Hugo", "Nebula"], "format": "paperback", "series": "Dune Chronicles"}
+replace_missing: {"awards": ["Hugo", "Nebula"], "format": "paperback", "series": "Dune Chronicles"}
+     remove_key: {"awards": ["Hugo", "Nebula"], "format": "paperback"}
+   append_award: {"awards": ["Hugo", "Nebula", "Locus"], "format": "paperback", "series": "Dune Chronicles"}</code></pre>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Function</th><th>Key exists</th><th>Key missing</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>JSON_SET</code></td><td>Replaces the value</td><td>Adds the key</td></tr>
+                            <tr><td><code>JSON_INSERT</code></td><td>Leaves it alone</td><td>Adds the key</td></tr>
+                            <tr><td><code>JSON_REPLACE</code></td><td>Replaces the value</td><td>Does nothing</td></tr>
+                            <tr><td><code>JSON_REMOVE</code></td><td>Removes the key</td><td>Does nothing</td></tr>
+                            <tr><td><code>JSON_ARRAY_APPEND</code></td><td>Adds an element to the end of the array</td><td>Does nothing</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>To keep a change, assign the result back to the column. The Hobbit is about to get a 75th-anniversary edition; one <code>JSON_SET</code> can change several paths at once:</p>
+                <pre><code class="language-sql">UPDATE books
+SET attributes = JSON_SET(attributes, '$.edition', '75th anniversary', '$.format', 'hardcover')
+WHERE id = 6;
+
+SELECT title, attributes FROM books WHERE id = 6;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
++------------+-------------------------------------------------------------------------------------------------------+
+| title      | attributes                                                                                            |
++------------+-------------------------------------------------------------------------------------------------------+
+| The Hobbit | {"format": "hardcover", "series": "Middle-earth", "edition": "75th anniversary", "illustrated": true} |
++------------+-------------------------------------------------------------------------------------------------------+
+1 row in set</code></pre>
+                </div>
+                <p>The format was already "hardcover", so only the new <code>edition</code> key really changed. MySQL still counts the row as changed, because the stored document differs.</p>
+            </section>
+
+            <section id="building" class="lesson-section">
+                <h2>🏗️ Building JSON from Rows</h2>
+                <p>JSON also flows the other way. A web page or mobile app often wants data as JSON, and MySQL can build it directly from ordinary rows with <code>JSON_OBJECT(key, value, ...)</code> and <code>JSON_ARRAY(value, ...)</code>:</p>
+                <pre><code class="language-sql">SELECT JSON_OBJECT('id', id, 'title', title, 'price', price, 'in_stock', in_stock = 1) AS item
+FROM books
+WHERE id &lt;= 3
+ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------------------------------------------------------------------+
+| item                                                                          |
++-------------------------------------------------------------------------------+
+| {"id": 1, "price": 14.99, "title": "Dune", "in_stock": true}                  |
+| {"id": 2, "price": 9.99, "title": "1984", "in_stock": true}                   |
+| {"id": 3, "price": 11.99, "title": "To Kill a Mockingbird", "in_stock": true} |
++-------------------------------------------------------------------------------+</code></pre>
+                </div>
+                <p>Numbers stay numbers. <code>in_stock</code> is a <code>TINYINT</code>, so on its own it would become <code>1</code>; the comparison <code>in_stock = 1</code> turns it into a JSON <code>true</code>.</p>
+
+                <h3>JSON_ARRAYAGG and JSON_OBJECTAGG: aggregates that build JSON</h3>
+                <p>These two work like <code>COUNT</code> or <code>SUM</code> from <a href="lesson_09.html">Lesson 3.3</a>: they collapse a group of rows into one value, here a JSON array or object.</p>
+                <pre><code class="language-sql">SELECT a.name, JSON_ARRAYAGG(b.title) AS titles
+FROM authors AS a
+JOIN books AS b ON b.author_id = a.id
+GROUP BY a.id, a.name
+HAVING COUNT(*) &gt; 1
+ORDER BY a.name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (the order of titles inside each array can differ)</h4>
+                    <pre><code>+----------------+-------------------------------------+
+| name           | titles                              |
++----------------+-------------------------------------+
+| George Orwell  | ["1984", "Animal Farm"]             |
+| J.R.R. Tolkien | ["The Hobbit", "Lord of the Rings"] |
++----------------+-------------------------------------+</code></pre>
+                </div>
+                <div class="card card-warning">
+                    <h4>⚠️ No ORDER BY inside JSON_ARRAYAGG</h4>
+                    <p>MySQL does not promise any order for the elements of <code>JSON_ARRAYAGG</code>, and unlike <code>GROUP_CONCAT</code> it has no <code>ORDER BY</code> option inside the parentheses. If the order matters to the app, sort in the app, or build the array from rows that the app sorts itself.</p>
+                </div>
+
+                <pre><code class="language-sql">SELECT JSON_OBJECTAGG(city, customers) AS customers_per_city
+FROM (
+    SELECT city, COUNT(*) AS customers
+    FROM customers
+    WHERE city IS NOT NULL
+    GROUP BY city
+) AS per_city;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------------------------------------------------+
+| customers_per_city                                            |
++---------------------------------------------------------------+
+| {"Chicago": 2, "Houston": 1, "New York": 2, "Los Angeles": 1} |
++---------------------------------------------------------------+</code></pre>
+                </div>
+
+                <h3>A whole order as one document</h3>
+                <p>Nest the functions and you can hand an app a complete order: customer, date and an array of line items. <code>JSON_PRETTY</code> adds line breaks and indentation for humans:</p>
+                <pre><code class="language-sql">SELECT JSON_PRETTY(
+    JSON_OBJECT(
+        'order_id', o.id,
+        'customer', CONCAT(c.first_name, ' ', c.last_name),
+        'items', JSON_ARRAYAGG(JSON_OBJECT('title', b.title, 'qty', oi.quantity, 'price', oi.price_at_time))
+    )
+) AS order_doc
+FROM orders AS o
+JOIN customers AS c    ON c.id = o.customer_id
+JOIN order_items AS oi ON oi.order_id = o.id
+JOIN books AS b        ON b.id = oi.book_id
+WHERE o.id = 1
+GROUP BY o.id, c.first_name, c.last_name\G</code></pre>
+                <div class="card card-output">
+                    <h4>Output (the order of the two items can differ)</h4>
+                    <pre><code>*************************** 1. row ***************************
+order_doc: {
+  "items": [
+    {
+      "qty": 1,
+      "price": 14.99,
+      "title": "Dune"
+    },
+    {
+      "qty": 2,
+      "price": 9.99,
+      "title": "1984"
+    }
+  ],
+  "customer": "Alice Johnson",
+  "order_id": 1
+}</code></pre>
+                </div>
+                <p>Notice the keys again: <code>qty</code>, <code>price</code>, <code>title</code> come out shortest first, whatever order you wrote them in.</p>
+            </section>
+
+            <section id="json-table" class="lesson-section">
+                <h2>🔄 JSON_TABLE: From JSON Back to Rows</h2>
+                <p>Arrays inside a column are awkward to report on: how do you list every award as its own row, or count them? <code>JSON_TABLE</code> turns a JSON document into a temporary table you can use in <code>FROM</code>, like a derived table:</p>
+
+                <div class="mermaid">
+graph TD
+    A["Dune: awards array"] --> B["JSON_TABLE with path $.awards[*]"]
+    B --> C["row: Hugo"]
+    B --> D["row: Nebula"]
+                </div>
+
+                <pre><code class="language-sql">SELECT b.title, aw.award
+FROM books AS b,
+     JSON_TABLE(
+         b.attributes,
+         '$.awards[*]'
+         COLUMNS (award VARCHAR(40) PATH '$')
+     ) AS aw
+ORDER BY b.title, aw.award;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------+--------+
+| title | award  |
++-------+--------+
+| Dune  | Hugo   |
+| Dune  | Nebula |
++-------+--------+</code></pre>
+                </div>
+                <p>Read it as: "for every book, take the array at <code>$.awards</code>, make one row per element (<code>[*]</code>), and call the element itself (<code>PATH '$'</code>) <code>award</code>". Books with an empty array or no array produce no rows, so only Dune appears. The comma before <code>JSON_TABLE</code> works like a join in which <code>JSON_TABLE</code> can see the current book's columns.</p>
+
+                <h3>Reading incoming JSON</h3>
+                <p><code>JSON_TABLE</code> also reads a literal document, which is handy when a supplier or a web form sends you JSON. Here a supplier's price list becomes rows with real SQL types, joined to <code>books</code> to compare prices:</p>
+                <pre><code class="language-sql">SELECT b.title, b.price AS our_price, sp.new_price, sp.note
+FROM JSON_TABLE(
+         '[{"id": 1, "price": 15.49}, {"id": 6, "price": 11.49, "note": "reprint"}]',
+         '$[*]'
+         COLUMNS (
+             book_id   INT          PATH '$.id',
+             new_price DECIMAL(8,2) PATH '$.price',
+             note      VARCHAR(20)  PATH '$.note' DEFAULT '"none"' ON EMPTY
+         )
+     ) AS sp
+JOIN books AS b ON b.id = sp.book_id
+ORDER BY b.id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+-----------+-----------+---------+
+| title      | our_price | new_price | note    |
++------------+-----------+-----------+---------+
+| Dune       |     14.99 |     15.49 | none    |
+| The Hobbit |     10.99 |     11.49 | reprint |
++------------+-----------+-----------+---------+</code></pre>
+                </div>
+                <p><code>DEFAULT '"none"' ON EMPTY</code> fills in a value when the key is missing (the default is itself written as JSON, hence the inner double quotes). Without it, Dune's <code>note</code> would be <code>NULL</code>.</p>
+            </section>
+
+            <section id="indexing" class="lesson-section">
+                <h2>⚡ Indexing a JSON Path</h2>
+                <p>With 11 books every query is instant. With a million, <code>WHERE attributes-&gt;&gt;'$.format' = 'hardcover'</code> would read every document. You cannot index a <code>JSON</code> column itself (that is error 3152, in Common Mistakes), but you can index a <strong>generated column</strong> that pulls one value out of it.</p>
+                <p>A generated column is computed from other columns of the same row. <code>VIRTUAL</code> means it is calculated when read and takes no space in the table; the index on it stores the values.</p>
+                <pre><code class="language-sql">ALTER TABLE books
+    ADD COLUMN format VARCHAR(20)
+        GENERATED ALWAYS AS (attributes-&gt;&gt;'$.format') VIRTUAL,
+    ADD INDEX idx_books_format (format);
+
+SELECT title, format FROM books WHERE format = 'hardcover' ORDER BY title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+-----------+
+| title             | format    |
++-------------------+-----------+
+| Lord of the Rings | hardcover |
+| The Hobbit        | hardcover |
++-------------------+-----------+</code></pre>
+                </div>
+                <p>Now ask the optimizer (you met <code>EXPLAIN</code> in <a href="lesson_14.html">Lesson 6.1</a>) how it would run the query. The interesting part: MySQL also uses the index when you write the original JSON expression, because it matches the generated column's definition.</p>
+                <pre><code class="language-sql">EXPLAIN SELECT title FROM books WHERE attributes-&gt;&gt;'$.format' = 'hardcover'\G</code></pre>
+                <div class="card card-output">
+                    <h4>Output (your cost and row estimates will differ)</h4>
+                    <pre><code>*************************** 1. row ***************************
+EXPLAIN: -&gt; Index lookup on books using idx_books_format (format = 'hardcover')  (cost=0.7 rows=2)</code></pre>
+                </div>
+                <p><code>Index lookup on books using idx_books_format</code> means the index is used. MySQL 9.7 prints <code>EXPLAIN</code> as this tree by default; MySQL 8.4 prints the classic table, where you would look for <code>idx_books_format</code> in the <code>key</code> column.</p>
+
+                <div class="card card-info">
+                    <h4>💡 Generated columns are read-only</h4>
+                    <p>You never write to <code>format</code> directly; change <code>attributes</code> and <code>format</code> follows. Use <code>STORED</code> instead of <code>VIRTUAL</code> when you want the value saved in the row (needed, for example, for a foreign key on it).</p>
+                </div>
+            </section>
+
+            <section id="when-not" class="lesson-section">
+                <h2>🚦 When Not to Use JSON</h2>
+                <p>JSON is convenient, and that is its danger: it is easy to dump everything into one column and lose most of what a relational database does for you.</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Use real columns or tables when...</th><th>JSON is reasonable when...</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Every row has the value (price, title)</td><td>Only some rows have it (series, edition)</td></tr>
+                            <tr><td>You join on it (author, customer)</td><td>You only display it</td></tr>
+                            <tr><td>You sum, average or sort by it often</td><td>You filter on it now and then (index a path if needed)</td></tr>
+                            <tr><td>It needs a type, <code>NOT NULL</code>, <code>UNIQUE</code> or a foreign key</td><td>Its shape varies or changes often</td></tr>
+                            <tr><td>It is a list of related things (order items)</td><td>It is a small list of labels (awards, tags)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>A JSON document cannot hold a foreign key, and nothing stops one row from saying <code>"format": "paperback"</code> and another <code>"Format": "Paperback"</code>. If a JSON value matters, protect it with a <code>CHECK</code> constraint (you met <code>CHECK</code> in <a href="lesson_05.html">Lesson 2.2</a>):</p>
+                <pre><code class="language-sql">ALTER TABLE books
+    ADD CONSTRAINT chk_books_format
+    CHECK (attributes-&gt;&gt;'$.format' IN ('paperback', 'hardcover', 'ebook'));</code></pre>
+                <pre data-raises="ERROR 3819"><code class="language-sql">UPDATE books SET attributes = JSON_SET(attributes, '$.format', 'scroll') WHERE id = 2;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3819 (HY000): Check constraint 'chk_books_format' is violated.</code></pre>
+                </div>
+
+                <div class="card card-danger">
+                    <h4>🛑 Do not hide the core of your data in JSON</h4>
+                    <p>A table with an <code>id</code> and one big <code>data JSON</code> column is a document store wearing a MySQL costume. Prices in JSON cannot be summed reliably, customer ids in JSON cannot be protected by a foreign key, and every query gets harder to read. Design the tables first (<a href="lesson_16.html">Lesson 6.3</a>), then use JSON for the leftovers.</p>
+                </div>
+            </section>
+
+            <section id="other-servers" class="lesson-section">
+                <h2>🐬 JSON on MariaDB and MySQL 8.4</h2>
+                <p>Everything in this lesson runs the same on MySQL 8.4 (except the <code>EXPLAIN</code> layout). MariaDB, which XAMPP and many shared hosts install, is different in three ways you will notice:</p>
+                <ul>
+                    <li><code>JSON</code> is an alias for <code>LONGTEXT</code> plus a <code>CHECK (json_valid(...))</code> constraint. The text is stored exactly as you typed it, key order included.</li>
+                    <li>There is no <code>-&gt;</code> and no <code>-&gt;&gt;</code>. Use <code>JSON_EXTRACT</code>, <code>JSON_UNQUOTE(JSON_EXTRACT(...))</code> or <code>JSON_VALUE(doc, path)</code>, which work on all three servers.</li>
+                    <li>There is no <code>MEMBER OF</code>; use <code>JSON_CONTAINS</code>. Invalid JSON fails with error 4025 (the CHECK constraint) instead of 3140.</li>
+                </ul>
+                <pre data-server="mariadb"><code class="language-sql">ALTER TABLE books ADD COLUMN attributes JSON;
+UPDATE books SET attributes = '{"format": "paperback", "series": "Dune Chronicles", "awards": ["Hugo", "Nebula"]}' WHERE id = 1;
+
+SELECT title, attributes, JSON_VALUE(attributes, '$.format') AS format
+FROM books
+WHERE id = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Output on MariaDB</h4>
+                    <pre><code>+-------+------------------------------------------------------------------------------------+-----------+
+| title | attributes                                                                         | format    |
++-------+------------------------------------------------------------------------------------+-----------+
+| Dune  | {"format": "paperback", "series": "Dune Chronicles", "awards": ["Hugo", "Nebula"]} | paperback |
++-------+------------------------------------------------------------------------------------+-----------+</code></pre>
+                </div>
+                <pre data-server="mariadb" data-raises="ERROR 1064"><code class="language-sql">SELECT title, attributes-&gt;&gt;'$.format' AS format FROM books WHERE id = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Error on MariaDB</h4>
+                    <pre><code>ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '&gt;&gt;'$.format' AS format FROM books WHERE id = 1' at line 1</code></pre>
+                </div>
+                <p><code>JSON_VALUE</code> works on MySQL too (it returns the unquoted value, like <code>-&gt;&gt;</code>), so it is the choice for SQL that must run on both.</p>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Writing JSON with single quotes or bare keys</h3>
+                <pre data-raises="ERROR 3140"><code class="language-sql">UPDATE books SET attributes = '{format: "ebook"}' WHERE id = 2;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3140 (22032): Invalid JSON text: "Missing a name for object member." at position 1 in value for column 'books.attributes'.</code></pre>
+                </div>
+                <p><strong>What it means:</strong> JavaScript lets you write <code>{format: "ebook"}</code>, JSON does not: every key must be a double-quoted string. "At position 1" points at the character right after the <code>{</code>. <strong>Fix:</strong> <code>'{"format": "ebook"}'</code>, or let MySQL write the JSON for you with <code>JSON_OBJECT('format', 'ebook')</code>, which can never be malformed.</p>
+
+                <h3>2. Leaving out the <code>$</code></h3>
+                <pre data-raises="ERROR 3143"><code class="language-sql">SELECT title, attributes-&gt;&gt;'format' FROM books;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3143 (42000): Invalid JSON path expression. The error is around character position 1.</code></pre>
+                </div>
+                <p><strong>What it means:</strong> every path starts at the document root, <code>$</code>. <strong>Fix:</strong> <code>attributes-&gt;&gt;'$.format'</code>.</p>
+
+                <h3>3. Indexing the JSON column itself</h3>
+                <pre data-raises="ERROR 3152"><code class="language-sql">CREATE INDEX idx_books_attributes ON books (attributes);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3152 (42000): JSON column 'attributes' supports indexing only via generated columns on a specified JSON path.</code></pre>
+                </div>
+                <p><strong>What it means:</strong> a whole document has no useful sort order to index. <strong>Fix:</strong> index the path you search on, through a generated column, as in <a href="#indexing">Indexing a JSON Path</a>.</p>
+
+                <h3>4. A misspelled key (silent)</h3>
+                <pre><code class="language-sql">SELECT title
+FROM books
+WHERE attributes-&gt;&gt;'$.Format' = 'hardcover';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Empty set</code></pre>
+                </div>
+                <p><strong>What it means:</strong> keys are case-sensitive, and a missing key is not an error, just <code>NULL</code>. <code>$.Format</code> exists in no document, so nothing matches and nothing warns you. With a real column, a typo would have raised error 1054. <strong>Fix:</strong> copy key names from the data (<code>SELECT attributes ... LIMIT 1</code>), keep them in one spelling (lowercase is the common choice), and protect important keys with a <code>CHECK</code> or a generated column.</p>
+
+                <h3>5. Using -&gt; where you meant -&gt;&gt; (silent)</h3>
+                <pre><code class="language-sql">SELECT CONCAT(title, ' (', attributes-&gt;'$.format', ')') AS label
+FROM books
+WHERE id = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+--------------------+
+| label              |
++--------------------+
+| Dune ("paperback") |
++--------------------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>-&gt;</code> returns the JSON string with its quotes, and they end up on the web page. <strong>Fix:</strong> use <code>-&gt;&gt;</code> (or <code>JSON_UNQUOTE</code>) whenever the value leaves JSON: for display, <code>CONCAT</code>, comparisons with text, and sorting.</p>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: The Catalog Feed</h2>
+                <p>The online store's developer wants a JSON feed of selected books and a few facts for the marketing page. You will write <code>catalog_feed.sql</code>, one step at a time, running each query as you add it. Allow about 35 minutes.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: Add the ebooks <span class="step-time">(5 min)</span></h3>
+                    <p>The store now sells Brave New World (id 7) and Fahrenheit 451 (id 10) as ebooks. Create <code>catalog_feed.sql</code> in your <code>mysql-course</code> folder, start it with <code>USE bookstore;</code>, and change their format with <code>JSON_SET</code>, adding the file size in megabytes. The <code>CHECK</code> you added allows <code>'ebook'</code>.</p>
+                    <pre><code class="language-sql">USE bookstore;
+
+-- 1. Two titles become ebooks
+UPDATE books
+SET attributes = JSON_SET(attributes, '$.format', 'ebook', '$.file_mb', 1.8)
+WHERE id IN (7, 10);
+
+SELECT id, title, attributes FROM books WHERE id IN (7, 10) ORDER BY id;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Database changed
++----+-----------------+---------------------------------------------------+
+| id | title           | attributes                                        |
++----+-----------------+---------------------------------------------------+
+|  7 | Brave New World | {"awards": [], "format": "ebook", "file_mb": 1.8} |
+| 10 | Fahrenheit 451  | {"awards": [], "format": "ebook", "file_mb": 1.8} |
++----+-----------------+---------------------------------------------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: Titles per format <span class="step-time">(5 min)</span></h3>
+                    <p>Use the generated <code>format</code> column (it updated itself in step 1) to count titles and average prices per format.</p>
+                    <pre><code class="language-sql">-- 2. Titles per format
+SELECT format, COUNT(*) AS titles, ROUND(AVG(price), 2) AS avg_price
+FROM books
+GROUP BY format
+ORDER BY titles DESC, format;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-----------+--------+-----------+
+| format    | titles | avg_price |
++-----------+--------+-----------+
+| paperback |      7 |     10.20 |
+| ebook     |      2 |      9.99 |
+| hardcover |      2 |     13.49 |
++-----------+--------+-----------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: Record two more awards <span class="step-time">(5 min)</span></h3>
+                    <p>1984 and Fahrenheit 451 are both in the Prometheus Hall of Fame. Append the award to their arrays, then list every award with <code>JSON_TABLE</code>.</p>
+                    <pre><code class="language-sql">-- 3. Awards
+UPDATE books
+SET attributes = JSON_ARRAY_APPEND(attributes, '$.awards', 'Prometheus Hall of Fame')
+WHERE id IN (2, 10);
+
+SELECT b.title, aw.award
+FROM books AS b,
+     JSON_TABLE(b.attributes, '$.awards[*]' COLUMNS (award VARCHAR(40) PATH '$')) AS aw
+ORDER BY b.title, aw.award;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+----------------+-------------------------+
+| title          | award                   |
++----------------+-------------------------+
+| 1984           | Prometheus Hall of Fame |
+| Dune           | Hugo                    |
+| Dune           | Nebula                  |
+| Fahrenheit 451 | Prometheus Hall of Fame |
++----------------+-------------------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: The feed <span class="step-time">(10 min)</span></h3>
+                    <p>One JSON document per ebook and hardcover, with the author's name from the <code>authors</code> table and the awards copied from <code>attributes</code>. Regular columns and JSON values mix freely inside <code>JSON_OBJECT</code>.</p>
+                    <pre><code class="language-sql">-- 4. The feed: one document per featured book
+SELECT JSON_OBJECT(
+           'id',     b.id,
+           'title',  b.title,
+           'author', a.name,
+           'price',  b.price,
+           'format', b.format,
+           'awards', COALESCE(b.attributes-&gt;'$.awards', JSON_ARRAY())
+       ) AS feed_item
+FROM books AS b
+JOIN authors AS a ON a.id = b.author_id
+WHERE b.format IN ('ebook', 'hardcover')
+ORDER BY b.id;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------------------------------------------------------------------------------------------------------------------------------------------+
+| feed_item                                                                                                                                 |
++-------------------------------------------------------------------------------------------------------------------------------------------+
+| {"id": 6, "price": 10.99, "title": "The Hobbit", "author": "J.R.R. Tolkien", "awards": [], "format": "hardcover"}                         |
+| {"id": 7, "price": 9.49, "title": "Brave New World", "author": "Aldous Huxley", "awards": [], "format": "ebook"}                          |
+| {"id": 9, "price": 15.99, "title": "Lord of the Rings", "author": "J.R.R. Tolkien", "awards": [], "format": "hardcover"}                  |
+| {"id": 10, "price": 10.49, "title": "Fahrenheit 451", "author": "Ray Bradbury", "awards": ["Prometheus Hall of Fame"], "format": "ebook"} |
++-------------------------------------------------------------------------------------------------------------------------------------------+</code></pre>
+                    </div>
+                    <p>The two Tolkien books have no <code>awards</code> key, so <code>COALESCE</code> gives them an empty array: the app can loop over <code>awards</code> without checking whether it exists.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: Index the series <span class="step-time">(5 min)</span></h3>
+                    <p>The website gets a "More in this series" box. Add a generated, indexed <code>series</code> column and use it.</p>
+                    <pre><code class="language-sql">-- 5. Series lookups
+ALTER TABLE books
+    ADD COLUMN series VARCHAR(50)
+        GENERATED ALWAYS AS (attributes-&gt;&gt;'$.series') VIRTUAL,
+    ADD INDEX idx_books_series (series);
+
+SELECT title, series
+FROM books
+WHERE series = 'Middle-earth'
+ORDER BY title;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------------------+--------------+
+| title             | series       |
++-------------------+--------------+
+| Lord of the Rings | Middle-earth |
+| The Hobbit        | Middle-earth |
++-------------------+--------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 6: Make the script rerunnable <span class="step-time">(5 min)</span></h3>
+                    <p>Run a second time, the script would append the Prometheus award again and fail on the existing <code>series</code> column (error 1060). Put the reload and this lesson's setup at the top of the file, so every run starts from the same data, then run it with <code>SOURCE</code>:</p>
+                    <pre data-norun><code class="language-sql">-- top of catalog_feed.sql
+SOURCE ~/mysql-course/bookstore.sql
+-- then the ALTER TABLE ... attributes JSON and the three UPDATEs from "The JSON Data Type",
+-- the format column from "Indexing a JSON Path" and the chk_books_format constraint,
+-- then steps 1 to 5
+
+SOURCE ~/mysql-course/catalog_feed.sql</code></pre>
+                    <p>The whole file should run from top to bottom without a single error, every time.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li>Brave New World and Fahrenheit 451 show <code>"format": "ebook"</code> and a <code>file_mb</code> value</li>
+                        <li>The format count shows 7 paperbacks, 2 ebooks and 2 hardcovers</li>
+                        <li>The award list has four rows, two of them the Prometheus Hall of Fame</li>
+                        <li>The feed prints four valid JSON documents, each with an <code>awards</code> array</li>
+                        <li><code>catalog_feed.sql</code> reloads the database first and runs twice in a row without errors</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+                <p>The exercises continue from the data as the project left it. Try each one before you open the solution.</p>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: Books in a Series</h3>
+                    <p>Without using the generated <code>series</code> column, list the title and series of every book that has a series, sorted by series and then title. The series must print without quotes.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>A missing key gives <code>NULL</code>, so <code>IS NOT NULL</code> on <code>-&gt;&gt;'$.series'</code> does the filtering.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT title, attributes-&gt;&gt;'$.series' AS series
+FROM books
+WHERE attributes-&gt;&gt;'$.series' IS NOT NULL
+ORDER BY series, title;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------------------+-----------------+
+| title             | series          |
++-------------------+-----------------+
+| Dune              | Dune Chronicles |
+| Lord of the Rings | Middle-earth    |
+| The Hobbit        | Middle-earth    |
++-------------------+-----------------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 2: A New Edition</h3>
+                    <p>Lord of the Rings (id 9) is reissued as a paperback without illustrations. In ONE <code>UPDATE</code>, set its format to <code>paperback</code> and remove the <code>illustrated</code> key. Then show its attributes and its generated <code>format</code> column.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>The functions nest: the result of <code>JSON_SET(...)</code> can be the first argument of <code>JSON_REMOVE(...)</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">UPDATE books
+SET attributes = JSON_REMOVE(JSON_SET(attributes, '$.format', 'paperback'), '$.illustrated')
+WHERE id = 9;
+
+SELECT title, format, attributes FROM books WHERE id = 9;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------------------+-----------+---------------------------------------------------+
+| title             | format    | attributes                                        |
++-------------------+-----------+---------------------------------------------------+
+| Lord of the Rings | paperback | {"format": "paperback", "series": "Middle-earth"} |
++-------------------+-----------+---------------------------------------------------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: Customers per City as JSON</h3>
+                    <p>Build one JSON object that maps each city to its number of customers, including the customers without a city under the key <code>"(no city)"</code>.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Start from the <code>JSON_OBJECTAGG</code> query in this lesson and replace the <code>WHERE</code> filter with <code>COALESCE(city, '(no city)')</code> in the inner query. A JSON key cannot be <code>NULL</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT JSON_OBJECTAGG(city, customers) AS customers_per_city
+FROM (
+    SELECT COALESCE(city, '(no city)') AS city, COUNT(*) AS customers
+    FROM customers
+    GROUP BY COALESCE(city, '(no city)')
+) AS per_city;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------------------------------------------------------------------------------+
+| customers_per_city                                                            |
++-------------------------------------------------------------------------------+
+| {"Chicago": 2, "Houston": 1, "New York": 2, "(no city)": 2, "Los Angeles": 1} |
++-------------------------------------------------------------------------------+</code></pre>
+                        </div>
+                        <p>Without the <code>COALESCE</code>, MySQL stops with error 3158, "JSON documents may not contain NULL member names".</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): Price an Incoming Web Order</h3>
+                    <p>The website sends this order as JSON: <code>{"customer_id": 3, "items": [{"book_id": 1, "qty": 2}, {"book_id": 11, "qty": 1}]}</code>. With <code>JSON_TABLE</code>, list each item's title, quantity and line total from the current prices, and then, in a second query, the order total.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>The row path is <code>'$.items[*]'</code>; inside <code>COLUMNS</code>, the paths are relative to each item: <code>'$.book_id'</code> and <code>'$.qty'</code>. Join the result to <code>books</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SET @web_order = '{"customer_id": 3, "items": [{"book_id": 1, "qty": 2}, {"book_id": 11, "qty": 1}]}';
+
+SELECT b.title, it.qty, b.price * it.qty AS line_total
+FROM JSON_TABLE(@web_order, '$.items[*]'
+         COLUMNS (book_id INT PATH '$.book_id', qty INT PATH '$.qty')) AS it
+JOIN books AS b ON b.id = it.book_id
+ORDER BY b.title;
+
+SELECT JSON_VALUE(@web_order, '$.customer_id') AS customer_id, SUM(b.price * it.qty) AS order_total
+FROM JSON_TABLE(@web_order, '$.items[*]'
+         COLUMNS (book_id INT PATH '$.book_id', qty INT PATH '$.qty')) AS it
+JOIN books AS b ON b.id = it.book_id;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------------+------+------------+
+| title       | qty  | line_total |
++-------------+------+------------+
+| Animal Farm |    1 |       8.49 |
+| Dune        |    2 |      29.98 |
++-------------+------+------------+
++-------------+-------------+
+| customer_id | order_total |
++-------------+-------------+
+| 3           |       38.47 |
++-------------+-------------+</code></pre>
+                        </div>
+                        <p>Why <code>JSON_VALUE</code> and not <code>@web_order-&gt;&gt;'$.customer_id'</code>? The arrow operators only work on a column name; on a variable or a literal they are a syntax error (1064). <code>JSON_VALUE</code> and <code>JSON_EXTRACT</code> work on any JSON value. Note also that the prices come from <code>books</code>, never from the incoming JSON: a browser can send any price it likes.</p>
+                    </details>
+                </div>
+            </section>
+
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
+                <div class="card quiz-container">
+                    <h3>🎯 Check Your Understanding</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> Dune's <code>attributes</code> holds <code>"format": "paperback"</code>. Which expression returns <code>paperback</code> without double quotes?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="The single arrow returns a JSON value, and a JSON string keeps its quotes.">
+                                A) <code>attributes-&gt;'$.format'</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="JSON_EXTRACT is the long form of the single arrow. Something still has to remove the quotes.">
+                                B) <code>JSON_EXTRACT(attributes, '$.format')</code>
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="The double arrow extracts and unquotes in one step: it is short for JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.format')).">
+                                C) <code>attributes-&gt;&gt;'$.format'</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> This query returns an empty set, although two books are hardcovers. Why?</p>
+                        <pre><code class="language-sql">SELECT title FROM books WHERE attributes-&gt;&gt;'$.FORMAT' = 'hardcover';</code></pre>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="JSON keys are case-sensitive. No document has a FORMAT key, so the expression is NULL for every row, and NULL never equals anything. MySQL does not warn about a missing key.">
+                                A) JSON keys are case-sensitive, so <code>$.FORMAT</code> is NULL for every book
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Look at how the key is spelled in the data, letter by letter.">
+                                B) <code>-&gt;&gt;</code> cannot be used in a <code>WHERE</code> clause
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="String comparisons in this table ignore case, but the problem is not in the value.">
+                                C) <code>'hardcover'</code> must be written in capital letters too
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> Searches on <code>attributes-&gt;&gt;'$.format'</code> are slow on a large table. What is the MySQL way to index them?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Try it: MySQL answers with error 3152.">
+                                A) <code>CREATE INDEX ... ON books (attributes)</code>
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="A generated column extracts the value from each document, and an ordinary index on that column can be used, even by queries that write the original JSON expression.">
+                                B) Add a generated column for <code>$.format</code> and index that column
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="The type of the column changes nothing about how a path inside it is searched; you would also lose validation.">
+                                C) Change the column type from <code>JSON</code> to <code>TEXT</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> What happens when you run this on MySQL?</p>
+                        <pre data-raises="ERROR 3140"><code class="language-sql">UPDATE books SET attributes = '{format: "audiobook"}' WHERE id = 3;</code></pre>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="A JSON column checks every value before storing it.">
+                                A) The text is stored and only fails later, when you read it
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL never repairs JSON for you. What is wrong with the key?">
+                                B) MySQL adds the missing quotes and stores <code>{"format": "audiobook"}</code>
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="The key format has no double quotes, so the text is not valid JSON and the JSON column rejects it with error 3140. The row keeps its old value.">
+                                C) It fails with error 3140, because JSON keys must be double-quoted strings
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> Which of these belongs in a regular column rather than in the <code>attributes</code> JSON?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Only some books have one, and it is mostly displayed. That is what JSON is good at.">
+                                A) The edition name, which a few books have
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Every book has a price, it needs an exact DECIMAL type and NOT NULL, and orders and reports calculate with it all the time. That is regular-column data.">
+                                B) The price, which every book has and every order total uses
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="A short list of display labels on some books is a typical JSON use.">
+                                C) A list of award names
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Why not just use a <code>TEXT</code> column for JSON?</summary>
+                    <p>A <code>JSON</code> column rejects invalid documents, stores them in a binary form that MySQL can search without re-parsing the text, and lets <code>JSON_SET</code> and friends update a document in place. A <code>TEXT</code> column accepts any typo and must be parsed again on every read. On MariaDB, <code>JSON</code> is text with a validity check, which still beats plain <code>TEXT</code>.</p>
+                </details>
+                <details>
+                    <summary>How big can a JSON document be?</summary>
+                    <p>Up to the server's <code>max_allowed_packet</code> setting (64 MB by default). In practice, keep documents small: a few keys and short lists. A document that grows without limit (every page view, every price change) is a sign it should be a table.</p>
+                </details>
+                <details>
+                    <summary>Can a foreign key point at a value inside JSON?</summary>
+                    <p>Not directly. You can add a <code>STORED</code> generated column for the value and put the foreign key on that column. If you find yourself doing that, the value probably deserved a real column from the start.</p>
+                </details>
+                <details>
+                    <summary>Should my app build JSON in SQL or in its own code?</summary>
+                    <p>Both work. Building it in SQL (<code>JSON_OBJECT</code>, <code>JSON_ARRAYAGG</code>) saves a round of reshaping in the app and is handy for exports. Building it in the app keeps SQL simple and lets the app control ordering. Whichever you choose, values from users go into queries as parameters (placeholders like <code>?</code>), never pasted into the SQL text.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>MySQL can index every element of a JSON array with a <strong>multi-valued index</strong>: <code>ALTER TABLE books ADD INDEX idx_books_awards ((CAST(attributes-&gt;'$.awards' AS CHAR(40) ARRAY)));</code>. Create it, then run <code>EXPLAIN SELECT title FROM books WHERE 'Hugo' MEMBER OF (attributes-&gt;'$.awards');</code> and find the index in the plan. Then try a <code>CHECK</code> constraint built on <code>JSON_SCHEMA_VALID()</code> that requires every document to have a <code>format</code> key. Which of the two would you add to a real store, and why?</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Think of an app you use (a music player, a recipe site, an online shop). List five pieces of data it stores, and for each one decide: regular column, separate table, or JSON? Write one sentence of reasoning for each, using this lesson's "when not to use JSON" table.</p>
+                </div>
+            </section>
+
+            <section id="summary" class="lesson-section">
+                <h2>📝 Lesson Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎓 Key Takeaways</h3>
+                    <ul>
+                        <li>A <code>JSON</code> column validates every document (error 3140) and stores it in a binary form with sorted keys</li>
+                        <li>Paths start at <code>$</code>: <code>$.format</code>, <code>$.awards[0]</code>, <code>$.awards[*]</code></li>
+                        <li><code>-&gt;</code> (= <code>JSON_EXTRACT</code>) returns JSON with quotes; <code>-&gt;&gt;</code> returns unquoted text for display and comparison</li>
+                        <li>A missing key returns <code>NULL</code>, not an error, so a misspelled key fails silently</li>
+                        <li><code>JSON_SET</code>, <code>JSON_INSERT</code>, <code>JSON_REPLACE</code>, <code>JSON_REMOVE</code> and <code>JSON_ARRAY_APPEND</code> return changed copies; store them with <code>UPDATE</code></li>
+                        <li><code>JSON_OBJECT</code> and <code>JSON_ARRAYAGG</code> build JSON from rows; <code>JSON_TABLE</code> turns JSON back into rows</li>
+                        <li>Index a JSON path through a generated column; protect important keys with <code>CHECK</code></li>
+                        <li>Core data (every row has it, you join or calculate with it) belongs in real columns and tables</li>
+                    </ul>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>You want</th><th>Write</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>A value as text</td><td><code>doc-&gt;&gt;'$.key'</code> (MariaDB: <code>JSON_VALUE(doc, '$.key')</code>)</td></tr>
+                            <tr><td>A value as JSON</td><td><code>doc-&gt;'$.key'</code> or <code>JSON_EXTRACT(doc, '$.key')</code></td></tr>
+                            <tr><td>Is X in the array?</td><td><code>'X' MEMBER OF (doc-&gt;'$.list')</code></td></tr>
+                            <tr><td>Change or add a key</td><td><code>SET doc = JSON_SET(doc, '$.key', value)</code></td></tr>
+                            <tr><td>Rows to a JSON array</td><td><code>JSON_ARRAYAGG(JSON_OBJECT('k', col, ...))</code></td></tr>
+                            <tr><td>A JSON array to rows</td><td><code>JSON_TABLE(doc, '$.list[*]' COLUMNS (...))</code></td></tr>
+                            <tr><td>A fast search on a key</td><td>Generated column + <code>INDEX</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You added a validated JSON column to the bookstore and read, filtered and changed the documents in it</li>
+                        <li>You built API-ready JSON from joined tables and turned arrays and incoming JSON back into rows</li>
+                        <li>You indexed two JSON paths and confirmed with <code>EXPLAIN</code> that MySQL uses them</li>
+                        <li>You wrote <code>catalog_feed.sql</code>, a rerunnable script that produces the store's feed</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>In <a href="lesson_19.html"><strong>Lesson 7.4: User Management &amp; Permissions</strong></a> you will stop doing everything as <code>root</code>. You will create accounts for the bookstore's app, its reports and its staff, give each one only the privileges it needs, group privileges into roles, and see why the old <code>mysql_native_password</code> advice no longer works on MySQL 9.7.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
+                <ul>
+                    <li>Run <code>catalog_feed.sql</code> twice in a row and confirm the output is identical both times</li>
+                    <li>Reload <code>bookstore.sql</code>: the next lesson starts from the standard database, without the <code>attributes</code> column</li>
+                    <li>Try the multi-valued index bonus if you have not yet</li>
+                </ul>
+
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>You just learned a feature that blurs the line between relational and document databases, and, more valuable still, where that line should stay. Many developers reach for JSON to avoid designing tables and regret it later. You can now use it on purpose: for the flexible edges of your data, with indexes and checks where they matter, and with the core of the bookstore still in clean, joinable columns.</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_18.html" class="prev-lesson">← Previous: Transactions</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_19.html" class="next-lesson">Next: User Management &amp; Permissions →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

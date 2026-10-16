@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Install MySQL on Windows, macOS, and Linux (Ubuntu/WSL). Set up the LAMP stack and verify your database server is running.">
-    <meta name="author" content="Ray De La Paz">
-    <title>Installing MySQL (LAMP Stack) - MySQL Foundations</title>
+    <meta name="description" content="Install MySQL 9.7 LTS on Windows, macOS, Linux or Docker, secure the root account, connect with the mysql client and verify the installation. MySQL Foundations Lesson 1.2.">
+    <meta name="author" content="Ray de la Paz">
+    <title>Installing MySQL - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
     <link rel="icon" type="image/png" href="favicon.png">
-    <!-- Mermaid — initialized by course-enhancements.js for theme awareness -->
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
         window.__mermaid = mermaid;
@@ -24,15 +23,11 @@
     </script>
 </head>
 <body>
-    <!-- Skip to main content for accessibility -->
     <a href="#main-content" class="skip-to-main">Skip to main content</a>
-    <!-- Navigation -->
     <nav class="main-nav">
         <div class="nav-container">
             <a href="index.html" class="nav-logo">MySQL Foundations</a>
-            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">
-                ☰
-            </button>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
             <div class="nav-links" id="nav-links">
                 <a href="index.html">Home</a>
                 <a href="index.html#modules">All Modules</a>
@@ -44,39 +39,40 @@
         </div>
     </nav>
 
-    <!-- Breadcrumb -->
     <nav class="breadcrumb" aria-label="Breadcrumb">
         <ul>
             <li><a href="index.html">Home</a></li>
             <li><a href="index.html#modules">Module 1: Getting Started</a></li>
-            <li aria-current="page">Lesson 2: Installing MySQL (LAMP Stack)</li>
+            <li aria-current="page">Lesson 1.2: Installing MySQL</li>
         </ul>
     </nav>
 
-    <!-- Main Content -->
     <main id="main-content">
         <div class="container">
-            <!-- Lesson Header -->
             <header>
-                <h1>🔧 Lesson 2: Installing MySQL (LAMP Stack)</h1>
-                <p class="lead">Time to get MySQL running on your machine. This lesson walks you through installation on Windows (via WSL), macOS (via Homebrew), and native Linux — plus setting up Apache, PHP, and phpMyAdmin so you have a complete local development environment.</p>
+                <h1>🔧 Lesson 1.2: Installing MySQL</h1>
+                <p class="lead">Time to get a real MySQL server running on your own machine. This lesson walks you through MySQL 9.7 LTS on Windows, macOS and Linux, or in a Docker container on any of them, then has you secure the root account, connect with the <code>mysql</code> client and prove that everything works.</p>
 
                 <div class="card card-info">
                     <h2>🎯 Learning Objectives</h2>
                     <p>By the end of this lesson, you will be able to:</p>
                     <ul>
-                        <li>Install MySQL on your operating system (Windows, macOS, or Linux)</li>
-                        <li>Start and stop the MySQL server</li>
-                        <li>Set a secure root password</li>
-                        <li>Install Apache and PHP for phpMyAdmin (optional on macOS/Windows)</li>
-                        <li>Verify that MySQL is running and accepting connections</li>
+                        <li>Choose the right MySQL release (9.7 LTS) and installation method for your computer, and recognize when a package gives you something else (an older MySQL, or MariaDB)</li>
+                        <li>Install MySQL 9.7 LTS with the Windows MSI, the macOS package or Homebrew, the MySQL APT repository, or the official Docker image</li>
+                        <li>Start and stop the server, and set a strong root password</li>
+                        <li>Connect with <code>mysql -u root -p</code> and verify the version, user and character set with SQL</li>
+                        <li>Diagnose the four classic first-day errors: command not found, 1045, 2002 and 2003</li>
                     </ul>
-                    <p><strong>Estimated Time:</strong> 45 minutes</p>
-                    <p><strong>What You'll Need:</strong> A computer with an internet connection and admin/sudo access</p>
                 </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 90 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_01.html">Lesson 1.1: What Is a Database?</a>, administrator rights on your computer (or Docker Desktop), about 1.5 GB of free disk space</li>
+                    <li><span class="meta-label">🛠️ You will build</span> A working MySQL 9.7 server and an installation health check you can rerun any time</li>
+                    <li><span class="meta-label">🗄️ Database</span> None yet: a fresh server holds only its system databases</li>
+                </ul>
             </header>
 
-            <!-- Table of Contents -->
             <details class="card toc-card" open>
                 <summary aria-label="Toggle table of contents">
                     <span class="toc-icon" aria-hidden="true">📑</span>
@@ -85,723 +81,684 @@
                 </summary>
                 <nav aria-label="Table of Contents">
                     <ol>
-                        <li><a href="#overview" class="toc-link">The Big Picture: What We're Installing</a></li>
-                        <li><a href="#choose-path" class="toc-link">Choose Your Installation Path</a></li>
-                        <li><a href="#windows" class="toc-link">Windows: Installing via WSL (Ubuntu)</a></li>
-                        <li><a href="#macos" class="toc-link">macOS: Installing via Homebrew</a></li>
-                        <li><a href="#linux" class="toc-link">Linux (Native Ubuntu/Debian)</a></li>
-                        <li><a href="#secure" class="toc-link">Securing Your Installation</a></li>
-                        <li><a href="#phpmyadmin" class="toc-link">Installing phpMyAdmin</a></li>
-                        <li><a href="#verify" class="toc-link">Verifying Everything Works</a></li>
-                        <li><a href="#troubleshooting" class="toc-link">Troubleshooting Common Issues</a></li>
-                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
-                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                        <li><a href="#big-picture" class="toc-link">What You Are Installing</a></li>
+                        <li><a href="#choose" class="toc-link">Choose a Version and a Path</a></li>
+                        <li><a href="#windows" class="toc-link">Windows: MSI Installer</a></li>
+                        <li><a href="#macos" class="toc-link">macOS: Package or Homebrew</a></li>
+                        <li><a href="#linux" class="toc-link">Linux: APT and Yum Repositories</a></li>
+                        <li><a href="#docker" class="toc-link">Docker: Any Operating System</a></li>
+                        <li><a href="#xampp" class="toc-link">XAMPP, MAMP and MariaDB</a></li>
+                        <li><a href="#secure" class="toc-link">Securing the Root Account</a></li>
+                        <li><a href="#verify" class="toc-link">Connect and Verify</a></li>
+                        <li><a href="#gui" class="toc-link">Optional: phpMyAdmin and Other GUIs</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: Installation Health Check</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
                     </ol>
                 </nav>
             </details>
 
-            <!-- Section 1: The Big Picture -->
-            <section id="overview" class="lesson-section">
-                <h2>The Big Picture: What We're Installing</h2>
-                <p>In Lesson 1, we mentioned the <strong>LAMP stack</strong> — Linux, Apache, MySQL, PHP. Here's what each piece does and why we need it:</p>
-
-                <div class="mermaid">
-                    graph TD
-                        A["LAMP Stack"] --> B["<strong>L</strong>inux<br/>Operating System<br/><em>The foundation</em>"]
-                        A --> C["<strong>A</strong>pache<br/>Web Server<br/><em>Serves web pages</em>"]
-                        A --> D["<strong>M</strong>ySQL<br/>Database Server<br/><em>Stores your data</em>"]
-                        A --> E["<strong>P</strong>HP<br/>Scripting Language<br/><em>Powers phpMyAdmin</em>"]
-                        style D fill:#3b82f6,stroke:#1e40af,color:#fff
-                </div>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Component</th>
-                                <th>What It Does</th>
-                                <th>Why We Need It</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><strong>Linux</strong></td>
-                                <td>Operating system</td>
-                                <td>MySQL runs natively on Linux; Windows users get it through WSL</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Apache</strong></td>
-                                <td>Web server</td>
-                                <td>Serves the phpMyAdmin interface in your browser</td>
-                            </tr>
-                            <tr>
-                                <td><strong>MySQL</strong></td>
-                                <td>Database server</td>
-                                <td>This is what we're here to learn — the star of the show</td>
-                            </tr>
-                            <tr>
-                                <td><strong>PHP</strong></td>
-                                <td>Server-side language</td>
-                                <td>phpMyAdmin is written in PHP, so we need PHP to run it</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="card card-info">
-                    <h4>💡 Do I Need the Full LAMP Stack?</h4>
-                    <p>Strictly speaking, you only <em>need</em> MySQL to follow this course — you can do everything from the command line. Apache and PHP are only required if you want to use <strong>phpMyAdmin</strong>, a visual browser-based tool for managing databases. We highly recommend it, especially for beginners, but it's optional. If you prefer the command line only, you can skip the Apache/PHP steps.</p>
-                </div>
-            </section>
-
-            <!-- Section 2: Choose Your Path -->
-            <section id="choose-path" class="lesson-section">
-                <h2>Choose Your Installation Path</h2>
-                <p>Pick the section that matches your operating system:</p>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Your OS</th>
-                                <th>Installation Method</th>
-                                <th>Jump To</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><strong>Windows 10/11</strong></td>
-                                <td>WSL 2 + Ubuntu (recommended)</td>
-                                <td><a href="#windows">Windows Section ↓</a></td>
-                            </tr>
-                            <tr>
-                                <td><strong>macOS</strong></td>
-                                <td>Homebrew</td>
-                                <td><a href="#macos">macOS Section ↓</a></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ubuntu / Debian Linux</strong></td>
-                                <td>APT (native)</td>
-                                <td><a href="#linux">Linux Section ↓</a></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="card card-accent">
-                    <h4>📖 Why WSL for Windows?</h4>
-                    <p>While MySQL does offer a native Windows installer, using <strong>WSL (Windows Subsystem for Linux)</strong> gives you a real Linux environment inside Windows. This is the industry-standard approach for web development on Windows — it matches what you'd use on a production server, makes Apache/PHP/phpMyAdmin setup smoother, and means the Linux commands you learn here work exactly the same in deployment. Most professional developers on Windows use WSL.</p>
-                </div>
-            </section>
-
-            <!-- Section 3: Windows via WSL -->
-            <section id="windows" class="lesson-section">
-                <h2>Windows: Installing via WSL (Ubuntu)</h2>
-
-                <h3>Step 1: Install WSL and Ubuntu</h3>
-                <p>If you don't already have WSL set up, open <strong>PowerShell as Administrator</strong> (right-click the Start button → "Terminal (Admin)" or "PowerShell (Admin)") and run:</p>
-
-                <pre><code class="language-bash">
-wsl --install
-                </code></pre>
-
-                <p>This installs WSL 2 with Ubuntu as the default Linux distribution. When it finishes:</p>
-                <ol>
-                    <li><strong>Restart your computer</strong> when prompted</li>
-                    <li>After reboot, Ubuntu will launch automatically and ask you to create a <strong>username and password</strong> — this is your Linux user account (separate from your Windows login)</li>
-                    <li>Remember this password! You'll need it for <code>sudo</code> commands</li>
-                </ol>
-
-                <div class="card card-warning">
-                    <h4>⚠️ Already Have WSL?</h4>
-                    <p>If you already have WSL and Ubuntu installed, just open your Ubuntu terminal and skip to Step 2. You can check by running <code>wsl --list</code> in PowerShell.</p>
-                </div>
-
-                <h3>Step 2: Update Your System</h3>
-                <p>Open your Ubuntu terminal (search "Ubuntu" in the Start menu) and update your package lists:</p>
-
-                <pre><code class="language-bash">
-sudo apt update && sudo apt upgrade -y
-                </code></pre>
-
-                <h3>Step 3: Install MySQL Server</h3>
-
-                <pre><code class="language-bash">
-sudo apt install mysql-server -y
-                </code></pre>
-
-                <h3>Step 4: Start MySQL</h3>
-                <p>In WSL, services don't auto-start like on a regular Linux server. Start MySQL manually:</p>
-
-                <pre><code class="language-bash">
-sudo service mysql start
-                </code></pre>
-
-                <p>Check that it's running:</p>
-
-                <pre><code class="language-bash">
-sudo service mysql status
-                </code></pre>
-
-                <p>You should see output indicating the service is <strong>active (running)</strong>.</p>
-
-                <div class="card card-success">
-                    <h4>✅ WSL Tip: Auto-Starting MySQL</h4>
-                    <p>Since WSL doesn't auto-start services on boot, you'll need to run <code>sudo service mysql start</code> each time you open a new Ubuntu session. You can add it to your <code>~/.bashrc</code> file to automate this:</p>
-                    <pre><code class="language-bash">
-echo "sudo service mysql start" >> ~/.bashrc
-                    </code></pre>
-                    <p>You may also want to configure <a href="https://learn.microsoft.com/en-us/windows/wsl/wsl-config#boot-settings" target="_blank" rel="noopener">WSL boot commands</a> for a cleaner solution.</p>
-                </div>
-
-                <h3>Step 5: Install Apache and PHP (for phpMyAdmin)</h3>
-                <p>If you want to use phpMyAdmin (recommended), install Apache and PHP:</p>
-
-                <pre><code class="language-bash">
-sudo apt install apache2 php php-mysql libapache2-mod-php -y
-                </code></pre>
-
-                <p>Start Apache:</p>
-
-                <pre><code class="language-bash">
-sudo service apache2 start
-                </code></pre>
-
-                <p>Verify Apache is working by opening your browser and visiting <a href="http://localhost" target="_blank">http://localhost</a>. You should see the Apache default page.</p>
-
-                <div class="card card-warning">
-                    <h4>⚠️ Port Conflict?</h4>
-                    <p>If <code>http://localhost</code> doesn't load, another program may be using port 80. Common culprits on Windows include IIS, Skype, or other web servers. You can check with <code>sudo lsof -i :80</code> in WSL or change Apache's port in <code>/etc/apache2/ports.conf</code>.</p>
-                </div>
-
-                <p>Now skip ahead to the <a href="#secure">Securing Your Installation</a> section.</p>
-            </section>
-
-            <!-- Section 4: macOS via Homebrew -->
-            <section id="macos" class="lesson-section">
-                <h2>macOS: Installing via Homebrew</h2>
-
-                <h3>Step 1: Install Homebrew (if needed)</h3>
-                <p><a href="https://brew.sh/" target="_blank" rel="noopener">Homebrew</a> is the standard package manager for macOS. If you don't have it, open <strong>Terminal</strong> (Applications → Utilities → Terminal) and run:</p>
-
-                <pre><code class="language-bash">
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-                </code></pre>
-
-                <p>Follow the prompts. When it finishes, you may need to add Homebrew to your PATH. The installer will tell you exactly what to run — it's usually something like:</p>
-
-                <pre><code class="language-bash">
-# For Apple Silicon Macs (M1/M2/M3/M4):
-echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-eval "$(/opt/homebrew/bin/brew shellenv)"
-
-# For Intel Macs:
-echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zprofile
-eval "$(/usr/local/bin/brew shellenv)"
-                </code></pre>
-
-                <p>Verify Homebrew is working:</p>
-
-                <pre><code class="language-bash">
-brew --version
-                </code></pre>
-
-                <h3>Step 2: Install MySQL</h3>
-
-                <pre><code class="language-bash">
-brew install mysql
-                </code></pre>
-
-                <h3>Step 3: Start MySQL</h3>
-                <p>Start MySQL and configure it to launch automatically on login:</p>
-
-                <pre><code class="language-bash">
-brew services start mysql
-                </code></pre>
-
-                <p>Verify it's running:</p>
-
-                <pre><code class="language-bash">
-brew services list
-                </code></pre>
-
-                <p>You should see <code>mysql</code> listed with a status of <strong>started</strong>.</p>
-
-                <div class="card card-info">
-                    <h4>💡 Homebrew Services</h4>
-                    <p>Using <code>brew services start</code> sets MySQL to auto-start whenever you log in. If you prefer manual control, use <code>mysql.server start</code> and <code>mysql.server stop</code> instead.</p>
-                </div>
-
-                <h3>Step 4: Install Apache and PHP (for phpMyAdmin)</h3>
-                <p>macOS comes with Apache pre-installed, but for a cleaner setup with PHP, use Homebrew:</p>
-
-                <pre><code class="language-bash">
-# Install PHP
-brew install php
-
-# Start the built-in Apache (macOS already has it)
-sudo apachectl start
-                </code></pre>
-
-                <p>Verify Apache by visiting <a href="http://localhost" target="_blank">http://localhost</a> in your browser. You should see an "It works!" page.</p>
-
-                <div class="card card-accent">
-                    <h4>📖 Alternative: Skip Apache/PHP</h4>
-                    <p>On macOS, many developers skip the full LAMP setup and just use MySQL from the command line. If you'd prefer not to install Apache and PHP, that's perfectly fine — you can follow this entire course using just the MySQL CLI. The phpMyAdmin setup is optional.</p>
-                </div>
-
-                <p>Now skip ahead to the <a href="#secure">Securing Your Installation</a> section.</p>
-            </section>
-
-            <!-- Section 5: Native Linux -->
-            <section id="linux" class="lesson-section">
-                <h2>Linux (Native Ubuntu/Debian)</h2>
-                <p>If you're running Ubuntu or Debian natively (not through WSL), the process is the same as the WSL instructions but services auto-start.</p>
-
-                <h3>Step 1: Update Your System</h3>
-
-                <pre><code class="language-bash">
-sudo apt update && sudo apt upgrade -y
-                </code></pre>
-
-                <h3>Step 2: Install the Full LAMP Stack</h3>
-                <p>You can install everything in one command:</p>
-
-                <pre><code class="language-bash">
-sudo apt install apache2 mysql-server php php-mysql libapache2-mod-php -y
-                </code></pre>
-
-                <h3>Step 3: Verify Services Are Running</h3>
-                <p>On native Linux, services usually start automatically after installation:</p>
-
-                <pre><code class="language-bash">
-# Check MySQL
-sudo systemctl status mysql
-
-# Check Apache
-sudo systemctl status apache2
-                </code></pre>
-
-                <p>Both should show <strong>active (running)</strong>. If not, start them:</p>
-
-                <pre><code class="language-bash">
-sudo systemctl start mysql
-sudo systemctl start apache2
-                </code></pre>
-
-                <p>Enable them to start on boot:</p>
-
-                <pre><code class="language-bash">
-sudo systemctl enable mysql
-sudo systemctl enable apache2
-                </code></pre>
-
-                <p>Now continue to the <a href="#secure">Securing Your Installation</a> section.</p>
-            </section>
-
-            <!-- Section 6: Securing Your Installation -->
-            <section id="secure" class="lesson-section">
-                <h2>Securing Your Installation</h2>
-                <p>By default, MySQL's root account may have no password or use a socket-based authentication method. Let's secure it.</p>
-
-                <h3>Run the Security Script</h3>
-                <p>MySQL ships with a built-in security script that walks you through hardening your installation:</p>
-
-                <pre><code class="language-bash">
-sudo mysql_secure_installation
-                </code></pre>
-
-                <p>The script will ask you several questions. Here are the recommended answers for a development environment:</p>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Prompt</th>
-                                <th>Recommended Answer</th>
-                                <th>Why</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>VALIDATE PASSWORD component?</td>
-                                <td><strong>No</strong></td>
-                                <td>Keeps things simple for development; use Yes for production</td>
-                            </tr>
-                            <tr>
-                                <td>Set root password?</td>
-                                <td><strong>Yes</strong> — choose a password you'll remember</td>
-                                <td>Secures the root account</td>
-                            </tr>
-                            <tr>
-                                <td>Remove anonymous users?</td>
-                                <td><strong>Yes</strong></td>
-                                <td>Prevents unauthenticated access</td>
-                            </tr>
-                            <tr>
-                                <td>Disallow root login remotely?</td>
-                                <td><strong>Yes</strong></td>
-                                <td>Root should only connect from localhost</td>
-                            </tr>
-                            <tr>
-                                <td>Remove test database?</td>
-                                <td><strong>Yes</strong></td>
-                                <td>Removes the insecure default test database</td>
-                            </tr>
-                            <tr>
-                                <td>Reload privilege tables?</td>
-                                <td><strong>Yes</strong></td>
-                                <td>Applies all changes immediately</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3>Set Up Password Authentication for Root</h3>
-                <p>On Ubuntu, MySQL's root user defaults to <strong>auth_socket</strong> authentication (login via <code>sudo</code> without a password). For this course, we'll switch to password authentication so you can log in from phpMyAdmin and other tools:</p>
-
-                <pre><code class="language-bash">
-# Log in as root (uses sudo/socket auth)
-sudo mysql
-                </code></pre>
-
-                <p>Now run these SQL commands inside the MySQL prompt:</p>
-
-                <pre><code class="language-sql">
--- Switch root to password authentication
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'your_password_here';
-
--- Apply changes
-FLUSH PRIVILEGES;
-
--- Exit
-EXIT;
-                </code></pre>
-
-                <div class="card card-warning">
-                    <h4>⚠️ Choose a Real Password</h4>
-                    <p>Replace <code>your_password_here</code> with an actual password. For a local development environment, something simple but memorable is fine (e.g., <code>mysql_dev_2026</code>). <strong>Never use a blank password or "password"</strong>, even for development.</p>
-                </div>
-
-                <p>Test that password login works:</p>
-
-                <pre><code class="language-bash">
-mysql -u root -p
-                </code></pre>
-
-                <p>You'll be prompted for the password you just set. If you see the <code>mysql></code> prompt, you're in! Type <code>EXIT;</code> to leave.</p>
-
-                <div class="card card-info">
-                    <h4>💡 macOS Homebrew Note</h4>
-                    <p>On macOS with Homebrew, MySQL typically starts with no root password. Run <code>mysql_secure_installation</code> the same way. If you get an error about connecting, try <code>mysql -u root</code> first (no <code>sudo</code> needed on macOS), set the password, then proceed with the security script.</p>
-                </div>
-            </section>
-
-            <!-- Section 7: Installing phpMyAdmin -->
-            <section id="phpmyadmin" class="lesson-section">
-                <h2>Installing phpMyAdmin</h2>
-                <p><strong>phpMyAdmin</strong> is a free, web-based tool for managing MySQL databases. It lets you create databases, design tables, run queries, import/export data, and manage users — all from your browser. It's especially helpful when you're learning because you can <em>see</em> your data visually.</p>
-
-                <h3>Ubuntu / WSL Installation</h3>
-
-                <pre><code class="language-bash">
-sudo apt install phpmyadmin -y
-                </code></pre>
-
-                <p>During installation, you'll see some prompts:</p>
-                <ol>
-                    <li><strong>Web server to reconfigure automatically:</strong> Select <code>apache2</code> (use spacebar to select, then Enter)</li>
-                    <li><strong>Configure database for phpmyadmin with dbconfig-common?</strong> Select <strong>Yes</strong></li>
-                    <li><strong>Password for phpMyAdmin's database user:</strong> Choose a password (this is for phpMyAdmin's own internal database, not your root password)</li>
-                </ol>
-
-                <p>If Apache doesn't pick up phpMyAdmin automatically, enable it manually:</p>
-
-                <pre><code class="language-bash">
-sudo ln -s /etc/phpmyadmin/apache.conf /etc/apache2/conf-available/phpmyadmin.conf
-sudo a2enconf phpmyadmin
-sudo service apache2 reload
-                </code></pre>
-
-                <p>Now open your browser and visit <a href="http://localhost/phpmyadmin" target="_blank">http://localhost/phpmyadmin</a>. Log in with:</p>
+            <section id="big-picture" class="lesson-section">
+                <h2>🧩 What You Are Installing</h2>
+                <p>"Installing MySQL" really means installing two programs:</p>
                 <ul>
-                    <li><strong>Username:</strong> <code>root</code></li>
-                    <li><strong>Password:</strong> the root password you set in the previous section</li>
+                    <li><strong>The server</strong> (<code>mysqld</code>, the "d" is for daemon): a program that runs in the background, owns the data files and listens for connections, by default on network port <strong>3306</strong>.</li>
+                    <li><strong>A client</strong>: a program you use to send SQL to the server and see the answers. The standard one is the command-line client <code>mysql</code>, which every installation method below includes. Graphical clients (phpMyAdmin, MySQL Workbench, DBeaver) are optional extras.</li>
                 </ul>
 
-                <h3>macOS Installation</h3>
-                <p>On macOS, the easiest approach is to download phpMyAdmin manually:</p>
+                <div class="mermaid">
+graph TD
+    A["You type SQL"] --> B["mysql client"]
+    B -->|"connects on port 3306"| C["MySQL server (mysqld)"]
+    C --> D["data directory on disk"]
+                </div>
 
-                <ol>
-                    <li>Download the latest version from <a href="https://www.phpmyadmin.net/downloads/" target="_blank" rel="noopener">phpmyadmin.net/downloads</a></li>
-                    <li>Extract the archive and rename the folder to <code>phpmyadmin</code></li>
-                    <li>Move it to your web server's document root:
-                        <pre><code class="language-bash">
-# Default Apache document root on macOS
-sudo mv ~/Downloads/phpmyadmin /Library/WebServer/Documents/phpmyadmin
-                        </code></pre>
-                    </li>
-                    <li>Create a configuration file:
-                        <pre><code class="language-bash">
-cd /Library/WebServer/Documents/phpmyadmin
-cp config.sample.inc.php config.inc.php
-                        </code></pre>
-                    </li>
-                    <li>Edit <code>config.inc.php</code> and set a blowfish secret (any random 32-character string):
-                        <pre><code class="language-php">
-$cfg['blowfish_secret'] = 'put-a-random-32-character-string-here!!';
-                        </code></pre>
-                    </li>
-                    <li>Restart Apache: <code>sudo apachectl restart</code></li>
-                    <li>Visit <a href="http://localhost/phpmyadmin" target="_blank">http://localhost/phpmyadmin</a></li>
-                </ol>
+                <p>The client and server can sit on different machines; on your laptop they are on the same one. You do not need Apache or PHP for this course: they are only required if you want phpMyAdmin, and even that can run in Docker (see the optional GUI section).</p>
+            </section>
 
-                <div class="card card-accent">
-                    <h4>📖 macOS Alternative: Use MySQL Workbench</h4>
-                    <p>If setting up Apache/PHP on macOS feels like overkill, consider using <a href="https://www.mysql.com/products/workbench/" target="_blank" rel="noopener">MySQL Workbench</a> instead — it's a free, native macOS app from Oracle that provides a visual database editor. Download it from the MySQL website or install via Homebrew: <code>brew install --cask mysqlworkbench</code></p>
+            <section id="choose" class="lesson-section">
+                <h2>🧭 Choose a Version and a Path</h2>
+                <h3>Which version?</h3>
+                <p>MySQL ships on two tracks:</p>
+                <ul>
+                    <li><strong>LTS (long-term support)</strong> releases keep the same features for years and get only bug and security fixes. The current one is <strong>MySQL 9.7 LTS</strong>, and it is what this course uses. The previous one, 8.4 LTS, is still supported and runs almost everything here.</li>
+                    <li><strong>Innovation</strong> releases come out every few months with new features. After 9.7, MySQL switched to calendar version numbers (year.month), so innovation releases are numbered like <strong>26.7</strong>. They are fine to experiment with, but "latest" on a download page or a package manager often means an innovation release, not 9.7.</li>
+                </ul>
+                <p>MySQL 8.0, which many older tutorials show, has reached the end of its support life. If a package offers you 8.0, look for a newer path.</p>
+
+                <h3>Which path?</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Your computer</th><th>Recommended</th><th>Alternative</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Windows 10/11</td><td><a href="#windows">MSI installer</a></td><td><a href="#docker">Docker Desktop</a>, or the Linux steps inside WSL</td></tr>
+                            <tr><td>macOS</td><td><a href="#macos">Homebrew <code>mysql@9.7</code></a> or the DMG package</td><td><a href="#docker">Docker Desktop</a></td></tr>
+                            <tr><td>Ubuntu / Debian</td><td><a href="#linux">MySQL APT repository</a></td><td><a href="#docker">Docker</a></td></tr>
+                            <tr><td>Fedora / RHEL / Rocky / Alma</td><td><a href="#linux">MySQL Yum repository</a></td><td><a href="#docker">Docker or Podman</a></td></tr>
+                            <tr><td>Already use Docker</td><td><a href="#docker"><code>mysql:9.7</code> image</a></td><td></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>Do only <strong>one</strong> of the installation sections below, then continue with <a href="#secure">Securing the Root Account</a>. Allow 20 to 40 minutes, most of it downloading.</p>
+
+                <div class="card card-warning">
+                    <h4>⚠️ One server per port</h4>
+                    <p>If you already have MySQL, MariaDB, XAMPP or MAMP installed and running, a second server cannot also listen on port 3306. Stop the old one first, or give the new one another port (the Docker section shows how).</p>
                 </div>
             </section>
 
-            <!-- Section 8: Verify Everything Works -->
-            <section id="verify" class="lesson-section">
-                <h2>Verifying Everything Works</h2>
-                <p>Let's run through a quick checklist to make sure your entire setup is working.</p>
+            <section id="windows" class="lesson-section">
+                <h2>🪟 Windows: MSI Installer</h2>
+                <p>On Windows, MySQL 9.7 is installed with an MSI package, then configured with <strong>MySQL Configurator</strong>, a setup wizard that the MSI installs and launches for you. (The older all-in-one "MySQL Installer" belongs to the 8.0 era; you do not need it.)</p>
 
-                <h3>1. MySQL Is Running</h3>
+                <h3>Step 1: Download</h3>
+                <ol>
+                    <li>Go to <a href="https://dev.mysql.com/downloads/mysql/" target="_blank" rel="noopener">dev.mysql.com/downloads/mysql</a> (MySQL Community Server).</li>
+                    <li>In the version list, choose <strong>9.7.x LTS</strong> (not the newest innovation release) and the operating system <strong>Microsoft Windows</strong>.</li>
+                    <li>Download the <strong>Windows (x86, 64-bit), MSI Installer</strong>. You can skip the Oracle account sign-up with the "No thanks, just start my download" link.</li>
+                </ol>
+                <p>MySQL 9.7 needs 64-bit Windows and the Microsoft Visual C++ Redistributable; if the installer complains about it, install the current "Visual C++ Redistributable for Visual Studio" (x64) from Microsoft and run the MSI again.</p>
 
-                <pre><code class="language-bash">
-# Ubuntu / WSL
-sudo service mysql status
+                <h3>Step 2: Install</h3>
+                <p>Double-click the <code>.msi</code>, accept the license, choose the <strong>Typical</strong> setup and confirm the administrator prompt. The files go to <code>C:\Program Files\MySQL\MySQL Server 9.7\</code>. At the end, leave the option to run MySQL Configurator checked. The server does not start until it has been configured.</p>
 
-# macOS (Homebrew)
-brew services list
+                <h3>Step 3: Configure with MySQL Configurator</h3>
+                <p>The Configurator walks through a series of pages. For a learning machine:</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Page</th><th>Choose</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Type and Networking</td><td>Config type <strong>Development</strong> (uses the least memory); TCP/IP on port <strong>3306</strong>; X Protocol port 33060 can stay as is</td></tr>
+                            <tr><td>Accounts and Roles</td><td>Type a strong <strong>root password</strong> twice and store it in your password manager. No extra accounts needed now</td></tr>
+                            <tr><td>Windows Service</td><td>Keep "Configure MySQL Server as a Windows Service" and "Start the MySQL Server at System Startup" checked; note the <strong>service name</strong> it suggests (something like <code>MySQL97</code>)</td></tr>
+                            <tr><td>Server File Permissions</td><td>Keep the default (only the service account and Administrators can read the data folder)</td></tr>
+                            <tr><td>Sample Databases</td><td>Optional. The course builds its own <code>bookstore</code> database, so you can skip <code>sakila</code> and <code>world</code></td></tr>
+                            <tr><td>Apply Configuration</td><td>Click <strong>Execute</strong> and wait until every step shows a green check, then <strong>Finish</strong></td></tr>
+                        </tbody>
+                    </table>
+                </div>
 
-# Native Linux
-sudo systemctl status mysql
-                </code></pre>
-
-                <p>You should see <strong>active</strong> or <strong>started</strong>.</p>
-
-                <h3>2. You Can Log In</h3>
-
-                <pre><code class="language-bash">
-mysql -u root -p
-                </code></pre>
-
-                <p>Enter your password. If you see the <code>mysql></code> prompt, run a quick test:</p>
-
-                <pre><code class="language-sql">
--- Check MySQL version
-SELECT VERSION();
-
--- List existing databases
-SHOW DATABASES;
-
--- Exit
-EXIT;
-                </code></pre>
-
+                <h3>Step 4: Put the client on your PATH</h3>
+                <p>The MSI does not add <code>mysql.exe</code> to your PATH, so typing <code>mysql</code> in a terminal fails until you do. Open Start, search for <strong>Edit the system environment variables</strong>, click <strong>Environment Variables...</strong>, select <code>Path</code> under your user variables, click <strong>Edit</strong>, then <strong>New</strong>, and add:</p>
+                <pre><code class="language-text">C:\Program Files\MySQL\MySQL Server 9.7\bin</code></pre>
+                <p>Click OK three times and open a <strong>new</strong> PowerShell window (old windows keep the old PATH). Check:</p>
+                <pre><code class="language-powershell">mysql --version</code></pre>
                 <div class="card card-output">
-                    <h4>Expected Output:</h4>
-                    <pre><code>
-mysql> SELECT VERSION();
-+-----------+
+                    <h4>Output (your exact version can differ)</h4>
+                    <pre><code>C:\Program Files\MySQL\MySQL Server 9.7\bin\mysql.exe  Ver 9.7.2 for Win64 on x86_64 (MySQL Community Server - GPL)</code></pre>
+                </div>
+
+                <h3>Starting and stopping on Windows</h3>
+                <p>The service starts with Windows. To control it, open the <strong>Services</strong> app and find the MySQL service, or use an administrator PowerShell (use the service name you noted in step 3):</p>
+                <pre><code class="language-powershell">Get-Service MySQL*      # is it Running?
+Stop-Service MySQL97
+Start-Service MySQL97</code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Prefer Linux tools? Use WSL</h4>
+                    <p>If you develop inside WSL (Windows Subsystem for Linux), install MySQL inside your Ubuntu distribution with the <a href="#linux">Linux steps</a> instead. Pick one: a Windows MySQL and a WSL MySQL both want port 3306.</p>
+                </div>
+                <p>Done? Skip to <a href="#secure">Securing the Root Account</a>.</p>
+            </section>
+
+            <section id="macos" class="lesson-section">
+                <h2>🍎 macOS: Package or Homebrew</h2>
+                <p>Two good options. Homebrew is easiest to update and remove if you already use it; the DMG package is a classic point-and-click installer.</p>
+
+                <h3>Option A: Homebrew</h3>
+                <p>If you do not have <a href="https://brew.sh" target="_blank" rel="noopener">Homebrew</a> yet, install it with the one-line command on its home page and follow the instructions it prints at the end. Then ask for the 9.7 series by name:</p>
+                <pre><code class="language-bash">brew install mysql@9.7</code></pre>
+                <div class="card card-warning">
+                    <h4>⚠️ <code>brew install mysql</code> is not 9.7</h4>
+                    <p>The plain <code>mysql</code> formula follows the newest innovation release. The versioned formula <code>mysql@9.7</code> stays on the LTS series. Run <code>brew info mysql@9.7</code> to see exactly which version it installs.</p>
+                </div>
+                <p>Versioned formulae are "keg-only": Homebrew does not put their commands on your PATH. Add the folder to your shell profile, then open a new Terminal window:</p>
+                <pre><code class="language-bash">echo 'export PATH="$(brew --prefix)/opt/mysql@9.7/bin:$PATH"' &gt;&gt; ~/.zshrc
+source ~/.zshrc
+mysql --version</code></pre>
+                <p>Start the server now and at every login, and check its status:</p>
+                <pre><code class="language-bash">brew services start mysql@9.7
+brew services list</code></pre>
+                <p>The list shows <code>mysql@9.7</code> with the status <code>started</code>. Homebrew creates the root account <strong>without a password</strong>, accepting connections from your Mac only. You will fix that in <a href="#secure">Securing the Root Account</a> with <code>mysql_secure_installation</code>. To stop the server: <code>brew services stop mysql@9.7</code>.</p>
+
+                <h3>Option B: The DMG package</h3>
+                <ol>
+                    <li>On <a href="https://dev.mysql.com/downloads/mysql/" target="_blank" rel="noopener">dev.mysql.com/downloads/mysql</a>, select <strong>9.7.x LTS</strong> and <strong>macOS</strong>, then the DMG Archive for your processor: <strong>ARM, 64-bit</strong> for Apple silicon (M-series), <strong>x86, 64-bit</strong> for Intel Macs (Apple menu, About This Mac, tells you which).</li>
+                    <li>Open the DMG and run the <code>.pkg</code> installer. Near the end it asks you to set the <strong>root password</strong>; choose a strong one and store it.</li>
+                    <li>The installer registers MySQL to start automatically and adds a <strong>MySQL</strong> pane to System Settings, where you can start and stop the server.</li>
+                    <li>The programs live in <code>/usr/local/mysql/bin</code>, which is not on your PATH. Add it, then open a new Terminal window:</li>
+                </ol>
+                <pre><code class="language-bash">echo 'export PATH="/usr/local/mysql/bin:$PATH"' &gt;&gt; ~/.zshrc
+source ~/.zshrc
+mysql --version</code></pre>
+                <p>Done? Continue with <a href="#secure">Securing the Root Account</a>.</p>
+            </section>
+
+            <section id="linux" class="lesson-section">
+                <h2>🐧 Linux: APT and Yum Repositories</h2>
+                <p>Your distribution's own package is usually <strong>not</strong> MySQL 9.7:</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Distribution package</th><th>What you get</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>mysql-server</code> on Ubuntu 22.04 and 24.04</td><td>MySQL 8.0 (past its end of life)</td></tr>
+                            <tr><td><code>mysql-server</code> on Ubuntu 26.04</td><td>MySQL 8.4 LTS</td></tr>
+                            <tr><td><code>default-mysql-server</code> on Debian</td><td><strong>MariaDB</strong>, not MySQL</td></tr>
+                            <tr><td>MySQL's own APT or Yum repository</td><td>The series you pick: <strong>9.7 LTS</strong></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>Run <code>apt policy mysql-server</code> to see which version your system would install. For this course, add MySQL's repository.</p>
+
+                <h3>Ubuntu and Debian: the MySQL APT repository</h3>
+                <ol>
+                    <li>Download the repository setup package (<code>mysql-apt-config_..._all.deb</code>) from <a href="https://dev.mysql.com/downloads/repo/apt/" target="_blank" rel="noopener">dev.mysql.com/downloads/repo/apt</a>.</li>
+                    <li>Install it. A text menu opens: under the server entry, choose the <strong>9.7 LTS</strong> series, then select <strong>Ok</strong>.</li>
+                </ol>
+                <pre><code class="language-bash">sudo dpkg -i ~/Downloads/mysql-apt-config_*_all.deb</code></pre>
+                <ol start="3">
+                    <li>Refresh the package lists and install the server (the client comes with it):</li>
+                </ol>
+                <pre><code class="language-bash">sudo apt update
+sudo apt install mysql-server</code></pre>
+                <ol start="4">
+                    <li>During the install you are asked for a <strong>root password</strong>. Set a strong one. (If you leave it empty, root can only log in through <code>sudo mysql</code>; see the next section.)</li>
+                    <li>The server starts automatically and at every boot. Check it, and learn the controls:</li>
+                </ol>
+                <pre><code class="language-bash">systemctl status mysql          # look for "active (running)"
+sudo systemctl stop mysql
+sudo systemctl start mysql</code></pre>
+                <p>To change series later, run <code>sudo dpkg-reconfigure mysql-apt-config</code>, then <code>sudo apt update</code>.</p>
+
+                <h3>Fedora, RHEL, Rocky and AlmaLinux: the MySQL Yum repository</h3>
+                <p>Download the repository package for your release from <a href="https://dev.mysql.com/downloads/repo/yum/" target="_blank" rel="noopener">dev.mysql.com/downloads/repo/yum</a>, install it with <code>sudo dnf install ./mysql*-community-release-*.rpm</code>, make sure the 9.7 LTS series is the enabled one (the repository's documentation lists the repo names), then:</p>
+                <pre><code class="language-bash">sudo dnf install mysql-community-server
+sudo systemctl enable --now mysqld
+sudo grep 'temporary password' /var/log/mysqld.log</code></pre>
+                <p>On these systems the service is called <code>mysqld</code>, and the first start creates a random <strong>temporary root password</strong> in the log file. Log in with it and change it right away (next section).</p>
+
+                <div class="card card-info">
+                    <h4>💡 WSL notes</h4>
+                    <p>In WSL, follow the Ubuntu steps inside your Linux terminal. Current WSL versions run systemd, so <code>systemctl</code> works; on an older setup without systemd, use <code>sudo service mysql start</code> instead.</p>
+                </div>
+            </section>
+
+            <section id="docker" class="lesson-section">
+                <h2>🐳 Docker: Any Operating System</h2>
+                <p>If you have <a href="https://www.docker.com/products/docker-desktop/" target="_blank" rel="noopener">Docker Desktop</a> (Windows, macOS) or Docker Engine (Linux), the official image is the quickest clean install, and removing it later leaves nothing behind. Every command in this section was run as written.</p>
+
+                <h3>Start a MySQL 9.7 container</h3>
+                <pre><code class="language-bash">docker run --name mysql97 \
+  -e MYSQL_ROOT_PASSWORD='choose-a-strong-password' \
+  -p 3306:3306 \
+  -v mysql97-data:/var/lib/mysql \
+  -d mysql:9.7</code></pre>
+                <p>On Windows PowerShell, write it on one line (or end each line with a backtick <code>`</code> instead of <code>\</code>). What each part does:</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Part</th><th>Meaning</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>--name mysql97</code></td><td>A name to refer to the container by</td></tr>
+                            <tr><td><code>-e MYSQL_ROOT_PASSWORD=...</code></td><td>The root password, set on the very first start only. Required: without it (or one of the alternatives) the container stops with "Database is uninitialized and password option is not specified"</td></tr>
+                            <tr><td><code>-p 3306:3306</code></td><td>Publish the container's port 3306 on your computer's port 3306. Use <code>-p 3307:3306</code> if 3306 is taken</td></tr>
+                            <tr><td><code>-v mysql97-data:/var/lib/mysql</code></td><td>Keep the data in a named volume, so it survives stopping, removing and re-creating the container</td></tr>
+                            <tr><td><code>-d mysql:9.7</code></td><td>Run in the background, from the official image, 9.7 series (the tag <code>mysql:lts</code> currently points to the same image; <code>mysql:latest</code> is the newest innovation release)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>The first start takes 10 to 30 seconds while MySQL creates its system tables. Watch the log until the last line says the server is ready:</p>
+                <pre><code class="language-bash">docker logs mysql97</code></pre>
+                <div class="card card-output">
+                    <h4>Output (last line; timestamps differ)</h4>
+                    <pre><code>... [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '9.7.2'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Community Server - GPL.</code></pre>
+                </div>
+                <p>The log shows "ready for connections" twice: the first time is a temporary server used for setup (it says <code>port: 0</code>). Wait for the one with <code>port: 3306</code>.</p>
+
+                <h3>Connect</h3>
+                <p>The image contains the <code>mysql</code> client, so you do not need to install anything else. Open it inside the container:</p>
+                <pre><code class="language-bash">docker exec -it mysql97 mysql -u root -p</code></pre>
+                <p>If you also have a <code>mysql</code> client installed on your computer, connect through the published port. Use the address <code>127.0.0.1</code>, not <code>localhost</code>: on macOS and Linux, the client treats <code>localhost</code> as "use the local socket file" and ignores the port, which fails with error 2002.</p>
+                <pre><code class="language-bash">mysql -h 127.0.0.1 -P 3306 -u root -p</code></pre>
+
+                <h3>Stop, start, remove</h3>
+                <pre><code class="language-bash">docker stop mysql97        # stop the server; data is kept
+docker start mysql97       # start it again, same data and password
+docker rm -f mysql97       # delete the container; the mysql97-data volume (your data) stays
+docker volume rm mysql97-data   # only when you really want to erase every database</code></pre>
+                <div class="card card-info">
+                    <h4>💡 Docker Desktop starts on demand</h4>
+                    <p>Containers only run while Docker Desktop is running. After a reboot, open Docker Desktop and run <code>docker start mysql97</code> (or click its start button in the Containers list). Add <code>--restart unless-stopped</code> to the <code>docker run</code> command if you want it to come back by itself.</p>
+                </div>
+            </section>
+
+            <section id="xampp" class="lesson-section">
+                <h2>📦 XAMPP, MAMP and MariaDB</h2>
+                <p>Bundles such as <strong>XAMPP</strong> install Apache, PHP, phpMyAdmin and a database in one go, and many classrooms use them. Know what you are getting:</p>
+                <ul>
+                    <li><strong>XAMPP ships MariaDB, not MySQL</strong>, even though its control panel labels the button "MySQL".</li>
+                    <li><strong>MAMP</strong> ships MySQL, usually an older series than 9.7.</li>
+                    <li>Many shared web hosts and Linux distributions also hand you MariaDB under the name "MySQL".</li>
+                </ul>
+                <p>The basic SQL of this course works on all of them, but you will see differences: some newer MySQL features fail, a few error messages read differently, and grouped results come back sorted. The quickest way to find out what you are talking to is to ask the server. Here is the same statement on MariaDB:</p>
+                <pre data-server="mariadb"><code class="language-sql">SELECT VERSION();</code></pre>
+                <div class="card card-output">
+                    <h4>Output on MariaDB (your version number will differ)</h4>
+                    <pre><code>+------------------------+
+| VERSION()              |
++------------------------+
+| 12.3.3-MariaDB-ubu2404 |
++------------------------+</code></pre>
+                </div>
+                <p>The word <strong>MariaDB</strong> in the version is the giveaway. If you must use XAMPP, you can follow the course; read the 🐬 version notes when your output disagrees. For the smoothest ride, install MySQL 9.7 itself.</p>
+            </section>
+
+            <section id="secure" class="lesson-section">
+                <h2>🔐 Securing the Root Account</h2>
+                <p><strong>root</strong> is MySQL's all-powerful administrator account. It should always have a strong password, and it is for administration only: from Lesson 7.4 on, applications get their own accounts with just the permissions they need.</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>You installed with</th><th>Root password now</th><th>What to do</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Windows MSI + Configurator</td><td>The one you set</td><td>Nothing more; optionally run <code>mysql_secure_installation</code></td></tr>
+                            <tr><td>macOS DMG</td><td>The one you set</td><td>Nothing more</td></tr>
+                            <tr><td>Homebrew</td><td><strong>None</strong></td><td>Run <code>mysql_secure_installation</code></td></tr>
+                            <tr><td>MySQL APT repository</td><td>The one you set (or socket login if left empty)</td><td>Optionally run <code>sudo mysql_secure_installation</code></td></tr>
+                            <tr><td>Yum repository</td><td>Temporary, from the log</td><td>Log in with it and change it (below)</td></tr>
+                            <tr><td>Ubuntu's own package</td><td>None: <code>sudo mysql</code> only (auth_socket)</td><td>Set a password (below)</td></tr>
+                            <tr><td>Docker</td><td>The <code>MYSQL_ROOT_PASSWORD</code> you gave</td><td>Nothing more</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>The security script</h3>
+                <p><code>mysql_secure_installation</code> comes with every server package. Run it in a terminal (with <code>sudo</code> on Linux):</p>
+                <pre><code class="language-bash">mysql_secure_installation</code></pre>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>It asks</th><th>Answer on a learning machine</th><th>Why</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Set up the VALIDATE PASSWORD component?</td><td>Your choice; <strong>y</strong> with level MEDIUM is good practice</td><td>Rejects weak passwords for every account</td></tr>
+                            <tr><td>New password for root (if it has none)</td><td>A strong password</td><td>Closes the empty-password door</td></tr>
+                            <tr><td>Remove anonymous users?</td><td><strong>y</strong></td><td>Nobody should log in without a name</td></tr>
+                            <tr><td>Disallow root login remotely?</td><td><strong>y</strong></td><td>root only from this computer</td></tr>
+                            <tr><td>Remove test database?</td><td><strong>y</strong></td><td>Anyone could use it</td></tr>
+                            <tr><td>Reload privilege tables now?</td><td><strong>y</strong></td><td>Applies the changes</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Setting the root password by hand</h3>
+                <p>For the Yum temporary password, or Ubuntu's own package where root logs in with <code>sudo mysql</code>, open the client as described in the table and run one statement. Replace the placeholder with your own password, and keep the quotes:</p>
+                <pre data-norun><code class="language-sql">ALTER USER 'root'@'localhost'
+    IDENTIFIED WITH caching_sha2_password BY 'your-strong-password-here';</code></pre>
+                <p><code>caching_sha2_password</code> is MySQL's default and secure login method. From then on, log in with <code>mysql -u root -p</code> (no <code>sudo</code>).</p>
+
+                <div class="card card-danger">
+                    <h4>🛑 Never "fix" logins with mysql_native_password</h4>
+                    <p>Old tutorials and answers tell you to switch root to <code>mysql_native_password</code> so that phpMyAdmin or an old library can connect. That plugin is removed in MySQL 9.x (and disabled by default in 8.4), so the advice fails with error 1524, and it was the weaker method anyway. Current clients, phpMyAdmin 5.2 and PHP's mysqli/PDO all support <code>caching_sha2_password</code>. Update the client instead of weakening the server.</p>
+                </div>
+            </section>
+
+            <section id="verify" class="lesson-section">
+                <h2>✅ Connect and Verify</h2>
+                <p>Open a terminal and log in (Docker: <code>docker exec -it mysql97 mysql -u root -p</code>):</p>
+                <pre><code class="language-bash">mysql -u root -p</code></pre>
+                <p><code>-u root</code> is the user name, <code>-p</code> means "ask me for the password". Type it at the <code>Enter password:</code> prompt (nothing appears while you type, that is normal) and you see a welcome message and the <code>mysql&gt;</code> prompt. Everything you type there goes to the server. End each statement with a semicolon. Try these three:</p>
+
+                <pre><code class="language-sql">SELECT VERSION();</code></pre>
+                <div class="card card-output">
+                    <h4>Output (your exact version can differ)</h4>
+                    <pre><code>+-----------+
 | VERSION() |
 +-----------+
-| 8.0.xx    |
-+-----------+
-1 row in set (0.00 sec)
+| 9.7.2     |
++-----------+</code></pre>
+                </div>
+                <p>Any 9.7.x is right. If you see 8.0, 8.4, 26.x or a version containing "MariaDB", you are talking to a different server than you meant to (see <a href="#mistakes">Common Mistakes</a>).</p>
 
-mysql> SHOW DATABASES;
-+--------------------+
+                <pre><code class="language-sql">SHOW DATABASES;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+--------------------+
 | Database           |
 +--------------------+
 | information_schema |
 | mysql              |
 | performance_schema |
 | sys                |
-+--------------------+
-4 rows in set (0.01 sec)
-                    </code></pre>
++--------------------+</code></pre>
+                </div>
+                <p>A fresh server holds four system databases. MySQL keeps its accounts, settings and statistics in them; you will look inside in the next lesson, but never store your own tables there. If you installed sample databases or ran another course before, you see those too.</p>
+
+                <pre><code class="language-sql">SELECT CURRENT_USER();</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------------+
+| CURRENT_USER() |
++----------------+
+| root@localhost |
++----------------+</code></pre>
+                </div>
+                <p>You are root, connected from this computer (<code>localhost</code>). Through Docker's published port with <code>-h 127.0.0.1</code> you would see <code>root@%</code> instead, the container's "root from any host" account. To leave the client, type <code>exit</code> (or press <kbd>Ctrl</kbd>+<kbd>D</kbd> on macOS and Linux).</p>
+            </section>
+
+            <section id="gui" class="lesson-section">
+                <h2>🖥️ Optional: phpMyAdmin and Other GUIs</h2>
+                <p>Lesson 1.3 tours <strong>phpMyAdmin</strong>, a browser-based tool written in PHP. You do not need it to finish the course; the command-line client does everything. If you want it, the least fiddly route is a second container next to your MySQL container:</p>
+                <pre><code class="language-bash">docker network create mysql-net
+docker network connect mysql-net mysql97
+docker run --name phpmyadmin --network mysql-net \
+  -e PMA_HOST=mysql97 -p 8080:80 -d phpmyadmin:5.2</code></pre>
+                <p>Then open <code>http://localhost:8080</code> and log in as <code>root</code> with your password. (Tested: phpMyAdmin 5.2 logs in to MySQL 9.7 with its default <code>caching_sha2_password</code> accounts.) Without Docker:</p>
+                <ul>
+                    <li><strong>Ubuntu/Debian:</strong> <code>sudo apt install phpmyadmin</code> pulls in Apache and PHP; choose <code>apache2</code> when asked, then browse to <code>http://localhost/phpmyadmin</code>.</li>
+                    <li><strong>XAMPP:</strong> phpMyAdmin is built in, at <code>http://localhost/phpmyadmin</code>, but it talks to XAMPP's MariaDB, not to the MySQL 9.7 you just installed.</li>
+                    <li><strong>Desktop tools:</strong> MySQL Workbench (Oracle's free GUI) and DBeaver (free, works with many databases) are installed like any app and connect with host <code>127.0.0.1</code>, port 3306, user <code>root</code>.</li>
+                </ul>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+                <p>Most first-day problems are connection problems. The error number tells you which one you have.</p>
+
+                <h3>1. "mysql: command not found" or "not recognized"</h3>
+                <pre><code class="language-bash">mysql -u root -p</code></pre>
+                <div class="card card-output">
+                    <h4>Error (macOS zsh; Windows says "The term 'mysql' is not recognized...")</h4>
+                    <pre><code>zsh: command not found: mysql</code></pre>
+                </div>
+                <p><strong>What it means:</strong> the server may be fine; your shell just cannot find the client program. <strong>Fix:</strong> add the <code>bin</code> folder to your PATH (Windows step 4, the macOS <code>export PATH</code> line), then open a new terminal. With Docker, use <code>docker exec -it mysql97 mysql -u root -p</code>.</p>
+
+                <h3>2. ERROR 1045: Access denied</h3>
+                <pre><code class="language-bash">mysql -h 127.0.0.1 -P 3306 -u root -p</code></pre>
+                <div class="card card-output">
+                    <h4>Error (the host part differs by setup)</h4>
+                    <pre><code>ERROR 1045 (28000): Access denied for user 'root'@'172.17.0.1' (using password: YES)</code></pre>
+                </div>
+                <p><strong>What it means:</strong> the server is running and answered, but the user name and password did not match an account (here: a Docker container, reached through its port, with a mistyped password). <code>using password: NO</code> means you forgot <code>-p</code>. <strong>Fix:</strong> retype the password carefully (it is case-sensitive). On Ubuntu's own package, root may only work through <code>sudo mysql</code> until you set a password. For Docker, remember that <code>MYSQL_ROOT_PASSWORD</code> only counts on the very first start: changing it later in <code>docker run</code> does nothing while the old volume still exists.</p>
+
+                <h3>3. ERROR 2002 or 2003: Can't connect</h3>
+                <pre><code class="language-bash">mysql -u root -p
+mysql -h 127.0.0.1 -P 3306 -u root -p</code></pre>
+                <div class="card card-output">
+                    <h4>Error (paths and ports differ)</h4>
+                    <pre><code>ERROR 2002 (HY000): Can't connect to local MySQL server through socket '/tmp/mysql.sock' (2)
+ERROR 2003 (HY000): Can't connect to MySQL server on '127.0.0.1:3306' (111)</code></pre>
+                </div>
+                <p><strong>What it means:</strong> nothing answered. 2002 is the local socket file (macOS and Linux), 2003 a network address and port. Usually the server is stopped; sometimes it listens elsewhere (Docker published on 3307, or a container only reachable through <code>127.0.0.1</code>, not <code>localhost</code>). <strong>Fix:</strong> start the server (<code>Start-Service</code>, <code>brew services start mysql@9.7</code>, <code>sudo systemctl start mysql</code>, <code>docker start mysql97</code>) and check the host and port you are using.</p>
+
+                <h3>4. Following old advice: mysql_native_password</h3>
+                <p>A tutorial says "if your app can't log in, create its user with <code>mysql_native_password</code>". On 9.7:</p>
+                <pre data-raises="ERROR 1524"><code class="language-sql">CREATE USER 'legacy_app'@'localhost'
+    IDENTIFIED WITH mysql_native_password BY 'placeholder-password';</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1524 (HY000): Plugin 'mysql_native_password' is not loaded</code></pre>
+                </div>
+                <p><strong>What it means:</strong> that login method no longer exists in MySQL 9.x. MySQL 8.4 still has the code but disables it by default, so it fails there the same way:</p>
+                <pre data-server="8.4" data-raises="ERROR 1524"><code class="language-sql">CREATE USER 'legacy_app'@'localhost'
+    IDENTIFIED WITH mysql_native_password BY 'placeholder-password';</code></pre>
+                <div class="card card-output">
+                    <h4>Error on MySQL 8.4</h4>
+                    <pre><code>ERROR 1524 (HY000): Plugin 'mysql_native_password' is not loaded</code></pre>
+                </div>
+                <p><strong>Fix:</strong> leave out the <code>IDENTIFIED WITH</code> part (you get <code>caching_sha2_password</code>) and update the client library. The same goes for the old <code>SELECT @@default_authentication_plugin;</code> check, which fails with <code>ERROR 1193 (HY000): Unknown system variable 'default_authentication_plugin'</code> because that setting was removed too.</p>
+
+                <h3>5. Installing a different server than you think (silent)</h3>
+                <p>Everything works, the course examples mostly run, and yet some outputs differ from the lesson. The cause is a version mix-up: <code>brew install mysql</code> or Docker's <code>mysql:latest</code> gave you an innovation release, <code>apt install mysql-server</code> gave you 8.0, or XAMPP gave you MariaDB. <strong>Fix:</strong> run <code>SELECT VERSION();</code> on day one and write the answer down. If it is not 9.7.x, either reinstall with the steps above or keep it and expect the differences the 🐬 version notes describe.</p>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: Installation Health Check</h2>
+                <p>You will install MySQL with the path you chose, then write a small health check, a few queries that describe your server, and save their answers in your journal. When something breaks later in the course, rerunning the health check tells you in a minute whether the server or your SQL is the problem. Allow about 50 minutes, most of it the installation itself.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: Install and start MySQL 9.7 <span class="step-time">(30 min)</span></h3>
+                    <p>Follow exactly one installation section above: Windows, macOS, Linux or Docker. Finish with the server running and its "start/stop" commands written in your journal.</p>
                 </div>
 
-                <p>Those four databases are MySQL's built-in system databases — you'll never need to touch them directly. Your own databases will appear in this list as you create them.</p>
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: Secure root and log in <span class="step-time">(5 min)</span></h3>
+                    <p>Make sure root has a strong password (see <a href="#secure">Securing the Root Account</a>), store it in a password manager, and log in with <code>mysql -u root -p</code>.</p>
+                </div>
 
-                <h3>3. Apache Is Serving Pages (if installed)</h3>
-                <p>Open your browser and go to <a href="http://localhost" target="_blank">http://localhost</a>. You should see a default Apache page.</p>
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: Who and what is this server? <span class="step-time">(5 min)</span></h3>
+                    <p>Run these two queries. The <code>@@</code> names read server settings; the first query's answers vary by installation, the second's should match exactly.</p>
+                    <pre><code class="language-sql">SELECT VERSION() AS version, @@version_comment AS edition, @@port AS port;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output (your version and port can differ)</h4>
+                        <pre><code>+---------+------------------------------+------+
+| version | edition                      | port |
++---------+------------------------------+------+
+| 9.7.2   | MySQL Community Server - GPL | 3306 |
++---------+------------------------------+------+</code></pre>
+                    </div>
+                    <pre><code class="language-sql">SELECT
+    CURRENT_USER()         AS logged_in_as,
+    @@character_set_server AS charset,
+    @@collation_server     AS collation;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+----------------+---------+--------------------+
+| logged_in_as   | charset | collation          |
++----------------+---------+--------------------+
+| root@localhost | utf8mb4 | utf8mb4_0900_ai_ci |
++----------------+---------+--------------------+</code></pre>
+                    </div>
+                    <p><code>utf8mb4</code> is full Unicode (every language, and emoji), MySQL's default since 8.0. If you see <code>latin1</code>, you are on a very old server.</p>
+                </div>
 
-                <h3>4. phpMyAdmin Is Accessible (if installed)</h3>
-                <p>Visit <a href="http://localhost/phpmyadmin" target="_blank">http://localhost/phpmyadmin</a> and log in with your root credentials. You should see the phpMyAdmin dashboard with your databases listed on the left.</p>
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: How does root log in? <span class="step-time">(5 min)</span></h3>
+                    <p>Account information lives in the <code>mysql.user</code> system table. Look at the root accounts:</p>
+                    <pre><code class="language-sql">SELECT user, host, plugin
+FROM mysql.user
+WHERE user = 'root'
+ORDER BY host;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+------+-----------+-----------------------+
+| user | host      | plugin                |
++------+-----------+-----------------------+
+| root | localhost | caching_sha2_password |
++------+-----------+-----------------------+</code></pre>
+                    </div>
+                    <p>A Docker container shows a second row, <code>root</code> with host <code>%</code> (any host), which is how you reach it through the published port. Ubuntu's own package shows <code>auth_socket</code> until you set a password. Whatever you see, you should not see <code>mysql_native_password</code>.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: Prove the server keeps running <span class="step-time">(5 min)</span></h3>
+                    <p>Type <code>exit</code>. Stop the server with your platform's stop command, try <code>mysql -u root -p</code> and read the error (2002 or 2003). Start the server again and log back in. Write the version, port, charset, root's plugin and your start/stop commands in your journal: that is your health check.</p>
+                </div>
 
                 <div class="card card-success">
-                    <h4>✅ All Systems Go!</h4>
-                    <p>If all four checks pass, congratulations — your development environment is fully set up! You have MySQL running, you can log in via the command line, and (optionally) you have phpMyAdmin for visual database management.</p>
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>SELECT VERSION();</code> returns 9.7.x (or you wrote down why yours differs)</li>
+                        <li>root has a strong password stored in a password manager, and you log in with <code>mysql -u root -p</code></li>
+                        <li>The charset is <code>utf8mb4</code> and root's plugin is <code>caching_sha2_password</code></li>
+                        <li>You stopped and restarted the server and saw the connection error in between</li>
+                        <li>Your journal holds the health-check answers and your start/stop commands</li>
+                    </ul>
                 </div>
             </section>
 
-            <!-- Section 9: Troubleshooting -->
-            <section id="troubleshooting" class="lesson-section">
-                <h2>Troubleshooting Common Issues</h2>
-
-                <div class="card card-warning">
-                    <h4>⚠️ "Can't connect to local MySQL server through socket"</h4>
-                    <p>This usually means MySQL isn't running. Start it:</p>
-                    <pre><code class="language-bash">
-# WSL / Ubuntu
-sudo service mysql start
-
-# macOS
-brew services start mysql
-
-# Native Linux
-sudo systemctl start mysql
-                    </code></pre>
-                </div>
-
-                <div class="card card-warning">
-                    <h4>⚠️ "Access denied for user 'root'@'localhost'"</h4>
-                    <p>Your password is wrong, or root is still using socket authentication. Try:</p>
-                    <pre><code class="language-bash">
-# Log in via sudo (bypasses password)
-sudo mysql
-
-# Then reset the password inside MySQL:
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'new_password';
-FLUSH PRIVILEGES;
-EXIT;
-                    </code></pre>
-                </div>
-
-                <div class="card card-warning">
-                    <h4>⚠️ phpMyAdmin shows a blank page or error</h4>
-                    <p>Make sure the PHP MySQL extension is installed and Apache is reloaded:</p>
-                    <pre><code class="language-bash">
-sudo apt install php-mysql php-mbstring php-zip php-gd php-json php-curl -y
-sudo service apache2 restart
-                    </code></pre>
-                </div>
-
-                <div class="card card-warning">
-                    <h4>⚠️ "dpkg: error processing package mysql-server"</h4>
-                    <p>If the MySQL install fails on Ubuntu/WSL, try:</p>
-                    <pre><code class="language-bash">
-sudo apt --fix-broken install
-sudo apt install mysql-server -y
-                    </code></pre>
-                </div>
-
-                <div class="card card-warning">
-                    <h4>⚠️ macOS: "ERROR 2002 (HY000): Can't connect"</h4>
-                    <p>If you installed via Homebrew and get connection errors:</p>
-                    <pre><code class="language-bash">
-# Make sure MySQL is running
-brew services restart mysql
-
-# Try connecting without sudo
-mysql -u root
-                    </code></pre>
-                    <p>On macOS, you typically don't use <code>sudo</code> with MySQL commands.</p>
-                </div>
-
-                <div class="card card-warning">
-                    <h4>⚠️ WSL: localhost not loading in browser</h4>
-                    <p>Newer versions of WSL2 may use a different IP. Try:</p>
-                    <pre><code class="language-bash">
-# Find your WSL IP
-hostname -I
-                    </code></pre>
-                    <p>Then visit <code>http://&lt;that-ip&gt;/phpmyadmin</code> instead of <code>http://localhost/phpmyadmin</code>. Alternatively, check that <a href="https://learn.microsoft.com/en-us/windows/wsl/networking" target="_blank" rel="noopener">WSL networking</a> is configured for localhost forwarding.</p>
-                </div>
-            </section>
-
-            <!-- Section 10: Exercises -->
             <section id="exercises" class="lesson-section">
-                <h2>Exercises</h2>
+                <h2>🏋️ Hands-on Exercises</h2>
 
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 1: Confirm Your Setup</h3>
-                    <p>Run through this checklist and verify each item:</p>
-                    <ol>
-                        <li>Open your terminal and run <code>mysql --version</code> — what version are you running?</li>
-                        <li>Log into MySQL with <code>mysql -u root -p</code></li>
-                        <li>Run <code>SELECT VERSION();</code> — does it match?</li>
-                        <li>Run <code>SHOW DATABASES;</code> — how many system databases do you see?</li>
-                        <li>Type <code>EXIT;</code> to leave</li>
-                    </ol>
-
+                <div class="card">
+                    <h3>🏋️ Exercise 1: Client Version vs. Server Version</h3>
+                    <p>Run <code>mysql --version</code> in your terminal, then log in and run <code>SELECT VERSION();</code>. Do the numbers match? Which program does each one describe?</p>
                     <details>
-                        <summary>✅ What You Should See</summary>
+                        <summary>💡 Hint</summary>
+                        <p>One command runs before you are connected to anything.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <p><code>mysql --version</code> describes the <strong>client</strong> program on your computer; it works even when no server is running. <code>SELECT VERSION()</code> asks the <strong>server</strong>. With a normal installation both say 9.7.x. They can differ, for example a Docker 9.7 server reached from an older client installed on your laptop. That usually still works, but it is worth knowing which is which.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 2: Read the Settings Yourself</h3>
+                    <p>Write one or two queries that show the server's default SQL mode (<code>@@sql_mode</code>) and the folder it is allowed to read and write files in (<code>@@secure_file_priv</code>). You will meet both again: the SQL mode in Lesson 3.3, the file folder in Lesson 8.1.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Put both <code>@@</code> names in one <code>SELECT</code>, separated by a comma, and give each an alias with <code>AS</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT @@sql_mode AS sql_mode;
+SELECT @@secure_file_priv AS file_folder;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output (the folder differs by installation)</h4>
+                            <pre><code>+-----------------------------------------------------------------------------------------------------------------------+
+| sql_mode                                                                                                              |
++-----------------------------------------------------------------------------------------------------------------------+
+| ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION |
++-----------------------------------------------------------------------------------------------------------------------+
++-----------------------+
+| file_folder           |
++-----------------------+
+| /var/lib/mysql-files/ |
++-----------------------+</code></pre>
+                        </div>
+                        <p>Two separate statements keep the very wide SQL mode in its own table; one <code>SELECT</code> with both columns is just as correct. The SQL mode is the same on every MySQL 9.7 that nobody has reconfigured. The file folder is <code>/var/lib/mysql-files/</code> on Linux packages and Docker; on Windows it is under <code>C:\ProgramData\MySQL\MySQL Server 9.7\Uploads\</code>, and it can be <code>NULL</code> (no file access) or empty (anywhere) elsewhere.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: Break It on Purpose</h3>
+                    <p>Produce each of these errors once, on purpose, and write down the exact command that caused it: 1045 (access denied) and 2002 or 2003 (cannot connect).</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>One needs the server running and a wrong password; the other needs the server stopped (or a wrong port).</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
                         <ul>
-                            <li><code>mysql --version</code> shows something like <code>mysql Ver 8.0.xx</code></li>
-                            <li><code>SELECT VERSION();</code> returns the same version number</li>
-                            <li><code>SHOW DATABASES;</code> shows 4 system databases: information_schema, mysql, performance_schema, sys</li>
+                            <li><strong>1045:</strong> server running, <code>mysql -u root -p</code>, type a wrong password. The server answered and refused you.</li>
+                            <li><strong>2002/2003:</strong> stop the server and run <code>mysql -u root -p</code>, or connect to a port where nothing listens (<code>mysql -h 127.0.0.1 -P 3399 -u root -p</code>). Nothing answered at all.</li>
                         </ul>
+                        <p>The difference is the most useful debugging fact of this lesson: 1045 means "fix your credentials", 2002/2003 means "fix the server or the address".</p>
                     </details>
                 </div>
 
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 2: Explore phpMyAdmin (if installed)</h3>
-                    <ol>
-                        <li>Open <a href="http://localhost/phpmyadmin" target="_blank">http://localhost/phpmyadmin</a> and log in</li>
-                        <li>Click on any system database in the left sidebar (try <code>mysql</code>)</li>
-                        <li>Click the <strong>SQL</strong> tab at the top</li>
-                        <li>Type <code>SELECT VERSION();</code> and click <strong>Go</strong></li>
-                        <li>Observe the result — you just ran your first query in phpMyAdmin!</li>
-                    </ol>
-
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): A Second Server Side by Side</h3>
+                    <p>With Docker, start a MySQL 8.4 LTS container next to your main server without stopping it, connect to it, and confirm with SQL which server you are on.</p>
                     <details>
-                        <summary>✅ What You Should See</summary>
-                        <p>The SQL tab should show a text area where you can type queries. After clicking Go, the result appears below with your MySQL version number in a table format. This is the same query you ran from the command line — phpMyAdmin is just a visual wrapper around the MySQL CLI.</p>
+                        <summary>💡 Hint</summary>
+                        <p>Use a different container name, a different volume and a different host port, and connect with <code>-h 127.0.0.1 -P</code> and that port.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-bash">docker run --name mysql84 -e MYSQL_ROOT_PASSWORD='another-strong-password' \
+  -p 3307:3306 -v mysql84-data:/var/lib/mysql -d mysql:8.4
+docker exec -it mysql84 mysql -u root -p</code></pre>
+                        <p>Inside, <code>SELECT VERSION();</code> shows 8.4.x. Port 3307 on your computer leads to this container while 3306 still leads to your 9.7 server. Remove it afterwards with <code>docker rm -f mysql84</code> and <code>docker volume rm mysql84-data</code>.</p>
                     </details>
                 </div>
+            </section>
 
-                <!-- Quiz -->
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
                 <div class="card quiz-container">
-                    <h3>🎯 Quick Quiz</h3>
+                    <h3>🎯 Check Your Understanding</h3>
 
                     <div class="quiz-question">
-                        <p><strong>Question 1:</strong> What does the "M" in LAMP stand for?</p>
+                        <p><strong>Question 1:</strong> You want the version this course uses. Which install command or download gets it?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="MongoDB is a NoSQL database, not part of LAMP.">
-                                A) MongoDB
+                            <button class="quiz-option" data-correct="false" data-hint="The plain formula follows the newest innovation release, not the LTS series.">
+                                A) <code>brew install mysql</code>
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! LAMP = Linux, Apache, MySQL, PHP.">
-                                B) MySQL
+                            <button class="quiz-option" data-correct="false" data-hint="Check the table in the Linux section: Ubuntu 24.04's own package is an older series.">
+                                B) <code>sudo apt install mysql-server</code> on Ubuntu 24.04, without adding any repository
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="MariaDB is compatible with MySQL but the acronym specifically refers to MySQL.">
-                                C) MariaDB
+                            <button class="quiz-option" data-correct="true" data-explanation="The 9.7 tag pins the LTS series. latest, plain brew install mysql and distribution packages can each give you a different version.">
+                                C) <code>docker run ... mysql:9.7</code>
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 2:</strong> Which command logs you into MySQL from the command line?</p>
+                        <p><strong>Question 2:</strong> <code>mysql -u root -p</code> answers <code>ERROR 2002 (HY000): Can't connect to local MySQL server through socket</code>. What is the most likely cause?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="This starts the MySQL service, but doesn't log you in.">
-                                A) sudo service mysql start
+                            <button class="quiz-option" data-correct="true" data-explanation="2002 and 2003 mean nothing answered. A stopped server is the usual reason; start it and try again.">
+                                A) The server is not running
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The -u flag specifies the user, and -p prompts for the password.">
-                                B) mysql -u root -p
+                            <button class="quiz-option" data-correct="false" data-hint="A wrong password needs a server to reject it. That would be a different error number.">
+                                B) The password is wrong
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="This would open MySQL's config file, not log you in.">
-                                C) mysql --config
+                            <button class="quiz-option" data-correct="false" data-hint="If the client were missing, the shell would say command not found before any MySQL error.">
+                                C) The mysql client is not installed
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 3:</strong> What SQL command shows all databases on the server?</p>
+                        <p><strong>Question 3:</strong> A forum answer says: "phpMyAdmin can't log in? Run <code>ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '...';</code>". What happens on MySQL 9.7?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="SELECT retrieves data from a table, not a list of databases.">
-                                A) SELECT DATABASES;
+                            <button class="quiz-option" data-correct="false" data-hint="That plugin is not part of MySQL 9.x anymore. What does MySQL say when a plugin is missing?">
+                                A) It works, but logins become less secure
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="LIST is not a standard SQL command.">
-                                B) LIST DATABASES;
+                            <button class="quiz-option" data-correct="true" data-explanation="mysql_native_password is removed in 9.x, so the statement fails with error 1524. Current phpMyAdmin and PHP support the default caching_sha2_password.">
+                                B) It fails with error 1524, because the plugin is not loaded
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! SHOW DATABASES; lists every database on the server.">
-                                C) SHOW DATABASES;
+                            <button class="quiz-option" data-correct="false" data-hint="Nothing is deleted. Read the version note in the security section.">
+                                C) It deletes the root account
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> Your MySQL runs in Docker, published with <code>-p 3306:3306</code>. Which command connects from a <code>mysql</code> client installed on your Mac?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="127.0.0.1 forces a TCP connection to the published port. The name localhost makes the client look for a local socket file, which the container does not provide.">
+                                A) <code>mysql -h 127.0.0.1 -P 3306 -u root -p</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="With the name localhost, the client tries a socket file and ignores the port.">
+                                B) <code>mysql -h localhost -P 3306 -u root -p</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="That is a client option, but it does not tell the client where the container is. The address matters.">
+                                C) <code>mysql --docker -u root -p</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> A classmate uses XAMPP. <code>SELECT VERSION();</code> returns <code>10.4.32-MariaDB</code>. What is true?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Look at the word after the number.">
+                                A) It is MySQL 10.4, newer than 9.7
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Most of the course runs fine on MariaDB. The question is whether every output will match.">
+                                B) None of this course's SQL will run on it
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="XAMPP bundles MariaDB, a MySQL fork with its own version numbers. Basic SQL runs, but some features, messages and result orders differ from MySQL 9.7.">
+                                C) It is MariaDB: most SQL works, but some results and features differ from MySQL 9.7
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
@@ -809,34 +766,104 @@ hostname -I
                 </div>
             </section>
 
-            <!-- Section 11: Summary -->
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Should I install MySQL 8.4 instead, because my school or host uses it?</summary>
+                    <p>Either works for this course. 8.4 is also an LTS release, and nearly every example runs identically; the version notes mention where 9.7 behaves differently. If your production server is 8.4, matching it on your laptop is a reasonable choice.</p>
+                </details>
+                <details>
+                    <summary>Does MySQL slow my computer down when I'm not using it?</summary>
+                    <p>An idle server uses some memory (a few hundred MB) and almost no CPU. If that bothers you, turn off automatic start (Windows Services, <code>brew services stop</code>, <code>sudo systemctl disable mysql</code>, or just do not start the container) and start it when you study.</p>
+                </details>
+                <details>
+                    <summary>I forgot the root password. Do I have to reinstall?</summary>
+                    <p>No. MySQL's manual has a "How to Reset the Root Password" procedure: you restart the server with a special option that skips password checks, set a new password, and restart normally. With Docker on a learning machine, removing the container and its volume and starting fresh is often quicker, since there is no data to lose yet.</p>
+                </details>
+                <details>
+                    <summary>Is it safe to keep root without a password since it's only my laptop?</summary>
+                    <p>No. Any program on your computer, including a malicious browser extension or package, could connect to an unprotected server. A strong password costs you nothing, and building the habit now matters when you deploy real systems.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>Find the server's data directory with <code>SELECT @@datadir;</code> and look at it with your file manager (on Linux you need <code>sudo</code>; in Docker, <code>docker exec mysql97 ls /var/lib/mysql</code>). You will see a folder per database. Do not edit anything there: the server owns those files. Then find the server's error log (<code>SELECT @@log_error;</code>, or <code>docker logs mysql97</code>) and read the lines from your last start.</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Write your installation story: which path you chose and why, what went wrong (something usually does), the exact error message you saw, and what fixed it. Next time you install a database, this note will save you an hour.</p>
+                </div>
+            </section>
+
             <section id="summary" class="lesson-section">
-                <h2>Summary</h2>
+                <h2>📝 Lesson Summary</h2>
 
                 <div class="card card-success">
-                    <h3>🎉 Key Takeaways</h3>
+                    <h3>🎓 Key Takeaways</h3>
                     <ul>
-                        <li>The <strong>LAMP stack</strong> (Linux, Apache, MySQL, PHP) is the classic web development environment</li>
-                        <li><strong>Windows</strong> users install MySQL through WSL (Ubuntu) for a real Linux environment</li>
-                        <li><strong>macOS</strong> users install MySQL through Homebrew with <code>brew install mysql</code></li>
-                        <li><strong>Linux</strong> users install directly with <code>sudo apt install mysql-server</code></li>
-                        <li>Always run <code>mysql_secure_installation</code> to set a root password and remove defaults</li>
-                        <li>Switch root from socket auth to password auth with <code>ALTER USER</code> so phpMyAdmin can connect</li>
-                        <li><strong>phpMyAdmin</strong> provides a visual, browser-based interface for managing databases</li>
-                        <li>Use <code>mysql -u root -p</code> to log in from the command line</li>
+                        <li>MySQL is a <strong>server</strong> (<code>mysqld</code>, port 3306) plus <strong>clients</strong> such as the <code>mysql</code> command</li>
+                        <li>Install <strong>9.7 LTS</strong> on purpose: "latest" is an innovation release (26.x), Ubuntu's package is 8.0 or 8.4, and XAMPP and Debian give you MariaDB</li>
+                        <li>Windows: MSI + MySQL Configurator; macOS: <code>brew install mysql@9.7</code> or the DMG; Linux: MySQL's APT/Yum repository; anywhere: <code>docker run ... mysql:9.7</code></li>
+                        <li>root gets a strong password and the default <code>caching_sha2_password</code> plugin; <code>mysql_native_password</code> is gone in 9.x</li>
+                        <li>Log in with <code>mysql -u root -p</code>; to a Docker container use <code>docker exec</code> or <code>-h 127.0.0.1 -P port</code></li>
+                        <li>1045 = credentials; 2002/2003 = server stopped or wrong address; "command not found" = PATH</li>
                     </ul>
                 </div>
 
-                <h3>🚀 What's Next?</h3>
-                <p>Your database server is up and running. In the next lesson, you'll learn to navigate both the <strong>MySQL command-line interface (CLI)</strong> and <strong>phpMyAdmin</strong> — running queries, exploring databases, and getting comfortable with the tools you'll use throughout this course.</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Platform</th><th>Start</th><th>Stop</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Windows</td><td><code>Start-Service MySQL97</code></td><td><code>Stop-Service MySQL97</code></td></tr>
+                            <tr><td>macOS (Homebrew)</td><td><code>brew services start mysql@9.7</code></td><td><code>brew services stop mysql@9.7</code></td></tr>
+                            <tr><td>macOS (DMG)</td><td>System Settings, MySQL pane</td><td>System Settings, MySQL pane</td></tr>
+                            <tr><td>Ubuntu/Debian</td><td><code>sudo systemctl start mysql</code></td><td><code>sudo systemctl stop mysql</code></td></tr>
+                            <tr><td>Fedora/RHEL</td><td><code>sudo systemctl start mysqld</code></td><td><code>sudo systemctl stop mysqld</code></td></tr>
+                            <tr><td>Docker</td><td><code>docker start mysql97</code></td><td><code>docker stop mysql97</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                <div class="card card-accent" style="text-align: center; padding: 2rem;">
-                    <h3>🎉 Congratulations!</h3>
-                    <p>You've installed MySQL and set up your development environment. The hardest part of any course is getting the tools working — and you've done it. Let's put them to use!</p>
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You installed and started your own MySQL 9.7 server</li>
+                        <li>You secured the root account with a strong password and the modern login plugin</li>
+                        <li>You connected with the <code>mysql</code> client and ran your first queries against your server</li>
+                        <li>You built a health check and met the classic connection errors on purpose</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>In <a href="lesson_03.html"><strong>Lesson 1.3: MySQL CLI &amp; phpMyAdmin</strong></a> you will learn to move around confidently in the <code>mysql</code> client (databases, tables, the <code>\G</code> trick, help, running <code>.sql</code> files) and take a guided tour of phpMyAdmin.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
+                <ul>
+                    <li>Log in once more from a fresh terminal, so starting a session feels routine</li>
+                    <li>Install a code editor for <code>.sql</code> files if you do not have one (VS Code is free and works well)</li>
+                    <li>Optional: set up phpMyAdmin (Docker or apt) so you can follow the phpMyAdmin tour hands-on</li>
+                </ul>
+
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>Installation is the least glamorous part of learning a database and often the most frustrating: paths, services, ports and passwords, all before any SQL. If you got through it, the hardest setup of the course is behind you. If you got stuck, you now know how to read the error numbers, and that skill will serve you for years.</p>
                 </div>
             </section>
 
-            <!-- Lesson Navigation -->
             <nav class="lesson-nav" aria-label="Lesson Navigation">
                 <a href="lesson_01.html" class="prev-lesson">← Previous: What Is a Database?</a>
                 <a href="index.html" class="home-link">🏠 Course Home</a>
@@ -845,9 +872,8 @@ hostname -I
         </div>
     </main>
 
-    <!-- Footer -->
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>
@@ -856,7 +882,6 @@ hostname -I
         <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
     </footer>
 
-    <!-- JavaScript -->
     <script src="js/clipboard.js"></script>
     <script src="js/course-enhancements.js"></script>
 </body>

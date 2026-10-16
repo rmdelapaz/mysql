@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 10</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 10: Normalization and Stored Programs</h1>
+    <p class="sub">How to teach design and stored programs in one session: make a flat sheet corrupt itself, find its dependencies and key, split it into 3NF tables and prove with EXCEPT that nothing was lost; then save logic next to the data as procedures and functions, with parameters, characteristics and input checks that refuse bad calls.</p>
+    <div class="meta-row">
+      <span class="chip"><b>2</b> lessons</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lessons <b>6.3–7.1</b></span>
+      <span class="chip">Session <b>10</b> of 14 · Part 2</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Same rhythm as every session: frame → live demo → guided lab → start the lesson's own project. Exercises, quizzes, journals and the rest of each project go home.</li>
+  <li>Every SQL block below was run on MySQL 9.7 to produce the output printed under it: Lesson 6.3 in its own practice database <code class="inline">normalize_lab</code> (the lesson's choice; bookstore is not touched), Lesson 7.1 on a freshly loaded bookstore.</li>
+  <li>Keep <code class="inline">lesson_16.html</code> (6.3) and <code class="inline">lesson_17.html</code> (7.1) open: the dependency diagrams, the ER diagrams and the characteristics table are worth showing, not redrawing. Labs live in <code class="inline">labs/module-10/</code>.</li>
+  <li><b>Two modes in one session.</b> Lesson 6.3 is design on paper and in a throwaway database; 7.1 is programming inside the bookstore. The break is the switch: everyone runs <code class="inline">SOURCE bookstore.sql</code> before the 7.1 demo.</li>
+  <li>Teal blocks are hands-on, amber blocks are watch-outs. Lesson codes (6.3, 7.1) match the course site.</li>
+</ul>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Files to hand out:</b> <code class="inline">labs/module-10/</code> without the <code class="inline">*_solution.sql</code> files; the workbook.</li>
+  <li>☐ <b>Run the kit check once:</b> <code class="inline">python3 labs/check_labs.py module-10</code> (10 files, a few seconds). <code class="inline">debug_routines.sql</code> needs binary logging (the MySQL default): on a server started with <code class="inline">--skip-log-bin</code> its section B does not fail and the check reports it.</li>
+  <li>☐ <b>Projector machine:</b> MySQL 9.7, no <code class="inline">normalize_lab</code> yet (drop it if a rehearsal left one), the client at 18 pt, both lesson pages open at the setup blocks you will paste.</li>
+  <li>☐ <b>Board, before learners arrive:</b> "the key, the whole key, and nothing but the key" with 1NF / 2NF / 3NF under it; for 7.1, two boxes "procedure: CALL, result sets, OUT, changes data" and "function: one value, inside a query".</li>
+  <li>☐ <b>Print or share:</b> the workbook; plain paper for the clinic's design sketches; sticky notes for the exit ticket.</li>
+</ul>
+<div class="blk warn"><div class="h">Known traps today</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>The prompt shows <code class="inline">-&gt;</code> after a CREATE PROCEDURE</td><td>DELIMITER // is still active, or the body's END has no //</td><td>Type <code class="inline">//</code> and Enter, then <code class="inline">DELIMITER ;</code>.</td></tr>
+<tr><td>Two <code class="inline">ERROR 1064</code> lines for one procedure</td><td>No delimiter change: the client cut the body at the first ;</td><td>Wrap it in <code class="inline">DELIMITER //</code> ... <code class="inline">END //</code> ... <code class="inline">DELIMITER ;</code>.</td></tr>
+<tr><td><code class="inline">ERROR 1418</code> for a function</td><td>No characteristic, and binary logging is on</td><td><code class="inline">DETERMINISTIC</code>, <code class="inline">NO SQL</code> or <code class="inline">READS SQL DATA</code>: the true one.</td></tr>
+<tr><td><code class="inline">ERROR 1304 ... already exists</code> on the second run</td><td>No <code class="inline">DROP PROCEDURE IF EXISTS</code> before the CREATE</td><td>Every routine in a script starts with its DROP ... IF EXISTS.</td></tr>
+<tr><td>A routine returns every row instead of one</td><td>A parameter has a column's name (<code class="inline">WHERE id = id</code>)</td><td><code class="inline">p_</code> and <code class="inline">v_</code> prefixes, or qualify columns with the alias.</td></tr>
+<tr><td><code class="inline">ERROR 3780</code> on a foreign key</td><td>Referencing and referenced columns have different types (BIGINT vs INT)</td><td>One id type everywhere; <code class="inline">INT NOT NULL</code> here.</td></tr>
+<tr><td>phpMyAdmin users have no DELIMITER line</td><td>The SQL tab has a Delimiter box under the query area</td><td>Set it to <code class="inline">//</code> there (the lesson's tip).</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 10 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">10</td><td>Warm-up</td><td>Five retrieval questions on 6.1 and 6.2; two learners share the repeated value they found in a spreadsheet.</td></tr>
+      <tr><td class="t">0:10</td><td class="t">10</td><td><b>6.3</b> Frame and mental model</td><td>One big sheet corrupts itself; each fact stored once; dependencies and the three normal forms.</td></tr>
+      <tr><td class="t">0:20</td><td class="t">20</td><td><b>6.3</b> Live demo</td><td>normalize_lab: the order sheet, three anomalies, 1NF, a dependency test, 2NF and 3NF, the four tables, EXCEPT both ways, a stored total that drifts.</td></tr>
+      <tr><td class="t">0:40</td><td class="t">15</td><td><b>6.3</b> Guided lab</td><td><code class="inline">labs/module-10/l6_3-normalization/anomalies_starter.sql</code>: the workshop sheet's anomalies and dependencies.</td></tr>
+      <tr><td class="t">0:55</td><td class="t">10</td><td><b>6.3</b> Start the lesson project</td><td><code class="inline">book_club.sql</code>: Steps 1 to 3 (import, dependencies, the 3NF tables); Steps 4 to 6 go home.</td></tr>
+      <tr><td class="t">1:05</td><td class="t">10</td><td>Break</td><td>Everyone reloads bookstore.sql after the break: Lesson 7.1 starts from it.</td></tr>
+      <tr><td class="t">1:15</td><td class="t">10</td><td><b>7.1</b> Frame and mental model</td><td>Logic saved next to the data; procedure or function; DELIMITER is a client command.</td></tr>
+      <tr><td class="t">1:25</td><td class="t">25</td><td><b>7.1</b> Live demo</td><td>DELIMITER; IN, OUT, local variables, IF; a function with its characteristics; 1418; SIGNAL; the silent parameter-name bug; listing routines.</td></tr>
+      <tr><td class="t">1:50</td><td class="t">20</td><td><b>7.1</b> Guided lab</td><td><code class="inline">labs/module-10/l7_1-stored-procedures/procedures_starter.sql</code>: IN, OUT and SIGNAL on three admin-page procedures.</td></tr>
+      <tr><td class="t">2:10</td><td class="t">15</td><td><b>7.1</b> Start the lesson project</td><td><code class="inline">bookstore_routines.sql</code>: Steps 1 and 2 (order_total, customer_tier); Steps 3 to 6 go home.</td></tr>
+      <tr><td class="t">2:25</td><td class="t">25</td><td>Clinic: design review and the debug handouts</td><td>Two warm-up spreadsheets designed on the board; <code class="inline">debug_design.sql</code> and <code class="inline">debug_routines.sql</code> in pairs.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up</td><td>Exit ticket (3 questions), homework, bring list for Session 11.</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> The lesson pages estimate 105 + 105 = 210 minutes for a solo learner; after the warm-up, the break, the clinic and the wrap-up the room has 135. Lesson 6.3 gets 55 minutes (the ideas need talk; the typing is mostly pasted), 7.1 gets 70 (DELIMITER and SIGNAL are where people get stuck alone).</p>
+<p><b>Goes home (about 2 to 3 hours).</b> <code class="inline">book_club.sql</code> Steps 4 to 6 (migrate, prove with EXCEPT, the anomaly gone); <code class="inline">bookstore_routines.sql</code> Steps 3 to 6 (customer_report, add_book, break it on purpose, rerun); each lesson's Exercises 1 to 3 (4 is a stretch); both Quick Quizzes; both journal entries; <code class="inline">normalize_starter.sql</code> and <code class="inline">functions_starter.sql</code>.</p>
+<p><b>Protect, in this order:</b> the three anomalies (the reason normalization exists); the EXCEPT proof; DELIMITER with a live mistake; SIGNAL; the procedures lab through TODO 2. <b>Cut first:</b> the clinic's design review (keep the debug handouts), then 6.3 demo step 11 (the drifting total is in the lesson), then 7.1 demo step 5 (IF).</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Warm-up: Indexes and Views</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Sequence</div>
+<ul class="tick">
+  <li><b>Retrieval (6m).</b> W1 to W5 on the workbook's Warm-up box, no notes, three minutes; then the answers, W1 and W2 run on the projector.</li>
+  <li><b>Spreadsheets (4m).</b> Session 9's homework: "find a value that repeats on many rows". Two volunteers describe theirs in one sentence (a sign-up sheet with the trainer's phone on every row; an expense list with the project manager's name). Write both on the board: they come back in the clinic as design exercises.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Warm-up answers (W1 to W5)</div>
+<ol class="steps">
+  <li><b>W1</b> Which plan line do you expect, and why is there an index at all? <b>Answer:</b> Index lookup on orders using fk_orders_customer: InnoDB created that index for the foreign key.</li>
+  <li><b>W2</b> Is this view updatable? <b>Answer:</b> YES: each view row is one books row (no grouping, DISTINCT or UNION).</li>
+  <li><b>W3</b> An index on (customer_id, sold_on): can a query on a sold_on range alone seek with it? <b>Answer:</b> No: the dates are sorted only within each customer (leftmost prefix).</li>
+  <li><b>W4</b> What does MySQL store when you create a view? <b>Answer:</b> Only the query; rows are computed on every read.</li>
+  <li><b>W5</b> What does WITH CHECK OPTION refuse? <b>Answer:</b> A write through the view that would produce a row the view cannot show (1369).</li>
+</ol>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plans</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">6.3</span><h3>Database Design &amp; Normalization</h3><span class="dur">55 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Recognize update, insert and delete anomalies, and show each one with a query</li>
+  <li>Find the functional dependencies and the key of a table</li>
+  <li>Normalize a flat table to first, second and third normal form (1NF, 2NF, 3NF)</li>
+  <li>Build the normalized tables with INSERT ... SELECT DISTINCT and prove with EXCEPT that no data was lost</li>
+  <li>Read an ER diagram, and decide when storing derived or duplicated data is worth the risk</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: one big sheet corrupts itself; dependencies; 1NF, 2NF, 3NF</td></tr>
+<tr><td class="t">20m</td><td>Live demo: anomalies, 1NF, a dependency test, 3NF, four tables, EXCEPT, a drifting total</td></tr>
+<tr><td class="t">15m</td><td>Guided lab: <code class="inline">anomalies_starter.sql</code></td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: <code class="inline">book_club.sql</code> Steps 1 to 3</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Start from the warm-up spreadsheets: "Every one of these stores the same fact on many rows. It works until someone changes one copy. A database cannot stop people typing wrong values, but a good design makes sure each fact is typed once, so there is nothing to keep in sync."</p>
+<p>Then dependencies, as arrows on the board: "<b>A → B</b> means: same A, same B. order_id → order_date, email → name. They come from the rules of the business, not from today's rows." Point at the board line: <b>1NF</b> one value per cell and a key; <b>2NF</b> nothing depends on part of a composite key; <b>3NF</b> nothing depends on a non-key column. "The key, the whole key, and nothing but the key."</p>
+<p>Last, the practical recipe: one table per kind of thing, a surrogate id plus UNIQUE on the natural identifier, foreign keys on the many side, a junction table for many-to-many. "This is exactly the bookstore you have used since Module 4."</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>The lesson's own sequence in <code class="inline">normalize_lab</code>. The long setup blocks are pasted from the lesson page; the short ones are typed.</p>
+<ol class="steps">
+  <li><b>The first-year order sheet (3m).</b> "Five real orders, the way a spreadsheet holds them: the customer typed on every row, the books squeezed into one cell." Paste the setup from the lesson page (it creates normalize_lab; bookstore is not touched).
+<pre class="code"><span class="k">CREATE</span> <span class="k">DATABASE</span> normalize_lab <span class="k">CHARACTER</span> <span class="k">SET</span> utf8mb4 <span class="k">COLLATE</span> utf8mb4_unicode_ci;
+<span class="k">USE</span> normalize_lab;
+<span class="k">CREATE</span> <span class="k">TABLE</span> order_sheet (
+    order_id     <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    order_date   <span class="k">DATE</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    cust_name    <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    cust_email   <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    cust_city    <span class="k">VARCHAR</span>(<span class="s">50</span>),
+    book_titles  <span class="k">VARCHAR</span>(<span class="s">255</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    book_prices  <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    quantities   <span class="k">VARCHAR</span>(<span class="s">50</span>)  <span class="k">NOT</span> <span class="k">NULL</span>,
+    order_total  <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> order_sheet <span class="k">VALUES</span>
+    (<span class="s">1</span>, <span class="s">'2026-01-15'</span>, <span class="s">'Alice Johnson'</span>, <span class="s">'alice@example.com'</span>, <span class="s">'New York'</span>, <span class="s">'Dune, 1984'</span>, <span class="s">'14.99, 9.99'</span>, <span class="s">'1, 2'</span>, <span class="s">34.97</span>),
+    (<span class="s">2</span>, <span class="s">'2026-02-20'</span>, <span class="s">'Alice Johnson'</span>, <span class="s">'alice@example.com'</span>, <span class="s">'New York'</span>, <span class="s">'Pride and Prejudice'</span>, <span class="s">'7.99'</span>, <span class="s">'1'</span>, <span class="s">7.99</span>),
+    (<span class="s">3</span>, <span class="s">'2026-03-10'</span>, <span class="s">'Bob Smith'</span>, <span class="s">'bob@example.com'</span>, <span class="s">'Chicago'</span>, <span class="s">'Dune'</span>, <span class="s">'14.99'</span>, <span class="s">'1'</span>, <span class="s">14.99</span>),
+    (<span class="s">4</span>, <span class="s">'2026-01-22'</span>, <span class="s">'Dave Brown'</span>, <span class="s">'dave@example.com'</span>, <span class="s">'Houston'</span>, <span class="s">'The Hobbit, Lord of the Rings'</span>, <span class="s">'10.99, 15.99'</span>, <span class="s">'1, 1'</span>, <span class="s">26.98</span>),
+    (<span class="s">7</span>, <span class="s">'2026-03-28'</span>, <span class="s">'Bob Smith'</span>, <span class="s">'bob@example.com'</span>, <span class="s">'Chicago'</span>, <span class="s">'1984, Animal Farm'</span>, <span class="s">'9.99, 8.49'</span>, <span class="s">'1, 1'</span>, <span class="s">18.48</span>);
+<span class="k">SELECT</span> order_id, cust_name, cust_email, book_titles, quantities, order_total
+<span class="k">FROM</span> order_sheet
+<span class="k">ORDER</span> <span class="k">BY</span> order_id;</pre>
+<pre class="out">Database changed
++----------+---------------+-------------------+-------------------------------+------------+-------------+
+| order_id | cust_name     | cust_email        | book_titles                   | quantities | order_total |
++----------+---------------+-------------------+-------------------------------+------------+-------------+
+|        1 | Alice Johnson | alice@example.com | Dune, 1984                    | 1, 2       |       34.97 |
+|        2 | Alice Johnson | alice@example.com | Pride and Prejudice           | 1          |        7.99 |
+|        3 | Bob Smith     | bob@example.com   | Dune                          | 1          |       14.99 |
+|        4 | Dave Brown    | dave@example.com  | The Hobbit, Lord of the Rings | 1, 1       |       26.98 |
+|        7 | Bob Smith     | bob@example.com   | 1984, Animal Farm             | 1, 1       |       18.48 |
++----------+---------------+-------------------+-------------------------------+------------+-------------+</pre></li>
+  <li><b>A simple question it cannot answer (1m).</b> "How many copies of 1984? The answer is in there, but no aggregate can add up 'the second number in a list'."
+<pre class="code"><span class="k">SELECT</span> order_id, book_titles, quantities
+<span class="k">FROM</span> order_sheet
+<span class="k">WHERE</span> book_titles <span class="k">LIKE</span> <span class="s">'%1984%'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> order_id;</pre>
+<pre class="out">+----------+-------------------+------------+
+| order_id | book_titles       | quantities |
++----------+-------------------+------------+
+|        1 | Dune, 1984        | 1, 2       |
+|        7 | 1984, Animal Farm | 1, 1       |
++----------+-------------------+------------+</pre></li>
+  <li><b>Update anomaly (2m).</b> "Alice changes her email, and one row gets updated." Inside a transaction, rolled back.
+<pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> order_sheet <span class="k">SET</span> cust_email = <span class="s">'alice.j@example.com'</span> <span class="k">WHERE</span> order_id = <span class="s">2</span>;
+<span class="k">SELECT</span> <span class="k">DISTINCT</span> cust_name, cust_email
+<span class="k">FROM</span> order_sheet
+<span class="k">WHERE</span> cust_name = <span class="s">'Alice Johnson'</span>;
+<span class="k">ROLLBACK</span>;</pre>
+<pre class="out">+---------------+---------------------+
+| cust_name     | cust_email          |
++---------------+---------------------+
+| Alice Johnson | alice@example.com   |
+| Alice Johnson | alice.j@example.com |
++---------------+---------------------+</pre></li>
+  <li><b>Insert anomaly (1m).</b> "Carol signs up for the newsletter. Where does she go?"
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> order_sheet (cust_name, cust_email, cust_city)
+<span class="k">VALUES</span> (<span class="s">'Carol Williams'</span>, <span class="s">'carol@example.com'</span>, <span class="s">'Los Angeles'</span>);</pre>
+<pre class="out">ERROR 1364 (HY000): Field 'order_id' doesn't have a default value</pre>
+Every row is an order: no order, no row. Inventing a fake order or making columns nullable makes the data lie.</li>
+  <li><b>Delete anomaly (1m).</b> "Cancel Dave's only order, and the store forgets Dave."
+<pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> order_sheet <span class="k">WHERE</span> order_id = <span class="s">4</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> rows_about_dave
+<span class="k">FROM</span> order_sheet
+<span class="k">WHERE</span> cust_name = <span class="s">'Dave Brown'</span>;
+<span class="k">ROLLBACK</span>;</pre>
+<pre class="out">+-----------------+
+| rows_about_dave |
++-----------------+
+|               0 |
++-----------------+</pre></li>
+  <li><b>1NF: one value per cell (3m).</b> "One row per book per order. The question that defeated the sheet is an ordinary GROUP BY now." Point at the key (order_id, book_title), and at Alice, now on three rows: 1NF fixes querying, not duplication.
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> order_lines_1nf (
+    order_id    <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    order_date  <span class="k">DATE</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    cust_name   <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    cust_email  <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    cust_city   <span class="k">VARCHAR</span>(<span class="s">50</span>),
+    book_title  <span class="k">VARCHAR</span>(<span class="s">200</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    book_price  <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    quantity    <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> (order_id, book_title)
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> order_lines_1nf <span class="k">VALUES</span>
+    (<span class="s">1</span>, <span class="s">'2026-01-15'</span>, <span class="s">'Alice Johnson'</span>, <span class="s">'alice@example.com'</span>, <span class="s">'New York'</span>, <span class="s">'Dune'</span>, <span class="s">14.99</span>, <span class="s">1</span>),
+    (<span class="s">1</span>, <span class="s">'2026-01-15'</span>, <span class="s">'Alice Johnson'</span>, <span class="s">'alice@example.com'</span>, <span class="s">'New York'</span>, <span class="s">'1984'</span>, <span class="s">9.99</span>, <span class="s">2</span>),
+    (<span class="s">2</span>, <span class="s">'2026-02-20'</span>, <span class="s">'Alice Johnson'</span>, <span class="s">'alice@example.com'</span>, <span class="s">'New York'</span>, <span class="s">'Pride and Prejudice'</span>, <span class="s">7.99</span>, <span class="s">1</span>),
+    (<span class="s">3</span>, <span class="s">'2026-03-10'</span>, <span class="s">'Bob Smith'</span>, <span class="s">'bob@example.com'</span>, <span class="s">'Chicago'</span>, <span class="s">'Dune'</span>, <span class="s">14.99</span>, <span class="s">1</span>),
+    (<span class="s">4</span>, <span class="s">'2026-01-22'</span>, <span class="s">'Dave Brown'</span>, <span class="s">'dave@example.com'</span>, <span class="s">'Houston'</span>, <span class="s">'The Hobbit'</span>, <span class="s">10.99</span>, <span class="s">1</span>),
+    (<span class="s">4</span>, <span class="s">'2026-01-22'</span>, <span class="s">'Dave Brown'</span>, <span class="s">'dave@example.com'</span>, <span class="s">'Houston'</span>, <span class="s">'Lord of the Rings'</span>, <span class="s">15.99</span>, <span class="s">1</span>),
+    (<span class="s">7</span>, <span class="s">'2026-03-28'</span>, <span class="s">'Bob Smith'</span>, <span class="s">'bob@example.com'</span>, <span class="s">'Chicago'</span>, <span class="s">'1984'</span>, <span class="s">9.99</span>, <span class="s">1</span>),
+    (<span class="s">7</span>, <span class="s">'2026-03-28'</span>, <span class="s">'Bob Smith'</span>, <span class="s">'bob@example.com'</span>, <span class="s">'Chicago'</span>, <span class="s">'Animal Farm'</span>, <span class="s">8.49</span>, <span class="s">1</span>);
+<span class="k">SELECT</span> book_title, SUM(quantity) <span class="k">AS</span> copies
+<span class="k">FROM</span> order_lines_1nf
+<span class="k">GROUP</span> <span class="k">BY</span> book_title
+<span class="k">ORDER</span> <span class="k">BY</span> copies <span class="k">DESC</span>, book_title;</pre>
+<pre class="out">+---------------------+--------+
+| book_title          | copies |
++---------------------+--------+
+| 1984                |      3 |
+| Dune                |      2 |
+| Animal Farm         |      1 |
+| Lord of the Rings   |      1 |
+| Pride and Prejudice |      1 |
+| The Hobbit          |      1 |
++---------------------+--------+</pre></li>
+  <li><b>Test a dependency (1m).</b> "book_title → book_price: no title may have two prices. Empty set means no counterexample. Data can disprove a rule, never prove one."
+<pre class="code"><span class="k">SELECT</span> book_title, COUNT(<span class="k">DISTINCT</span> book_price) <span class="k">AS</span> prices
+<span class="k">FROM</span> order_lines_1nf
+<span class="k">GROUP</span> <span class="k">BY</span> book_title
+<span class="k">HAVING</span> COUNT(<span class="k">DISTINCT</span> book_price) &gt; <span class="s">1</span>;</pre>
+<pre class="out">Empty set</pre></li>
+  <li><b>3NF: what the customer columns really depend on (2m).</b> "In the orders the key is order_id, but the name and city are facts about the customer, reached through the email. Three customers, each once." (2NF's two DISTINCT queries are on the lesson page: say them, do not type them.)
+<pre class="code"><span class="k">SELECT</span> <span class="k">DISTINCT</span> cust_email, cust_name, cust_city
+<span class="k">FROM</span> order_lines_1nf
+<span class="k">ORDER</span> <span class="k">BY</span> cust_email;</pre>
+<pre class="out">+-------------------+---------------+-----------+
+| cust_email        | cust_name     | cust_city |
++-------------------+---------------+-----------+
+| alice@example.com | Alice Johnson | New York  |
+| bob@example.com   | Bob Smith     | Chicago   |
+| dave@example.com  | Dave Brown    | Houston   |
++-------------------+---------------+-----------+</pre></li>
+  <li><b>Build the four tables (3m).</b> Paste the block from the lesson page. "Parents first: customers and books, with UNIQUE on the natural identifiers. Then orders and order_items, joining back on email and title to find the new ids."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> customers (
+    id     <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    name   <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    email  <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">UNIQUE</span>,
+    city   <span class="k">VARCHAR</span>(<span class="s">50</span>)
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> customers (name, email, city)
+<span class="k">SELECT</span> <span class="k">DISTINCT</span> cust_name, cust_email, cust_city
+<span class="k">FROM</span> order_lines_1nf
+<span class="k">ORDER</span> <span class="k">BY</span> cust_email;
+<span class="k">CREATE</span> <span class="k">TABLE</span> books (
+    id     <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    title  <span class="k">VARCHAR</span>(<span class="s">200</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">UNIQUE</span>,
+    price  <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> books (title, price)
+<span class="k">SELECT</span> <span class="k">DISTINCT</span> book_title, book_price
+<span class="k">FROM</span> order_lines_1nf
+<span class="k">ORDER</span> <span class="k">BY</span> book_title;
+<span class="k">CREATE</span> <span class="k">TABLE</span> orders (
+    id           <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    customer_id  <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    order_date   <span class="k">DATE</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> fk_lab_orders_customer
+        <span class="k">FOREIGN</span> <span class="k">KEY</span> (customer_id) <span class="k">REFERENCES</span> customers(id)
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> orders (id, customer_id, order_date)
+<span class="k">SELECT</span> <span class="k">DISTINCT</span> l.order_id, c.id, l.order_date
+<span class="k">FROM</span> order_lines_1nf <span class="k">AS</span> l
+<span class="k">JOIN</span> customers <span class="k">AS</span> c <span class="k">ON</span> c.email = l.cust_email;
+<span class="k">CREATE</span> <span class="k">TABLE</span> order_items (
+    order_id       <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    book_id        <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    quantity       <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    price_at_time  <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> (order_id, book_id),
+    <span class="k">CONSTRAINT</span> fk_lab_items_order <span class="k">FOREIGN</span> <span class="k">KEY</span> (order_id) <span class="k">REFERENCES</span> orders(id),
+    <span class="k">CONSTRAINT</span> fk_lab_items_book  <span class="k">FOREIGN</span> <span class="k">KEY</span> (book_id)  <span class="k">REFERENCES</span> books(id)
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> order_items (order_id, book_id, quantity, price_at_time)
+<span class="k">SELECT</span> l.order_id, b.id, l.quantity, l.book_price
+<span class="k">FROM</span> order_lines_1nf <span class="k">AS</span> l
+<span class="k">JOIN</span> books <span class="k">AS</span> b <span class="k">ON</span> b.title = l.book_title;
+<span class="k">SELECT</span> (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> customers)   <span class="k">AS</span> customers,
+       (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> books)       <span class="k">AS</span> books,
+       (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> orders)      <span class="k">AS</span> orders,
+       (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> order_items) <span class="k">AS</span> order_items;</pre>
+<pre class="out">+-----------+-------+--------+-------------+
+| customers | books | orders | order_items |
++-----------+-------+--------+-------------+
+|         3 |     6 |      5 |           8 |
++-----------+-------+--------+-------------+</pre></li>
+  <li><b>Prove nothing was lost (2m).</b> "EXCEPT returns the rows of the first query missing from the second. Both directions empty: same rows on both sides."
+<pre class="code"><span class="k">SELECT</span> order_id, order_date, cust_name, cust_email, cust_city, book_title, book_price, quantity
+<span class="k">FROM</span> order_lines_1nf
+<span class="k">EXCEPT</span>
+<span class="k">SELECT</span> o.id, o.order_date, c.name, c.email, c.city, b.title, oi.price_at_time, oi.quantity
+<span class="k">FROM</span> orders <span class="k">AS</span> o
+<span class="k">JOIN</span> customers   <span class="k">AS</span> c  <span class="k">ON</span> c.id = o.customer_id
+<span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.order_id = o.id
+<span class="k">JOIN</span> books       <span class="k">AS</span> b  <span class="k">ON</span> b.id = oi.book_id;
+<span class="k">SELECT</span> o.id, o.order_date, c.name, c.email, c.city, b.title, oi.price_at_time, oi.quantity
+<span class="k">FROM</span> orders <span class="k">AS</span> o
+<span class="k">JOIN</span> customers   <span class="k">AS</span> c  <span class="k">ON</span> c.id = o.customer_id
+<span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.order_id = o.id
+<span class="k">JOIN</span> books       <span class="k">AS</span> b  <span class="k">ON</span> b.id = oi.book_id
+<span class="k">EXCEPT</span>
+<span class="k">SELECT</span> order_id, order_date, cust_name, cust_email, cust_city, book_title, book_price, quantity
+<span class="k">FROM</span> order_lines_1nf;</pre>
+<pre class="out">Empty set
+Empty set</pre></li>
+  <li><b>Silent: a stored total drifts (1m).</b> "Add the total back 'for speed', then fix a quantity the ordinary way. No error anywhere, and order 1 has two totals." This is why the bookstore has no stored total.
+<pre class="code"><span class="k">ALTER</span> <span class="k">TABLE</span> orders <span class="k">ADD</span> <span class="k">COLUMN</span> total <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>);
+<span class="k">UPDATE</span> orders <span class="k">AS</span> o
+<span class="k">SET</span> total = (<span class="k">SELECT</span> SUM(quantity * price_at_time) <span class="k">FROM</span> order_items <span class="k">WHERE</span> order_id = o.id);
+<span class="k">UPDATE</span> order_items <span class="k">SET</span> quantity = <span class="s">3</span>
+<span class="k">WHERE</span> order_id = <span class="s">1</span> <span class="k">AND</span> book_id = (<span class="k">SELECT</span> id <span class="k">FROM</span> books <span class="k">WHERE</span> title = <span class="s">'1984'</span>);
+<span class="k">SELECT</span> o.id, o.total <span class="k">AS</span> stored_total, SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> real_total
+<span class="k">FROM</span> orders <span class="k">AS</span> o
+<span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.order_id = o.id
+<span class="k">GROUP</span> <span class="k">BY</span> o.id, o.total
+<span class="k">ORDER</span> <span class="k">BY</span> o.id;</pre>
+<pre class="out">+----+--------------+------------+
+| id | stored_total | real_total |
++----+--------------+------------+
+|  1 |        34.97 |      44.96 |
+|  2 |         7.99 |       7.99 |
+|  3 |        14.99 |      14.99 |
+|  4 |        26.98 |      26.98 |
+|  7 |        18.48 |      18.48 |
++----+--------------+------------+</pre>
+Undo or not: the lab database is throwaway. <code class="inline">DROP DATABASE normalize_lab;</code> when the lesson is over.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Confusing 2NF and 3NF.</b> Coach with one question per column: "Does it need the whole key, part of the key, or another non-key column?" Part = 2NF, another column = 3NF.</li>
+  <li><b>Treating data as proof.</b> "The query found no counterexample, so it is a rule." Coach: "Would the business allow two prices for one title next year?" Data can only disprove.</li>
+  <li><b>Calling price_at_time redundant.</b> Coach: "What does each column answer?" Today's price versus what this customer paid on this order: two facts (self-check and lesson quiz).</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-10/l6_3-normalization/anomalies_starter.sql</code>; reference <code class="inline">labs/module-10/l6_3-normalization/anomalies_solution.sql</code>. A new sheet: the bookstore's workshop sign-ups (attendee, workshop, date, room, host, fee). It builds <code class="inline">kit_s10_sheet</code> and drops it on every run.</p>
+<ul class="tick">
+  <li><b>TODO 1 together (4m):</b> the update anomaly. Ask first: "if only Bob's row changes, how many dates does the workshop have?"</li>
+  <li><b>TODO 2 in pairs (4m):</b> the delete anomaly: Frank cancels, and the store forgets Speed Reading exists.</li>
+  <li><b>TODO 3 in pairs (5m):</b> two dependency tests in the style of the first. Circulate for HAVING written as WHERE (1111, invalid use of group function).</li>
+  <li><b>Expected:</b> two dates for Bookbinding Basics; 0 rows about Speed Reading; one value of each per workshop; <code class="inline">host_email → host_name</code> no counterexample; <code class="inline">host_email → workshop</code> broken by Lena, who hosts 2 workshops; key check 6 rows, 6 pairs, 5 attendees.</li>
+  <li><b>Debrief (2m):</b> "Write the dependencies as arrows. What is the key? Which tables does that suggest?" (attendees, hosts, workshops, signups).</li>
+  <li><b>Homework / fast finishers:</b> <code class="inline">labs/module-10/l6_3-normalization/normalize_starter.sql</code>: the same sheet migrated to those four tables and proved lossless with EXCEPT.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>Normalize the Book Club Sheet</b>, <code class="inline">book_club.sql</code>. In the room: Steps 1 to 3 (10 minutes).</p>
+<ul class="tick">
+  <li>Step 1: import the sheet into normalize_lab (paste from the lesson page).</li>
+  <li>Step 2: write the dependencies and the key as comments BEFORE reading the lesson's answer; then run the check query.</li>
+  <li>Step 3: create members, leaders, clubs and memberships.</li>
+  <li><b>Goes home:</b> Step 4 (migrate, parents first), Step 5 (EXCEPT both ways), Step 6 (move the Sci-Fi Circle to Wednesday: one row).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud:</p>
+<ul class="tick">
+  <li>Which normal form does a comma list in a cell break? <b>Answer:</b> 1NF.</li>
+  <li>What is the key of the order lines table? <b>Answer:</b> (order_id, book_title): neither column alone determines the rest.</li>
+  <li>Why does the bookstore store no order total? <b>Answer:</b> it can always be computed, and a stored copy can drift (demo step 11).</li>
+  <li>When is denormalizing reasonable? <b>Answer:</b> for a measured slow query, after indexes and a better query failed, with a plan to keep the copy in sync.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">A) An update anomaly</span>; <b>Q2</b> <span data-sc="2">C) First normal form: a repeating group of columns</span>; <b>Q3</b> <span data-sc="3">B) 2NF: course_room depends on only part of the key</span>; <b>Q4</b> <span data-sc="4"><code class="inline">dept_id → dept_name</code> (a transitive dependency: id → dept_id → dept_name); move dept_name to <code class="inline">departments(id, name)</code> and keep dept_id as a foreign key</span>; <b>Q5</b> <span data-sc="5">D) The four tables, joined back, hold exactly the original rows: the split lost nothing and added nothing</span>; <b>Q6</b> <span data-sc="6">B) The data does not contradict member_email → member_name; whether it is a rule is a business decision</span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> a printed dependency template ("___ → ___ because ___") for TODO 3 and the project's Step 2. Pair learners who found the warm-up spreadsheets easy with those who did not.</p>
+<p><b>Stretch:</b> the lesson's Exercise 4 (design a recipe site end to end) and the bonus (a foreign key to bookstore.books from another database: what happens on a reload?).</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">7.1</span><h3>Stored Procedures &amp; Functions</h3><span class="dur">70 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Explain what the DELIMITER client command does, and when you do not need it</li>
+  <li>Create and call stored procedures with IN, OUT and INOUT parameters</li>
+  <li>Write stored functions with the right characteristic (DETERMINISTIC, READS SQL DATA) and use them inside queries</li>
+  <li>Use local variables, IF, CASE and WHILE in a routine, and reject bad input with SIGNAL</li>
+  <li>List, inspect, replace and drop routines, and read the errors MySQL raises for broken ones (1064, 1418, 1172, 1304, 1644)</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: logic next to the data; procedure or function; DELIMITER</td></tr>
+<tr><td class="t">25m</td><td>Live demo: DELIMITER, IN, OUT, local variables, IF, a function, 1418, SIGNAL, WHERE id = id, ROUTINES</td></tr>
+<tr><td class="t">20m</td><td>Guided lab: <code class="inline">procedures_starter.sql</code></td></tr>
+<tr><td class="t">15m</td><td>Start the lesson project: <code class="inline">bookstore_routines.sql</code> Steps 1 and 2</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>"Until now every query lived in your head or in a file. When five programs need the same ten-line query, someone copies it five times and the copies drift: the same problem as this morning's spreadsheet, in code. A <b>stored routine</b> is a named block of SQL saved next to the tables, with parameters. Everyone calls the one copy."</p>
+<p>Point at the two boxes: a <b>procedure</b> is run with CALL, may return result sets, hands values back through OUT parameters and may change data; a <b>function</b> returns one value and lives inside a query, like ROUND or CONCAT.</p>
+<p>Then the one confusing thing, said plainly: "The mysql client cuts your typing at every semicolon. A body has several. <b>DELIMITER //</b> tells the CLIENT to wait for // for a while; the server never sees the word."</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>Everyone types <code class="inline">SOURCE bookstore.sql</code> first. The lesson's own examples follow; type steps 1 and 8 (DELIMITER and SIGNAL), paste the rest.</p>
+<ol class="steps">
+  <li><b>DELIMITER, and a first procedure (3m).</b> "The client sends your text to the server at every semicolon. A body has several, so for a while we tell the CLIENT to wait for // instead. The server never sees the word DELIMITER." Point at the two result sets: each SELECT in the body sends one back.
+<pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> say_hello()
+<span class="k">BEGIN</span>
+    <span class="k">SELECT</span> <span class="s">'Hello from the bookstore!'</span> <span class="k">AS</span> greeting;
+    <span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> books_in_stock <span class="k">FROM</span> books <span class="k">WHERE</span> in_stock = <span class="k">TRUE</span>;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">CALL</span> say_hello();</pre>
+<pre class="out">+---------------------------+
+| greeting                  |
++---------------------------+
+| Hello from the bookstore! |
++---------------------------+
++----------------+
+| books_in_stock |
++----------------+
+|              9 |
++----------------+</pre></li>
+  <li><b>IN: a parameter (2m).</b> "p_ marks a parameter. You will see in a minute why the prefix matters."
+<pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> books_by_author(<span class="k">IN</span> p_author <span class="k">VARCHAR</span>(<span class="s">100</span>))
+<span class="k">BEGIN</span>
+    <span class="k">SELECT</span> b.title, b.price
+    <span class="k">FROM</span> books <span class="k">AS</span> b
+    <span class="k">JOIN</span> authors <span class="k">AS</span> a <span class="k">ON</span> a.id = b.author_id
+    <span class="k">WHERE</span> a.name = p_author
+    <span class="k">ORDER</span> <span class="k">BY</span> b.title;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">CALL</span> books_by_author(<span class="s">'George Orwell'</span>);</pre>
+<pre class="out">+-------------+-------+
+| title       | price |
++-------------+-------+
+| 1984        |  9.99 |
+| Animal Farm |  8.49 |
++-------------+-------+</pre></li>
+  <li><b>OUT: an answer through a user variable (2m).</b> "SELECT ... INTO stores instead of printing, so the CALL prints nothing. The answer lands in @tolkien_books."
+<pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> count_books_by(<span class="k">IN</span> p_author <span class="k">VARCHAR</span>(<span class="s">100</span>), <span class="k">OUT</span> p_count <span class="k">INT</span>)
+<span class="k">BEGIN</span>
+    <span class="k">SELECT</span> COUNT(*) <span class="k">INTO</span> p_count
+    <span class="k">FROM</span> books <span class="k">AS</span> b
+    <span class="k">JOIN</span> authors <span class="k">AS</span> a <span class="k">ON</span> a.id = b.author_id
+    <span class="k">WHERE</span> a.name = p_author;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">CALL</span> count_books_by(<span class="s">'J.R.R. Tolkien'</span>, @tolkien_books);
+<span class="k">SELECT</span> @tolkien_books <span class="k">AS</span> tolkien_books;</pre>
+<pre class="out">+---------------+
+| tolkien_books |
++---------------+
+|             2 |
++---------------+</pre></li>
+  <li><b>Local variables (3m).</b> "DECLARE comes first in a block; a local variable lives for one call." 34.97 plus 8% tax.
+<pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> order_receipt(<span class="k">IN</span> p_order_id <span class="k">INT</span>)
+<span class="k">BEGIN</span>
+    <span class="k">DECLARE</span> v_subtotal <span class="k">DECIMAL</span>(<span class="s">10</span>, <span class="s">2</span>) <span class="k">DEFAULT</span> <span class="s">0</span>;
+    <span class="k">DECLARE</span> v_tax_rate <span class="k">DECIMAL</span>(<span class="s">4</span>, <span class="s">3</span>) <span class="k">DEFAULT</span> <span class="s">0.080</span>;
+    <span class="k">DECLARE</span> v_tax      <span class="k">DECIMAL</span>(<span class="s">10</span>, <span class="s">2</span>);
+    <span class="k">SELECT</span> COALESCE(SUM(quantity * price_at_time), <span class="s">0</span>) <span class="k">INTO</span> v_subtotal
+    <span class="k">FROM</span> order_items
+    <span class="k">WHERE</span> order_id = p_order_id;
+    <span class="k">SET</span> v_tax = ROUND(v_subtotal * v_tax_rate, <span class="s">2</span>);
+    <span class="k">SELECT</span> p_order_id         <span class="k">AS</span> order_id,
+           v_subtotal         <span class="k">AS</span> subtotal,
+           v_tax              <span class="k">AS</span> tax,
+           v_subtotal + v_tax <span class="k">AS</span> total;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">CALL</span> order_receipt(<span class="s">1</span>);</pre>
+<pre class="out">+----------+----------+------+-------+
+| order_id | subtotal | tax  | total |
++----------+----------+------+-------+
+|        1 |    34.97 | 2.80 | 37.77 |
++----------+----------+------+-------+</pre></li>
+  <li><b>IF ... ELSEIF ... ELSE (3m).</b> "Gold from $50, Silver from $30, Bronze above zero, New otherwise."
+<pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> classify_customer(<span class="k">IN</span> p_customer_id <span class="k">INT</span>, <span class="k">OUT</span> p_tier <span class="k">VARCHAR</span>(<span class="s">10</span>))
+<span class="k">BEGIN</span>
+    <span class="k">DECLARE</span> v_spent <span class="k">DECIMAL</span>(<span class="s">10</span>, <span class="s">2</span>);
+    <span class="k">SELECT</span> COALESCE(SUM(oi.quantity * oi.price_at_time), <span class="s">0</span>) <span class="k">INTO</span> v_spent
+    <span class="k">FROM</span> orders <span class="k">AS</span> o
+    <span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.order_id = o.id
+    <span class="k">WHERE</span> o.customer_id = p_customer_id;
+    <span class="k">IF</span> v_spent &gt;= <span class="s">50</span> <span class="k">THEN</span>
+        <span class="k">SET</span> p_tier = <span class="s">'Gold'</span>;
+    <span class="k">ELSEIF</span> v_spent &gt;= <span class="s">30</span> <span class="k">THEN</span>
+        <span class="k">SET</span> p_tier = <span class="s">'Silver'</span>;
+    <span class="k">ELSEIF</span> v_spent &gt; <span class="s">0</span> <span class="k">THEN</span>
+        <span class="k">SET</span> p_tier = <span class="s">'Bronze'</span>;
+    <span class="k">ELSE</span>
+        <span class="k">SET</span> p_tier = <span class="s">'New'</span>;
+    <span class="k">END</span> <span class="k">IF</span>;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">CALL</span> classify_customer(<span class="s">1</span>, @alice);
+<span class="k">CALL</span> classify_customer(<span class="s">2</span>, @bob);
+<span class="k">CALL</span> classify_customer(<span class="s">3</span>, @carol);
+<span class="k">SELECT</span> @alice <span class="k">AS</span> alice, @bob <span class="k">AS</span> bob, @carol <span class="k">AS</span> carol;</pre>
+<pre class="out">+-------+--------+-------+
+| alice | bob    | carol |
++-------+--------+-------+
+| Gold  | Silver | New   |
++-------+--------+-------+</pre></li>
+  <li><b>A stored function (3m).</b> "One value, used inside a query like a built-in function. The characteristics line describes it to the server: same input, same output (DETERMINISTIC), no table read (NO SQL)."
+<pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">FUNCTION</span> with_tax(p_amount <span class="k">DECIMAL</span>(<span class="s">10</span>, <span class="s">2</span>))
+<span class="k">RETURNS</span> <span class="k">DECIMAL</span>(<span class="s">10</span>, <span class="s">2</span>)
+<span class="k">DETERMINISTIC</span>
+<span class="k">NO</span> <span class="k">SQL</span>
+<span class="k">BEGIN</span>
+    <span class="k">RETURN</span> ROUND(p_amount * <span class="s">1.08</span>, <span class="s">2</span>);
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">SELECT</span> title, price, with_tax(price) <span class="k">AS</span> price_with_tax
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &gt;= <span class="s">11</span>
+<span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">DESC</span>;</pre>
+<pre class="out">+-----------------------+-------+----------------+
+| title                 | price | price_with_tax |
++-----------------------+-------+----------------+
+| Lord of the Rings     | 15.99 |          17.27 |
+| Dune                  | 14.99 |          16.19 |
+| To Kill a Mockingbird | 11.99 |          12.95 |
++-----------------------+-------+----------------+</pre></li>
+  <li><b>Without characteristics (1m).</b> "Binary logging is on by default since 8.0, so the server wants to know what a function does."
+<pre class="code"><span class="k">CREATE</span> <span class="k">FUNCTION</span> book_count()
+<span class="k">RETURNS</span> <span class="k">INT</span>
+<span class="k">RETURN</span> (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> books);</pre>
+<pre class="out">ERROR 1418 (HY000): This function has none of DETERMINISTIC, NO SQL, or READS SQL DATA in its declaration and binary logging is enabled (you *might* want to use the less safe log_bin_trust_function_creators variable)</pre>
+Fix: <code class="inline">READS SQL DATA</code> after <code class="inline">RETURNS INT</code>. Never turn on <code class="inline">log_bin_trust_function_creators</code> to silence it.</li>
+  <li><b>Check first, then change: SIGNAL (4m).</b> "A procedure that changes data checks its input before the UPDATE. SIGNAL raises your own error, number 1644, with your message."
+<pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> set_book_price(<span class="k">IN</span> p_book_id <span class="k">INT</span>, <span class="k">IN</span> p_price <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>))
+<span class="k">BEGIN</span>
+    <span class="k">IF</span> p_price <span class="k">IS</span> <span class="k">NULL</span> <span class="k">OR</span> p_price &lt;= <span class="s">0</span> <span class="k">THEN</span>
+        <span class="k">SIGNAL</span> SQLSTATE <span class="s">'45000'</span>
+            <span class="k">SET</span> MESSAGE_TEXT = <span class="s">'Price must be greater than zero'</span>;
+    <span class="k">END</span> <span class="k">IF</span>;
+    <span class="k">IF</span> <span class="k">NOT</span> <span class="k">EXISTS</span> (<span class="k">SELECT</span> <span class="s">1</span> <span class="k">FROM</span> books <span class="k">WHERE</span> id = p_book_id) <span class="k">THEN</span>
+        <span class="k">SIGNAL</span> SQLSTATE <span class="s">'45000'</span>
+            <span class="k">SET</span> MESSAGE_TEXT = <span class="s">'No book with that id'</span>;
+    <span class="k">END</span> <span class="k">IF</span>;
+    <span class="k">UPDATE</span> books <span class="k">SET</span> price = p_price <span class="k">WHERE</span> id = p_book_id;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">CALL</span> set_book_price(<span class="s">5</span>, -<span class="s">1.00</span>);
+<span class="k">CALL</span> set_book_price(<span class="s">99</span>, <span class="s">9.99</span>);</pre>
+<pre class="out">ERROR 1644 (45000): Price must be greater than zero
+ERROR 1644 (45000): No book with that id</pre>
+Both checks run before the UPDATE, so a refused call changes nothing.</li>
+  <li><b>Silent: a parameter named like a column (2m).</b> "Book 1, please." Run it before explaining. "Inside the routine, a bare id is the parameter, so WHERE id = id is 1 = 1 on every row. Picture this in a DELETE."
+<pre class="code"><span class="k">CREATE</span> <span class="k">PROCEDURE</span> book_by_id(<span class="k">IN</span> id <span class="k">INT</span>)
+    <span class="k">SELECT</span> b.id, b.title <span class="k">FROM</span> books <span class="k">AS</span> b <span class="k">WHERE</span> id = id <span class="k">ORDER</span> <span class="k">BY</span> b.id;
+<span class="k">CALL</span> book_by_id(<span class="s">1</span>);</pre>
+<pre class="out">+----+------------------------+
+| id | title                  |
++----+------------------------+
+|  1 | Dune                   |
+|  2 | 1984                   |
+|  3 | To Kill a Mockingbird  |
+|  4 | The Great Gatsby       |
+|  5 | Pride and Prejudice    |
+|  6 | The Hobbit             |
+|  7 | Brave New World        |
+|  8 | The Catcher in the Rye |
+|  9 | Lord of the Rings      |
+| 10 | Fahrenheit 451         |
+| 11 | Animal Farm            |
++----+------------------------+</pre></li>
+  <li><b>What the database now holds (2m).</b> "Procedures say CONTAINS SQL unless declared otherwise. Reloading bookstore.sql wipes all of them: routines live in a script file."
+<pre class="code"><span class="k">SELECT</span> ROUTINE_NAME, ROUTINE_TYPE, IS_DETERMINISTIC, SQL_DATA_ACCESS
+<span class="k">FROM</span> information_schema.ROUTINES
+<span class="k">WHERE</span> ROUTINE_SCHEMA = <span class="s">'bookstore'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> ROUTINE_TYPE, ROUTINE_NAME;</pre>
+<pre class="out">+-------------------+--------------+------------------+-----------------+
+| ROUTINE_NAME      | ROUTINE_TYPE | IS_DETERMINISTIC | SQL_DATA_ACCESS |
++-------------------+--------------+------------------+-----------------+
+| with_tax          | FUNCTION     | YES              | NO SQL          |
+| books_by_author   | PROCEDURE    | NO               | CONTAINS SQL    |
+| book_by_id        | PROCEDURE    | NO               | CONTAINS SQL    |
+| classify_customer | PROCEDURE    | NO               | CONTAINS SQL    |
+| count_books_by    | PROCEDURE    | NO               | CONTAINS SQL    |
+| order_receipt     | PROCEDURE    | NO               | CONTAINS SQL    |
+| say_hello         | PROCEDURE    | NO               | CONTAINS SQL    |
+| set_book_price    | PROCEDURE    | NO               | CONTAINS SQL    |
++-------------------+--------------+------------------+-----------------+</pre></li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>A stuck <code class="inline">-&gt;</code> prompt.</b> Coach: "Which delimiter is active? Type // to send, then DELIMITER ;." Every kit example switches back in the same block.</li>
+  <li><b>Expecting OUT parameters to print.</b> "CALL printed nothing." Coach: "Where did you ask it to put the answer? SELECT @your_variable."</li>
+  <li><b>SIGNAL after the change.</b> A check placed after the UPDATE stops the procedure too late. Coach: "Which statements already ran when SIGNAL fires?" (Lesson 7.2's transactions handle multi-step changes.)</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-10/l7_1-stored-procedures/procedures_starter.sql</code>; reference <code class="inline">labs/module-10/l7_1-stored-procedures/procedures_solution.sql</code>. Three new procedures for the store's admin page; every routine has its DROP ... IF EXISTS, so the file reruns after every edit.</p>
+<ul class="tick">
+  <li><b>TODO 1 together (5m):</b> category_shelf returns the three cheapest books of any category. Add the WHERE on the parameter, delete the LIMIT, SOURCE again.</li>
+  <li><b>TODO 2 in pairs (7m):</b> author_stats's second OUT parameter. Ask them to try Isaac Asimov (author 10) with and without COALESCE.</li>
+  <li><b>TODO 3 in pairs (6m):</b> the percent guard, placed BEFORE the other one; then <code class="inline">CALL raise_price(6, 80);</code> at the prompt.</li>
+  <li><b>Expected:</b> Dystopian: Brave New World 9.49, 1984 9.99, Fahrenheit 451 10.49; Orwell 2 books 6 copies, Asimov 0 and 0; the guard prints <code class="inline">ERROR 1644 (45000): Percent must be between 1 and 50</code> and The Hobbit stays 10.99; the good call shows 12.09 inside the transaction, 10.99 after ROLLBACK.</li>
+  <li><b>Debrief (2m):</b> "Which of the three changes data? What makes it safe to call with bad input?"</li>
+  <li><b>Homework / fast finishers:</b> <code class="inline">labs/module-10/l7_1-stored-procedures/functions_starter.sql</code>: shipping_fee (DETERMINISTIC, NO SQL) and copies_sold (READS SQL DATA).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>The Bookstore Routine Library</b>, <code class="inline">bookstore_routines.sql</code>: two functions and two procedures in one rerunnable script. In the room: Steps 1 and 2 (15 minutes).</p>
+<ul class="tick">
+  <li>Step 1: <code class="inline">order_total(p_order_id)</code>, READS SQL DATA, used for Alice's three orders (34.97, 7.99, 15.99).</li>
+  <li>Step 2: <code class="inline">customer_tier(p_customer_id)</code>, the demo's IF as a function with a CASE in RETURN.</li>
+  <li><b>Done in the room</b> = both functions in the file, each after its DROP FUNCTION IF EXISTS, and the file runs twice.</li>
+  <li><b>Goes home:</b> Step 3 (customer_report: two result sets), Step 4 (add_book with SIGNAL and LAST_INSERT_ID), Step 5 (break it on purpose), Step 6 (inventory and rerun; test CALLs stay out of the file).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud:</p>
+<ul class="tick">
+  <li>Who reads <code class="inline">DELIMITER //</code>? <b>Answer:</b> the mysql client (and SOURCE); apps, Workbench and phpMyAdmin's Delimiter box do not need you to type it.</li>
+  <li>Why READS SQL DATA and not DETERMINISTIC for order_total? <b>Answer:</b> it reads rows that change; DETERMINISTIC would be a false promise.</li>
+  <li>What does a procedure give back that a function cannot? <b>Answer:</b> result sets, several OUT values, and transactions inside.</li>
+  <li>Why the p_ prefix? <b>Answer:</b> a parameter named like a column silently shadows it (WHERE id = id).</li>
+</ul>
+<p>Workbook self-check, items Q7 to Q12.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">A) Two <code class="inline">ERROR 1064</code> lines: the client sent the text in two pieces at the semicolons</span>; <b>Q8</b> <span data-sc="8"><code class="inline">4</code> (in a column named <code class="inline">cheaper</code>)</span>; <b>Q9</b> <span data-sc="9">D) <code class="inline">DETERMINISTIC</code> and <code class="inline">NO SQL</code></span>; <b>Q10</b> <span data-sc="10">C) <code class="inline">ERROR 1172 (42000): Result consisted of more than one row</code></span>; <b>Q11</b> <span data-sc="11"><code class="inline">ERROR 1644 (45000): Quantity must be at least 1</code></span>; <b>Q12</b> <span data-sc="12">C) Run <code class="inline">COMMIT</code> or <code class="inline">START TRANSACTION</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> a card with the procedure skeleton (DROP, DELIMITER //, CREATE ... BEGIN, END //, DELIMITER ;) taped to the screen. In the lab, TODO 1 and 2 only.</p>
+<p><b>Stretch:</b> the lesson's Exercise 4 (a WHILE loop up the chain of command, compared with Session 8's recursive CTE) and the bonus (a duplicate guard with a message built in a variable).</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Clinic</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2:25</span><h3>Clinic: Design Review and the Debug Handouts</h3><span class="dur">25 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Design review: the two warm-up spreadsheets, as dependencies and tables on the board</td></tr>
+<tr><td class="t">12m</td><td><code class="inline">debug_design.sql</code> and <code class="inline">debug_routines.sql</code> in pairs: cause and fix in the workbook table</td></tr>
+<tr><td class="t">3m</td><td>Whole room: one volunteer per error</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Design review (10m)</div>
+<ul class="tick">
+  <li>Take the first warm-up spreadsheet. The room calls out the dependencies ("trainer_email → trainer_phone"), you write them as arrows, then the key, then the tables. Five minutes, then the second spreadsheet.</li>
+  <li>Ask for one junction table and one natural identifier with UNIQUE in each design. These sketches are the warm-up for the final project's design step (Sessions 12 to 13).</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">What the handouts print, and the fixes</div>
+<pre class="out">Database changed
+ERROR 1062 (23000): Duplicate entry 'lena.park@bookstore.example' for key 'hosts.email'
+ERROR 3780 (HY000): Referencing column 'workshop_id' and referenced column 'id' in foreign key constraint 'fk_dbg_feedback_workshop' are incompatible.
+ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`kit_s10_debug`.`workshops`, CONSTRAINT `fk_dbg_workshops_host` FOREIGN KEY (`host_id`) REFERENCES `hosts` (`id`))
++-------+-----------+
+| hosts | workshops |
++-------+-----------+
+|     2 |         2 |
++-------+-----------+</pre><ul class="tick">
+  <li><b>1062:</b> the lookup table's UNIQUE refused a second copy of every host: the design working. Fix: migration scripts start from a clean state, or insert only missing rows (WHERE NOT EXISTS).</li>
+  <li><b>3780:</b> BIGINT cannot reference INT. Fix: <code class="inline">workshop_id INT NOT NULL</code>; one id type everywhere.</li>
+  <li><b>1451:</b> Lena still hosts workshops. Fix: decide what happens to her workshops first (reassign them), or mark hosts inactive instead of deleting.</li>
+</ul>
+<pre class="out">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '' at line 3
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'END' at line 1
+ERROR 1418 (HY000): This function has none of DETERMINISTIC, NO SQL, or READS SQL DATA in its declaration and binary logging is enabled (you *might* want to use the less safe log_bin_trust_function_creators variable)
+ERROR 1172 (42000): Result consisted of more than one row
+ERROR 1304 (42000): PROCEDURE dbg_count_books already exists
+ERROR 1644 (45000): Pages must be a positive number
++----+----------------+-------+
+| id | title          | pages |
++----+----------------+-------+
+| 10 | Fahrenheit 451 |   158 |
++----+----------------+-------+</pre><ul class="tick">
+  <li><b>1064 twice (A):</b> no delimiter change. Fix: <code class="inline">DELIMITER //</code> ... <code class="inline">END //</code> <code class="inline">DELIMITER ;</code>, or drop BEGIN/END for a one-statement body.</li>
+  <li><b>1418 (B):</b> a function with no characteristic. Fix: <code class="inline">READS SQL DATA</code> after <code class="inline">RETURNS INT</code>.</li>
+  <li><b>1172 (C):</b> Tolkien has two books. Fix: <code class="inline">SELECT MIN(title) INTO ...</code> or <code class="inline">ORDER BY title LIMIT 1</code>.</li>
+  <li><b>1304 (D):</b> created twice. Fix: <code class="inline">DROP PROCEDURE IF EXISTS</code> first.</li>
+  <li><b>1644 (E):</b> the guard worked; nothing changed (158 pages). Not a bug: the right call is <code class="inline">CALL dbg_set_pages(10, 160);</code>.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 4 minutes)</div>
+<ol class="steps">
+  <li><code class="inline">order_lines(order_id, book_title, order_date, book_price, quantity)</code>, key <code class="inline">(order_id, book_title)</code>: name one partial dependency and the table it moves to. <b>Answer:</b> <code class="inline">order_id → order_date</code> (to orders) or <code class="inline">book_title → book_price</code> (to books).</li>
+  <li>Why does a procedure that changes data check its input before the UPDATE, and how does it refuse? <b>Answer:</b> so a refused call changes nothing; <code class="inline">SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '...'</code> (error 1644).</li>
+  <li>Function or procedure: "show each book's price with tax in a SELECT"? "Add a book and its new author, and return the new id"? <b>Answer:</b> a function; a procedure (it changes data and hands back an OUT value).</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours)</div>
+<ul class="tick">
+  <li><b>Finish both lesson projects.</b> <code class="inline">book_club.sql</code> Steps 4 to 6; <code class="inline">bookstore_routines.sql</code> Steps 3 to 6 (run it twice; test CALLs at the prompt, not in the file).</li>
+  <li><b>Lesson exercises.</b> 6.3: Exercises 1 to 3 (name the violations, test a dependency, normalize the invoices); 4 is a stretch. 7.1: Exercises 1 to 3 (books in a category, sale prices, city statistics); 4 is a stretch.</li>
+  <li><b>Both Quick Quizzes</b> and <b>both journal entries</b>.</li>
+  <li><b>Labs:</b> <code class="inline">labs/module-10/l6_3-normalization/normalize_starter.sql</code>, <code class="inline">labs/module-10/l7_1-stored-procedures/functions_starter.sql</code>.</li>
+  <li><b>Before the Next Lesson (from 7.1):</b> make sure you can open two mysql client windows at once (two terminals, or two Workbench tabs): Lesson 7.2 uses both.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Bring list for Session 11</div>
+<ul class="tick">
+  <li>A laptop that can run <b>two</b> mysql client sessions side by side (Lesson 7.2's transaction demos), and <code class="inline">bookstore.sql</code>.</li>
+  <li><code class="inline">book_club.sql</code> and <code class="inline">bookstore_routines.sql</code>, both run twice without an error (the Session 11 homework check; Lesson 7.2 adds a procedure with an error handler to a library like <code class="inline">bookstore_routines.sql</code>).</li>
+  <li>Session 11 holds <b>Checkpoint 2</b> (Modules 5 and 6, 30 minutes): review your CTE, window, index, view and normalization notes. The course folder with <code class="inline">labs/</code>, the workbook and the journal.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> the three anomalies; the EXCEPT proof; DELIMITER and SIGNAL; the procedures lab through TODO 2.</li>
+  <li><b>Cut first (saves 10m):</b> the clinic's design review; keep the debug handouts.</li>
+  <li><b>Cut second (saves 1m):</b> 6.3 demo step 11 (the drifting total: the lesson's Common Mistake 4).</li>
+  <li><b>Cut third (saves 3m):</b> 7.1 demo step 5 (IF): the project's customer_tier does the same with CASE.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>The 7.1 project's Step 4 live: add_book creating Ursula K. Le Guin, then Step 5's refused free book.</li>
+  <li>Draw the bookstore's full ER diagram with the room, including the employees' manager relationship (a one-to-many on itself).</li>
+  <li>Session 8 meets Session 10: the 7.1 Exercise 4 WHILE loop next to the 5.1 recursive chain of command.</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 10 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

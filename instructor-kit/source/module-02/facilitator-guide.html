@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 2</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 2: The MySQL Client and Your First Tables</h1>
+    <p class="sub">How to teach the second session of MySQL Foundations. Learners get at home in the mysql client (finding their way around a server, the prompts, client commands, running .sql files, a look at phpMyAdmin), then stop exploring and build: the bookstore database and its first three tables from a script they can rerun, the habits of reading DESCRIBE after every change and of naming things well.</p>
+    <div class="meta-row">
+      <span class="chip"><b>2</b> lessons</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lessons <b>1.3–2.1</b></span>
+      <span class="chip">Session <b>2</b> of 14 · Part 1</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Same rhythm for both lessons: frame (the goal and one mental model) → live demo (you type, they type along) → guided lab (a kit lab, new practice) → the lesson's own project. The lesson exercises, quiz and journal are homework.</li>
+  <li>Type, do not paste. Every SQL block below was run to produce the output printed under it, on MySQL 9.7.2 with the default settings. Ask for a prediction before every statement that prints something, and read error messages aloud from the left: the number, then the reason.</li>
+  <li>Keep <code class="inline">lesson_03.html</code> and <code class="inline">lesson_04.html</code> open in browser tabs for the diagrams and the phpMyAdmin tour. Labs live in <code class="inline">labs/module-02/</code>: <code class="inline">_starter.sql</code> files are handouts, <code class="inline">_solution.sql</code> files are yours.</li>
+  <li>Today is the day learners stop exploring and build: Lesson 2.1's project, <code class="inline">create_bookstore.sql</code>, is done <b>in the room</b> (all five steps), because Session 3 starts from its three empty tables. Lesson 1.3's project starts in the room and finishes at home.</li>
+  <li>Part 1 (Sessions 1 to 7) can run on its own. Teal blocks are hands-on, amber blocks are watch-outs. Lesson codes (1.3, 2.1) match the course site.</li>
+</ul>
+<div class="note warn"><div class="t">The #1 risk of Session 2: leaving without a bookstore</div>
+<p>Session 3 begins with <code class="inline">USE bookstore;</code> and three empty tables. A learner who leaves today without them starts Session 3 by debugging a build script instead of learning data types. <b>Protect the last 20 minutes before the wrap-up</b> for <code class="inline">create_bookstore.sql</code>: every learner runs it twice and shows you the self-check table (books, categories, customers, all <code class="inline">utf8mb4_unicode_ci</code>). If the 2.1 demo runs long, cut demo Steps 10 to 12, never the project. The second risk is the machine that was NOT READY in Session 1: the warm-up checks it first.</p>
+</div>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Sort the Session 1 exit tickets.</b> The "not yet" pile on question 1 (server, client, database) tells you how long the warm-up spends on the three-box picture.</li>
+  <li>☐ <b>Files to hand out:</b> the <code class="inline">labs/module-02/</code> starters and the two debug files (no <code class="inline">*_solution.sql</code>). Learners keep <code class="inline">labs/</code> in their course folder. The course folder is <code class="inline">mysql-course</code> in each learner's home folder (the setup guide and Session 1's bring list): Lesson 1.3's <code class="inline">hello.sql</code> and <code class="inline">explore.sql</code> and Lesson 2.1's <code class="inline">create_bookstore.sql</code> go there. Anyone without it creates it now and moves <code class="inline">labs/</code> into it.</li>
+  <li>☐ <b>Run the kit check once:</b> <code class="inline">python3 labs/check_labs.py module-02</code> from this kit's folder. Every line should say PASS (10 files, a few seconds).</li>
+  <li>☐ <b>Projector machine:</b> MySQL 9.7 running and logged out; a terminal open in the course folder at 18 pt or larger; a plain-text editor (VS Code) with <code class="inline">~/mysql-course/hello.sql</code> already saved (the lesson's three lines) for demo Step 11; phpMyAdmin if you have it (Docker <code class="inline">phpmyadmin:5.2</code> on port 8080, set up as in Lesson 1.2). Browser tabs: <code class="inline">lesson_03.html</code>, <code class="inline">lesson_04.html</code>.</li>
+  <li>☐ <b>Make sure <code class="inline">bookstore</code> does NOT exist on the projector machine</b> (<code class="inline">DROP DATABASE IF EXISTS bookstore;</code>): the 1.3 demo shows error 1049 for it, and the 2.1 demo creates it.</li>
+  <li>☐ <b>Board, before learners arrive:</b> the four prompts (<code class="inline">mysql&gt;</code> ready · <code class="inline">-&gt;</code> waiting for ; · <code class="inline">'&gt;</code> open quote · <code class="inline">\c</code> gives up); two columns "SQL (any client)" and "mysql client only"; and the cabinet picture: server = cabinet, database = drawer, table = folder.</li>
+  <li>☐ <b>Print or share:</b> the workbook (warm-up, guided labs, self-checks, exit ticket).</li>
+</ul>
+<div class="blk warn"><div class="h">Known environment traps</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><code class="inline">Failed to open file 'labs/...'</code> after SOURCE</td><td>The client was started in another folder</td><td><code class="inline">exit</code>, <code class="inline">cd</code> into the course folder, log in again (or give the full path).</td></tr>
+<tr><td>Windows: SOURCE with backslashes fails</td><td>The path was typed with <code class="inline">\</code> and spaces</td><td>Use forward slashes: <code class="inline">SOURCE C:/Users/you/mysql-course/hello.sql</code>; quote nothing.</td></tr>
+<tr><td><code class="inline">mysql -u root -p &lt; file.sql</code> in PowerShell: "The '&lt;' operator is reserved"</td><td>PowerShell has no input redirect</td><td><code class="inline">cmd /c "mysql -u root -p &lt; file.sql"</code>, or SOURCE from the prompt.</td></tr>
+<tr><td><code class="inline">ERROR at line 1: Unknown command '\G'.</code> from the shell</td><td>The 9.x client ignores client commands in batch mode</td><td>End statements with <code class="inline">;</code> in scripts, or <code class="inline">mysql --commands ...</code>.</td></tr>
+<tr><td>A script saved from Word or TextEdit fails with 1064 on the first line</td><td>Rich text or smart quotes (<code class="inline">’</code> instead of <code class="inline">'</code>)</td><td>Save as plain text from VS Code (TextEdit: Format &gt; Make Plain Text).</td></tr>
+<tr><td>phpMyAdmin login fails with the right password</td><td>The container was started without <code class="inline">PMA_HOST</code>, or links to a stopped server</td><td>Lesson 1.2's docker run line for phpMyAdmin; skip the tour if it is not quick to fix.</td></tr>
+<tr><td><code class="inline">ERROR 1007</code> when running <code class="inline">create_bookstore.sql</code> a second time</td><td>The learner's script lacks <code class="inline">DROP DATABASE IF EXISTS bookstore;</code></td><td>That line goes first: Step 1 of the project.</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 2 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">10</td><td>Warm-up</td><td>Five retrieval questions on Session 1, the environment check for anyone not READY last time, homework check.</td></tr>
+      <tr><td class="t">0:10</td><td class="t">10</td><td><b>1.3</b> Frame and mental model</td><td>One server, many clients; SQL versus client commands; the four prompts.</td></tr>
+      <tr><td class="t">0:20</td><td class="t">25</td><td><b>1.3</b> Live demo</td><td>Find your way around a fresh server, read a wide row with \G, two errors on purpose, SOURCE and the shell, a two-minute phpMyAdmin tour.</td></tr>
+      <tr><td class="t">0:45</td><td class="t">20</td><td><b>1.3</b> Guided lab</td><td><code class="inline">labs/module-02/l1_3-mysql-cli-phpmyadmin/find_your_way_starter.sql</code> in pairs: explore a database you have never seen.</td></tr>
+      <tr><td class="t">1:05</td><td class="t">15</td><td><b>1.3</b> Start the lesson project</td><td>explore.sql, Steps 1 to 3 (where am I, count tables, save the script); Steps 4 and 5 go home.</td></tr>
+      <tr><td class="t">1:20</td><td class="t">10</td><td>Break</td><td>Leave the server, database, table picture (cabinet, drawer, folder) on the board.</td></tr>
+      <tr><td class="t">1:30</td><td class="t">10</td><td><b>2.1</b> Frame and mental model</td><td>Cabinet, drawer, folder; utf8mb4 and a named collation; the naming rules.</td></tr>
+      <tr><td class="t">1:40</td><td class="t">30</td><td><b>2.1</b> Live demo</td><td>Build bookstore and books live, inspect it, IF NOT EXISTS, ALTER TABLE and the MODIFY trap, three errors on purpose, then drop it all.</td></tr>
+      <tr><td class="t">2:10</td><td class="t">20</td><td><b>2.1</b> Guided lab</td><td><code class="inline">labs/module-02/l2_1-creating-databases-tables/events_build_starter.sql</code>: a build script from a written spec.</td></tr>
+      <tr><td class="t">2:30</td><td class="t">20</td><td><b>2.1</b> Build the lesson project</td><td>create_bookstore.sql, all five steps in the room, run twice: Session 3 starts from it.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up</td><td>Exit ticket (3 questions), homework, bring list for Session 3.</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> The lesson pages estimate 85 + 85 = 170 minutes for a solo learner; after the warm-up, the break and the wrap-up the room has 150. Lesson 1.3 gets 70 minutes (model, demo, lab, project start) and Lesson 2.1 gets 80, because its whole project is done here.</p>
+<p><b>Goes home (about 2 to 3 hours).</b> explore.sql Steps 4 and 5 (run it three ways; phpMyAdmin or DESCRIBE); each lesson's Hands-on Exercises; both Quick Quizzes; both journal entries; Lesson 2.1's "Before the Next Lesson" list (run <code class="inline">create_bookstore.sql</code> once more from a fresh session).</p>
+<p><b>Protect, in this order:</b> <code class="inline">create_bookstore.sql</code> for every learner (Session 3 needs it); the 2.1 demo through the MODIFY trap (Step 9); the find-your-way lab through TODO 5; the 1.3 demo's error steps (8 and 9). <b>Cut first:</b> the phpMyAdmin tour (send learners to the lesson's tour section), then 2.1 demo Steps 10 to 12 (hand out <code class="inline">debug_build_script.sql</code>), then the 1.3 project start (all five steps go home).</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Warm-Up: Session 1 Retrieval</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">4m</td><td>Five questions W1 to W5 in the workbook, no notes, then fingers up for each answer</td></tr>
+<tr><td class="t">3m</td><td>Machines that were NOT READY in Session 1: the environment check again, last table on the projector</td></tr>
+<tr><td class="t">3m</td><td>Homework check: hands up for the bookstore sketch and the health check; one learner reads their 1.2 journal error and its fix</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Warm-up answers</div>
+<p>Answers: <b>W1</b> B) No: MySQL is the server (a DBMS); a database such as bookstore lives inside it; <b>W2</b> C) <code class="inline">ERROR 1045 (28000): Access denied</code>; <b>W3</b> A) Rows 1 Rex and 3 Fido; <b>W4</b> C) <code class="inline">DELETE FROM customers WHERE id = 3;</code>; <b>W5</b> D) Nothing: it describes the client; ask the server with SELECT VERSION();.</p>
+<ul class="tick">
+  <li><b>W1 and W5</b> are Session 1's two big ideas (server, client, database; ask the server). If more than a few miss W1, draw the three boxes again before the 1.3 frame; it is the frame anyway.</li>
+  <li><b>W2</b> is the triage line. Misses: write <code class="inline">command not found = PATH · 1045 = answered and refused · 2002/2003 = nothing answered</code> on the board again.</li>
+  <li><b>W3 and W4</b> check CRUD from 1.1. A wrong W4 (DROP TABLE or DELETE without WHERE) is the most dangerous misconception in the course: say "WHERE picks the rows" once more.</li>
+  <li><b>Still NOT READY?</b> Pair the learner with a neighbor for today and book ten minutes at the break. Do not fix installs during the demo.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plans</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">1.3</span><h3>MySQL CLI &amp; phpMyAdmin</h3><span class="dur">70 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Log in to and out of the mysql client, and read its prompts (mysql&gt;, -&gt;, '&gt;)</li>
+  <li>Explore a server with SHOW DATABASES, USE, SHOW TABLES, DESCRIBE and SELECT DATABASE()</li>
+  <li>Tell SQL statements apart from client commands such as \G, \c, SOURCE and help</li>
+  <li>Save SQL in a .sql file and run it with SOURCE and with mysql &lt; file.sql, knowing what MySQL 9.x's client does differently in scripts</li>
+  <li>Find the Structure, SQL, Import and Export tabs in phpMyAdmin and choose the right tool for a task</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: one server, many clients; SQL statements versus client commands; the prompts</td></tr>
+<tr><td class="t">25m</td><td>Live demo: find your way around, \G, two errors on purpose, SOURCE and the shell, phpMyAdmin</td></tr>
+<tr><td class="t">20m</td><td>Guided lab: <code class="inline">find_your_way_starter.sql</code> in pairs</td></tr>
+<tr><td class="t">15m</td><td>Start the lesson project: explore.sql, Steps 1 to 3</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Point at the three boxes from Session 1: "A <b>client</b> is any program that sends SQL to the server and shows you the answer: the mysql command, phpMyAdmin in a browser, Workbench. The server does not care which one you use: same statement, same result."</p>
+<p>Then the two columns on the board: "Most of what you type is <b>SQL</b>, sent to the server: SHOW, USE, DESCRIBE, SELECT. A few things only the mysql program understands: backslash G, SOURCE, help, exit. Those are <b>client commands</b>; phpMyAdmin has never heard of them."</p>
+<p>Then the prompts: "Nothing runs until the semicolon. The prompt tells you why the client is waiting: <code class="inline">-&gt;</code> it wants the end of the statement, <code class="inline">'&gt;</code> a quote is open. Backslash c gives up." Tie it to Session 1's missing-semicolon mistake.</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>Log in on the projector (<code class="inline">mysql -u root -p</code>); learners log in too and type along. A fresh session has no current database. Ask for a prediction before every statement that prints something.</p>
+<ol class="steps">
+  <li><b>A fresh server (2m).</b> "Logged in, no database chosen yet. What is on this server?" Point at the four system databases: look, never change.
+<pre class="code"><span class="k">SHOW</span> <span class="k">DATABASES</span>;</pre>
+<pre class="out">+--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+</pre></li>
+  <li><b>A database that is not there yet (1m).</b> "Which database will we build today? Watch what happens if I go there now." Read the error from the left.
+<pre class="code"><span class="k">USE</span> bookstore;</pre>
+<pre class="out">ERROR 1049 (42000): Unknown database 'bookstore'</pre>
+1049 = no database by that name on this server: a typo, the wrong server, or (here) one you have not created. Lesson 2.1 fixes this at 1:40.</li>
+  <li><b>USE, and where am I? (2m).</b> "USE picks the drawer. SELECT DATABASE() answers 'where am I' at any time; before the first USE it says NULL."
+<pre class="code"><span class="k">USE</span> mysql;
+<span class="k">SELECT</span> <span class="k">DATABASE</span>();</pre>
+<pre class="out">Database changed
++------------+
+| DATABASE() |
++------------+
+| mysql      |
++------------+</pre></li>
+  <li><b>What is in this drawer? (2m).</b> "SHOW TABLES on its own lists 38 tables here; LIKE filters the names, % means anything."
+<pre class="code"><span class="k">SHOW</span> <span class="k">TABLES</span> <span class="k">LIKE</span> <span class="s">'help%'</span>;</pre>
+<pre class="out">+-------------------------+
+| Tables_in_mysql (help%) |
++-------------------------+
+| help_category           |
+| help_keyword            |
+| help_relation           |
+| help_topic              |
++-------------------------+</pre></li>
+  <li><b>What does one table look like? (2m).</b> "DESCRIBE: one row per column. Read the Null, Key and Default columns aloud: NO means required, PRI is the primary key, UNI unique."
+<pre class="code"><span class="k">DESCRIBE</span> help_category;</pre>
+<pre class="out">+--------------------+-------------------+------+-----+---------+-------+
+| Field              | Type              | Null | Key | Default | Extra |
++--------------------+-------------------+------+-----+---------+-------+
+| help_category_id   | smallint unsigned | NO   | PRI | NULL    |       |
+| name               | char(64)          | NO   | UNI | NULL    |       |
+| parent_category_id | smallint unsigned | YES  |     | NULL    |       |
+| url                | text              | NO   |     | NULL    |       |
++--------------------+-------------------+------+-----+---------+-------+</pre></li>
+  <li><b>Read some rows (2m).</b> "Type it over several lines on purpose: nothing runs until the semicolon. Watch the prompt change to -&gt;."
+<pre class="code"><span class="k">SELECT</span> User, Host
+<span class="k">FROM</span> user
+<span class="k">ORDER</span> <span class="k">BY</span> User, Host;</pre>
+<pre class="out">+------------------+-----------+
+| User             | Host      |
++------------------+-----------+
+| mysql.infoschema | localhost |
+| mysql.session    | localhost |
+| mysql.sys        | localhost |
+| root             | localhost |
++------------------+-----------+</pre>
+The three <code class="inline">mysql.*</code> accounts are internal and locked. Docker shows a second root with host <code class="inline">%</code>.</li>
+  <li><b>A wide row, vertically (2m).</b> "End with backslash G instead of the semicolon: one line per column. That is a client command, not SQL."
+<pre class="code"><span class="k">SELECT</span> User, Host, plugin, account_locked
+<span class="k">FROM</span> user
+<span class="k">WHERE</span> User = <span class="s">'root'</span> <span class="k">AND</span> Host = <span class="s">'localhost'</span>\G</pre>
+<pre class="out">*************************** 1. row ***************************
+          User: root
+          Host: localhost
+        plugin: caching_sha2_password
+account_locked: N</pre></li>
+  <li><b>Looking in the wrong drawer (2m).</b> "The error names the database it looked in. That is the hint: where am I?"
+<pre class="code"><span class="k">DESCRIBE</span> customers;</pre>
+<pre class="out">ERROR 1146 (42S02): Table 'mysql.customers' doesn't exist</pre></li>
+  <li><b>A reserved word as a name (2m).</b> "1064 is the general 'I could not read this'; near '...' points at the spot. CURRENT_TIME is a built-in function."
+<pre class="code"><span class="k">SELECT</span> NOW() <span class="k">AS</span> current_time;</pre>
+<pre class="out">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'current_time' at line 1</pre></li>
+  <li><b>The fix: another name (1m).</b> "Pick a name that is not a keyword (or use backticks)."
+<pre class="code"><span class="k">SELECT</span> NOW() <span class="k">AS</span> now_time, CURRENT_USER() <span class="k">AS</span> logged_in_as;</pre>
+<pre class="out">+---------------------+----------------+
+| now_time            | logged_in_as   |
++---------------------+----------------+
+| 2026-10-16 01:26:20 | root@localhost |
++---------------------+----------------+</pre>
+Your time differs, of course.</li>
+  <li><b>Run a file: SOURCE and the shell (4m).</b> Open <code class="inline">hello.sql</code> (the lesson's three-line script) in your editor next to the terminal. "At the prompt, SOURCE runs every statement in the file. From the shell, the file goes into mysql with &lt;, in batch mode: plain tab-separated text, -t brings the boxes back." Show <code class="inline">SOURCE ~/mysql-course/hello.sql</code>, then <code class="inline">exit</code> and the two shell lines.
+<pre class="code">SOURCE ~/mysql-course/hello.sql
+exit
+mysql -u root -p &lt; ~/mysql-course/hello.sql
+mysql -t -u root -p &lt; ~/mysql-course/hello.sql</pre>
+The lesson shows the outputs. Say the 9.x rule once: in a redirected file the client ignores its own commands (\G, SOURCE) unless started with <code class="inline">--commands</code>. PowerShell has no <code class="inline">&lt;</code>: <code class="inline">cmd /c "..."</code>.</li>
+  <li><b>phpMyAdmin in two minutes (2m).</b> If you have it (Docker <code class="inline">http://localhost:8080</code>): log in with the same root account, expand mysql &gt; user in the navigation panel, show Browse (and the SELECT it ran above the grid), Structure, the SQL tab with the demo's SELECT, Import and Export. Point at the red Drop and Empty buttons. No phpMyAdmin: show the lesson's tour section instead.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Typing the password after <code class="inline">-p</code> with a space.</b> <code class="inline">mysql -u root -p mypassword</code> asks for the password and then fails with 1049 Unknown database 'mypassword'. Coach: "-p means 'ask me'. The next word is read as a database." (Self-check Q4.)</li>
+  <li><b>Looking for a table in the wrong database.</b> 1146 names the database it looked in. Coach: "Read the name in the message. Where are you? SELECT DATABASE()."</li>
+  <li><b>SOURCE with the wrong path.</b> <code class="inline">Failed to open file</code> almost always means the client was started in another folder, or Windows backslashes. Coach: forward slashes, and start the client in the course folder (or type the full path).</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> learners open <code class="inline">labs/module-02/l1_3-mysql-cli-phpmyadmin/find_your_way_starter.sql</code>; your reference is <code class="inline">labs/module-02/l1_3-mysql-cli-phpmyadmin/find_your_way_solution.sql</code>. The setup part builds <code class="inline">kit_s2_cafe</code>, the bookstore café's database, the way a coworker might leave it. Learners do not read the setup: they find their way with the statements from the demo.</p>
+<ul class="tick">
+  <li><b>SOURCE it as shipped (2m):</b> <code class="inline">SOURCE labs/module-02/l1_3-mysql-cli-phpmyadmin/find_your_way_starter.sql</code>. Everyone sees <code class="inline">current_db kit_s2_cafe</code> and six TODO lines.</li>
+  <li><b>TODO 1 together (2m), TODOs 2 to 6 in pairs (14m).</b> Each TODO replaces one placeholder SELECT with one statement; save, SOURCE again. One learner types, the other writes the answers in the workbook; swap at TODO 4.</li>
+  <li><b>Expected:</b> three tables (cafe_orders, menu_items, staff_notes); <code class="inline">id</code> is the primary key of menu_items and <code class="inline">name</code>, <code class="inline">price</code> are required (Null NO); <code class="inline">ordered_at</code> and <code class="inline">paid_at</code>; five time_zone tables; item 3 is Oat Latte, 4.10, vegan 1; staff_notes is InnoDB with utf8mb4_unicode_ci.</li>
+  <li><b>Circulate for:</b> TODO 3 written as <code class="inline">LIKE '%_at'</code> (it still works here, but <code class="inline">_</code> means "any one character": say why <code class="inline">\_</code> is exact); TODO 5 ended with <code class="inline">;</code> instead of <code class="inline">\G</code> (one wide horizontal row: ask which is easier to read); TODO 4 answered with <code class="inline">USE mysql;</code> (it works, but the file then runs the rest in the wrong database: SHOW TABLES FROM avoids moving).</li>
+  <li><b>Debrief (2m):</b> "You learned four things about a database you had never seen without reading a line of its code: that is what DESCRIBE and SHOW are for."</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-02/l1_3-mysql-cli-phpmyadmin/system_tour_starter.sql</code> (information_schema questions about the mysql database), then <code class="inline">labs/module-02/l1_3-mysql-cli-phpmyadmin/debug_lost.sql</code> (errors 1049, 1146 and two 1064s).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>A Server Report Script</b>: <code class="inline">explore.sql</code>, a short script that describes the server, run three ways. In the room: Steps 1 to 3 (15 minutes).</p>
+<ul class="tick">
+  <li>Step 1: the orientation query (USER, CURRENT_USER, DATABASE) at the prompt.</li>
+  <li>Step 2: the information_schema count per system database. Read GROUP BY as "count the rows for each database" (Lesson 3.3 teaches it).</li>
+  <li>Step 3: save the file in <code class="inline">mysql-course</code> with a header comment, every statement ending in <code class="inline">;</code> and no <code class="inline">\G</code>.</li>
+  <li><b>Done in the room</b> = <code class="inline">explore.sql</code> saved and run once with SOURCE without errors.</li>
+  <li><b>Goes home:</b> Step 4 (run it from the shell, plain and with -t, and explain the difference) and Step 5 (phpMyAdmin's SQL tab, or DESCRIBE in the client).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li>Is <code class="inline">SHOW TABLES;</code> SQL or a client command? <b>Answer:</b> SQL: phpMyAdmin can send it too.</li>
+  <li>The prompt shows <code class="inline">-&gt;</code>. What do you type? <b>Answer:</b> <code class="inline">;</code> and Enter (or <code class="inline">\c</code> to give up).</li>
+  <li><code class="inline">ERROR 1146 (42S02): Table 'mysql.customers' doesn't exist</code>: what is the first thing you check? <b>Answer:</b> which database you are in (<code class="inline">SELECT DATABASE();</code>): the message says mysql.</li>
+  <li>Why does <code class="inline">\G</code> fail in <code class="inline">mysql -u root -p &lt; report.sql</code> on 9.7 but not with SOURCE? <b>Answer:</b> a redirected file runs in batch mode, where the 9.x client ignores its own commands unless started with <code class="inline">--commands</code>.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6 (learners do them at the end of the block or at home).</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">C) <code class="inline">SOURCE ~/mysql-course/hello.sql</code></span>; <b>Q2</b> <span data-sc="2">B) A single quote is still open: close it, then type ;</span>; <b>Q3</b> <span data-sc="3">5 (<code class="inline">time_zone</code>, <code class="inline">time_zone_leap_second</code>, <code class="inline">time_zone_name</code>, <code class="inline">time_zone_transition</code>, <code class="inline">time_zone_transition_type</code>)</span>; <b>Q4</b> <span data-sc="4">D) It asks for the password, then fails with <code class="inline">ERROR 1049 (42000): Unknown database 'secret123'</code></span>; <b>Q5</b> <span data-sc="5">A) <code class="inline">mysql -u root -p &lt; report.sql</code></span>; <b>Q6</b> <span data-sc="6">B) <code class="inline">SHOW COLUMNS FROM mysql.user LIKE '%lock%';</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> a card with the five exploring statements (SHOW DATABASES, USE, SELECT DATABASE(), SHOW TABLES, DESCRIBE) and the four prompts. Learners new to terminals keep <code class="inline">SOURCE labs/module-02/...</code> on the board and use tab completion.</p>
+<p><b>Stretch:</b> <code class="inline">system_tour_starter.sql</code> and <code class="inline">debug_lost.sql</code>; the lesson's Exercise 4 (a script that uses \G, run with --commands) and the Bonus Challenge (a custom prompt in an option file).</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2.1</span><h3>Creating Databases &amp; Tables</h3><span class="dur">80 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Create, select and drop a database, with the utf8mb4 character set and an explicit collation</li>
+  <li>Write a CREATE TABLE statement with column names, data types and basic constraints</li>
+  <li>Inspect a table with SHOW TABLES, DESCRIBE and SHOW CREATE TABLE</li>
+  <li>Add, rename, change and remove columns with ALTER TABLE, without losing a constraint by accident</li>
+  <li>Rename, empty and drop tables, and use IF EXISTS / IF NOT EXISTS to write scripts you can rerun</li>
+  <li>Read and fix errors 1007, 1046, 1050, 1064 and 1146</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: cabinet, drawer, folder; utf8mb4 and a named collation; naming conventions</td></tr>
+<tr><td class="t">30m</td><td>Live demo: build bookstore and books, inspect, IF NOT EXISTS, ALTER and the MODIFY trap, three errors, drop it all</td></tr>
+<tr><td class="t">20m</td><td>Guided lab: <code class="inline">events_build_starter.sql</code></td></tr>
+<tr><td class="t">20m</td><td>Build the lesson project: create_bookstore.sql, Steps 1 to 5, run twice</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Draw the filing cabinet: "The <b>server</b> is the cabinet. Each <b>database</b> is a drawer: mostly a name and a few settings. Each <b>table</b> is a folder in the drawer, and the data lives in the tables." Point at the four system drawers from the 1.3 demo: "Today we add our own: bookstore."</p>
+<p>Then the two settings: "The <b>character set</b> decides which characters can be stored: utf8mb4 is all of Unicode, emoji included. Never write utf8: in MySQL that means a three-byte subset. The <b>collation</b> decides comparing and sorting: is dune equal to Dune? We name utf8mb4_unicode_ci so MySQL 9.7, 8.4 and MariaDB sort the same way."</p>
+<p>Then the habit that the whole lesson builds to: "Real databases are built from <b>script files</b> that start clean (<code class="inline">DROP DATABASE IF EXISTS</code>) and can run any number of times. If an experiment goes wrong in the next two sessions, your script puts everything back in a second." And the naming rules on one line: lowercase, snake_case, plural tables, <code class="inline">id</code>, <code class="inline">customer_id</code>, no reserved words.</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>Type the lesson's statements live; learners type along. This builds a throwaway <code class="inline">bookstore</code> on the projector and drops it at the end (Step 13), so the project script after the lab starts from nothing for everyone.</p>
+<ol class="steps">
+  <li><b>Create the database, named settings (3m).</b> "A database is a drawer: a name and a few settings. utf8mb4 stores every character; the collation decides comparing and sorting. We name it so every server gives the same answers."
+<pre class="code"><span class="k">CREATE</span> <span class="k">DATABASE</span> bookstore
+    <span class="k">CHARACTER</span> <span class="k">SET</span> utf8mb4
+    <span class="k">COLLATE</span> utf8mb4_unicode_ci;
+<span class="k">SHOW</span> <span class="k">CREATE</span> <span class="k">DATABASE</span> bookstore;</pre>
+<pre class="out">+-----------+-------------------------------------------------------------------------------------------------------------------------------------+
+| Database  | Create Database                                                                                                                     |
++-----------+-------------------------------------------------------------------------------------------------------------------------------------+
+| bookstore | CREATE DATABASE `bookstore` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */ |
++-----------+-------------------------------------------------------------------------------------------------------------------------------------+</pre>
+Point at <code class="inline">utf8mb4_unicode_ci</code> inside the versioned comment <code class="inline">/*!40100 ... */</code>.</li>
+  <li><b>The same name again (1m).</b> "Run it again."
+<pre class="code"><span class="k">CREATE</span> <span class="k">DATABASE</span> bookstore;</pre>
+<pre class="out">ERROR 1007 (HY000): Can't create database 'bookstore'; database exists</pre>
+Fix: IF NOT EXISTS, or drop it first if you meant to start over.</li>
+  <li><b>Go there (1m).</b> "Where am I now?"
+<pre class="code"><span class="k">USE</span> bookstore;
+<span class="k">SELECT</span> <span class="k">DATABASE</span>();</pre>
+<pre class="out">Database changed
++------------+
+| DATABASE() |
++------------+
+| bookstore  |
++------------+</pre></li>
+  <li><b>The first table (4m).</b> Type it slowly; read each line as "name, type, rule". "Commas between the columns, none after the last. Types today on trust; Session 3 explains each one."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> books (
+    id          <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    title       <span class="k">VARCHAR</span>(<span class="s">200</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    author      <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    price       <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    pages       <span class="k">INT</span>,
+    published   <span class="k">DATE</span>,
+    in_stock    <span class="k">BOOLEAN</span> <span class="k">DEFAULT</span> <span class="k">TRUE</span>
+);</pre>
+Success prints only Query OK (0 rows affected): the table exists and is empty.</li>
+  <li><b>Look at what MySQL stored (3m).</b> "DESCRIBE is how you check your own work. Where did BOOLEAN go?" (tinyint(1), default 1.)
+<pre class="code"><span class="k">DESCRIBE</span> books;</pre>
+<pre class="out">+-----------+--------------+------+-----+---------+----------------+
+| Field     | Type         | Null | Key | Default | Extra          |
++-----------+--------------+------+-----+---------+----------------+
+| id        | int          | NO   | PRI | NULL    | auto_increment |
+| title     | varchar(200) | NO   |     | NULL    |                |
+| author    | varchar(100) | NO   |     | NULL    |                |
+| price     | decimal(8,2) | NO   |     | NULL    |                |
+| pages     | int          | YES  |     | NULL    |                |
+| published | date         | YES  |     | NULL    |                |
+| in_stock  | tinyint(1)   | YES  |     | 1       |                |
++-----------+--------------+------+-----+---------+----------------+</pre></li>
+  <li><b>IF NOT EXISTS keeps the old table (2m).</b> "A smaller definition, IF NOT EXISTS. Did books lose five columns?" Ask for a prediction.
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="k">IF</span> <span class="k">NOT</span> <span class="k">EXISTS</span> books (
+    id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>
+);
+<span class="k">SHOW</span> <span class="k">WARNINGS</span>;</pre>
+<pre class="out">+-------+------+------------------------------+
+| Level | Code | Message                      |
++-------+------+------------------------------+
+| Note  | 1050 | Table 'books' already exists |
++-------+------+------------------------------+</pre>
+No: a Note, and books is untouched. IF NOT EXISTS never updates a table; ALTER TABLE does.</li>
+  <li><b>ALTER TABLE: two new columns (3m).</b> "ALTER changes the structure and keeps the rows. AFTER places a column; a DEFAULT fills existing rows."
+<pre class="code"><span class="k">ALTER</span> <span class="k">TABLE</span> books
+    <span class="k">ADD</span> <span class="k">COLUMN</span> isbn <span class="k">CHAR</span>(<span class="s">13</span>) <span class="k">AFTER</span> id,
+    <span class="k">ADD</span> <span class="k">COLUMN</span> language <span class="k">VARCHAR</span>(<span class="s">30</span>) <span class="k">DEFAULT</span> <span class="s">'English'</span>;
+<span class="k">DESCRIBE</span> books;</pre>
+<pre class="out">+-----------+--------------+------+-----+---------+----------------+
+| Field     | Type         | Null | Key | Default | Extra          |
++-----------+--------------+------+-----+---------+----------------+
+| id        | int          | NO   | PRI | NULL    | auto_increment |
+| isbn      | char(13)     | YES  |     | NULL    |                |
+| title     | varchar(200) | NO   |     | NULL    |                |
+| author    | varchar(100) | NO   |     | NULL    |                |
+| price     | decimal(8,2) | NO   |     | NULL    |                |
+| pages     | int          | YES  |     | NULL    |                |
+| published | date         | YES  |     | NULL    |                |
+| in_stock  | tinyint(1)   | YES  |     | 1       |                |
+| language  | varchar(30)  | YES  |     | English |                |
++-----------+--------------+------+-----+---------+----------------+</pre></li>
+  <li><b>The silent trap (3m).</b> "I only want longer titles." Type the MODIFY without NOT NULL; ask the room what DESCRIBE will say before you run the check.
+<pre class="code"><span class="k">ALTER</span> <span class="k">TABLE</span> books <span class="k">MODIFY</span> <span class="k">COLUMN</span> title <span class="k">VARCHAR</span>(<span class="s">250</span>);
+<span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> books <span class="k">LIKE</span> <span class="s">'title'</span>;</pre>
+<pre class="out">+-------+--------------+------+-----+---------+-------+
+| Field | Type         | Null | Key | Default | Extra |
++-------+--------------+------+-----+---------+-------+
+| title | varchar(250) | YES  |     | NULL    |       |
++-------+--------------+------+-----+---------+-------+</pre>
+No error, no warning, and title now allows NULL. MODIFY (and CHANGE) replace the WHOLE definition: repeat every rule.</li>
+  <li><b>Put it back, in one statement (2m).</b> "Several changes, commas between them; MySQL rebuilds the table once."
+<pre class="code"><span class="k">ALTER</span> <span class="k">TABLE</span> books
+    <span class="k">MODIFY</span> <span class="k">COLUMN</span> title <span class="k">VARCHAR</span>(<span class="s">200</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">DROP</span> <span class="k">COLUMN</span> isbn,
+    <span class="k">DROP</span> <span class="k">COLUMN</span> language;
+<span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> books <span class="k">LIKE</span> <span class="s">'title'</span>;</pre>
+<pre class="out">+-------+--------------+------+-----+---------+-------+
+| Field | Type         | Null | Key | Default | Extra |
++-------+--------------+------+-----+---------+-------+
+| title | varchar(200) | NO   |     | NULL    |       |
++-------+--------------+------+-----+---------+-------+</pre></li>
+  <li><b>A reserved word as a table name (2m).</b> "A table for orders, named order."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> order (
+    id <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>
+);</pre>
+<pre class="out">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'order (
+    id INT AUTO_INCREMENT PRIMARY KEY
+)' at line 1</pre>
+ORDER is a keyword (ORDER BY). The naming rule: tables are plural nouns, so <code class="inline">orders</code>.</li>
+  <li><b>A misspelled table (1m).</b> "The table is books, plural."
+<pre class="code"><span class="k">DESCRIBE</span> book;</pre>
+<pre class="out">ERROR 1146 (42S02): Table 'bookstore.book' doesn't exist</pre>
+The message names the database too: <code class="inline">bookstore.book</code>.</li>
+  <li><b>Copy, rename, look (2m).</b> "LIKE copies the structure and none of the rows: the safe way to practice destructive commands."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> books_copy <span class="k">LIKE</span> books;
+<span class="k">RENAME</span> <span class="k">TABLE</span> books_copy <span class="k">TO</span> old_books;
+<span class="k">SHOW</span> <span class="k">TABLES</span>;</pre>
+<pre class="out">+---------------------+
+| Tables_in_bookstore |
++---------------------+
+| books               |
+| old_books           |
++---------------------+</pre></li>
+  <li><b>Drop it all (3m).</b> "DROP has no undo. Read the name twice. And after dropping the database you were in, where are you?"
+<pre class="code"><span class="k">DROP</span> <span class="k">TABLE</span> old_books;
+<span class="k">DROP</span> <span class="k">DATABASE</span> bookstore;
+<span class="k">SELECT</span> <span class="k">DATABASE</span>();</pre>
+<pre class="out">+------------+
+| DATABASE() |
++------------+
+| NULL       |
++------------+</pre>
+NULL: no current database, so the next CREATE TABLE would fail with 1046. Now everybody builds the real bookstore from a script.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>A comma after the last column, or a missing one between two.</b> Both give 1064, near <code class="inline">)</code> or near the next column's name. Coach: "Read the <code class="inline">near '...'</code> part: the mistake is just before it."</li>
+  <li><b>MODIFY (or CHANGE) without the old rules.</b> No error; NOT NULL or a DEFAULT silently disappears. Coach: "After every ALTER, DESCRIBE. Is Null still NO?" (Self-check Q11, exit ticket 3.)</li>
+  <li><b>1046 after DROP DATABASE.</b> Learners drop the database they were in and the next CREATE TABLE fails. Coach: "Where are you? SELECT DATABASE() says NULL: USE one, or write database.table."</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-02/l2_1-creating-databases-tables/events_build_starter.sql</code>; reference <code class="inline">labs/module-02/l2_1-creating-databases-tables/events_build_solution.sql</code>. The bookstore's events team wants a small database for author readings: learners write the build script from a written spec (two tables), then make it safe to rerun.</p>
+<ul class="tick">
+  <li><b>Step 1 is given</b> (DROP IF EXISTS, CREATE DATABASE with utf8mb4 and the collation, USE). TODO 1 is a skeleton with three gaps; TODO 2 is written from the spec alone; TODO 3 turns on <code class="inline">CREATE TABLE IF NOT EXISTS</code> + <code class="inline">SHOW WARNINGS</code>.</li>
+  <li><b>Expected:</b> TODO 3 prints <code class="inline">Note 1050 Table 'rooms' already exists</code>; the self-check lists readings and rooms, both <code class="inline">utf8mb4_unicode_ci</code>, with 7 and 3 columns (the solution also DESCRIBEs readings). Running the file twice gives the same result: that is the test of a build script.</li>
+  <li><b>Circulate for:</b> a trailing comma before <code class="inline">)</code> (1064 near <code class="inline">)</code>); <code class="inline">starts_at DATE</code> instead of <code class="inline">DATETIME</code> (no error: ask "where does the 7:30 pm go?"); <code class="inline">BOOLEAN DEFAULT 'false'</code> (an error 1067 Invalid default value: FALSE without quotes).</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-02/l2_1-creating-databases-tables/change_request_starter.sql</code> (ALTER TABLE on a table with rows, the MODIFY trap, TRUNCATE resetting the id), then <code class="inline">labs/module-02/l2_1-creating-databases-tables/debug_build_script.sql</code> (errors 1007, 1046, 1064, 1050, 1146).</li>
+  <li><b>Debrief (1m):</b> "Your spec became a script anyone can rerun. The project is the same thing for the bookstore."</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Build the lesson project</div>
+<p>The lesson project is <b>The Bookstore Build Script</b>: <code class="inline">create_bookstore.sql</code>, which rebuilds the empty bookstore from nothing. All five steps happen in the room (20 minutes): Session 3 starts from these three tables.</p>
+<ul class="tick">
+  <li>Steps 1 to 3 (12m): the header, <code class="inline">DROP DATABASE IF EXISTS bookstore;</code>, the database with utf8mb4 and utf8mb4_unicode_ci, <code class="inline">USE</code>, then books, customers and categories from the lesson page, each with a comment. Run each CREATE at the prompt as it is added, so a typo shows up now.</li>
+  <li>Step 4 (3m): the information_schema self-check at the end of the file.</li>
+  <li>Step 5 (5m): <code class="inline">SOURCE ~/mysql-course/create_bookstore.sql</code>, then once more. <b>Done</b> = the same self-check table twice: books, categories, customers, all <code class="inline">utf8mb4_unicode_ci</code>. Walk the room and look at every screen.</li>
+  <li>Not done by 2:50? The learner finishes at home and emails you the self-check table before Session 3. The kit's <code class="inline">labs/_states/schema.sql</code> builds exactly the same three tables, as a fallback at the start of Session 3.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li>Why name the collation if utf8mb4 is already the default? <b>Answer:</b> the default collation differs between servers (9.7/8.4 <code class="inline">utf8mb4_0900_ai_ci</code>, MariaDB <code class="inline">utf8mb4_uca1400_ai_ci</code>); naming one makes every server sort the same way.</li>
+  <li><code class="inline">CREATE TABLE IF NOT EXISTS books (id INT PRIMARY KEY);</code> on the existing seven-column books: what happens? <b>Answer:</b> nothing changes; a Note 1050.</li>
+  <li>TRUNCATE or DELETE: which one starts the ids at 1 again? <b>Answer:</b> TRUNCATE.</li>
+  <li>Why does <code class="inline">create_bookstore.sql</code> start with <code class="inline">DROP DATABASE IF EXISTS bookstore;</code>? <b>Answer:</b> so it can run any number of times from any state; only on a practice database.</li>
+</ul>
+<p>Workbook self-check, items Q7 to Q12 (learners do them at the end of the block or at home).</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">D) The database is created with utf8mb3 (no emoji), and warning 3719 says to use utf8mb4</span>; <b>Q8</b> <span data-sc="8"><code class="inline">email</code> (then <code class="inline">id</code> and <code class="inline">name</code>)</span>; <b>Q9</b> <span data-sc="9">A) There is no current database: run USE first, or write database.table</span>; <b>Q10</b> <span data-sc="10">C) <code class="inline">book_reviews</code></span>; <b>Q11</b> <span data-sc="11">B) The column is now book_title, VARCHAR(250), and allows NULL</span>; <b>Q12</b> <span data-sc="12"><code class="inline">TRUNCATE TABLE customers;</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> learners who fall behind in the project copy the three CREATE TABLE statements from the lesson page (typing them is the goal, but having them matters more today). Pair a fast typist with them for Step 5.</p>
+<p><b>Stretch:</b> <code class="inline">change_request_starter.sql</code> and <code class="inline">debug_build_script.sql</code>; the lesson's Exercise 4 (work without USE, with database.table names) and the Bonus Challenge (table and column comments that survive a rebuild).</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 4 minutes)</div>
+<p>Put the three questions on the slide; learners answer in the workbook's Exit Ticket box or on a sticky note. Sort them before Session 3: question 3's "not yet" pile gets a minute of DESCRIBE in the Session 3 warm-up.</p>
+<ol class="steps">
+  <li>Name two statements that work in phpMyAdmin's SQL tab and one command that only the mysql client understands. <b>Answer:</b> SQL (any client): <code class="inline">SHOW TABLES;</code>, <code class="inline">DESCRIBE books;</code>, <code class="inline">USE bookstore;</code>, <code class="inline">SELECT DATABASE();</code>, <code class="inline">CREATE TABLE ...</code>. Client only: <code class="inline">\G</code>, <code class="inline">SOURCE file.sql</code>, <code class="inline">\c</code>, <code class="inline">help</code>, <code class="inline">exit</code>, <code class="inline">status</code>.</li>
+  <li>A script stops with <code class="inline">ERROR 1046 (3D000): No database selected</code>. Give two ways to fix it. <b>Answer:</b> Put <code class="inline">USE bookstore;</code> (the right database) before the statement, or write the full name <code class="inline">bookstore.books</code>. It happens in a fresh session and after dropping the database you were in.</li>
+  <li>title is <code class="inline">VARCHAR(200) NOT NULL</code>. You run <code class="inline">ALTER TABLE books MODIFY COLUMN title VARCHAR(250);</code>. What did you lose, and which statement shows it? <b>Answer:</b> The NOT NULL rule: MODIFY replaces the whole definition. <code class="inline">DESCRIBE books;</code> (or <code class="inline">SHOW COLUMNS FROM books LIKE 'title';</code>) shows YES under Null. Fix: repeat it, <code class="inline">VARCHAR(250) NOT NULL</code>.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours)</div>
+<ul class="tick">
+  <li><b>Finish explore.sql</b> (Lesson 1.3 project Steps 4 and 5: run it with SOURCE, from the shell plain and with -t; phpMyAdmin's SQL tab or DESCRIBE in the client).</li>
+  <li><b>create_bookstore.sql:</b> if it was not finished in class, finish it and run it twice. Everyone: run it once more from a fresh session (2.1's "Before the Next Lesson") so bookstore holds exactly three empty tables.</li>
+  <li><b>Lesson exercises.</b> 1.3: Exercises 1 to 3 (privilege tables, one column's details, vertical status); Exercise 4 is a stretch. 2.1: Exercises 1 to 3 (ALTER round trip, a publishers table, fix the broken table); Exercise 4 is a stretch.</li>
+  <li><b>Both Quick Quizzes</b> on the lesson pages (answers are in the Answer Key).</li>
+  <li><b>Journal:</b> both entries. The 2.1 prompt (a sketch of tables for something they know) comes back in Lesson 2.2's journal, so keep it.</li>
+  <li><b>Optional:</b> <code class="inline">labs/module-02/l1_3-mysql-cli-phpmyadmin/system_tour_starter.sql</code> and <code class="inline">labs/module-02/l2_1-creating-databases-tables/change_request_starter.sql</code> for anyone who did not reach them; the two debug handouts.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Bring list for Session 3</div>
+<ul class="tick">
+  <li>A laptop on which <code class="inline">USE bookstore; SHOW TABLES;</code> lists books, categories and customers (empty), and the root password.</li>
+  <li><code class="inline">create_bookstore.sql</code> in the <code class="inline">mysql-course</code> folder (Session 3 reruns it whenever an experiment goes wrong).</li>
+  <li>The 2.1 journal sketch (tables for something you know): Lesson 2.2 asks you to revise its types.</li>
+  <li>The course folder with <code class="inline">labs/</code> (Session 3's starters are in <code class="inline">labs/module-03/</code>), the workbook and the journal.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> <code class="inline">create_bookstore.sql</code> run twice by everyone; 2.1 demo Steps 1 to 9; the find-your-way lab through TODO 5.</li>
+  <li><b>Cut first (saves 2m):</b> the phpMyAdmin tour: "the lesson's tour section shows every tab; try it at home".</li>
+  <li><b>Cut second (saves 6m):</b> 2.1 demo Steps 10 to 12: hand out <code class="inline">debug_build_script.sql</code> instead.</li>
+  <li><b>Cut third (saves 15m):</b> the 1.3 project start: all five steps of explore.sql go home.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>Run <code class="inline">debug_build_script.sql</code> for everyone and fix the five errors together, one volunteer per error number.</li>
+  <li>Lesson 2.1 Exercise 3 live: the coworker's broken <code class="inline">CREATE TABLE Order Items (...)</code> with three problems.</li>
+  <li>The 1.3 Bonus Challenge together: <code class="inline">prompt \u@\d&gt;\_</code> and watch the prompt follow USE.</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 2 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

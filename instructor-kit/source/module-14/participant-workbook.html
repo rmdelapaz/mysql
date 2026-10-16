@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Participant Workbook: Session 14</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Student workbook —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">write in it · bring it to every session</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Participant Workbook</div>
+    <h1>Session 14: Final Project Studio II, Showcase and Next Steps</h1>
+    <p class="sub">Your workbook for Session 14: the rebuild check, the Milestone 5 to 7 tracker, a worked example of the reference answering, your showcase plan, Lesson 8.3's key ideas and project, a self-check for each lesson and the final submission checklist.</p>
+    <div class="meta-row">
+      <span class="chip">Lessons <b>8.2–8.3</b></span>
+      <span class="chip">Session <b>14</b> · 3 hours</span>
+      <span class="chip">Name: ____________________</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Session Goals</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Write <code class="inline">04_logic.sql</code>: a view and the check-out and return procedures, every rule refused with its own message inside a transaction.</li>
+  <li>Write <code class="inline">05_security.sql</code>: roles and accounts that are not root and cannot delete; prove it by logging in as the desk account.</li>
+  <li>Back up tool_library, restore it into a test database, compare the counts.</li>
+  <li>Present your project in three minutes: a design decision, a checked answer, a rule refused live.</li>
+  <li>Point an information_schema health check at your own database, write parameterized queries, and choose your next step.</li>
+</ul>
+
+  <div class="sec"><h2>Warm-up: the Rebuild Check</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">W1</div><div class="qt">From a client started in your tool-library folder: <code class="inline">SOURCE 02_data.sql</code>, then <code class="inline">SOURCE 03_queries.sql</code>. Which line fails, if any? <i>(Run your scripts)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Saturday question 3 uses RANK(). What would ROW_NUMBER() lose? <i>(Milestone 4)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">Why does every Saturday query read <code class="inline">@today</code> instead of <code class="inline">CURDATE()</code>? <i>(Milestone 4)</i></div><div class="write"></div></div>
+
+  <div class="sec"><h2>Lessons</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">8.2</span><h3>Final Project: Design and Build a Database</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Turn a written brief into entities, relationships and business rules, and draw them as a diagram</li>
+  <li>Build a normalized schema in a re-runnable script, with keys, foreign keys and CHECK constraints that you have tested</li>
+  <li>Answer business questions with joins, GROUP BY, CTEs and window functions, using a fixed report date</li>
+  <li>Enforce rules that span several rows in a stored procedure with a transaction</li>
+  <li>Secure the database with roles and least-privilege accounts, then back it up and prove the backup restores</li>
+</ul>
+<p>Today: the last two, and all five in the showcase.</p>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>The procedure is the only door into loans.</b> The desk's account gets EXECUTE, not INSERT; the procedure runs with its definer's rights, so every loan passes every rule.</li>
+  <li><b>Shape:</b> START TRANSACTION → read and lock (<code class="inline">SELECT ... FOR UPDATE</code>) → check each rule, <code class="inline">SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '...'</code> → INSERT → COMMIT.</li>
+  <li><b>One handler:</b> <code class="inline">DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;</code> undoes everything and passes the real message on.</li>
+  <li><b>Every rule gets a call that must fail</b>, and one call must succeed.</li>
+  <li><b>Roles per job, accounts per program or person,</b> <code class="inline">SET DEFAULT ROLE</code>, no DELETE anywhere. Test by logging in as the account.</li>
+  <li><b>A backup is only a backup once it has been restored:</b> mysqldump with <code class="inline">--single-transaction --routines --events --set-gtid-purged=OFF</code>, restore into a test database, compare counts. Accounts are not in the dump: <code class="inline">05_security.sql</code> is their backup.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: the reference answering</div>
+<p>Lesson 8.2's reference procedure, called with a rule broken each time (real output). Your messages may differ; each rule needs its own.</p>
+<pre class="code"><span class="k">CALL</span> checkout_tool(<span class="s">8</span>, <span class="s">1</span>, <span class="s">'2026-06-15'</span>);   <span class="c">-- Victor is suspended</span>
+<span class="k">CALL</span> checkout_tool(<span class="s">6</span>, <span class="s">7</span>, <span class="s">'2026-06-15'</span>);   <span class="c">-- ladder is out with Amara</span>
+<span class="k">CALL</span> checkout_tool(<span class="s">2</span>, <span class="s">8</span>, <span class="s">'2026-06-15'</span>);   <span class="c">-- a fourth tool for Kevin</span></pre><pre class="out">ERROR 1644 (45000): Member is suspended
+ERROR 1644 (45000): Tool is already on loan
+ERROR 1644 (45000): Loan limit reached (3 open loans)</pre><p>And the backup test from Milestone 7, after the restore:</p>
+<pre class="code"><span class="k">SELECT</span>
+    (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> tool_library.loans)      <span class="k">AS</span> loans_original,
+    (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> tool_library_test.loans) <span class="k">AS</span> loans_copy;</pre><pre class="out">+----------------+------------+
+| loans_original | loans_copy |
++----------------+------------+
+|             18 |         18 |
++----------------+------------+</pre></div>
+<div class="blk lab"><div class="h">Studio tracker: Milestones 5 to 7</div>
+<ul class="tick">
+  <li>☐ M5: <code class="inline">v_open_loans</code> lists the open loans</li>
+  <li>☐ M5: <code class="inline">checkout_tool</code> refuses: suspended · in repair · already on loan · no course · fourth tool (five messages)</li>
+  <li>☐ M5: one successful call prints the new loan; <code class="inline">return_tool</code> refuses a tool that is not out</li>
+  <li>☐ M6: roles for the desk and the reports, two accounts, <code class="inline">SET DEFAULT ROLE</code> for both</li>
+  <li>☐ M6: logged in as the desk account: CALL works, DELETE and INSERT on loans refused (1142)</li>
+  <li>☐ M7: dump taken, restored into tool_library_test; counts ___ and ___; procedures present</li>
+  <li>☐ At home, M8: rebuilt from the files on a clean server; self-review list; README.md; rubric score</li>
+</ul>
+<div class="write"></div>
+</div>
+<div class="blk lab"><div class="h">Guided lab (if you are stuck on the shape)</div>
+<ul class="tick">
+  <li>Reload the bookstore, then <code class="inline">SOURCE labs/module-14/l8_2-final-project/add_item_rules_starter.sql</code>: a clerk adds a book to an order; TODOs add the lock, the handler and three rules; the quantity rule becomes a CHECK.</li>
+  <li>Then <code class="inline">debug_add_item_rules.sql</code>: write the message you expect next to each bad call, then run it.</li>
+  <li>Milestone 6 practice: <code class="inline">least_privilege_starter.sql</code> (a till and an owner; the audit at the end must show no DELETE).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Showcase: plan your three minutes</div>
+<table class="timing">
+<thead><tr><th>What I show</th><th>My notes</th></tr></thead>
+<tbody>
+<tr><td>One design decision, and why</td><td></td></tr>
+<tr><td>One Saturday answer, checked by hand</td><td></td></tr>
+<tr><td>One rule refused live (the CALL I will run)</td><td></td></tr>
+</tbody>
+</table>
+<p>Strengths and questions I received:</p>
+<div class="write"></div>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>P1 in a practice database (<code class="inline">CREATE DATABASE scratch; USE scratch;</code>).</p>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it. (a tie for first place)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> tool_loans (tool <span class="k">VARCHAR</span>(<span class="s">20</span>), loans <span class="k">INT</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> tool_loans <span class="k">VALUES</span> (<span class="s">'Hammer'</span>, <span class="s">1</span>), (<span class="s">'Socket set'</span>, <span class="s">1</span>), (<span class="s">'Tile cutter'</span>, <span class="s">0</span>);
+
+<span class="k">SELECT</span> tool, loans,
+       RANK()       <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> loans <span class="k">DESC</span>) <span class="k">AS</span> rnk,
+       ROW_NUMBER() <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> loans <span class="k">DESC</span>, tool) <span class="k">AS</span> row_num
+<span class="k">FROM</span> tool_loans
+<span class="k">ORDER</span> <span class="k">BY</span> loans <span class="k">DESC</span>, tool;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">On the reference tool_library (Milestone 3 data), member 7 is Tessa (active, no safety course) and tool 6 is the chainsaw, on the shelf. What does this print?</div><pre class="code"><span class="k">CALL</span> checkout_tool(<span class="s">7</span>, <span class="s">6</span>, <span class="s">'2026-06-15'</span>);</pre><div class="opts"><div class="opt">A) A new loan: <code class="inline">loan_id 17, due_on 2026-06-22</code></div><div class="opt">B) <code class="inline">ERROR 1644 (45000): Member is suspended</code></div><div class="opt">C) <code class="inline">ERROR 1644 (45000): Safety course required for this tool</code></div><div class="opt">D) <code class="inline">ERROR 1142 (42000): INSERT command denied</code></div></div></div>
+<div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">Why does <code class="inline">checkout_tool</code> declare <code class="inline">EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END</code>?</div><div class="opts"><div class="opt">A) So a failed check-out never leaves a half-finished transaction, and the caller still receives the real error message</div><div class="opt">B) So that errors are ignored and the loan is created anyway</div><div class="opt">C) Because SIGNAL only works inside a handler</div><div class="opt">D) To make the procedure run with the definer's rights</div></div></div>
+<div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">Logged in as <code class="inline">tl_desk_app</code> (the reference roles from Milestone 6), what does this print?</div><pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> loans <span class="k">WHERE</span> id = <span class="s">1</span>;</pre><div class="write"></div></div>
+<div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">Milestone 7: your dump of tool_library restored into tool_library_test with matching counts. What is NOT in that dump?</div><div class="opts"><div class="opt">A) The tables and their rows</div><div class="opt">B) The view v_open_loans</div><div class="opt">C) The two procedures (taken with --routines)</div><div class="opt">D) The accounts tl_desk_app and tl_treasurer and their roles</div></div></div>
+<div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">Why does the reference <code class="inline">checkout_tool</code> read the tool with <code class="inline">SELECT ... FOR UPDATE</code>?</div><div class="opts"><div class="opt">A) To make the SELECT faster</div><div class="opt">B) So a second check-out of the same tool waits until the first commits, then sees the new loan</div><div class="opt">C) Because SELECT INTO needs FOR UPDATE inside a procedure</div><div class="opt">D) To update the tool's condition</div></div></div>
+<div class="q" data-sc="6" data-kind="short"><div class="qn">Q6</div><div class="qt">On the Milestone 3 data, Rosa runs the overdue query (Saturday question 2) with a later report date. How many rows come back, and which loan is first?</div><pre class="code"><span class="k">SET</span> @today = <span class="s">'2026-06-20'</span>;
+<span class="c">-- then the lesson's query 2: open loans with due_on &lt; @today, worst first</span></pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Journal (the lesson's prompt)</div>
+<p>Which design decision did you change your mind about while building, and what made you change it? If you compared your work with the reference, name one thing yours does better and one thing you would borrow from it.</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">8.3</span><h3>Next Steps &amp; Best Practices</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Summarize what each module of the course taught and where to look things up again</li>
+  <li>Apply a short list of design, query, security and operations practices to any MySQL project</li>
+  <li>Audit a database with information_schema queries for missing keys, risky types and old character sets</li>
+  <li>Explain SQL injection and write parameterized queries, in SQL and in an application language</li>
+  <li>Choose a next learning step that fits your goal</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>Design:</b> a primary key everywhere; normalize first; DECIMAL for money, DATE for dates, utf8mb4 for text; constraints the database enforces; consistent names.</li>
+  <li><b>Queries:</b> name the columns; ORDER BY when order matters; preview with SELECT before UPDATE or DELETE; never switch off strict mode to hide an error; EXPLAIN before tuning.</li>
+  <li><b>Security:</b> parameterized queries always; one least-privilege account per application; secrets outside the code; <code class="inline">caching_sha2_password</code>; supported releases.</li>
+  <li><b>Operations:</b> automatic backups with tested restores; the schema in version-controlled scripts; the slow query log; LTS releases (9.7, 8.4), asked for by name.</li>
+  <li><b>information_schema</b> describes every database as tables: TABLES, COLUMNS, TABLE_CONSTRAINTS, REFERENTIAL_CONSTRAINTS, KEY_COLUMN_USAGE, STATISTICS.</li>
+  <li><b>SQL injection:</b> input glued into SQL can rewrite it. A placeholder (<code class="inline">?</code>, <code class="inline">%s</code>, <code class="inline">:name</code>, <code class="inline">@name</code>) sends the value separately; at the prompt: <code class="inline">PREPARE ... EXECUTE ... USING</code>.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: one value, two ways</div>
+<p>The lesson's demo on the bookstore (real output). Glued in, the crafted email leaks every customer:</p>
+<pre class="code"><span class="k">SET</span> @input = <span class="s">'nobody@example.com'' OR ''1''=''1'</span>;
+
+<span class="k">SET</span> @sql = CONCAT(<span class="s">'SELECT first_name, email FROM customers WHERE email = '''</span>, @input, <span class="s">''''</span>);
+<span class="k">SELECT</span> @sql <span class="k">AS</span> query_sent;
+
+PREPARE lookup <span class="k">FROM</span> @sql;
+EXECUTE lookup;
+DEALLOCATE PREPARE lookup;</pre><pre class="out">+---------------------------------------------------------------------------------------+
+| query_sent                                                                            |
++---------------------------------------------------------------------------------------+
+| SELECT first_name, email FROM customers WHERE email = 'nobody@example.com' OR '1'='1' |
++---------------------------------------------------------------------------------------+
+Statement prepared
++------------+-------------------+
+| first_name | email             |
++------------+-------------------+
+| Alice      | alice@example.com |
+| Bob        | bob@example.com   |
+| Carol      | carol@example.com |
+| Dave       | dave@example.com  |
+| Eve        | eve@example.com   |
+| Frank      | frank@example.com |
+| Grace      | grace@example.com |
+| Hank       | hank@example.com  |
++------------+-------------------+</pre><p>As a parameter, it is only a strange email address:</p>
+<pre class="code">PREPARE lookup <span class="k">FROM</span> <span class="s">'SELECT first_name, email FROM customers WHERE email = ?'</span>;
+EXECUTE lookup <span class="k">USING</span> @input;
+DEALLOCATE PREPARE lookup;</pre><pre class="out">Statement prepared
+Empty set</pre></div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>Health Check and Learning Plan</b> (lesson page). In class: Steps 1 to 4. At home: Step 5.</p>
+<ul class="tick">
+  <li>☐ Step 1: <code class="inline">health_check.sql</code> with <code class="inline">SET @db = 'bookstore';</code> (8 tables)</li>
+  <li>☐ Step 2: checks 1 to 3; on the bookstore, checks 1 and 2 print Empty set</li>
+  <li>☐ Step 3: the unindexed-foreign-key check (Empty set on the bookstore)</li>
+  <li>☐ Step 4: <code class="inline">SET @db = 'tool_library';</code> (or my project's name): what it reported, and what I fixed: ____________</li>
+  <li>☐ Step 5 at home: <code class="inline">learning_plan.md</code>: a path, a first topic, a small project, a date next to each</li>
+</ul>
+<div class="write"></div>
+</div>
+<div class="blk lab"><div class="h">Guided lab (fast finishers and homework)</div>
+<ul class="tick">
+  <li><code class="inline">labs/module-14/l8_3-next-steps/health_check_starter.sql</code>: two checks the lesson does not have, on a planted legacy table.</li>
+  <li><code class="inline">safe_search_starter.sql</code>: the leak as shipped, then placeholders (TODOs 1 and 2).</li>
+  <li><code class="inline">debug_unsafe_habits.sql</code>: three changes under safe-update mode; two are refused. Which one gets through, and why?</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>P2 on the bookstore.</p>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it. (a crafted last name)</div><pre class="code"><span class="k">SET</span> @who = <span class="s">'x'' OR ''1''=''1'</span>;
+PREPARE find <span class="k">FROM</span> <span class="s">'SELECT first_name FROM customers WHERE last_name = ?'</span>;
+EXECUTE find <span class="k">USING</span> @who;
+DEALLOCATE PREPARE find;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">What does this print on the bookstore?</div><pre class="code"><span class="k">SET</span> @input = <span class="s">'Chicago'' OR ''x''=''x'</span>;
+<span class="k">SET</span> @sql = CONCAT(<span class="s">'SELECT first_name FROM customers WHERE city = '''</span>, @input, <span class="s">''' ORDER BY id'</span>);
+PREPARE search <span class="k">FROM</span> @sql;
+EXECUTE search;</pre><div class="opts"><div class="opt">A) <code class="inline">Empty set</code></div><div class="opt">B) Two rows: Bob and Grace</div><div class="opt">C) <code class="inline">ERROR 1064 (42000): You have an error in your SQL syntax</code></div><div class="opt">D) All eight customers</div></div></div>
+<div class="q" data-sc="8"><div class="qn">Q8</div><div class="qt">Health check 3 lists the bookstore's foreign keys. What happens to an order's rows in order_items when the order is deleted?</div><div class="opts"><div class="opt">A) They are deleted too (fk_items_order is CASCADE)</div><div class="opt">B) The DELETE is refused (RESTRICT)</div><div class="opt">C) Their order_id becomes NULL (SET NULL)</div><div class="opt">D) Nothing: they stay and point at a missing order</div></div></div>
+<div class="q" data-sc="9" data-kind="short"><div class="qn">Q9</div><div class="qt">What does the DELETE do?</div><pre class="code"><span class="k">SET</span> SQL_SAFE_UPDATES = <span class="s">1</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> customers <span class="k">WHERE</span> city = <span class="s">'Houston'</span>;</pre><div class="write"></div></div>
+<div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">Why does the "tables without a primary key" check use LEFT JOIN ... WHERE c.CONSTRAINT_NAME IS NULL?</div><div class="opts"><div class="opt">A) Because information_schema does not support inner joins</div><div class="opt">B) To sort the tables by name</div><div class="opt">C) It is the "find what is missing" pattern: keep every table, then keep only those that found no PRIMARY KEY row</div><div class="opt">D) To skip views</div></div></div>
+<div class="q" data-sc="11"><div class="qn">Q11</div><div class="qt">Where should a web application's database password live?</div><div class="opts"><div class="opt">A) In the source code, next to the connection string</div><div class="opt">B) In an environment variable or a secrets manager, never in the code or the repository</div><div class="opt">C) In a comment in 05_security.sql, so the team can find it</div><div class="opt">D) Nowhere: use root without a password on the web server</div></div></div>
+<div class="q" data-sc="12" data-kind="short"><div class="qn">Q12</div><div class="qt">A statement has two placeholders, <code class="inline">WHERE a.name = ? AND b.price &lt; ?</code>. How must the values be given to EXECUTE?</div><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Journal (the lesson's prompt)</div>
+<p>Look back at your first journal entry from Lesson 1.1. What did you think a database was then, and how would you explain it now? Which lesson changed your thinking the most, and which skill are you proudest of?</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<p>Three questions, no notes.</p>
+<div class="q"><div class="qn">E1</div><div class="qt">Why can the desk's web form create a loan through <code class="inline">checkout_tool</code> although its account may not INSERT into loans?</div><div class="write"></div></div>
+<div class="q"><div class="qn">E2</div><div class="qt">Rewrite <code class="inline">CONCAT('... WHERE email = ''', @input, '''')</code> safely.</div><div class="write"></div></div>
+<div class="q"><div class="qn">E3</div><div class="qt">Name your next step from Lesson 8.3's table, and the date you start.</div><div class="write"></div></div>
+
+  <div class="sec"><h2>Notes</h2><span class="rule"></span></div>
+<div class="notes-lines"></div>
+
+  <div class="sec"><h2>Homework and Final Submission Checklist</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ Milestones 5 to 7 finished; Milestone 8: rebuilt from the files in order on a clean server, self-review list answered</li>
+  <li>☐ <code class="inline">README.md</code>: design, rebuild steps, backups (restore date and counts), next steps; rubric score and one improvement</li>
+  <li>☐ Submit the zipped tool-library folder within one week (placeholder passwords only)</li>
+  <li>☐ Lesson 8.2: Exercises 1 to 3, the Quick Quiz, the journal</li>
+  <li>☐ Lesson 8.3: <code class="inline">learning_plan.md</code> with dates, Exercises 1 and 2, the Quick Quiz, the journal</li>
+  <li>☐ Optional: <code class="inline">safe_search_starter.sql</code>, <code class="inline">health_check_starter.sql</code>, <code class="inline">least_privilege_starter.sql</code></li>
+  <li>☐ After the course: the first date of my plan in my calendar; my project in a repository</li>
+</ul>
+
+  <div class="sec"><h2>Glossary</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>SIGNAL</td><td>Raises an error with your own message from a stored program (<code class="inline">SQLSTATE '45000'</code>, error 1644)</td></tr>
+<tr><td>EXIT HANDLER</td><td>Code that runs when an error happens in a procedure; with ROLLBACK and RESIGNAL it undoes and reports</td></tr>
+<tr><td>SELECT ... FOR UPDATE</td><td>Reads rows and locks them until the transaction ends, so a second writer waits</td></tr>
+<tr><td>definer's rights</td><td>A procedure runs with the privileges of the account that defined it (SQL SECURITY DEFINER)</td></tr>
+<tr><td>least privilege</td><td>Every account gets exactly what its job needs, nothing more</td></tr>
+<tr><td>restore test</td><td>Loading a backup into a test database and comparing it with the original</td></tr>
+<tr><td>information_schema</td><td>The read-only database in which MySQL describes every database as tables</td></tr>
+<tr><td>SQL injection</td><td>Input that changes the meaning of SQL because it was glued into the statement text</td></tr>
+<tr><td>parameterized query</td><td>SQL with placeholders; the values travel separately and stay values</td></tr>
+<tr><td>LTS release</td><td>A long-term support version (9.7, 8.4) for production; Innovation releases (26.x) in between</td></tr>
+</tbody>
+</table>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 14 · Participant Workbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

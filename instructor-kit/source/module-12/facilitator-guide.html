@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 12</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 12: Users, Permissions and Backups</h1>
+    <p class="sub">How to teach the twelfth session of MySQL Foundations: user accounts and least privilege (grants at three levels, logging in as each account, roles and the forgotten SET DEFAULT ROLE), then moving data in and out (a mysqldump backup proved by a test restore, the 9.7 GTID trap, a CSV export, a messy file through a staging table), and the hand-out of the final-project brief.</p>
+    <div class="meta-row">
+      <span class="chip"><b>2</b> lessons</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lessons <b>7.4–8.1</b></span>
+      <span class="chip">Session <b>12</b> of 14 · Part 2</span>
+      <span class="chip">Final-project brief</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Same rhythm for both lessons: frame → live demo → guided lab → start the lesson's own project. The lesson exercises, quiz and journal are homework.</li>
+  <li>Session 12 is the last teaching session of Part 2: it ends with a 20-minute <b>final-project brief</b> before the wrap-up, so each lesson gets 65 minutes in the room (the pages estimate 105 + 105 alone).</li>
+  <li>This session has two windows of a different kind: for 7.4 a second <b>mysql client logged in as another account</b>, for 8.1 a plain <b>terminal</b> for mysqldump. Every output below is real: the logins AS shop_reports, support_desk and tom were made with the mysql client on the kit's MySQL 9.7 test server; the shell commands ran there with the same options (shown as learners type them, <code class="inline">-u root -p</code>).</li>
+  <li>Keep <code class="inline">lesson_19.html</code> (7.4), <code class="inline">lesson_20.html</code> (8.1) and <code class="inline">lesson_final_project.html</code> (8.2, for the brief) open in browser tabs. Labs live in <code class="inline">labs/module-12/</code>; <code class="inline">_solution.sql</code> files are yours.</li>
+  <li><b>Safety.</b> Never change root's password or privileges in class, and never let learners practice on a server other people depend on. Every lab account is a <code class="inline">kit_</code> demo account that its own file drops again.</li>
+</ul>
+<div class="note warn"><div class="t">The #1 risk of Session 12: someone locks themselves out</div>
+<p>Lesson 7.4 is the first lesson where a typo can lock a learner out of their own server: <code class="inline">ALTER USER CURRENT_USER() IDENTIFIED BY ...</code>, or a REVOKE aimed at root. <b>Before:</b> say it once at the start of 7.4 and write it on the board: "we only ever change kit_ and demo accounts". <b>In the room:</b> if someone does lose root anyway, do not fix it live; pair them up and help at the break (recovery means restarting the server with special options, Lesson 7.4's ground rules). <b>After:</b> the labs and the checker refuse root and SET GLOBAL, so homework is safe.</p>
+</div>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Bring list you can assume (from Session 11):</b> a laptop with MySQL 9.7, <code class="inline">bookstore</code> freshly reloaded, the root password; a terminal that can be opened twice; checkout.sql and catalog_feed.sql finished; the Checkpoint 2 page; the workbook and the journal.</li>
+  <li>☐ <b>Checkpoint 2 marked</b> with the rubric (Session 11's Answer Key), one sentence of advice per learner: you return it in the warm-up.</li>
+  <li>☐ <b>Files:</b> copy <code class="inline">labs/module-12/</code> <b>without</b> the <code class="inline">*_solution.sql</code> files into the shared folder (<code class="inline">new_titles.csv</code> included). For the brief: the link to <code class="inline">lesson_final_project.html</code>, or printouts of its Brief, What you hand in, Milestones and How Your Work Is Assessed sections. Keep the kit's <code class="inline">final-assessment.html</code> (the final-project rubric with instructor notes) for yourself.</li>
+  <li>☐ <b>Run the kit check once:</b> <code class="inline">python3 labs/check_labs.py module-12</code> from this kit's folder: 10 files, every line PASS.</li>
+  <li>☐ <b>Projector machine:</b> MySQL 9.7 with a fresh <code class="inline">bookstore</code>; a root mysql window and a second terminal at 18 pt, side by side; the lesson's <code class="inline">new_books.csv</code> and <code class="inline">price_update.csv</code> saved in your server's <code class="inline">secure_file_priv</code> folder and in the course folder; a third terminal (plain shell) in the course folder for mysqldump. Find your folder now: <code class="inline">SHOW VARIABLES LIKE 'secure_file_priv';</code>.</li>
+  <li>☐ <b>Board, before learners arrive:</b> "GRANT what ON where TO whom"; the error ladder "1045 password · 1044 database · 1142 table · 1143 column · 3118 locked"; and "mysqldump = terminal · INTO OUTFILE / LOAD DATA = mysql&gt;".</li>
+</ul>
+<div class="blk warn"><div class="h">Known environment traps</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><code class="inline">ERROR 1819 ... does not satisfy the current policy requirements</code></td><td>The validate_password component (some installers enable it)</td><td>A longer password with mixed case, digits and a symbol; never uninstall the component in class.</td></tr>
+<tr><td>Logging in as the demo account says <code class="inline">ERROR 1045</code></td><td>Typo in the password, or the account was created for another host</td><td>Retype; <code class="inline">SELECT user, host FROM mysql.user;</code> and use the exact pair.</td></tr>
+<tr><td><code class="inline">mysqldump: command not found</code> / not recognized</td><td>The client tools' folder is not on the PATH (Session 1)</td><td>Same PATH fix as for <code class="inline">mysql</code>; Docker: <code class="inline">docker exec mysql97 mysqldump ...</code>.</td></tr>
+<tr><td><code class="inline">ERROR 3546 ... GTID_PURGED cannot be changed</code> on restore</td><td>A 9.7 dump without <code class="inline">--set-gtid-purged=OFF</code></td><td>Dump again with the option (the demo shows it on purpose).</td></tr>
+<tr><td>Windows: the restored file is gibberish or <code class="inline">ERROR ... ASCII '\0'</code></td><td>PowerShell's <code class="inline">&gt;</code> wrote UTF-16</td><td><code class="inline">--result-file=...</code> for the dump; <code class="inline">--commands -e "SOURCE file"</code> for the restore.</td></tr>
+<tr><td><code class="inline">ERROR 1290</code> for every INTO OUTFILE</td><td>Not the server's folder</td><td><code class="inline">SHOW VARIABLES LIKE 'secure_file_priv';</code> and use that folder; NULL means file statements are disabled (the client-side methods still work).</td></tr>
+<tr><td><code class="inline">ERROR 3948</code> or <code class="inline">2068</code> with LOAD DATA LOCAL</td><td>local_infile OFF on the server, or the client started without <code class="inline">--local-infile=1</code></td><td>The labs need neither; for the demo file, use the server-side LOAD DATA INFILE.</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 12 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">10</td><td>Warm-up</td><td>Five retrieval questions on Lessons 7.2 and 7.3; Checkpoint 2 returned with one sentence of advice each.</td></tr>
+      <tr><td class="t">0:10</td><td class="t">10</td><td><b>7.4</b> Frame and mental model</td><td>Why not root; 'user'@'host'; least privilege; GRANT what ON where TO whom.</td></tr>
+      <tr><td class="t">0:20</td><td class="t">30</td><td><b>7.4</b> Live demo</td><td>The lesson's accounts: grants at three levels, logging in AS each account in a second window, REVOKE, roles and the forgotten SET DEFAULT ROLE, a locked account.</td></tr>
+      <tr><td class="t">0:50</td><td class="t">15</td><td><b>7.4</b> Guided lab</td><td><code class="inline">labs/module-12/l7_4-user-management/warehouse_accounts_starter.sql</code> in pairs.</td></tr>
+      <tr><td class="t">1:05</td><td class="t">10</td><td><b>7.4</b> Start the lesson project</td><td>team_access.sql Steps 1 to 3; Steps 4 to 6 go home.</td></tr>
+      <tr><td class="t">1:15</td><td class="t">10</td><td>Break</td><td>Learners reload bookstore.sql and open a plain terminal next to the mysql client for 8.1.</td></tr>
+      <tr><td class="t">1:25</td><td class="t">10</td><td><b>8.1</b> Frame and mental model</td><td>Whole databases (mysqldump, at the terminal) versus rows (INTO OUTFILE and LOAD DATA, at mysql>); where the server may touch files.</td></tr>
+      <tr><td class="t">1:35</td><td class="t">30</td><td><b>8.1</b> Live demo</td><td>A backup, a test restore, the 9.7 GTID trap; a CSV export; a messy CSV through a staging table; two refusals and one silent warning.</td></tr>
+      <tr><td class="t">2:05</td><td class="t">15</td><td><b>8.1</b> Guided lab</td><td><code class="inline">labs/module-12/l8_1-importing-exporting/new_titles_import_starter.sql</code> in pairs.</td></tr>
+      <tr><td class="t">2:20</td><td class="t">10</td><td><b>8.1</b> Start the lesson project</td><td>The backup kit, Steps 1 and 2 (backup account, a dump with it); Steps 3 to 6 go home.</td></tr>
+      <tr><td class="t">2:30</td><td class="t">20</td><td>Final project brief</td><td>Hand out Lesson 8.2's brief (the Maple Street Tool Library); read Rosa's needs, find the entities in pairs, walk the milestones and the two studio sessions.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up</td><td>Exit ticket (3 questions), homework (including the Milestone 1 draft), bring list for Session 13.</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> 105 + 105 = 210 minutes alone; the room has 130 after the warm-up, the break, the brief and the wrap-up: 65 per lesson, each with its full shape. The final-project brief takes 20 minutes because Sessions 13 and 14 are studios: learners must arrive at Session 13 with the brief read and a first design draft.</p>
+<p><b>Goes home (about 2 to 3 hours).</b> team_access.sql Steps 4 to 6 and the backup kit Steps 3 to 6; each lesson's Hands-on Exercises; both Quick Quizzes; both journal entries; the labs not reached; and the <b>final project's Milestone 1 draft</b> (design notes on paper, no SQL yet).</p>
+<p><b>Protect, in this order:</b> the logins AS another account (7.4's whole idea: test both directions); the test restore and the GTID trap; the staging-table import; the final-project brief. <b>Cut first:</b> the 8.1 LOCAL warning step (Common Mistake 5 on the page), then the 7.4 old-advice and two-refusals steps (the debug handout has them), then the 8.1 project start (Step 1 is three statements learners can run at home).</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Warm-up: Transactions and JSON</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">6m</td><td>Five retrieval questions on Lessons 7.2 and 7.3 (workbook Warm-up box), answers by show of hands</td></tr>
+<tr><td class="t">4m</td><td>Checkpoint 2 returned: each learner reads your sentence of advice; name the one part most of the room should revisit</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">The questions and their answers</div>
+<ol class="steps">
+  <li><b>W1</b> (7.2) <code class="inline">START TRANSACTION;</code>, an UPDATE, an <code class="inline">ALTER TABLE</code>, then <code class="inline">ROLLBACK;</code>. Is the UPDATE undone? <b>Answer:</b> No. ALTER TABLE caused an implicit commit before it ran, so the UPDATE was already committed and the ROLLBACK had nothing to undo.</li>
+  <li><b>W2</b> (7.2) What is the difference between ERROR 1205 and ERROR 1213? <b>Answer:</b> 1205: a lock wait timed out; only the waiting statement failed and the transaction is still open. 1213: a deadlock; InnoDB rolled the whole transaction back, so retry all of it.</li>
+  <li><b>W3</b> (7.3) In <code class="inline">WHERE attributes ? '$.format' = 'hardcover'</code>, which arrow goes where the ? is, and why? <b>Answer:</b> -&gt;&gt; : it returns plain text; -&gt; would return the JSON string "hardcover" with its quotes, and the comparison would fail.</li>
+  <li><b>W4</b> (7.3) What does JSON_TABLE do, in one sentence? <b>Answer:</b> It turns a JSON array (in a column or a literal) into rows with typed columns that you can join, group and filter.</li>
+</ol>
+<p><b>W5</b> (7.2 + 7.3) Predict, then run (in a practice database):</p>
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> notes (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, doc <span class="k">JSON</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> notes <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'{"qty": 2, "tags": ["gift"]}'</span>);
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> notes <span class="k">SET</span> doc = JSON_SET(doc, <span class="s">'$.qty'</span>, <span class="s">5</span>);
+<span class="k">ROLLBACK</span>;
+<span class="k">SELECT</span> doc-&gt;&gt;<span class="s">'$.qty'</span> <span class="k">AS</span> qty, doc-&gt;<span class="s">'$.tags'</span> <span class="k">AS</span> tags <span class="k">FROM</span> notes;</pre>
+<pre class="out">+------+----------+
+| qty  | tags     |
++------+----------+
+| 2    | ["gift"] |
++------+----------+</pre><p>Checkpoint 2: if more than a third of the room was below Proficient in the same row, assign that lesson's exercises again; Part 3's COUNT(*) slip and Part 1's window function in WHERE come back in the final project's Saturday queries.</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plans</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">7.4</span><h3>User Management &amp; Permissions</h3><span class="dur">65 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Create accounts as 'user'@'host' and explain how MySQL 9.7 stores their passwords (caching_sha2_password)</li>
+  <li>Grant and revoke privileges at the global, database, table and column level, and read SHOW GRANTS</li>
+  <li>Log in as a restricted user and recognize the access-denied errors (1142, 1143, 1044, 3118)</li>
+  <li>Group privileges into roles, assign them, and make them active with SET DEFAULT ROLE</li>
+  <li>Design least-privilege accounts for an application, a report and staff, and script them</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: why not root; 'user'@'host'; least privilege; GRANT what ON where TO whom</td></tr>
+<tr><td class="t">30m</td><td>Live demo: grants at three levels, logins as each account, REVOKE, roles, a locked account</td></tr>
+<tr><td class="t">15m</td><td>Guided lab: <code class="inline">warehouse_accounts_starter.sql</code> in pairs</td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: team_access.sql Steps 1 to 3</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Start with the three stories from the lesson: a clerk's DELETE without WHERE, an attacker in the search box, a dashboard password in a shared config file. "None of these needs root. Each needs an account that can do its job and nothing more: the <b>principle of least privilege</b>."</p>
+<p>Then the building: "root is the master key. A program gets the key to one room; a report gets a window to look through. Every account is a name AND a door: <b>'user'@'host'</b>."</p>
+<p>Then the sentence pattern on the board, <b>GRANT what ON where TO whom</b>, and the levels from wide to narrow: <code class="inline">*.*</code> (administrators only), <code class="inline">bookstore.*</code>, <code class="inline">bookstore.books</code>, a column list. "Grant at the narrowest level that works, and prove it by logging in as the account."</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>The lesson's own accounts, from a fresh <code class="inline">bookstore.sql</code>. Root window on the left, the second window on the right: log in there as each account when the step says so. Learners type along in their own two windows; the passwords are the lesson's placeholders.</p>
+<ol class="steps">
+  <li><b>An account (2m).</b> "An account is a user name AND the host it connects from. Always write the host on purpose."
+<pre class="code"><span class="k">CREATE</span> <span class="k">USER</span> <span class="s">'shop_reports'</span>@<span class="s">'localhost'</span> <span class="k">IDENTIFIED</span> <span class="k">BY</span> <span class="s">'CHANGE-ME-reports-1'</span>;
+<span class="k">SELECT</span> user, host, plugin, account_locked
+<span class="k">FROM</span> mysql.user
+<span class="k">WHERE</span> user = <span class="s">'shop_reports'</span>;</pre>
+<pre class="out">+--------------+-----------+-----------------------+----------------+
+| user         | host      | plugin                | account_locked |
++--------------+-----------+-----------------------+----------------+
+| shop_reports | localhost | caching_sha2_password | N              |
++--------------+-----------+-----------------------+----------------+</pre>
+The plugin column: caching_sha2_password, the 9.7 default (Session 1's health check).</li>
+  <li><b>A new account can do nothing (1m).</b> "USAGE means: may connect. That is all."
+<pre class="code"><span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'shop_reports'</span>@<span class="s">'localhost'</span>;</pre>
+<pre class="out">+--------------------------------------------------+
+| Grants for shop_reports@localhost                |
++--------------------------------------------------+
+| GRANT USAGE ON *.* TO `shop_reports`@`localhost` |
++--------------------------------------------------+</pre></li>
+  <li><b>GRANT what ON where TO whom (2m).</b> Write the four words on the board, then read the statement against them.
+<pre class="code"><span class="k">GRANT</span> <span class="k">SELECT</span> <span class="k">ON</span> bookstore.* <span class="k">TO</span> <span class="s">'shop_reports'</span>@<span class="s">'localhost'</span>;
+<span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'shop_reports'</span>@<span class="s">'localhost'</span>;</pre>
+<pre class="out">+-------------------------------------------------------------+
+| Grants for shop_reports@localhost                           |
++-------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `shop_reports`@`localhost`            |
+| GRANT SELECT ON `bookstore`.* TO `shop_reports`@`localhost` |
++-------------------------------------------------------------+</pre>
+No FLUSH PRIVILEGES needed: grants take effect at once.</li>
+  <li><b>The website's account, table by table (3m).</b> "The site reads the catalog and records orders. It never changes a price or deletes anything."
+<pre class="code"><span class="k">CREATE</span> <span class="k">USER</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span> <span class="k">IDENTIFIED</span> <span class="k">BY</span> <span class="s">'CHANGE-ME-app-1'</span>;
+<span class="k">GRANT</span> <span class="k">SELECT</span> <span class="k">ON</span> bookstore.* <span class="k">TO</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;
+<span class="k">GRANT</span> <span class="k">INSERT</span>, <span class="k">UPDATE</span> <span class="k">ON</span> bookstore.customers   <span class="k">TO</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;
+<span class="k">GRANT</span> <span class="k">INSERT</span>         <span class="k">ON</span> bookstore.orders      <span class="k">TO</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;
+<span class="k">GRANT</span> <span class="k">INSERT</span>         <span class="k">ON</span> bookstore.order_items <span class="k">TO</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;
+<span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;</pre>
+<pre class="out">+---------------------------------------------------------------------------+
+| Grants for shop_app@localhost                                             |
++---------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `shop_app`@`localhost`                              |
+| GRANT SELECT ON `bookstore`.* TO `shop_app`@`localhost`                   |
+| GRANT INSERT, UPDATE ON `bookstore`.`customers` TO `shop_app`@`localhost` |
+| GRANT INSERT ON `bookstore`.`order_items` TO `shop_app`@`localhost`       |
+| GRANT INSERT ON `bookstore`.`orders` TO `shop_app`@`localhost`            |
++---------------------------------------------------------------------------+</pre>
+If the site is ever broken into, the attacker can read the catalog and add orders, and nothing else.</li>
+  <li><b>Column-level privileges (2m).</b> "The support desk sees names and emails, and may fix an email. Nothing else."
+<pre class="code"><span class="k">CREATE</span> <span class="k">USER</span> <span class="s">'support_desk'</span>@<span class="s">'localhost'</span> <span class="k">IDENTIFIED</span> <span class="k">BY</span> <span class="s">'CHANGE-ME-support-1'</span>;
+<span class="k">GRANT</span> <span class="k">SELECT</span> (id, first_name, last_name, email), <span class="k">UPDATE</span> (email)
+    <span class="k">ON</span> bookstore.customers <span class="k">TO</span> <span class="s">'support_desk'</span>@<span class="s">'localhost'</span>;</pre></li>
+  <li><b>Test as the user: shop_reports (4m).</b> In the SECOND window: <code class="inline">mysql -u shop_reports -p bookstore</code> (the password is typed at the prompt, never on the command line). "A grant you have not tested is a guess: test one thing it must do and one it must not."
+<pre class="code"><span class="k">SELECT</span> CURRENT_USER();
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> books <span class="k">FROM</span> books;
+<span class="k">DELETE</span> <span class="k">FROM</span> books <span class="k">WHERE</span> id = <span class="s">11</span>;</pre>
+<pre class="out">+------------------------+
+| CURRENT_USER()         |
++------------------------+
+| shop_reports@localhost |
++------------------------+
++-------+
+| books |
++-------+
+|    11 |
++-------+
+ERROR 1142 (42000): DELETE command denied to user 'shop_reports'@'localhost' for table 'books'</pre></li>
+  <li><b>Test as the user: support_desk (3m).</b> <code class="inline">exit</code>, then <code class="inline">mysql -u support_desk -p bookstore</code>. Predict each line first.
+<pre class="code"><span class="k">SELECT</span> first_name, email <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SELECT</span> first_name, city <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> orders;</pre>
+<pre class="out">+------------+-------------------+
+| first_name | email             |
++------------+-------------------+
+| Alice      | alice@example.com |
++------------+-------------------+
+ERROR 1143 (42000): SELECT command denied to user 'support_desk'@'localhost' for column 'city' in table 'customers'
+ERROR 1142 (42000): SELECT command denied to user 'support_desk'@'localhost' for table 'orders'</pre>
+1143 names the column that was never granted; <code class="inline">SELECT *</code> would be refused for the whole table (1142).</li>
+  <li><b>REVOKE at the level you granted (2m).</b> Back in the root window.
+<pre class="code"><span class="k">REVOKE</span> <span class="k">UPDATE</span> <span class="k">ON</span> bookstore.customers <span class="k">FROM</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;
+<span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;</pre>
+<pre class="out">+---------------------------------------------------------------------+
+| Grants for shop_app@localhost                                       |
++---------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `shop_app`@`localhost`                        |
+| GRANT SELECT ON `bookstore`.* TO `shop_app`@`localhost`             |
+| GRANT INSERT ON `bookstore`.`customers` TO `shop_app`@`localhost`   |
+| GRANT INSERT ON `bookstore`.`order_items` TO `shop_app`@`localhost` |
+| GRANT INSERT ON `bookstore`.`orders` TO `shop_app`@`localhost`      |
++---------------------------------------------------------------------+</pre></li>
+  <li><b>The old advice, once more (1m).</b> "Session 1 showed this error; here is where it comes from."
+<pre class="code"><span class="k">CREATE</span> <span class="k">USER</span> <span class="s">'legacy_app'</span>@<span class="s">'localhost'</span> <span class="k">IDENTIFIED</span> <span class="k">WITH</span> mysql_native_password <span class="k">BY</span> <span class="s">'CHANGE-ME-legacy-1'</span>;</pre>
+<pre class="out">ERROR 1524 (HY000): Plugin 'mysql_native_password' is not loaded</pre>
+Fix: update the app's driver, never weaken the server.</li>
+  <li><b>Roles (3m).</b> "Several clerks, same job: grant to a role once, then grant the role to people."
+<pre class="code"><span class="k">CREATE</span> <span class="k">ROLE</span> <span class="s">'bookstore_reader'</span>, <span class="s">'bookstore_sales'</span>;
+<span class="k">GRANT</span> <span class="k">SELECT</span> <span class="k">ON</span> bookstore.* <span class="k">TO</span> <span class="s">'bookstore_reader'</span>;
+<span class="k">GRANT</span> <span class="k">INSERT</span>, <span class="k">UPDATE</span> <span class="k">ON</span> bookstore.orders      <span class="k">TO</span> <span class="s">'bookstore_sales'</span>;
+<span class="k">GRANT</span> <span class="k">INSERT</span>, <span class="k">UPDATE</span> <span class="k">ON</span> bookstore.order_items <span class="k">TO</span> <span class="s">'bookstore_sales'</span>;
+<span class="k">CREATE</span> <span class="k">USER</span> <span class="s">'tom'</span>@<span class="s">'localhost'</span>  <span class="k">IDENTIFIED</span> <span class="k">BY</span> <span class="s">'CHANGE-ME-tom-1'</span>;
+<span class="k">CREATE</span> <span class="k">USER</span> <span class="s">'lena'</span>@<span class="s">'localhost'</span> <span class="k">IDENTIFIED</span> <span class="k">BY</span> <span class="s">'CHANGE-ME-lena-1'</span>;
+<span class="k">GRANT</span> <span class="s">'bookstore_reader'</span>, <span class="s">'bookstore_sales'</span> <span class="k">TO</span> <span class="s">'tom'</span>@<span class="s">'localhost'</span>, <span class="s">'lena'</span>@<span class="s">'localhost'</span>;
+<span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'tom'</span>@<span class="s">'localhost'</span>;</pre>
+<pre class="out">+-------------------------------------------------------------------------+
+| Grants for tom@localhost                                                |
++-------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `tom`@`localhost`                                 |
+| GRANT `bookstore_reader`@`%`,`bookstore_sales`@`%` TO `tom`@`localhost` |
++-------------------------------------------------------------------------+</pre></li>
+  <li><b>The step everybody forgets (4m).</b> Second window, as tom WITHOUT a database: <code class="inline">mysql -u tom -p</code>. Then try <code class="inline">mysql -u tom -p bookstore</code>.
+<pre class="code"><span class="k">SELECT</span> CURRENT_ROLE();
+<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> bookstore.books;</pre>
+<pre class="out">+----------------+
+| CURRENT_ROLE() |
++----------------+
+| NONE           |
++----------------+
+ERROR 1142 (42000): SELECT command denied to user 'tom'@'localhost' for table 'books'
+ERROR 1044 (42000): Access denied for user 'tom'@'localhost' to database 'bookstore'</pre>
+The second line is the login with bookstore: refused before any query, because no privilege is active yet.</li>
+  <li><b>SET DEFAULT ROLE (2m).</b> Root window:
+<pre class="code"><span class="k">SET</span> <span class="k">DEFAULT</span> <span class="k">ROLE</span> <span class="k">ALL</span> <span class="k">TO</span> <span class="s">'tom'</span>@<span class="s">'localhost'</span>, <span class="s">'lena'</span>@<span class="s">'localhost'</span>;
+<span class="k">SELECT</span> user, default_role_user <span class="k">FROM</span> mysql.default_roles <span class="k">ORDER</span> <span class="k">BY</span> user, default_role_user;</pre>
+<pre class="out">+------+-------------------+
+| user | default_role_user |
++------+-------------------+
+| lena | bookstore_reader  |
+| lena | bookstore_sales   |
+| tom  | bookstore_reader  |
+| tom  | bookstore_sales   |
++------+-------------------+</pre></li>
+  <li><b>Tom, again (1m).</b> Second window: <code class="inline">mysql -u tom -p bookstore</code>.
+<pre class="code"><span class="k">SELECT</span> CURRENT_ROLE();
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> books <span class="k">FROM</span> books;</pre>
+<pre class="out">+----------------------------------------------+
+| CURRENT_ROLE()                               |
++----------------------------------------------+
+| `bookstore_reader`@`%`,`bookstore_sales`@`%` |
++----------------------------------------------+
++-------+
+| books |
++-------+
+|    11 |
++-------+</pre></li>
+  <li><b>Lock an account (1m).</b> "Staff on leave, a job you are retiring: lock it, keep its grants." Then try to log in as shop_reports.
+<pre class="code"><span class="k">ALTER</span> <span class="k">USER</span> <span class="s">'shop_reports'</span>@<span class="s">'localhost'</span> ACCOUNT <span class="k">LOCK</span>;</pre>
+<pre class="out">ERROR 3118 (HY000): Access denied for user 'shop_reports'@'localhost'. Account is locked.</pre></li>
+  <li><b>Two refusals worth reading (1m).</b> A misspelled account, then the right user with the wrong host.
+<pre class="code"><span class="k">GRANT</span> <span class="k">SELECT</span> <span class="k">ON</span> bookstore.* <span class="k">TO</span> <span class="s">'reports'</span>@<span class="s">'localhost'</span>;
+<span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'shop_reports'</span>@<span class="s">'%'</span>;</pre>
+<pre class="out">ERROR 1410 (42000): You are not allowed to create a user with GRANT
+ERROR 1141 (42000): There is no such grant defined for user 'shop_reports' on host '%'</pre></li>
+  <li><b>Clean up (1m).</b> "Drop what you created; a demo account left on a server is a door left open."
+<pre class="code"><span class="k">DROP</span> <span class="k">USER</span> <span class="s">'shop_reports'</span>@<span class="s">'localhost'</span>, <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>, <span class="s">'support_desk'</span>@<span class="s">'localhost'</span>,
+          <span class="s">'tom'</span>@<span class="s">'localhost'</span>, <span class="s">'lena'</span>@<span class="s">'localhost'</span>;
+<span class="k">DROP</span> <span class="k">ROLE</span> <span class="s">'bookstore_reader'</span>, <span class="s">'bookstore_sales'</span>;</pre></li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>The right name, the wrong host.</b> "It says access denied but I created the account!" Coach: <code class="inline">SELECT user, host FROM mysql.user;</code> and compare the pair; inside a session, <code class="inline">SELECT USER(), CURRENT_USER();</code>.</li>
+  <li><b>Granted but never activated.</b> A role shows in SHOW GRANTS and the user still gets 1142 (or 1044 at login). Coach: "Is the role ACTIVE? <code class="inline">SELECT CURRENT_ROLE();</code> as that user; the fix is SET DEFAULT ROLE ALL."</li>
+  <li><b>Revoking at another level.</b> 1147 on a REVOKE. Coach: "Read SHOW GRANTS: at which level was it granted? Revoke exactly that line."</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-12/l7_4-user-management/warehouse_accounts_starter.sql</code>; reference <code class="inline">labs/module-12/l7_4-user-management/warehouse_accounts_solution.sql</code>. Two program accounts (the warehouse scanner, the accounting export) with table and column privileges, an audit through information_schema, a REVOKE and a lock. Every account is <code class="inline">kit_...</code> and the file drops them at the end.</p>
+<ul class="tick">
+  <li><b>TODO 2 together (4m), TODOs 3 and 5 in pairs (7m), TODO 6 if time (2m):</b> the login test from a second window; the README has the steps.</li>
+  <li><b>Expected:</b> the warehouse's grants merge into <code class="inline">GRANT SELECT, UPDATE (</code>in_stock<code class="inline">) ON </code>bookstore<code class="inline">.</code>books<code class="inline"></code> plus SELECT on authors; accounting gets three customer columns, orders and order_items; the audit lists 4 table and 4 column privileges; after TODO 5 accounting keeps customers and orders and kit_warehouse is locked (Y).</li>
+  <li><b>TODO 6, as kit_warehouse (real output):</b> the in_stock UPDATE works, the price UPDATE is refused:</li>
+</ul>
+<pre class="out">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+ERROR 1143 (42000): UPDATE command denied to user 'kit_warehouse'@'localhost' for column 'price' in table 'books'</pre><ul class="tick">
+  <li><b>Circulate for:</b> column lists in the wrong place (<code class="inline">GRANT SELECT ON customers (id, ...)</code>: ERROR 1064; the columns go after the privilege), a REVOKE that names <code class="inline">bookstore.*</code> instead of the table, and anyone typing a statement aimed at root.</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-12/l7_4-user-management/staff_roles_starter.sql</code> (roles: grant, activate, change once for everybody, revoke a bundle), then <code class="inline">labs/module-12/l7_4-user-management/debug_grants.sql</code> (errors 1410, 1141, 1396 and 1147).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>Accounts for the Bookstore Team</b>: <code class="inline">team_access.sql</code>, a rerunnable script that creates three roles and four accounts. In the room (10 minutes): Steps 1 to 3.</p>
+<ul class="tick">
+  <li>Step 1: the DROP USER IF EXISTS / DROP ROLE IF EXISTS lines that make the script rerunnable. Step 2: the three roles. Step 3: the website account, table by table.</li>
+  <li><b>Done in the room</b> = the file runs twice in a row without an error, and SHOW GRANTS for team_web lists four SELECTs and two INSERTs.</li>
+  <li><b>Goes home:</b> Steps 4 to 6 (people and the dashboard with default roles, the inventory query, the two-direction test as team_sofia). Remind learners to set Dune back to 14.99 after Step 6.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li>What can an account do right after CREATE USER? <b>Answer:</b> connect, nothing else (USAGE).</li>
+  <li>1142 or 1143: which names a column? <b>Answer:</b> 1143.</li>
+  <li>A role is granted and the user still gets 1142. What is missing? <b>Answer:</b> an active role: SET DEFAULT ROLE ALL (or SET ROLE in the session).</li>
+  <li>Why does the website get no DELETE anywhere? <b>Answer:</b> least privilege: a bug or an attacker using its login can do only what it needs.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">B) Two separate accounts, each with its own password and privileges</span>; <b>Q2</b> <span data-sc="2">Three: <code class="inline">GRANT USAGE ON *.*</code>, <code class="inline">GRANT SELECT ON `bookstore`.*</code>, <code class="inline">GRANT INSERT ON `bookstore`.`orders`</code></span>; <b>Q3</b> <span data-sc="3">D) The account has column privileges on customers, and city is not one of them</span>; <b>Q4</b> <span data-sc="4">A) Right away, both of them, and every future account given the role</span>; <b>Q5</b> <span data-sc="5">C) Fails with ERROR 1147: there is no table-level grant on books to take away</span>; <b>Q6</b> <span data-sc="6"><code class="inline">ALTER USER 'kit_mailer'@'localhost' ACCOUNT LOCK;</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> two windows can overwhelm; pair learners so one types as root and the other logs in as the demo account, then swap. Keep the error ladder on the board.</p>
+<p><b>Stretch:</b> <code class="inline">staff_roles_starter.sql</code> and <code class="inline">debug_grants.sql</code>; the lesson's Exercise 3 (a marketing view granted instead of columns) and Exercise 4 (a remote account with REQUIRE SSL and a query limit), then the Bonus Challenge (the exact privileges mysqldump needs: it leads straight into 8.1).</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">8.1</span><h3>Importing &amp; Exporting Data</h3><span class="dur">65 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Back up a database with mysqldump, choose the right options for MySQL 9.7, and restore the file into a test database</li>
+  <li>Explain what secure_file_priv and local_infile control, and find their values on your server</li>
+  <li>Export query results to a CSV file with SELECT ... INTO OUTFILE, including a header row</li>
+  <li>Import a CSV file through a staging table with LOAD DATA INFILE, converting dates and empty values on the way in</li>
+  <li>Recognize and fix the errors file operations raise (1290, 1086, 3948, 2068, 3546)</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: whole databases at the terminal, rows at mysql&gt;; where the server may touch files</td></tr>
+<tr><td class="t">30m</td><td>Live demo: backup, test restore, the GTID trap; a CSV export; a staging-table import; refusals and a silent warning</td></tr>
+<tr><td class="t">15m</td><td>Guided lab: <code class="inline">new_titles_import_starter.sql</code> in pairs</td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: the backup kit, Steps 1 and 2</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>"Two kinds of moving data, two kinds of tools." Point at the board: <b>whole databases</b> (backups, a new server) go through <b>mysqldump</b>, a program at the <b>terminal</b>, which writes a .sql file of CREATE and INSERT statements; the mysql client plays it back. <b>Rows</b> (a report for a spreadsheet, a supplier's file) go through <b>SELECT ... INTO OUTFILE</b> and <b>LOAD DATA</b>, SQL at the <b>mysql&gt; prompt</b>.</p>
+<p>Then the fence: "INTO OUTFILE and LOAD DATA INFILE run on the SERVER's disk, so the server only touches one folder, secure_file_priv, and only for accounts with the FILE privilege. LOCAL means the client sends a file from your own computer, and both sides must agree to it."</p>
+<p>Then the rule that makes a backup a backup: <b>a dump you have never restored is a hope.</b> Back up, restore into a test database, compare the counts, write it down.</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>From a fresh <code class="inline">bookstore.sql</code>, with three windows: a plain terminal in the course folder (mysqldump), the root mysql client, and the lesson page for the CSV files.</p>
+<ol class="steps">
+  <li><b>A backup, at the terminal (3m).</b> Open a plain terminal (not mysql&gt;) in the course folder. "mysqldump is a separate program. On 9.7 these four options are the habit."
+<pre class="code">mysqldump -u root -p --single-transaction --routines --events \
+    --set-gtid-purged=OFF bookstore &gt; bookstore_backup.sql</pre>
+It prints nothing and leaves a file of about 12 KB. Windows PowerShell: <code class="inline">--result-file=bookstore_backup.sql</code> instead of <code class="inline">&gt;</code>.</li>
+  <li><b>What is inside (2m).</b> "Plain SQL: a DROP and a CREATE per table, then the rows."
+<pre class="code">grep -c 'INSERT INTO' bookstore_backup.sql
+grep 'DROP TABLE IF EXISTS' bookstore_backup.sql</pre>
+<pre class="out">8
+DROP TABLE IF EXISTS `authors`;
+DROP TABLE IF EXISTS `book_categories`;
+DROP TABLE IF EXISTS `books`;
+DROP TABLE IF EXISTS `categories`;
+DROP TABLE IF EXISTS `customers`;
+DROP TABLE IF EXISTS `employees`;
+DROP TABLE IF EXISTS `order_items`;
+DROP TABLE IF EXISTS `orders`;</pre>
+Every table starts with DROP TABLE IF EXISTS: a restore replaces tables. Open the file in an editor for the versioned <code class="inline">/*!40101 ... */</code> comments.</li>
+  <li><b>A test restore (3m).</b> "A backup you have never restored is a hope." Restore into a test database, then compare.
+<pre class="code">mysql -u root -p -e "CREATE DATABASE bookstore_test"
+mysql -u root -p bookstore_test &lt; bookstore_backup.sql
+mysql -u root -p -t -e "SELECT
+    (SELECT COUNT(*) FROM bookstore.order_items) AS items_original,
+    (SELECT COUNT(*) FROM bookstore_test.order_items) AS items_copy"</pre>
+<pre class="out">+----------------+------------+
+| items_original | items_copy |
++----------------+------------+
+|             18 |         18 |
++----------------+------------+</pre>
+Then <code class="inline">DROP DATABASE bookstore_test;</code>.</li>
+  <li><b>The 9.7 trap (3m).</b> "Leave out --set-gtid-purged=OFF and watch."
+<pre class="code">mysqldump -u root -p --single-transaction bookstore &gt; plain_dump.sql
+mysql -u root -p -e "CREATE DATABASE bookstore_test2"
+mysql -u root -p bookstore_test2 &lt; plain_dump.sql</pre>
+<pre class="out">Warning: A partial dump from a server that has GTIDs will by default include the GTIDs of all transactions, even those that changed suppressed parts of the database. If you don't want to restore GTIDs, pass --set-gtid-purged=OFF. To make a complete dump, pass --all-databases --triggers --routines --events.
+ERROR 3546 (HY000) at line 24: @@GLOBAL.GTID_PURGED cannot be changed: the added gtid set must not overlap with @@GLOBAL.GTID_EXECUTED</pre>
+9.7 starts with GTIDs on: the plain dump carries the server's replication history and refuses to restore on the same server. No tables were created. Take the dump again with the option.</li>
+  <li><b>And at the wrong prompt (1m).</b> Back in the mysql client, the classic slip:
+<pre class="code">mysqldump -u root -p bookstore &gt; bookstore_backup.sql;</pre>
+<pre class="out">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'mysqldump -u root -p bookstore &gt; bookstore_backup.sql' at line 1</pre>
+Type <code class="inline">exit</code>, run it at <code class="inline">$</code> or <code class="inline">PS&gt;</code>.</li>
+  <li><b>Where the server may write files (2m).</b> "INTO OUTFILE and LOAD DATA INFILE run on the SERVER's disk, inside one folder." On a Linux package or the Docker image (shown: MySQL 8.4's Docker image):
+<pre class="code"><span class="k">SHOW</span> VARIABLES <span class="k">LIKE</span> <span class="s">'secure_file_priv'</span>;</pre>
+<pre class="out">+------------------+-----------------------+
+| Variable_name    | Value                 |
++------------------+-----------------------+
+| secure_file_priv | /var/lib/mysql-files/ |
++------------------+-----------------------+</pre>
+Learners run it on their own server and write the answer down: every path below uses that folder. (The kit's test server keeps its folder elsewhere; its outputs below are real, with the path shown as <code class="inline">/var/lib/mysql-files/</code>.)</li>
+  <li><b>Export a CSV (3m).</b> "Any query, plus INTO OUTFILE and the format, at the end."
+<pre class="code"><span class="k">SELECT</span> b.id, b.title, a.name <span class="k">AS</span> author, b.price, b.published
+<span class="k">FROM</span> books <span class="k">AS</span> b
+<span class="k">JOIN</span> authors <span class="k">AS</span> a <span class="k">ON</span> a.id = b.author_id
+<span class="k">ORDER</span> <span class="k">BY</span> b.id
+<span class="k">INTO</span> <span class="k">OUTFILE</span> <span class="s">'/var/lib/mysql-files/books_export.csv'</span>
+    FIELDS <span class="k">TERMINATED</span> <span class="k">BY</span> <span class="s">','</span> OPTIONALLY ENCLOSED <span class="k">BY</span> <span class="s">'"'</span>
+    <span class="k">LINES</span> <span class="k">TERMINATED</span> <span class="k">BY</span> <span class="s">'\n'</span>;</pre>
+<pre class="out">Query OK, 11 rows affected</pre>
+The first lines of the file (open it with a text editor or a spreadsheet; on Linux it belongs to the mysql user):
+<pre class="out">1,"Dune","Frank Herbert",14.99,"1965-08-01"
+2,"1984","George Orwell",9.99,"1949-06-08"
+3,"To Kill a Mockingbird","Harper Lee",11.99,"1960-07-11"
+...</pre></li>
+  <li><b>Outside the folder (1m).</b> "Anywhere else is refused."
+<pre class="code"><span class="k">SELECT</span> title, price <span class="k">FROM</span> books
+<span class="k">INTO</span> <span class="k">OUTFILE</span> <span class="s">'/tmp/books.csv'</span>;</pre>
+<pre class="out">ERROR 1290 (HY000): The MySQL server is running with the --secure-file-priv option so it cannot execute this statement</pre></li>
+  <li><b>Import through a staging table (4m).</b> Show <code class="inline">new_books.csv</code> first (on the lesson page): a header, a comma inside "I, Robot", US dates, an empty page count, and an author the store does not know. "Never load a stranger's file straight into a real table."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> import_books (
+    title     <span class="k">VARCHAR</span>(<span class="s">200</span>),
+    author    <span class="k">VARCHAR</span>(<span class="s">100</span>),
+    price     <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>),
+    pages     <span class="k">INT</span>,
+    published <span class="k">DATE</span>
+);
+<span class="k">LOAD</span> DATA <span class="k">INFILE</span> <span class="s">'/var/lib/mysql-files/new_books.csv'</span>
+<span class="k">INTO</span> <span class="k">TABLE</span> import_books
+    FIELDS <span class="k">TERMINATED</span> <span class="k">BY</span> <span class="s">','</span> OPTIONALLY ENCLOSED <span class="k">BY</span> <span class="s">'"'</span>
+    <span class="k">LINES</span> <span class="k">TERMINATED</span> <span class="k">BY</span> <span class="s">'\n'</span>
+    <span class="k">IGNORE</span> <span class="s">1</span> <span class="k">LINES</span>
+    (title, author, price, @pages, @published)
+<span class="k">SET</span> pages     = NULLIF(@pages, <span class="s">''</span>),
+    published = STR_TO_DATE(@published, <span class="s">'%m/%d/%Y'</span>);</pre>
+<pre class="out">Query OK, 0 rows affected
+Query OK, 4 rows affected
+Records: 4  Deleted: 0  Skipped: 0  Warnings: 0</pre>
+Read the status line aloud: 4 records, 0 skipped, 0 warnings.</li>
+  <li><b>Look at what arrived (1m).</b> 
+<pre class="code"><span class="k">SELECT</span> * <span class="k">FROM</span> import_books;</pre>
+<pre class="out">+------------------+----------------+-------+-------+------------+
+| title            | author         | price | pages | published  |
++------------------+----------------+-------+-------+------------+
+| I, Robot         | Isaac Asimov   |  8.99 |   253 | 1950-12-02 |
+| Emma             | Jane Austen    |  8.49 |   474 | 1815-12-23 |
+| Frankenstein     | Mary Shelley   |  7.49 |  NULL | 1818-01-01 |
+| The Silmarillion | J.R.R. Tolkien | 12.99 |   365 | 1977-09-15 |
++------------------+----------------+-------+-------+------------+</pre></li>
+  <li><b>Check against the real tables (2m).</b> "Which authors are missing? A LEFT JOIN with IS NULL."
+<pre class="code"><span class="k">SELECT</span> i.title, i.author
+<span class="k">FROM</span> import_books <span class="k">AS</span> i
+<span class="k">LEFT</span> <span class="k">JOIN</span> authors <span class="k">AS</span> a <span class="k">ON</span> a.name = i.author
+<span class="k">WHERE</span> a.id <span class="k">IS</span> <span class="k">NULL</span>;</pre>
+<pre class="out">+--------------+--------------+
+| title        | author       |
++--------------+--------------+
+| Frankenstein | Mary Shelley |
++--------------+--------------+</pre></li>
+  <li><b>Copy the good rows, all or nothing (3m).</b> "Lesson 7.2 comes back: one transaction."
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> authors (name, birth_year) <span class="k">VALUES</span> (<span class="s">'Mary Shelley'</span>, <span class="s">1797</span>);
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">INSERT</span> <span class="k">INTO</span> books (title, author_id, price, pages, published)
+<span class="k">SELECT</span> i.title, a.id, i.price, i.pages, i.published
+<span class="k">FROM</span> import_books <span class="k">AS</span> i
+<span class="k">JOIN</span> authors <span class="k">AS</span> a <span class="k">ON</span> a.name = i.author
+<span class="k">ORDER</span> <span class="k">BY</span> i.title;
+<span class="k">SELECT</span> b.id, b.title, a.name <span class="k">AS</span> author, b.pages, b.published
+<span class="k">FROM</span> books <span class="k">AS</span> b
+<span class="k">JOIN</span> authors <span class="k">AS</span> a <span class="k">ON</span> a.id = b.author_id
+<span class="k">WHERE</span> b.id &gt; <span class="s">11</span>
+<span class="k">ORDER</span> <span class="k">BY</span> b.id;
+<span class="k">COMMIT</span>;
+<span class="k">DROP</span> <span class="k">TABLE</span> import_books;</pre>
+<pre class="out">+----+------------------+----------------+-------+------------+
+| id | title            | author         | pages | published  |
++----+------------------+----------------+-------+------------+
+| 12 | Emma             | Jane Austen    |   474 | 1815-12-23 |
+| 13 | Frankenstein     | Mary Shelley   |  NULL | 1818-01-01 |
+| 14 | I, Robot         | Isaac Asimov   |   253 | 1950-12-02 |
+| 15 | The Silmarillion | J.R.R. Tolkien |   365 | 1977-09-15 |
++----+------------------+----------------+-------+------------+</pre></li>
+  <li><b>The silent LOCAL import (2m).</b> "With LOCAL the client sends a file from your own computer, and bad values become warnings, not errors." (local_infile is ON on the demo server; Lesson 8.1's Common Mistake 4 shows the 3948 error when it is OFF.)
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> price_update (title <span class="k">VARCHAR</span>(<span class="s">200</span>), price <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>));
+<span class="k">LOAD</span> DATA <span class="k">LOCAL</span> <span class="k">INFILE</span> <span class="s">'price_update.csv'</span>
+<span class="k">INTO</span> <span class="k">TABLE</span> price_update
+    FIELDS <span class="k">TERMINATED</span> <span class="k">BY</span> <span class="s">','</span>
+    <span class="k">IGNORE</span> <span class="s">1</span> <span class="k">LINES</span>;
+<span class="k">SHOW</span> <span class="k">WARNINGS</span>;</pre>
+<pre class="out">Query OK, 0 rows affected
+Query OK, 2 rows affected, 1 warning
+Records: 2  Deleted: 0  Skipped: 0  Warnings: 1
++---------+------+------------------------------------------------------------+
+| Level   | Code | Message                                                    |
++---------+------+------------------------------------------------------------+
+| Warning | 1366 | Incorrect decimal value: 'N/A' for column 'price' at row 2 |
++---------+------+------------------------------------------------------------+</pre>
+Emma now costs 0.00 and the only clue was <code class="inline">Warnings: 1</code>. Read the warnings right after every import (the next statement clears them).</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>The wrong prompt.</b> mysqldump at <code class="inline">mysql&gt;</code> (1064) or SQL at <code class="inline">$</code> ("command not found"). Coach: "Look at the prompt first: <code class="inline">$</code>/<code class="inline">PS&gt;</code> runs programs, <code class="inline">mysql&gt;</code> runs SQL."</li>
+  <li><b>A path the server cannot use.</b> 1290 for /tmp or a home folder. Coach: "Whose disk is that path on? The server's. Which folder does it allow?" <code class="inline">SHOW VARIABLES LIKE 'secure_file_priv';</code></li>
+  <li><b>Trusting the status line's first number.</b> "4 rows affected, done." Coach: read the whole line (Skipped, Warnings), SHOW WARNINGS when it is not 0, and SELECT the staging table before copying anything.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-12/l8_1-importing-exporting/new_titles_import_starter.sql</code> (and <code class="inline">labs/module-12/l8_1-importing-exporting/new_titles.csv</code>, the supplier's file); reference <code class="inline">labs/module-12/l8_1-importing-exporting/new_titles_import_solution.sql</code>. A European supplier's file (semicolons, day.month.year, an <code class="inline">N/A</code> price, an empty page count, a new author, a book already sold) through a staging table. The staging table is filled with an INSERT of exactly the text LOAD DATA would store, so the lab needs no file access or server setting.</p>
+<ul class="tick">
+  <li><b>SOURCE it as shipped (2m):</b> The Two Towers costs 0.00 and every date is NULL, with a screen of warnings (1411, 1292). Ask: "Which of these would have reached the books table?"</li>
+  <li><b>TODO 1 together (4m), TODOs 2 and 3 in pairs (7m).</b> TODO 3 is a commented block: learners remove the <code class="inline">--</code> and put in the date pattern from TODO 1.</li>
+  <li><b>Expected:</b> after TODO 1, no warnings and real dates; Step 2 holds back Animal Farm (already sold) and The Two Towers (no price) and shows Bram Stoker's author_id as NULL (new author); after TODO 3, books 12 Dracula, 13 Foundation, 14 Persuasion (pages NULL); 14 books, 11 authors.</li>
+  <li><b>Real file, optional (README):</b> with local_infile on, the LOAD DATA LOCAL statement in the lab's header loads <code class="inline">new_titles.csv</code> into the same staging table (real output, the kit's test server):</li>
+</ul>
+<pre class="out">+----------------+----------------+-----------+-----------+---------------+
+| title          | author         | price_raw | pages_raw | published_raw |
++----------------+----------------+-----------+-----------+---------------+
+| Animal Farm    | George Orwell  | 8.49      | 112       | 17.08.1945    |
+| Dracula        | Bram Stoker    | 8.99      | 418       | 26.05.1897    |
+| Foundation     | Isaac Asimov   | 9.99      | 255       | 01.06.1951    |
+| Persuasion     | Jane Austen    | 7.49      |           | 20.12.1817    |
+| The Two Towers | J.R.R. Tolkien | N/A       | 352       | 11.11.1954    |
++----------------+----------------+-----------+-----------+---------------+</pre><ul class="tick">
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-12/l8_1-importing-exporting/backup_check_starter.sql</code> (a least-privilege backup account and a proof it cannot write, the restore test's reference counts, a CSV-shaped report with a header row), then <code class="inline">labs/module-12/l8_1-importing-exporting/debug_import.sql</code> (errors 1064, 1290, 1411 and 1292).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>The Bookstore Backup Kit</b>: a backup account, a tested dump, a monthly sales CSV and a repeatable import. In the room (10 minutes): Steps 1 and 2.</p>
+<ul class="tick">
+  <li>Step 1: <code class="inline">backup_user.sql</code> (reload, CREATE USER IF NOT EXISTS bookstore_backup, the five privileges, SHOW GRANTS).</li>
+  <li>Step 2: at the terminal, the dump AS bookstore_backup with <code class="inline">--no-tablespaces --skip-masking-policies</code> (on 8.4 without the last option).</li>
+  <li><b>Done in the room</b> = a dated <code class="inline">bookstore_YYYY-MM-DD.sql</code> made by the backup account, with no warnings on screen.</li>
+  <li><b>Goes home:</b> Steps 3 to 6 (the test restore and restore_log.txt, the sales CSV checked by loading it back, the repeatable import, the scheduled backup with a login path).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li>mysqldump: terminal or mysql&gt;? <b>Answer:</b> terminal.</li>
+  <li>Which option does every 9.7 dump you restore yourself need? <b>Answer:</b> --set-gtid-purged=OFF.</li>
+  <li>What does a database dump leave out that the server needs? <b>Answer:</b> the user accounts and their grants (keep team_access.sql and backup_user.sql).</li>
+  <li>Why a staging table? <b>Answer:</b> to look, convert and check before the real tables change.</li>
+</ul>
+<p>Workbook self-check, items Q7 to Q12.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">C) At the terminal's shell prompt ($ or PS>), not inside the mysql client</span>; <b>Q8</b> <span data-sc="8">A) <code class="inline">--routines</code></span>; <b>Q9</b> <span data-sc="9"><code class="inline">1976-07-04</code> and <code class="inline">NULL</code></span>; <b>Q10</b> <span data-sc="10">D) Name the target database: <code class="inline">mysql -u root -p bookstore_test &lt; bookstore_backup.sql</code> (or dump with --databases)</span>; <b>Q11</b> <span data-sc="11">B) To look at, convert and check the rows (dates, empty values, missing authors) before any real table changes</span>; <b>Q12</b> <span data-sc="12">C) ERROR 1086: the file already exists</span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> learners on Windows do the shell part with <code class="inline">--result-file</code> and the <code class="inline">--commands -e "SOURCE ..."</code> restore (the README spells it out); learners without file access skip the server-side export and use the lab's on-screen report.</p>
+<p><b>Stretch:</b> <code class="inline">backup_check_starter.sql</code> and <code class="inline">debug_import.sql</code>; the lesson's Exercise 2 (signups with IGNORE and NULLIF) and Exercise 4 (a round trip that proves itself), then the Bonus Challenge (<code class="inline">mysqldump --tab</code>).</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Final Project Brief (hand-out)</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2:30</span><h3>Final Project Brief: the Maple Street Tool Library</h3><span class="dur">20 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">3m</td><td>Hand out the brief: Lesson 8.2's "The Brief" and "What you hand in" (<code class="inline">lesson_final_project.html</code>)</td></tr>
+<tr><td class="t">4m</td><td>Read Rosa's needs aloud; learners underline nouns (tables) and circle rules</td></tr>
+<tr><td class="t">6m</td><td>In pairs: a first list of entities and relationships; one minute of sharing on the board</td></tr>
+<tr><td class="t">5m</td><td>The eight milestones, the rubric (How Your Work Is Assessed, 100 points), the two studio sessions</td></tr>
+<tr><td class="t">2m</td><td>Questions; the homework: the Milestone 1 draft</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">What to say and show</div>
+<ul class="tick">
+  <li>"Until now the bookstore was handed to you. For the last two sessions you start from a client's description and an empty server." The client is <b>Rosa Delgado</b>, who coordinates a volunteer tool library: two people borrowed the same ladder, nobody knows who has the drill, someone took the chainsaw without the course.</li>
+  <li>Read the brief's eight bullet points aloud. Learners underline the <b>nouns</b> (members, tools, categories, safety courses, loans) and circle the <b>rules</b> (one open loan per tool, nothing out while in repair, suspended members cannot borrow, at most three tools at once, no course no chainsaw).</li>
+  <li>Pairs, 5 minutes: which nouns become tables, which become columns, which relationships are one-to-many and which many-to-many? Collect on the board: five entities plus the junction between members and safety courses (it carries the completion date). Do not show the lesson's reference design: it is hidden on the page for a reason.</li>
+  <li>Show "What you hand in" (01_schema.sql to 05_security.sql, a tested backup, README.md) and the eight milestones with their lessons: every Part 2 lesson comes back (5.1 and 5.2 in the Saturday queries, 6.2 and 7.1 and 7.2 in the business logic, 7.4 in security, 8.1 in the backup). Show the rubric: 80 of 100 is a solid, portfolio-ready project.</li>
+  <li>Sessions 13 and 14 are <b>studios</b>: the room is for building, with you circulating. "Arrive at Session 13 with the brief read and your Milestone 1 draft: you will turn it into tables in the first hour."</li>
+</ul>
+</div>
+<div class="blk warn"><div class="h">Instructor notes</div>
+<ul class="tick">
+  <li>Mark the final project with the kit's <code class="inline">final-assessment.html</code> (rubric and instructor notes with the reference numbers); learners use the lesson page's rubric. Keep the kit file out of the learners' folder.</li>
+  <li>Learners who prefer another business can use the lesson's alternative brief (a small clinic, in the page's Common Questions). Agree on it now, not in Session 13.</li>
+  <li>Everyone needs MySQL 9.7 with room for a new database, <code class="inline">tool_library</code>; the bookstore is not touched. Learners who miss Session 13 can still start from the lesson page alone.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 4 minutes)</div>
+<ol class="steps">
+  <li>Why does the website's account get INSERT on orders but no UPDATE or DELETE anywhere? <b>Answer:</b> least privilege: a bug or an attacker using the website's login can only do what the website needs (read the catalog, add orders).</li>
+  <li>Name the two steps that turn a dump file into a backup you can trust. <b>Answer:</b> dump with the right options (on 9.7 with --set-gtid-purged=OFF), then restore it into a test database and compare counts (and write it down).</li>
+  <li>Who is the final project's client, and name two rules her database must enforce. <b>Answer:</b> Rosa Delgado of the Maple Street Tool Library; any two of: one open loan per tool, nothing out while in repair, suspended members cannot borrow, at most three tools per member, no safety course no chainsaw.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours)</div>
+<ul class="tick">
+  <li><b>Finish both lesson projects.</b> team_access.sql Steps 4 to 6 (default roles, the inventory, the test as team_sofia) and the backup kit Steps 3 to 6 (test restore and restore_log.txt, the sales CSV, the repeatable import, backup.sh).</li>
+  <li><b>Lesson exercises.</b> 7.4: Exercises 1 to 3; Exercise 4 is a stretch. 8.1: Exercises 1 to 3; Exercise 4 is a stretch.</li>
+  <li><b>Both Quick Quizzes</b> on the lesson pages, and <b>both journal entries</b>.</li>
+  <li><b>Labs not reached in class:</b> <code class="inline">staff_roles_starter.sql</code>, <code class="inline">debug_grants.sql</code>, <code class="inline">backup_check_starter.sql</code>, <code class="inline">debug_import.sql</code>.</li>
+  <li><b>Final project, Milestone 1 draft (about 30 minutes):</b> read the whole brief and the lesson's "From Requirements to Tables" section; on paper, the entities and their columns, the relationships (one or many, both directions), and where each of Rosa's five rules will be enforced (column type or constraint, foreign key, or procedure). No SQL yet.</li>
+  <li><b>Before the Next Lesson (from 8.1):</b> skim Lessons 6.3 (design) and 7.4 (users): the final project leans on both.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Bring list for Session 13</div>
+<ul class="tick">
+  <li>A laptop with MySQL 9.7 and the root password; room for a new database (<code class="inline">tool_library</code>).</li>
+  <li>The Milestone 1 draft (entities, relationships, where each rule lives) and the brief.</li>
+  <li>team_access.sql and the backup kit scripts: the final project's security and backup milestones reuse them.</li>
+  <li>The workbook and the journal; the course folder with <code class="inline">labs/</code>.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> the logins as another account; the test restore and the GTID trap; the staging-table import; the full 20 minutes of the brief.</li>
+  <li><b>Cut first (saves 2m):</b> the 8.1 LOCAL warning step.</li>
+  <li><b>Cut second (saves 3m):</b> the 7.4 old-advice and two-refusals steps (<code class="inline">debug_grants.sql</code> has the refusals).</li>
+  <li><b>Cut third (saves 10m):</b> the 8.1 project start: Step 1 is three statements learners run at home.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>The 7.4 Bonus Challenge live: a team_backup account with exactly mysqldump's privileges, then a dump made with it at the terminal.</li>
+  <li>Run <code class="inline">debug_import.sql</code> for everyone and fix it together.</li>
+  <li>Start Milestone 1 in the room: pairs compare their entity lists.</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 12 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

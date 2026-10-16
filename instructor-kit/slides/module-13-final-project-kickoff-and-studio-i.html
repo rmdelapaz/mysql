@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides: Session 13</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--ink2:#9fb2cd;--accent:#93c5fd;--accent2:#2563eb;--py:#f6a53b;--lab:#34d3bd;--warn:#fbbf24;--line:#22314c;--code:#0a1526;color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100%;width:100%;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:6vh 8vw;gap:20px}
+  .slide.on{display:flex}
+  h1,h2,h3{font-family:"Archivo",sans-serif;line-height:1.1;text-wrap:balance}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .slide h1{font-size:clamp(2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+  .slide h2{font-size:clamp(1.5rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+  .slide p.lead{font-size:clamp(1.05rem,2.4vw,1.5rem);color:var(--ink2);max-width:34ch}
+  ul,ol.num{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  ul li{position:relative;padding-left:34px;font-size:clamp(1.05rem,2.3vw,1.6rem)}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+  ul.lab li::before{background:var(--lab)}
+  ol.num{counter-reset:n}
+  ol.num li{position:relative;padding-left:46px;font-size:clamp(1rem,2.1vw,1.45rem)}
+  ol.num li::before{counter-increment:n;content:counter(n);position:absolute;left:0;top:.05em;width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#fff;font-family:"JetBrains Mono",monospace;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+  code.k{font-family:"JetBrains Mono",monospace;font-variant-ligatures:none;color:#bfdbfe;font-size:.92em}
+  pre{white-space:pre;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px 24px;font-family:"JetBrains Mono",monospace;font-size:clamp(.8rem,1.7vw,1.15rem);line-height:1.5;overflow:auto;max-width:100%;font-variant-ligatures:none}
+  pre .k{color:#7dd3fc} pre .s{color:#86efac} pre .c{color:#7183a3;font-style:italic}
+  table.ag{border-collapse:collapse;font-size:clamp(.9rem,1.9vw,1.25rem);width:100%;max-width:60rem}
+  table.ag td{padding:7px 12px;border-bottom:1px solid var(--line)}
+  table.ag td.t{font-family:"JetBrains Mono",monospace;color:var(--ink2);white-space:nowrap}
+  table.ag tr.brk td{color:var(--py)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);color:var(--ink2)}
+  .tag .pill{background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;letter-spacing:.06em}
+  .tag .pill.lab{background:var(--lab);color:#062b26} .tag .pill.warn{background:var(--warn);color:#3a2a05}
+  .section{background:linear-gradient(135deg,#0f2a5c,#0b1220)}
+  .section .big{font-size:clamp(3rem,12vw,8rem);font-family:"Archivo";font-weight:800;color:#3b82f6;line-height:.9}
+  .section .big.py{color:var(--py)}
+  .two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:30px;align-items:start}
+  .two pre{font-size:clamp(.72rem,1.35vw,1rem);padding:16px 18px}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .bar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--py));width:0;transition:width .25s;z-index:5}
+  .count{position:fixed;right:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--ink2);z-index:5}
+  .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+  .nav button{pointer-events:auto;background:transparent;border:none;color:transparent;width:22vw;height:100vh;cursor:pointer}
+  .foot{position:fixed;left:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#5d7391;z-index:5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <section class="slide on section">
+    <div class="eyebrow">MySQL Foundations · Part 2 · Session 13 of 14 · 3 hours</div>
+    <h1>Session 13<br>Final Project Kickoff and Studio I</h1>
+    <p class="lead">From a client's brief to a design, a schema that proves its rules, and test data with edge cases.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Today</div>
+    <h2>Three hours, one project</h2>
+    <table class="ag">
+      <tr><td class="t">0:00</td><td>Warm-up: Lessons 7.4, 8.1 and the brief</td></tr>
+      <tr><td class="t">0:15</td><td>Kickoff: brief, files, rubric</td></tr>
+      <tr><td class="t">0:30</td><td>From requirements to tables; five mistakes</td></tr>
+      <tr><td class="t">0:50</td><td>Studio: Milestone 1, design</td></tr>
+      <tr class="brk"><td class="t">1:20</td><td>Break (10 min)</td></tr>
+      <tr><td class="t">1:30</td><td>Guided lab: gift cards</td></tr>
+      <tr><td class="t">1:45</td><td>Studio: Milestone 2, schema + tests</td></tr>
+      <tr><td class="t">2:25</td><td>Studio: Milestone 3, test data</td></tr>
+      <tr><td class="t">2:50</td><td>Exit ticket, homework, bring list</td></tr>
+    </table>
+    <div class="tag"><span class="pill lab">LABS</span> <span>Lab files are in <code class="k">labs/module-13</code>. Your project lives in your own <code class="k">tool-library</code> folder.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Warm-up · 15 minutes</div>
+    <h2>Five questions, from memory</h2>
+    <ol class="num">
+      <li>The reporting role was granted, but SELECT gives 1142. Why?</li>
+      <li><code class="k">mysqldump ...</code> typed at <code class="k">mysql&gt;</code>: what happens?</li>
+      <li>The dump restores, the web form cannot log in. Why?</li>
+      <li>Which mysqldump option saves the procedures?</li>
+      <li>From the brief: your tables, and one rule that cannot be a CHECK</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>Workbook, Warm-up page. Then: hands up if you have a design draft.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big">8.2</div><h2>Final Project: Design and Build a Database</h2><p class="lead">The Maple Street Tool Library</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · The client</div>
+    <h2>Rosa's tool library</h2>
+    <ul>
+      <li>Members borrow drills and ladders instead of books</li>
+      <li>Today: one shared spreadsheet, falling apart</li>
+      <li>Two people borrowed the same ladder on the same day</li>
+      <li>Nobody knows who has the drill</li>
+      <li>A member with no course went home with the chainsaw</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span>She describes problems, not tables. Turning one into the other is the job.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · The brief</div>
+    <h2>Eight requirements</h2>
+    <ol class="num">
+      <li>Members · 2 Tools · 3 Safety courses · 4 Loans</li>
+      <li><b>Rules:</b> one borrower; not in repair; not suspended; three at most; course first</li>
+      <li>Saturday reports: shelf, overdue, popular, monthly</li>
+      <li>Desk volunteers, a read-only treasurer, no deleting history</li>
+      <li>"If the laptop dies, I do not want to start over"</li>
+    </ol>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · What you hand in</div>
+    <h2>Six files and a backup</h2>
+    <ul>
+      <li><code class="k">01_schema.sql</code> re-runnable · <code class="k">02_data.sql</code> edge cases</li>
+      <li><code class="k">03_queries.sql</code> the six Saturday questions</li>
+      <li><code class="k">04_logic.sql</code> a view and two procedures</li>
+      <li><code class="k">05_security.sql</code> roles and accounts</li>
+      <li>A tested backup and <code class="k">README.md</code></li>
+    </ul>
+    <div class="tag"><span class="pill">WHEN</span> <span>Due one week after Session 14.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · The rubric</div>
+    <h2>100 points, 7 areas</h2>
+    <table class="ag">
+      <tr><td class="t">15</td><td>Design</td></tr>
+      <tr><td class="t">20</td><td>Schema and constraints</td></tr>
+      <tr><td class="t">10</td><td>Test data</td></tr>
+      <tr><td class="t">20</td><td>Queries</td></tr>
+      <tr><td class="t">15</td><td>Business logic</td></tr>
+      <tr><td class="t">10</td><td>Security</td></tr>
+      <tr><td class="t">10</td><td>Backup and write-up</td></tr>
+    </table>
+    <div class="tag"><span class="pill">WHY</span> <span>0, half or full points per area. 80+ is portfolio-ready. Full points need PROOF.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Timeline</div>
+    <h2>Where the milestones happen</h2>
+    <table class="ag">
+      <tr><td class="t">Today</td><td>1 Design · 2 Schema + tests · 3 Test data</td></tr>
+      <tr><td class="t">Home</td><td>4 The Saturday queries</td></tr>
+      <tr><td class="t">Session 14</td><td>5 Logic · 6 Security · 7 Backup · showcase</td></tr>
+      <tr><td class="t">Home</td><td>8 Self-review and README</td></tr>
+    </table>
+    <div class="tag"><span class="pill warn">RULE</span> <span>Try each milestone first. The lesson's reference is hidden for a reason.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Setup</div>
+    <h2>Start the client in your project folder</h2>
+    <pre class="code">cd tool-library
+mysql -u root -p</pre>
+    <ul>
+      <li><code class="k">02_data.sql</code> begins with <code class="k">SOURCE 01_schema.sql</code></li>
+      <li>SOURCE looks in the folder the CLIENT started in</li>
+      <li>Started elsewhere: <code class="k">Failed to open file</code></li>
+    </ul>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Measured on 9.7. Keep every script in tool-library.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Mental model</div>
+    <h2>From requirements to tables</h2>
+    <ol class="num">
+      <li><b>Nouns</b> become tables; facts become columns</li>
+      <li><b>Verbs</b> become relationships: one or many, both ways?</li>
+      <li><b>Rules</b> get a home: constraint, foreign key or procedure</li>
+      <li><b>Derived</b> values are computed, never stored</li>
+    </ol>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Where rules live</div>
+    <h2>One row, or other rows?</h2>
+    <table class="ag">
+      <tr><td class="t">One value</td><td>type, NOT NULL, UNIQUE, ENUM, CHECK</td></tr>
+      <tr><td class="t">Between tables</td><td>FOREIGN KEY</td></tr>
+      <tr><td class="t">Other rows</td><td>the procedure that writes, in a transaction</td></tr>
+      <tr><td class="t">Today's date</td><td>the query (@today), never a CHECK</td></tr>
+    </table>
+    <div class="tag"><span class="pill">WHY</span> <span>"At most three tools" counts other rows: it can never be a CHECK.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Mistake 1</div>
+    <h2>A reserved word as a column name</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_tools (
+    id        <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    condition <span class="k">VARCHAR</span>(<span class="s">10</span>)
+);</pre>
+    <pre class="code">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that
+    corresponds to your MySQL server version for the right syntax to use near
+    'condition VARCHAR(10)
+)' at line 3</pre>
+    <div class="tag"><span class="pill warn">FIX</span> <span>Rename it: <code class="k">tool_condition</code>. Same trap: order, group, rank, key.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Mistake 2</div>
+    <h2>A foreign key whose type does not match</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_loans (
+    id      <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    tool_id <span class="k">BIGINT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">FOREIGN</span> <span class="k">KEY</span> (tool_id) <span class="k">REFERENCES</span> demo_tools (id)
+);</pre>
+    <pre class="code">ERROR 3780 (HY000): Referencing column 'tool_id' and referenced column 'id' in foreign
+    key constraint 'demo_loans_ibfk_1' are incompatible.</pre>
+    <div class="tag"><span class="pill warn">FIX</span> <span>INT and BIGINT clash; so do INT and INT UNSIGNED. One key type everywhere.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Mistake 3</div>
+    <h2>Today's date in a CHECK</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_loans (
+    id     <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    due_on <span class="k">DATE</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> chk_due_future <span class="k">CHECK</span> (due_on &gt;= CURDATE())
+);</pre>
+    <pre class="code">ERROR 3814 (HY000): An expression of a check constraint 'chk_due_future' contains
+    disallowed function: curdate.</pre>
+    <div class="tag"><span class="pill warn">FIX</span> <span>Compare columns of the row: <code class="k">due_on &gt;= loaned_on</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Mistake 4</div>
+    <h2>The child before the parent</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_courses_done (
+    member_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">FOREIGN</span> <span class="k">KEY</span> (member_id) <span class="k">REFERENCES</span> demo_members (id)
+);</pre>
+    <pre class="code">ERROR 1824 (HY000): Failed to open the referenced table 'demo_members'</pre>
+    <div class="tag"><span class="pill warn">FIX</span> <span>Parents first, junction and history tables last; drop in reverse.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Mistake 5 · predict first</div>
+    <h2>June loans per member, zeros included</h2>
+    <pre class="code"><span class="k">SELECT</span> m.name, COUNT(l.member_id) <span class="k">AS</span> june_loans
+<span class="k">FROM</span> demo_members <span class="k">AS</span> m
+<span class="k">LEFT</span> <span class="k">JOIN</span> demo_member_loans <span class="k">AS</span> l <span class="k">ON</span> l.member_id = m.id
+<span class="k">WHERE</span> l.loaned_on &gt;= <span class="s">'2026-06-01'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> m.id, m.name
+<span class="k">ORDER</span> <span class="k">BY</span> m.name;</pre>
+    <ul>
+      <li>Rosa June · Kevin May · Tessa none</li>
+      <li>How many rows come back?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Mistake 5</div>
+    <h2>Silent: two members vanish</h2>
+    <pre class="code"><span class="k">SELECT</span> m.name, COUNT(l.member_id) <span class="k">AS</span> june_loans
+<span class="k">FROM</span> demo_members <span class="k">AS</span> m
+<span class="k">LEFT</span> <span class="k">JOIN</span> demo_member_loans <span class="k">AS</span> l <span class="k">ON</span> l.member_id = m.id
+<span class="k">WHERE</span> l.loaned_on &gt;= <span class="s">'2026-06-01'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> m.id, m.name
+<span class="k">ORDER</span> <span class="k">BY</span> m.name;</pre>
+    <pre class="code">+------+------------+
+| name | june_loans |
++------+------------+
+| Rosa |          1 |
++------+------------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>WHERE runs after the join and drops the NULL rows. The LEFT does nothing.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · The fix</div>
+    <h2>Conditions on the right table go in ON</h2>
+    <pre class="code"><span class="k">SELECT</span> m.name, COUNT(l.member_id) <span class="k">AS</span> june_loans
+<span class="k">FROM</span> demo_members <span class="k">AS</span> m
+<span class="k">LEFT</span> <span class="k">JOIN</span> demo_member_loans <span class="k">AS</span> l
+       <span class="k">ON</span> l.member_id = m.id <span class="k">AND</span> l.loaned_on &gt;= <span class="s">'2026-06-01'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> m.id, m.name
+<span class="k">ORDER</span> <span class="k">BY</span> m.name;</pre>
+    <pre class="code">+-------+------------+
+| name  | june_loans |
++-------+------------+
+| Kevin |          0 |
+| Rosa  |          1 |
+| Tessa |          0 |
++-------+------------+</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Studio · 30 minutes</div>
+    <h2>Milestone 1: Design</h2>
+    <ul class="lab">
+      <li>Tables, columns, types, keys</li>
+      <li>Relationships: a sketch is enough</li>
+      <li>Each of the eight requirements next to its home</li>
+      <li>Workbook: the requirement table and the checklist</li>
+      <li>No SQL yet</li>
+    </ul>
+    <div class="tag"><span class="pill lab">CHECK-IN</span> <span>Check-in: point at every requirement and say why it lives there.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big py">10</div><h2>Break</h2><p class="lead">Back at 1:30. No design check-in yet? You are first after the break.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Guided lab · 15 minutes</div>
+    <h2>Gift cards on the bookstore</h2>
+    <ul class="lab">
+      <li>Reload: <code class="k">SOURCE labs/_states/bookstore.sql</code></li>
+      <li><code class="k">gift_cards_starter.sql</code>: TODOs 1 to 4, one named constraint each</li>
+      <li>Watch the constraint list grow to nine</li>
+      <li>Then <code class="k">debug_gift_card_proofs.sql</code>: predict each error first</li>
+    </ul>
+    <div class="tag"><span class="pill lab">WHY</span> <span>It is Milestone 2 in miniature. Copy the test pattern.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Guided lab</div>
+    <h2>Every rule named</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> gift_cards (
+    id          <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    code        <span class="k">CHAR</span>(<span class="s">8</span>)       <span class="k">NOT</span> <span class="k">NULL</span>,
+    customer_id <span class="k">INT</span>           <span class="k">NOT</span> <span class="k">NULL</span>,
+    amount      <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    issued_on   <span class="k">DATE</span>          <span class="k">NOT</span> <span class="k">NULL</span>,
+    expires_on  <span class="k">DATE</span>          <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> uq_gift_cards_code     <span class="k">UNIQUE</span> (code),
+    <span class="k">CONSTRAINT</span> fk_gift_cards_customer <span class="k">FOREIGN</span> <span class="k">KEY</span> (customer_id) <span class="k">REFERENCES</span> customers (id),
+    <span class="k">CONSTRAINT</span> chk_gift_cards_amount  <span class="k">CHECK</span> (amount &gt; <span class="s">0</span>),
+    <span class="k">CONSTRAINT</span> chk_gift_cards_dates   <span class="k">CHECK</span> (expires_on &gt; issued_on)
+);</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>An error that names <code class="k">chk_gift_cards_dates</code> explains itself; <code class="k">gift_cards_chk_2</code> does not.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Guided lab</div>
+    <h2>Proof: each bad row refused</h2>
+    <pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">INSERT</span> <span class="k">INTO</span> gift_cards (code, customer_id, amount, issued_on, expires_on)
+<span class="k">VALUES</span> (<span class="s">'GCTEST03'</span>, <span class="s">1</span>, <span class="s">25.00</span>, <span class="s">'2026-06-01'</span>, <span class="s">'2026-05-01'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> gift_cards (code, customer_id, amount, issued_on, expires_on)
+<span class="k">VALUES</span> (<span class="s">'GCTEST04'</span>, <span class="s">99</span>, <span class="s">25.00</span>, <span class="s">'2026-06-01'</span>, <span class="s">'2027-06-01'</span>);
+<span class="k">ROLLBACK</span>;</pre>
+    <pre class="code">ERROR 3819 (HY000): Check constraint 'chk_gift_cards_dates' is violated.
+ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails
+    (`bookstore`.`gift_cards`, CONSTRAINT `fk_gift_cards_customer` FOREIGN KEY
+    (`customer_id`) REFERENCES `customers` (`id`))</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Tests in a transaction, then ROLLBACK: no test row ever stays.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Studio · 40 minutes</div>
+    <h2>Milestone 2: Build the schema</h2>
+    <ul class="lab">
+      <li>First line: <code class="k">DROP DATABASE IF EXISTS tool_library;</code></li>
+      <li>Parents first; every constraint named</li>
+      <li>Indexes for the open-loan lookups</li>
+      <li>One statement each constraint must refuse</li>
+      <li>Run the whole file twice</li>
+    </ul>
+    <div class="tag"><span class="pill lab">CHECK-IN</span> <span>Check-in: SOURCE it twice with no ERROR, then the tests.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · The test pattern</div>
+    <h2>A failed statement undoes only itself</h2>
+    <pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> loans (tool_id, member_id, loaned_on, due_on)
+<span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">1</span>, <span class="s">'2026-06-10'</span>, <span class="s">'2026-06-03'</span>);
+
+<span class="k">ROLLBACK</span>;
+
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> members_left <span class="k">FROM</span> members;</pre>
+    <pre class="code">ERROR 3819 (HY000): Check constraint 'chk_loans_due' is violated.
++--------------+
+| members_left |
++--------------+
+|            0 |
++--------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Inside START TRANSACTION, with one parent row each; ROLLBACK at the end.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Studio · 25 minutes</div>
+    <h2>Milestone 3: Test data</h2>
+    <ul class="lab">
+      <li><code class="k">02_data.sql</code> starts with <code class="k">SOURCE 01_schema.sql</code></li>
+      <li>Explicit ids; parents' rows first</li>
+      <li>Suspended · never borrowed · in repair · never lent</li>
+      <li>A tie · open · overdue · returned late</li>
+    </ul>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Happy-path data hides broken queries.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Milestone 3</div>
+    <h2>The reference data's counts</h2>
+    <pre class="code"><span class="k">SELECT</span> <span class="s">'members'</span> <span class="k">AS</span> table_name, COUNT(*) <span class="k">AS</span> row_count <span class="k">FROM</span> members
+<span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> <span class="s">'categories'</span>, COUNT(*) <span class="k">FROM</span> categories
+<span class="c">-- ... one line per table</span></pre>
+    <pre class="code">+----------------+-----------+
+| table_name     | row_count |
++----------------+-----------+
+| members        |         8 |
+| categories     |         5 |
+| safety_courses |         2 |
+| member_courses |         7 |
+| tools          |        12 |
+| loans          |        16 |
++----------------+-----------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Your own data? Point at each edge case by id.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Wrap-up · 4 minutes</div>
+    <h2>Exit ticket</h2>
+    <ol class="num">
+      <li>One rule that must live in a procedure, and why not a CHECK</li>
+      <li>What makes 01_schema.sql run a second time?</li>
+      <li>One test statement for a CHECK on loans, and MySQL's answer</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>No notes. Workbook Exit Ticket box or a sticky note.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Before Session 14</div>
+    <h2>Homework and bring list</h2>
+    <ul class="lab">
+      <li>Finish Milestones 1 to 3</li>
+      <li>Milestone 4: six Saturday queries, <code class="k">@today = '2026-06-15'</code></li>
+      <li>Lab: <code class="k">edge_cases_starter.sql</code></li>
+      <li>Bring: tool-library that rebuilds everything, the rubric</li>
+    </ul>
+    <div class="tag"><span class="pill">NEXT</span> <span>Session 14: logic, security, backup, showcase, next steps.</span></div>
+  </section>
+
+
+</div>
+
+<div class="foot">© 2026 Ray de la Paz · MySQL Foundations</div>
+<div class="count" id="count">1 / 1</div>
+<div class="nav"><button id="prev" aria-label="Previous slide"></button><button id="next" aria-label="Next slide"></button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'), count=document.getElementById('count');
+  let i=0;
+  function show(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%'; count.textContent=(i+1)+' / '+slides.length; }
+  document.getElementById('next').onclick=()=>show(i+1);
+  document.getElementById('prev').onclick=()=>show(i-1);
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0); else if(e.key==='End')show(slides.length-1);
+  });
+  show(0);
+</script>
+</body>
+</html>

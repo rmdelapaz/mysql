@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Before You Begin — MySQL Foundations Setup</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Student handout —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">send this out a week before Session 1 · the last section is for the facilitator</span>
+</div>
+
+<div class="sheet">
+
+<header class="mast">
+<div class="kit-eyebrow">MySQL Foundations · Before You Begin</div>
+<h1>Set Up MySQL for the Course</h1>
+<p class="sub">About half an hour to do <b>before the first session</b>: install MySQL 9.7 LTS, give its administrator account a strong password, make a course folder and run a short check that tells you (and your instructor) whether your laptop is ready. These are the same steps as Lesson 1.2 on the course site (rays-mysql.netlify.app, lesson "Installing MySQL"), which shows every step with its expected output. Session 1 then spends its time on databases instead of progress bars.</p>
+<div class="meta-row">
+<span class="chip">⏱ <b>20–40 min</b>, mostly downloading</span>
+<span class="chip">No SQL needed yet</span>
+<span class="chip">Windows · Mac · Linux · Docker</span>
+<span class="chip">Free software</span>
+</div>
+</header>
+
+<div class="note warn">
+<div class="t">Please do this at home, not in class</div>
+<p>The installer is a download of a few hundred megabytes, and venue Wi-Fi is rarely up to twenty people doing that at once. If a step fails, keep going with the others and bring the <b>exact error message</b> (a screenshot is fine) to Session 1: its first half hour includes an environment check, and there is an install clinic after the break.</p>
+</div>
+
+<div class="sec"><h2>What You Need</h2><span class="rule"></span></div>
+<ul class="tick">
+<li><b>A laptop</b> (Windows 10/11, macOS, or Linux) and its <b>charger</b>, with <b>permission to install software</b> (administrator rights) and about <b>1.5 GB of free disk space</b>. Chromebooks, tablets and locked work laptops cannot run the course comfortably: talk to your instructor first.</li>
+<li><b>A terminal</b>: PowerShell on Windows, Terminal on macOS, your usual terminal on Linux. You will type a few commands into it; the course explains each one.</li>
+<li><b>A plain-text editor</b> for <code class="inline">.sql</code> files. <b>VS Code</b> (free) works well. Not Word or TextEdit in rich-text mode: their curly quotes break SQL.</li>
+<li><b>The environment check</b>: three small files from <code class="inline">labs/module-01/l1_0-orientation/</code> that your instructor sends with this guide (<code class="inline">check_environment.sql</code>, <code class="inline">check_environment.sh</code>, <code class="inline">check_environment.ps1</code>).</li>
+<li><b>A learning journal</b>: a plain text file or a paper notebook. Every lesson ends with a journal prompt.</li>
+<li><b>A password manager</b> (or a safe place) for the MySQL root password you are about to choose.</li>
+</ul>
+
+<div class="sec"><h2>Am I Ready for This Course?</h2><span class="rule"></span></div>
+<p style="font-size:.95rem;color:var(--ink-2)">MySQL Foundations starts from zero: no SQL and no programming are needed. It builds on everyday spreadsheet and computer skills. You are ready if you can:</p>
+<ul class="tick lab">
+<li>☐ Filter a spreadsheet to the rows where a column has a certain value, and sort it by a column</li>
+<li>☐ Say what "city is Chicago AND total over 20" keeps that "city is Chicago OR total over 20" does not</li>
+<li>☐ Write a formula column such as price times quantity, and notice what happens with an empty cell</li>
+<li>☐ Install a program, find a downloaded file, and say which folder a file is in (for example <code class="inline">Downloads/bookstore.sql</code>)</li>
+<li>☐ Open a terminal, and copy a command into it exactly</li>
+</ul>
+<p style="font-size:.9rem;color:var(--ink-2)">Two or more unchecked? Come anyway and tell your instructor. Session 1 includes a short, ungraded diagnostic on these same skills, so your instructor knows where to help.</p>
+
+<div class="sec"><h2>Set Up in 5 Steps</h2><span class="rule"></span></div>
+
+<div class="lesson">
+<div class="lesson-head"><span class="lcode">1</span><h3>Choose the version and one path</h3><span class="dur">~2 min</span></div>
+<div class="lesson-body">
+<p>The course uses <b>MySQL 9.7 LTS</b> (long-term support), the free <b>MySQL Community Server</b>. Every output on the lesson pages was produced on 9.7, so yours will match.</p>
+<ul class="tick">
+<li><b>Ask for 9.7 by name.</b> After 9.7, MySQL switched to calendar version numbers (year.month): its frequent <b>innovation releases</b> are numbered like <b>26.x</b>, and "latest" on a download page, <code class="inline">brew install mysql</code> or <code class="inline">mysql:latest</code> usually means one of those. They work, but some outputs will differ from the pages.</li>
+<li><b>MySQL 8.4 LTS</b> also runs the course almost everywhere. <b>MySQL 8.0</b>, which many old tutorials show, is past its end of life: if a package offers you 8.0, use the steps below instead.</li>
+<li><b>XAMPP ships MariaDB</b>, not MySQL, even though its button says "MySQL". <b>MAMP ships MySQL</b>, usually an older series. Both can follow most of the course (the lessons' version notes explain the differences), but for matching outputs install MySQL 9.7 itself.</li>
+<li><b>One server per port.</b> If MySQL, MariaDB, XAMPP or MAMP is already installed and running, stop it first: two servers cannot both listen on port 3306.</li>
+</ul>
+<table class="timing">
+<thead><tr><th>Your computer</th><th>Recommended</th><th>Alternative</th></tr></thead>
+<tbody>
+<tr><td>Windows 10/11</td><td>MSI installer + MySQL Configurator</td><td>Docker Desktop, or the Linux steps inside WSL</td></tr>
+<tr><td>macOS</td><td>Homebrew <code class="inline">mysql@9.7</code> or the DMG package</td><td>Docker Desktop</td></tr>
+<tr><td>Ubuntu / Debian</td><td>MySQL's APT repository</td><td>Docker</td></tr>
+<tr><td>Fedora / RHEL / Rocky / Alma</td><td>MySQL's Yum repository</td><td>Docker or Podman</td></tr>
+<tr><td>Already use Docker</td><td>the <code class="inline">mysql:9.7</code> image</td><td></td></tr>
+</tbody>
+</table>
+<p style="font-size:.9rem;color:var(--ink-2)">Do <b>one</b> of the paths in Step 2, then continue with Step 3.</p>
+</div>
+</div>
+
+<div class="lesson">
+<div class="lesson-head"><span class="lcode">2</span><h3>Install MySQL 9.7</h3><span class="dur">~15–30 min</span></div>
+<div class="lesson-body">
+
+<div class="blk"><div class="h">Windows: the MSI installer and MySQL Configurator</div>
+<ol class="steps">
+<li><b>Download.</b> At <b>dev.mysql.com/downloads/mysql</b> (MySQL Community Server), choose <b>9.7.x LTS</b> and <b>Microsoft Windows</b>, then the <b>Windows (x86, 64-bit), MSI Installer</b>. "No thanks, just start my download" skips the account sign-up.</li>
+<li><b>Install.</b> Run the <code class="inline">.msi</code>, accept the license, choose <b>Typical</b>, confirm the administrator prompt. Leave "run MySQL Configurator" checked at the end. (If it asks for the Visual C++ Redistributable, install the current x64 one from Microsoft and run the MSI again.)</li>
+<li><b>Configure.</b> In MySQL Configurator: config type <b>Development</b>, port <b>3306</b>; type a <b>strong root password</b> twice and store it; keep "Configure MySQL Server as a Windows Service" and "Start at System Startup" checked and note the service name (something like <code class="inline">MySQL97</code>); skip the sample databases; <b>Execute</b>, wait for the green checks, <b>Finish</b>.</li>
+<li><b>Put the client on your PATH.</b> The MSI does not. Start ▸ "Edit the system environment variables" ▸ Environment Variables… ▸ your user <b>Path</b> ▸ Edit ▸ New, and add <code class="inline">C:\Program Files\MySQL\MySQL Server 9.7\bin</code>. OK three times, then open a <b>new</b> PowerShell window and check with <code class="inline">mysql --version</code>.</li>
+</ol>
+<p style="font-size:.9rem;color:var(--ink-2);margin:.2rem 0">Start and stop later: the Services app, or <code class="inline">Get-Service MySQL*</code>, <code class="inline">Start-Service MySQL97</code>, <code class="inline">Stop-Service MySQL97</code> in an administrator PowerShell.</p>
+</div>
+
+<div class="blk"><div class="h">macOS: Homebrew (Option A) or the DMG package (Option B)</div>
+<p style="font-size:.95rem;margin:.2rem 0"><b>Option A, Homebrew.</b> Ask for the 9.7 series by name (plain <code class="inline">brew install mysql</code> gives an innovation release). Versioned formulae are "keg-only", so add their folder to your PATH:</p>
+<pre class="code">brew install mysql@9.7
+echo 'export PATH="$(brew --prefix)/opt/mysql@9.7/bin:$PATH"' &gt;&gt; ~/.zshrc
+source ~/.zshrc
+mysql --version
+brew services start mysql@9.7</pre>
+<p style="font-size:.95rem;margin:.2rem 0">Homebrew creates <code class="inline">root</code> <b>without a password</b>: Step 3 fixes that. Stop it later with <code class="inline">brew services stop mysql@9.7</code>.</p>
+<p style="font-size:.95rem;margin:.4rem 0 .2rem"><b>Option B, the DMG.</b> At dev.mysql.com/downloads/mysql choose <b>9.7.x LTS</b>, <b>macOS</b>, and the <b>DMG Archive</b> for your processor (<b>ARM, 64-bit</b> for Apple silicon, <b>x86, 64-bit</b> for Intel; Apple menu ▸ About This Mac tells you). Run the <code class="inline">.pkg</code>, set a strong root password near the end, then put the programs on your PATH:</p>
+<pre class="code">echo 'export PATH="/usr/local/mysql/bin:$PATH"' &gt;&gt; ~/.zshrc
+source ~/.zshrc
+mysql --version</pre>
+<p style="font-size:.9rem;color:var(--ink-2);margin:.2rem 0">The DMG starts MySQL automatically and adds a MySQL pane to System Settings for starting and stopping it.</p>
+</div>
+
+<div class="blk"><div class="h">Linux: MySQL's APT or Yum repository</div>
+<p style="font-size:.95rem;margin:.2rem 0">Your distribution's own package is usually <b>not</b> MySQL 9.7. Check with <code class="inline">apt policy mysql-server</code>:</p>
+<table class="timing">
+<thead><tr><th>Distribution package</th><th>What you get</th></tr></thead>
+<tbody>
+<tr><td><code class="inline">mysql-server</code> on Ubuntu 22.04 and 24.04</td><td>MySQL 8.0 (past its end of life)</td></tr>
+<tr><td><code class="inline">mysql-server</code> on Ubuntu 26.04</td><td>MySQL 8.4 LTS</td></tr>
+<tr><td><code class="inline">default-mysql-server</code> on Debian</td><td>MariaDB, not MySQL</td></tr>
+<tr><td>MySQL's own APT or Yum repository</td><td>the series you pick: <b>9.7 LTS</b></td></tr>
+</tbody>
+</table>
+<p style="font-size:.95rem;margin:.2rem 0"><b>Ubuntu and Debian.</b> Download <code class="inline">mysql-apt-config_…_all.deb</code> from <b>dev.mysql.com/downloads/repo/apt</b>. Installing it opens a text menu: under the server entry choose <b>9.7 LTS</b>, then Ok. Set a strong root password when the install asks.</p>
+<pre class="code">sudo dpkg -i ~/Downloads/mysql-apt-config_*_all.deb
+sudo apt update
+sudo apt install mysql-server
+systemctl status mysql        # look for "active (running)"</pre>
+<p style="font-size:.95rem;margin:.2rem 0"><b>Fedora, RHEL, Rocky, AlmaLinux.</b> Download the repository package for your release from <b>dev.mysql.com/downloads/repo/yum</b>, install it with <code class="inline">sudo dnf install ./mysql*-community-release-*.rpm</code>, make sure the 9.7 LTS series is the enabled one, then:</p>
+<pre class="code">sudo dnf install mysql-community-server
+sudo systemctl enable --now mysqld
+sudo grep 'temporary password' /var/log/mysqld.log</pre>
+<p style="font-size:.9rem;color:var(--ink-2);margin:.2rem 0">The first start writes a random <b>temporary</b> root password to that log: you change it in Step 3. In <b>WSL</b>, follow the Ubuntu steps inside your Linux terminal (on an old WSL without systemd: <code class="inline">sudo service mysql start</code>).</p>
+</div>
+
+<div class="blk"><div class="h">Docker: any operating system</div>
+<p style="font-size:.95rem;margin:.2rem 0">With Docker Desktop (Windows, macOS) or Docker Engine (Linux), the official image is the cleanest install. Choose your own password (on Windows PowerShell, put the command on one line):</p>
+<pre class="code">docker run --name mysql97 \
+  -e MYSQL_ROOT_PASSWORD='choose-a-strong-password' \
+  -p 3306:3306 \
+  -v mysql97-data:/var/lib/mysql \
+  -d mysql:9.7
+docker logs mysql97          # wait for "ready for connections ... port: 3306"
+docker exec -it mysql97 mysql -u root -p</pre>
+<ul class="tick" style="font-size:.92rem">
+<li>Use the tag <code class="inline">mysql:9.7</code>, not <code class="inline">mysql:latest</code> (an innovation release). Port 3306 taken? <code class="inline">-p 3307:3306</code>.</li>
+<li>The password counts only on the <b>very first start</b> of the <code class="inline">mysql97-data</code> volume; the data survives <code class="inline">docker stop</code>, <code class="inline">docker start mysql97</code> and even <code class="inline">docker rm</code>.</li>
+<li>The image contains the <code class="inline">mysql</code> client (the last line above). A client installed on the laptop connects with <code class="inline">mysql -h 127.0.0.1 -P 3306 -u root -p</code>: use <code class="inline">127.0.0.1</code>, not <code class="inline">localhost</code>.</li>
+<li>After a reboot, open Docker Desktop and run <code class="inline">docker start mysql97</code>.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="lesson">
+<div class="lesson-head"><span class="lcode">3</span><h3>Secure the root account, then log in</h3><span class="dur">~5 min</span></div>
+<div class="lesson-body">
+<p><code class="inline">root</code> is MySQL's administrator. It must have a strong password; your instructor will never ask you to share it.</p>
+<table class="timing">
+<thead><tr><th>You installed with</th><th>Root password now</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>Windows MSI, macOS DMG, Docker</td><td>The one you set</td><td>Nothing more</td></tr>
+<tr><td>MySQL APT repository</td><td>The one you set</td><td>Optionally <code class="inline">sudo mysql_secure_installation</code></td></tr>
+<tr><td>Homebrew</td><td>None</td><td>Run <code class="inline">mysql_secure_installation</code> (answer y to removing anonymous users, remote root and the test database)</td></tr>
+<tr><td>Yum repository</td><td>Temporary, from the log</td><td>Log in with it and change it (below)</td></tr>
+<tr><td>Ubuntu's own package</td><td>None: only <code class="inline">sudo mysql</code> works</td><td>Set a password (below), or better, use MySQL's APT repository</td></tr>
+</tbody>
+</table>
+<p>To set the password by hand, open the client (<code class="inline">sudo mysql</code>, or <code class="inline">mysql -u root -p</code> with the temporary password) and run, with your own password inside the quotes:</p>
+<pre class="code"><span class="k">ALTER USER</span> <span class="s">'root'</span>@<span class="s">'localhost'</span>
+    <span class="k">IDENTIFIED WITH</span> caching_sha2_password <span class="k">BY</span> <span class="s">'your-strong-password-here'</span>;</pre>
+<p>Then log in and ask the server who it is. Nothing appears while you type the password; that is normal. Leave with <code class="inline">exit</code>.</p>
+<pre class="code">mysql -u root -p
+SELECT VERSION();</pre>
+<pre class="out">+-----------+
+| VERSION() |
++-----------+
+| 9.7.2     |
++-----------+</pre>
+<p style="font-size:.9rem;color:var(--ink-2)">Any <b>9.7.x</b> is right. <b>8.4.x</b> is fine. <b>26.x</b> (an innovation release), <b>8.0.x</b>, or a version containing <b>MariaDB</b> means you are talking to a different server than you meant to: see the problems table below. Never "fix" a login with <code class="inline">mysql_native_password</code>: that old method no longer exists in MySQL 9 (error 1524).</p>
+</div>
+</div>
+
+<div class="lesson">
+<div class="lesson-head"><span class="lcode">4</span><h3>The course folder, and where the labs go</h3><span class="dur">~2 min</span></div>
+<div class="lesson-body">
+<p>Everything you write in the course lives in one folder, <code class="inline">mysql-course</code>, in your home folder. Lesson 1.3's <code class="inline">hello.sql</code> and Lesson 2.1's <code class="inline">create_bookstore.sql</code> are saved there, and so is the <code class="inline">labs/</code> folder your instructor hands out.</p>
+<table class="timing">
+<thead><tr><th></th><th>Windows (PowerShell)</th><th>macOS / Linux</th></tr></thead>
+<tbody>
+<tr><td>Create it</td><td><code class="inline">mkdir $HOME\mysql-course</code></td><td><code class="inline">mkdir -p ~/mysql-course</code></td></tr>
+<tr><td>Go there</td><td><code class="inline">cd $HOME\mysql-course</code></td><td><code class="inline">cd ~/mysql-course</code></td></tr>
+</tbody>
+</table>
+<pre class="out">mysql-course/
+├── labs/                      handed out by your instructor: keep the whole folder here
+│   └── module-01/l1_0-orientation/check_environment.sql, .sh, .ps1
+├── hello.sql                  (Lesson 1.3)
+└── create_bookstore.sql       (Lesson 2.1) … and the other scripts you write</pre>
+<p>Put the three check files you received into <code class="inline">labs/module-01/l1_0-orientation/</code> inside <code class="inline">mysql-course</code> (create the folders; when the whole <code class="inline">labs/</code> folder arrives, it replaces them). <b>Always start the <code class="inline">mysql</code> client from inside <code class="inline">mysql-course</code></b>: the lab command <code class="inline">SOURCE labs/…</code> looks for files relative to the folder the client was started in.</p>
+<p style="font-size:.9rem;color:var(--ink-2)">Do <b>not</b> load the course database <code class="inline">bookstore.sql</code> yet: you build <code class="inline">bookstore</code> yourself in Lesson 2.1, and Session 5 tells you when to download the full version. (Joining for Part 2 only? Then download <code class="inline">bookstore.sql</code> from the course home page into <code class="inline">mysql-course</code> now; your instructor sends Session 8's check instead.)</p>
+</div>
+</div>
+
+<div class="lesson">
+<div class="lesson-head"><span class="lcode">5</span><h3>Run the environment check</h3><span class="dur">~2 min</span></div>
+<div class="lesson-body">
+<p>From a terminal in <code class="inline">mysql-course</code>, run the check for your system and type the root password when asked:</p>
+<table class="timing">
+<thead><tr><th>System</th><th>Command</th></tr></thead>
+<tbody>
+<tr><td>macOS, Linux, WSL</td><td><code class="inline">bash labs/module-01/l1_0-orientation/check_environment.sh</code></td></tr>
+<tr><td>Windows</td><td><code class="inline">powershell -ExecutionPolicy Bypass -File labs\module-01\l1_0-orientation\check_environment.ps1</code></td></tr>
+<tr><td>Docker, client on the laptop</td><td>add the connection: <code class="inline">bash labs/module-01/l1_0-orientation/check_environment.sh -h 127.0.0.1 -P 3306 -u root -p</code> (the <code class="inline">.ps1</code> takes the same arguments)</td></tr>
+<tr><td>Docker, no client on the laptop</td><td><code class="inline">docker exec -i mysql97 sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" --table' &lt; labs/module-01/l1_0-orientation/check_environment.sql</code> (PowerShell: <code class="inline">Get-Content labs\module-01\l1_0-orientation\check_environment.sql | docker exec -i mysql97 sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" --table'</code>)</td></tr>
+</tbody>
+</table>
+<p>It checks that the <code class="inline">mysql</code> client is on your PATH and which version it is, then asks the server for its version, character set, SQL mode and login method, creates and drops a tiny test database, and looks for <code class="inline">bookstore</code>. The end of a good run on MySQL 9.7 looks like this:</p>
+<pre class="out">+---------------------------------------------------+
+| server_check                                      |
++---------------------------------------------------+
+| OK     MySQL 9.7 LTS, the version the course uses |
++---------------------------------------------------+
+…
++---------------------------------------------------------+
+| bookstore_check                                         |
++---------------------------------------------------------+
+| INFO   no bookstore database yet: Lesson 2.1 creates it |
++---------------------------------------------------------+
++-----------------------------+
+| verdict                     |
++-----------------------------+
+| READY for MySQL Foundations |
++-----------------------------+</pre>
+<div class="note lab"><div class="t">✅ You're ready</div><p>Last table says <b>READY for MySQL Foundations</b>? Reply to your instructor with that table, and you are set for Session 1. <b>READY WITH NOTES</b> (MySQL 8.4 or MariaDB) is fine to start; the notes say what will differ. <b>NOT READY</b>? The line above it says what failed: try the table below, run the check again, then send the whole output.</p></div>
+</div>
+</div>
+
+<div class="sec"><h2>Common Install Problems</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>You see…</th><th>Try this</th></tr></thead>
+<tbody>
+<tr><td>Windows: <code class="inline">mysql</code> "is not recognized as the name of a cmdlet"</td><td>The MSI does not add the client to the PATH: Step 2, Windows point 4, then open a <b>new</b> PowerShell window.</td></tr>
+<tr><td>macOS: <code class="inline">zsh: command not found: mysql</code></td><td>Versioned Homebrew formulae are keg-only: the <code class="inline">export PATH=…mysql@9.7/bin…</code> line in <code class="inline">~/.zshrc</code>, then a new Terminal window (DMG: the <code class="inline">/usr/local/mysql/bin</code> line).</td></tr>
+<tr><td><code class="inline">SELECT VERSION();</code> says <b>26.x</b></td><td><code class="inline">brew install mysql</code> or <code class="inline">mysql:latest</code> gave you an innovation release. It works; for matching outputs reinstall <code class="inline">mysql@9.7</code> / <code class="inline">mysql:9.7</code>.</td></tr>
+<tr><td>Ubuntu: version <b>8.0.x</b>, or root works only with <code class="inline">sudo mysql</code></td><td>The distribution's own package. Add MySQL's APT repository (Step 2), or at least set a password with the <code class="inline">ALTER USER</code> statement in Step 3.</td></tr>
+<tr><td><code class="inline">ERROR 1045 (28000): Access denied</code></td><td>The server answered and refused the name or password. Retype it (it is case-sensitive); "using password: NO" means you forgot <code class="inline">-p</code>. Docker: the password counts only on the first start of a volume.</td></tr>
+<tr><td><code class="inline">ERROR 2002</code> (socket) or <code class="inline">ERROR 2003</code> (port)</td><td>Nothing answered: the server is stopped, or you asked the wrong place. Start it (<code class="inline">Start-Service MySQL97</code>, <code class="inline">brew services start mysql@9.7</code>, <code class="inline">sudo systemctl start mysql</code>, <code class="inline">docker start mysql97</code>); with Docker use <code class="inline">-h 127.0.0.1 -P 3306</code>, not localhost.</td></tr>
+<tr><td><code class="inline">docker run</code>: "port is already allocated"</td><td>Another MySQL, MariaDB, XAMPP or MAMP listens on 3306. Stop it, or publish on another port: <code class="inline">-p 3307:3306</code>, then connect with <code class="inline">-P 3307</code>.</td></tr>
+<tr><td>The check says <b>CHECK</b> … MariaDB</td><td>XAMPP or a distribution's default package. You can start with it; install MySQL 9.7 when you can.</td></tr>
+<tr><td>Windows: the <code class="inline">.ps1</code> "cannot be loaded because running scripts is disabled"</td><td>Run it exactly as in Step 5, with <code class="inline">powershell -ExecutionPolicy Bypass -File …</code> (nothing to change system-wide).</td></tr>
+<tr><td><code class="inline">ERROR 1524</code>: Plugin 'mysql_native_password' is not loaded</td><td>Old advice. Leave out <code class="inline">IDENTIFIED WITH mysql_native_password</code>; current clients and phpMyAdmin 5.2 use the default method.</td></tr>
+<tr><td>A locked work laptop: nothing can be installed</td><td>Docker Desktop also needs administrator rights. Ask IT to install MySQL 9.7 before Session 1, or bring a personal laptop; tell your instructor.</td></tr>
+</tbody>
+</table>
+<p style="font-size:.9rem;color:var(--ink-2)">Lesson 1.2's Common Mistakes section and the course's Troubleshooting page (troubleshooting.html on the course site) cover more cases, each with the exact error text.</p>
+
+<div class="sec"><h2>The Course at a Glance</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>Sessions</th><th>You'll learn</th></tr></thead>
+<tbody>
+<tr><td class="t">1–2</td><td><b>Part 1.</b> What databases are, installing MySQL, the mysql client (and phpMyAdmin), creating databases and tables</td></tr>
+<tr><td class="t">3–4</td><td>Data types and constraints, adding and changing data safely, filtering, sorting and limiting (Checkpoint 1)</td></tr>
+<tr><td class="t">5–6</td><td>Aggregates and GROUP BY, subqueries, relationships and foreign keys</td></tr>
+<tr><td class="t">7</td><td>Joins, then the Part 1 assessment</td></tr>
+<tr><td class="t">8–9</td><td><b>Part 2.</b> CTEs and window functions, indexes and views</td></tr>
+<tr><td class="t">10–11</td><td>Normalization, stored procedures and functions, transactions, JSON columns (Checkpoint 2)</td></tr>
+<tr><td class="t">12–14</td><td>Users and permissions, backups and imports, then your final project: a database you design, build, secure and back up</td></tr>
+</tbody>
+</table>
+<p style="font-size:.9rem;color:var(--ink-2)">14 sessions of 3 hours in two parts (some programs run Part 1, Sessions 1 to 7, on its own). Every lesson uses the same fictional online bookstore: its books, customers and orders. Between sessions you finish each lesson's project, exercises, quiz and journal entry on the course site: about two to three hours a week.</p>
+
+<div class="sec"><h2>Frequently Asked</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Do I need to know programming?</div><p style="font-size:.95rem;color:var(--ink-2);margin:.2rem 0">No. SQL is the language the course teaches, from the first statement. If you can use a spreadsheet and a file browser, you can start.</p></div>
+<div class="blk"><div class="h">I already have XAMPP, MAMP or an older MySQL. Can I keep it?</div><p style="font-size:.95rem;color:var(--ink-2);margin:.2rem 0">You can start with it: the environment check tells you what it is. XAMPP's database is MariaDB, and a few lessons (JSON operators, window and EXPLAIN details, some error numbers) will look different. For outputs that match the pages, install MySQL 9.7, and stop the old server first so they do not fight over port 3306.</p></div>
+<div class="blk"><div class="h">Do I need phpMyAdmin or MySQL Workbench?</div><p style="font-size:.95rem;color:var(--ink-2);margin:.2rem 0">No. The course uses the <code class="inline">mysql</code> command-line client, which comes with every install. Lesson 1.3 tours phpMyAdmin; Lesson 1.2 shows how to run it in Docker next to MySQL if you want it.</p></div>
+<div class="blk"><div class="h">Is the course data real?</div><p style="font-size:.95rem;color:var(--ink-2);margin:.2rem 0">No. The bookstore's customers, orders and staff are invented for the course (the books are real classics). You build the database yourself, step by step, starting in Session 2.</p></div>
+<div class="blk"><div class="h">What if a step fails and I cannot fix it?</div><p style="font-size:.95rem;color:var(--ink-2);margin:.2rem 0">Come anyway, with the output of the environment check. Session 1 opens with the check and has an install clinic after the break, and you can pair with a neighbor until your machine is ready.</p></div>
+
+<div class="sec"><h2>For the Facilitator: Room Setup</h2><span class="rule"></span></div>
+<p style="font-size:.9rem;color:var(--ink-2)">This section is for the instructor; it can stay on the learners' copy or be left off when you print it.</p>
+<ul class="tick lab">
+<li>☐ <b>A week before Session 1:</b> send this guide with the three files from <code class="inline">labs/module-01/l1_0-orientation/</code> (<code class="inline">check_environment.sql</code>, <code class="inline">.sh</code>, <code class="inline">.ps1</code>); ask each learner to reply with the last table it prints. Keep a list: no reply, or NOT READY, means an install risk to chase before the day.</li>
+<li>☐ <b>USB sticks or a shared folder</b> (the fallback when venue Wi-Fi fails): the <code class="inline">labs/</code> folder <b>without any <code class="inline">*_solution.sql</code></b> files and without <code class="inline">checkpoint-*</code> and <code class="inline">part1-assessment</code> until they are used; and the <b>installers</b>: the Windows MSI (x86, 64-bit), both macOS DMGs (ARM and x86), the <code class="inline">mysql-apt-config</code> package, and for Docker users the image saved with <code class="inline">docker save mysql:9.7 -o mysql97.tar</code> (they run <code class="inline">docker load -i mysql97.tar</code>). A few hundred megabytes per learner over venue Wi-Fi is how an install clinic stalls.</li>
+<li>☐ <b>Your own machine:</b> MySQL 9.7 with the same <code class="inline">mysql-course</code> folder; the environment check ends with READY (so you can show what it looks like). From the kit folder, <code class="inline">python3 labs/check_labs.py module-01</code> prints PASS on every line (point it at your server with the <code class="inline">MYSQL_LABS_*</code> variables in the README); run each session's check before that session.</li>
+<li>☐ <b>Projector:</b> a terminal in <code class="inline">mysql-course</code> at 18 pt or more, logged out (you log in during the Lesson 1.2 demo), a second terminal already in the <code class="inline">mysql&gt;</code> client, the session's deck from <code class="inline">slides/</code> and the lesson pages open in a browser.</li>
+<li>☐ <b>The room:</b> a power socket for every laptop (bring power strips), a whiteboard, sticky notes (help flags and exit tickets), printed workbooks or a shared PDF, and Wi-Fi for the lesson pages. After Session 1 no session needs a download.</li>
+<li>☐ <b>Install trouble on the day:</b> do not debug one machine in front of the room. Two minutes per machine during the opening check, then pair the learner with a ready neighbor; the install clinic after the break is for the rest. PATH and a stopped server are one-minute fixes; a full download is not done on venue Wi-Fi. The Session 1 facilitator guide has the full trap table.</li>
+<li>☐ <b>Locked work laptops:</b> every install path needs administrator rights (Docker Desktop too). Ask the learner's IT team to install MySQL 9.7 before Session 2, or pair the learner for the day; MySQL's Windows ZIP archive runs without installing but needs manual setup, so offer it only with your help.</li>
+</ul>
+
+<div class="foot">
+    <div class="who"><span class="bio">MySQL Foundations · Student Setup Guide</span></div>
+    <div class="ver">Student Setup Guide · v1.0 · &copy; 2026 Ray de la Paz</div>
+  </div>
+
+</div>
+</body>
+</html>

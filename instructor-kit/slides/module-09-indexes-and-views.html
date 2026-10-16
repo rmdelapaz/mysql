@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides: Session 9</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--ink2:#9fb2cd;--accent:#93c5fd;--accent2:#2563eb;--py:#f6a53b;--lab:#34d3bd;--warn:#fbbf24;--line:#22314c;--code:#0a1526;color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100%;width:100%;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:6vh 8vw;gap:20px}
+  .slide.on{display:flex}
+  h1,h2,h3{font-family:"Archivo",sans-serif;line-height:1.1;text-wrap:balance}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .slide h1{font-size:clamp(2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+  .slide h2{font-size:clamp(1.5rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+  .slide p.lead{font-size:clamp(1.05rem,2.4vw,1.5rem);color:var(--ink2);max-width:34ch}
+  ul,ol.num{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  ul li{position:relative;padding-left:34px;font-size:clamp(1.05rem,2.3vw,1.6rem)}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+  ul.lab li::before{background:var(--lab)}
+  ol.num{counter-reset:n}
+  ol.num li{position:relative;padding-left:46px;font-size:clamp(1rem,2.1vw,1.45rem)}
+  ol.num li::before{counter-increment:n;content:counter(n);position:absolute;left:0;top:.05em;width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#fff;font-family:"JetBrains Mono",monospace;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+  code.k{font-family:"JetBrains Mono",monospace;font-variant-ligatures:none;color:#bfdbfe;font-size:.92em}
+  pre{white-space:pre;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px 24px;font-family:"JetBrains Mono",monospace;font-size:clamp(.8rem,1.7vw,1.15rem);line-height:1.5;overflow:auto;max-width:100%;font-variant-ligatures:none}
+  pre .k{color:#7dd3fc} pre .s{color:#86efac} pre .c{color:#7183a3;font-style:italic}
+  table.ag{border-collapse:collapse;font-size:clamp(.9rem,1.9vw,1.25rem);width:100%;max-width:60rem}
+  table.ag td{padding:7px 12px;border-bottom:1px solid var(--line)}
+  table.ag td.t{font-family:"JetBrains Mono",monospace;color:var(--ink2);white-space:nowrap}
+  table.ag tr.brk td{color:var(--py)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);color:var(--ink2)}
+  .tag .pill{background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;letter-spacing:.06em}
+  .tag .pill.lab{background:var(--lab);color:#062b26} .tag .pill.warn{background:var(--warn);color:#3a2a05}
+  .section{background:linear-gradient(135deg,#0f2a5c,#0b1220)}
+  .section .big{font-size:clamp(3rem,12vw,8rem);font-family:"Archivo";font-weight:800;color:#3b82f6;line-height:.9}
+  .section .big.py{color:var(--py)}
+  .two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:30px;align-items:start}
+  .two pre{font-size:clamp(.72rem,1.35vw,1rem);padding:16px 18px}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .bar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--py));width:0;transition:width .25s;z-index:5}
+  .count{position:fixed;right:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--ink2);z-index:5}
+  .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+  .nav button{pointer-events:auto;background:transparent;border:none;color:transparent;width:22vw;height:100vh;cursor:pointer}
+  .foot{position:fixed;left:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#5d7391;z-index:5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <section class="slide on section">
+    <div class="eyebrow">MySQL Foundations · Part 2 · Session 9 of 14 · 3 hours</div>
+    <h1>Session 9<br>Indexes and Views</h1>
+    <p class="lead">Make lookups fast and prove it; save your best queries under a name.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Today</div>
+    <h2>Three hours, two lessons</h2>
+    <table class="ag">
+      <tr><td class="t">0:00</td><td>Warm-up: Session 8 in five questions</td></tr>
+      <tr><td class="t">0:10</td><td>6.1 Indexes: model, demo, lab, project</td></tr>
+      <tr class="brk"><td class="t">1:10</td><td>Break (10 min)</td></tr>
+      <tr><td class="t">1:20</td><td>6.2 Views: model, demo, lab, project</td></tr>
+      <tr><td class="t">2:25</td><td>Clinic: a view's plan, eight errors</td></tr>
+      <tr><td class="t">2:50</td><td>Exit ticket, homework, bring list</td></tr>
+    </table>
+    <div class="tag"><span class="pill lab">LABS</span> <span>Lab files are in <code class="k">labs/module-09</code>. Open the <code class="k">_starter.sql</code> file, never the solution.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Warm-up · 10 minutes</div>
+    <h2>Session 8 in five questions</h2>
+    <ol class="num">
+      <li>A series <code class="k">1, n + 2, while n &lt; 7</code>: what prints?</li>
+      <li>DENSE_RANK on two 8.99 books: which levels?</li>
+      <li>Why can't WHERE filter ROW_NUMBER()?</li>
+      <li>Which join walks UP a hierarchy?</li>
+      <li>GROUP BY or OVER: how many rows from 10 employees?</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>No notes. Workbook, Warm-up box.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big">6.1</div><h2>Indexes &amp; Query Optimization</h2><p class="lead">Measure, index, measure again.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Mental model</div>
+    <h2>The index at the back of the book</h2>
+    <ul>
+      <li>Without an index: read every row (a <b>full table scan</b>)</li>
+      <li>An index: the column's values, sorted, each pointing to its row</li>
+      <li>Stored as a B-tree: 3 or 4 levels for a million values</li>
+      <li>The primary key is the table itself (the clustered index)</li>
+    </ul>
+    <div class="tag"><span class="pill warn">PRICE</span> <span>Costs: space, slower writes, more plans to choose from.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Setup</div>
+    <h2>A table big enough to notice</h2>
+    <ul>
+      <li>The lesson's <code class="k">sales_log</code>: 100,000 rows, 2020 to 2026</li>
+      <li>Built with a CTE and a cross join: everyone gets the same rows</li>
+      <li><code class="k">ANALYZE TABLE sales_log;</code>: fresh statistics</li>
+      <li>Paste it from the lesson page; it takes about a second</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Already there</div>
+    <h2>Indexes you never created</h2>
+    <ul>
+      <li><code class="k">PRIMARY</code>: every primary key</li>
+      <li><code class="k">email</code>: every UNIQUE constraint</li>
+      <li><code class="k">fk_orders_customer</code>: every foreign key column</li>
+      <li><code class="k">SHOW INDEX FROM orders;</code> or information_schema.STATISTICS</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Measure</div>
+    <h2>Before: a full table scan</h2>
+    <pre class="code"><span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> sales_log <span class="k">WHERE</span> sold_on = <span class="s">'2025-03-15'</span>\G</pre>
+    <pre class="code">*************************** 1. row ***************************
+EXPLAIN: -&gt; Filter: (sales_log.sold_on = DATE'2025-03-15')  (cost=10078 rows=9990)
+    -&gt; Table scan on sales_log  (cost=10078 rows=99900)</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Read from the most indented line up: scan 100,000 rows, keep 42.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Index</div>
+    <h2>After: one jump</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">INDEX</span> idx_sales_sold_on <span class="k">ON</span> sales_log (sold_on);
+<span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> sales_log <span class="k">WHERE</span> sold_on = <span class="s">'2025-03-15'</span>\G</pre>
+    <pre class="code">*************************** 1. row ***************************
+EXPLAIN: -&gt; Index lookup on sales_log using idx_sales_sold_on (sold_on =
+      DATE'2025-03-15')  (cost=14.7 rows=42)</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>EXPLAIN ANALYZE here: 16.5 ms before, 0.0779 ms after (your times differ).</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Plan words</div>
+    <h2>What the plan tells you</h2>
+    <ul>
+      <li><b>Rows fetched before execution</b>: a constant on a primary or unique key</li>
+      <li><b>Index lookup</b>: jump to one value · <b>Index range scan</b>: a slice</li>
+      <li><b>Covering</b>: the index alone answers</li>
+      <li><b>Table scan</b>: every row: fine on small tables, fix on big ones</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Composite</div>
+    <h2>Phone-book order</h2>
+    <ul>
+      <li><code class="k">(customer_id, sold_on)</code>: by customer, then by date</li>
+      <li>Seeks on customer_id, or customer_id + a date range</li>
+      <li>Not on a date range alone</li>
+      <li>Equality columns first, the range or sort column last</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span>The order in WHERE does not matter. The order in the index does.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Index killers</div>
+    <h2>Hiding the column from its index</h2>
+    <ul>
+      <li>A function: <code class="k">YEAR(sold_on) = 2025</code> → a range on the bare column</li>
+      <li>Arithmetic: <code class="k">price * 1.1 &gt; 10</code> → move it to the other side</li>
+      <li>A leading wildcard: <code class="k">'%@example.com'</code></li>
+      <li>A number for a text column: <code class="k">receipt_no = 4242</code></li>
+    </ul>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Same rows, but a Table scan. EXPLAIN catches every one.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Manage</div>
+    <h2>Hide before you drop</h2>
+    <ul>
+      <li><code class="k">ALTER TABLE t ALTER INDEX idx INVISIBLE;</code>: ignored, still maintained</li>
+      <li>Slow queries? VISIBLE again, instantly</li>
+      <li><code class="k">DROP INDEX idx ON t;</code> never touches the rows</li>
+      <li>1061 name taken · 1091 no such index · 1553 needed by a foreign key</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> employees <span class="k">WHERE</span> email = <span class="s">'nina.kowalski@bookstore.example'</span>\G</pre>
+    <ul>
+      <li>email is UNIQUE in employees</li>
+      <li>Which plan word?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Guided lab · 15 minutes</div>
+    <h2>Read a plan, add an index</h2>
+    <ul class="lab">
+      <li><code class="k">plan_reading_starter.sql</code> in <code class="k">labs/module-09/l6_1-indexes</code></li>
+      <li>100,000 website visits, built in a second, dropped at the end</li>
+      <li>TODO 1: predict, then turn the index on</li>
+      <li>TODO 2: customer 3 in June: which column first?</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">index_killers_starter.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.1 · Project</div>
+    <h2>Tune the sales reports</h2>
+    <ul class="lab">
+      <li><code class="k">tune_sales.sql</code>: measure, fix, note</li>
+      <li>Report A: already fast: why?</li>
+      <li>Report B: QUARTER() and YEAR() → a range</li>
+      <li>Steps 4 to 6 at home: report C, redundancy, the index list</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>In class: Steps 1 to 3.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big py">10</div><h2>Break</h2><p class="lead">Back at 1:20. Then: SOURCE bookstore.sql (it removes sales_log).</p></section>
+
+  <section class="slide section"><div class="big">6.2</div><h2>Views</h2><p class="lead">A saved SELECT with a name.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">6.2 · Mental model</div>
+    <h2>A window in a wall</h2>
+    <ul>
+      <li>A view stores a query, never rows</li>
+      <li>Read it like a table; it is recomputed every time</li>
+      <li>Three jobs: <b>reuse</b> · <b>a safe slice to edit</b> · <b>security</b></li>
+      <li>No indexes of its own: it is as fast as its query</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.2 · Code</div>
+    <h2>Your first view</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_chicago_customers <span class="k">AS</span>
+<span class="k">SELECT</span> id, first_name, last_name, email
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'Chicago'</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> v_chicago_customers <span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+    <pre class="code">+----+------------+-----------+-------------------+
+| id | first_name | last_name | email             |
++----+------------+-----------+-------------------+
+|  2 | Bob        | Smith     | bob@example.com   |
+|  7 | Grace      | Wilson    | grace@example.com |
++----+------------+-----------+-------------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>The WHERE city = 'Chicago' is baked in.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.2 · Reuse</div>
+    <h2>A five-table join, one line</h2>
+    <pre class="code"><span class="k">SELECT</span> author, SUM(quantity) <span class="k">AS</span> copies, SUM(line_total) <span class="k">AS</span> revenue
+<span class="k">FROM</span> v_order_details
+<span class="k">GROUP</span> <span class="k">BY</span> author
+<span class="k">ORDER</span> <span class="k">BY</span> revenue <span class="k">DESC</span>, author;</pre>
+    <pre class="code">+----------------+--------+---------+
+| author         | copies | revenue |
++----------------+--------+---------+
+| J.R.R. Tolkien |      5 |   64.95 |
+| George Orwell  |      6 |   56.94 |
+| Frank Herbert  |      3 |   44.97 |
+| Harper Lee     |      2 |   23.98 |
+| Ray Bradbury   |      2 |   20.98 |
+| Jane Austen    |      2 |   15.98 |
+| Aldous Huxley  |      1 |    9.49 |
++----------------+--------+---------+</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.2 · Updatable?</div>
+    <h2>MySQL's verdict</h2>
+    <pre class="code"><span class="k">SELECT</span> TABLE_NAME, IS_UPDATABLE
+<span class="k">FROM</span> information_schema.VIEWS
+<span class="k">WHERE</span> TABLE_SCHEMA = <span class="s">'bookstore'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> TABLE_NAME;</pre>
+    <pre class="code">+---------------------+--------------+
+| TABLE_NAME          | IS_UPDATABLE |
++---------------------+--------------+
+| v_chicago_customers | YES          |
+| v_customer_summary  | NO           |
+| v_order_details     | YES          |
+| v_staff_directory   | YES          |
++---------------------+--------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Grouping = read-only. One view row = one base row = updatable.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.2 · Guard</div>
+    <h2>WITH CHECK OPTION</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">OR</span> <span class="k">REPLACE</span> <span class="k">VIEW</span> v_chicago_customers <span class="k">AS</span>
+<span class="k">SELECT</span> id, first_name, last_name, email, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'Chicago'</span>
+<span class="k">WITH</span> <span class="k">CHECK</span> <span class="k">OPTION</span>;
+<span class="k">UPDATE</span> v_chicago_customers <span class="k">SET</span> city = <span class="s">'Boston'</span> <span class="k">WHERE</span> id = <span class="s">2</span>;</pre>
+    <pre class="code">ERROR 1369 (HY000): CHECK OPTION failed 'bookstore.v_chicago_customers'</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Writes that would push a row out of the view are refused.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.2 · Security</div>
+    <h2>Read the view, not the table</h2>
+    <pre class="code">+-------------------------------------------------------------------------------+
+| Grants for support_demo@localhost                                             |
++-------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `support_demo`@`localhost`                              |
+| GRANT SELECT ON `bookstore`.`v_staff_directory` TO `support_demo`@`localhost` |
++-------------------------------------------------------------------------------+</pre>
+    <ul>
+      <li>The view hides salary and inactive staff</li>
+      <li>SQL SECURITY DEFINER: it reads employees with its creator's rights</li>
+    </ul>
+    <div class="tag"><span class="pill warn">RULE</span> <span>A view is only as safe as the columns it selects.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.2 · Common mistakes</div>
+    <h2>Five view errors</h2>
+    <ul>
+      <li>1050: <code class="k">CREATE VIEW</code> twice → <code class="k">CREATE OR REPLACE VIEW</code></li>
+      <li>1288: updating a grouped view</li>
+      <li>1369: a write the check option refuses</li>
+      <li>1356: a column the view uses was renamed</li>
+      <li>Silent: <code class="k">SELECT *</code> is frozen when the view is created</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.2 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_pricey <span class="k">AS</span> <span class="k">SELECT</span> title <span class="k">FROM</span> books <span class="k">WHERE</span> price &gt; <span class="s">12</span>;
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> books <span class="k">SET</span> price = <span class="s">9.00</span> <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SELECT</span> title <span class="k">FROM</span> v_pricey <span class="k">ORDER</span> <span class="k">BY</span> title;
+<span class="k">ROLLBACK</span>;
+<span class="k">DROP</span> <span class="k">VIEW</span> v_pricey;</pre>
+    <ul>
+      <li>Does the view need refreshing?</li>
+      <li>What does it show after ROLLBACK?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.2 · Guided lab · 20 minutes</div>
+    <h2>A small reporting layer</h2>
+    <ul class="lab">
+      <li><code class="k">report_views_starter.sql</code> in <code class="k">labs/module-09/l6_2-views</code></li>
+      <li>TODO 1: every author, zero included (LEFT JOIN, COALESCE)</li>
+      <li>TODO 2: <code class="k">v_city_orders</code>: no GROUP BY inside the view</li>
+      <li>Which of the two is updatable, and why?</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? TODO 3, then <code class="k">guarded_views_starter.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.2 · Project</div>
+    <h2>A reporting layer</h2>
+    <ul class="lab">
+      <li><code class="k">reporting_views.sql</code>: CREATE OR REPLACE everywhere</li>
+      <li>Steps 1 to 3: catalog, order totals, book sales</li>
+      <li>Steps 4 to 6 at home: a view on a view, IS_UPDATABLE, run it twice</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>No ORDER BY inside a view; money uses price_at_time.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Clinic · 25 minutes</div>
+    <h2>A view is as fast as its query</h2>
+    <ul class="lab">
+      <li>A simple view is MERGED into your query: base indexes work</li>
+      <li>A grouped view is materialized first, then filtered</li>
+      <li><code class="k">debug_indexes.sql</code>: 1061, 1091, 1553, 1062</li>
+      <li><code class="k">debug_views.sql</code>: 1050, 1288, 1369, 1356</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Wrap-up · 4 minutes</div>
+    <h2>Exit ticket</h2>
+    <ol class="num">
+      <li>One index for <code class="k">customer_id = 5 AND book_id = 9 ORDER BY sold_on</code></li>
+      <li>Two habits that stop an index from being used</li>
+      <li>One reason for a view, one thing it does not do</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>No notes. Workbook Exit Ticket box or a sticky note.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Before Session 10</div>
+    <h2>Homework and bring list</h2>
+    <ul class="lab">
+      <li>Finish tune_sales.sql and reporting_views.sql</li>
+      <li>Exercises 1 to 3 of both lessons; both quizzes; both journals</li>
+      <li>Find a spreadsheet value that repeats on many rows</li>
+      <li>Bring: a working bookstore, labs/, your spreadsheet example</li>
+    </ul>
+    <div class="tag"><span class="pill">NEXT</span> <span>Session 10: Normalization and Stored Programs.</span></div>
+  </section>
+
+
+</div>
+
+<div class="foot">© 2026 Ray de la Paz · MySQL Foundations</div>
+<div class="count" id="count">1 / 1</div>
+<div class="nav"><button id="prev" aria-label="Previous slide"></button><button id="next" aria-label="Next slide"></button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'), count=document.getElementById('count');
+  let i=0;
+  function show(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%'; count.textContent=(i+1)+' / '+slides.length; }
+  document.getElementById('next').onclick=()=>show(i+1);
+  document.getElementById('prev').onclick=()=>show(i-1);
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0); else if(e.key==='End')show(slides.length-1);
+  });
+  show(0);
+</script>
+</body>
+</html>

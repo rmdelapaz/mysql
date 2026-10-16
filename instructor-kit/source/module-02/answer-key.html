@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 2</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 2: The MySQL Client and Your First Tables</h1>
+    <p class="sub">Answers and reasoning for every Session 2 item: the warm-up, both self-checks, the predict-then-run items, the lab reference outputs, the lesson pages' own quizzes and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>2</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Warm-Up: Session 1</h2><span class="rule"></span></div>
+<p>Not graded. Each reason says where the idea came from in Session 1.</p>
+<div class="q"><div class="qn">W1</div><div class="qt">Is MySQL a database?</div><div class="opts"><div class="opt">A) Yes: MySQL is the file that holds your tables</div><div class="opt correct">B) No: MySQL is the server (a DBMS); a database such as bookstore lives inside it</div><div class="opt">C) No: MySQL is a query language</div><div class="opt">D) Yes: every MySQL install is one database</div></div><div class="why"><b>Why:</b> MySQL is the server software; one server holds many databases. Session 1's exit ticket question 1.</div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Which error tells you the server is running and answered?</div><div class="opts"><div class="opt">A) <code class="inline">ERROR 2002</code></div><div class="opt">B) <code class="inline">ERROR 2003</code></div><div class="opt correct">C) <code class="inline">ERROR 1045 (28000): Access denied</code></div><div class="opt">D) None of them</div></div><div class="why"><b>Why:</b> 1045 means the server answered and refused the credentials; 2002 and 2003 mean nothing answered.</div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">What does the SELECT print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> pets (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">20</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> pets <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Rex'</span>), (<span class="s">2</span>, <span class="s">'Tom'</span>), (<span class="s">3</span>, <span class="s">'Fido'</span>);
+<span class="k">DELETE</span> <span class="k">FROM</span> pets <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> pets;</pre><div class="opts"><div class="opt correct">A) Rows 1 Rex and 3 Fido</div><div class="opt">B) Rows 1 Rex and 2 Fido: the ids are renumbered</div><div class="opt">C) All three rows</div><div class="opt">D) <code class="inline">Empty set</code></div></div><div class="why"><b>Why:</b> DELETE removes only the row whose id is 2; ids are never renumbered. MySQL prints:<pre class="out">+----+------+
+| id | name |
++----+------+
+|  1 | Rex  |
+|  3 | Fido |
++----+------+</pre></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">Which statement removes Carol's row (id 3) and keeps every other customer?</div><div class="opts"><div class="opt">A) <code class="inline">DROP TABLE customers;</code></div><div class="opt">B) <code class="inline">DELETE FROM customers;</code></div><div class="opt correct">C) <code class="inline">DELETE FROM customers WHERE id = 3;</code></div><div class="opt">D) <code class="inline">UPDATE customers SET id = NULL WHERE id = 3;</code></div></div><div class="why"><b>Why:</b> DELETE with a WHERE removes the rows the WHERE picks. Without WHERE every row goes; DROP TABLE removes the table.</div></div>
+<div class="q"><div class="qn">W5</div><div class="qt"><code class="inline">mysql --version</code> prints 9.7.2. What does that prove about your server?</div><div class="opts"><div class="opt">A) That it is 9.7.2</div><div class="opt">B) That it is running</div><div class="opt">C) That it is MySQL, not MariaDB</div><div class="opt correct">D) Nothing: it describes the client; ask the server with SELECT VERSION();</div></div><div class="why"><b>Why:</b> The client and the server are different programs. Only a query sent after logging in describes the server.</div></div>
+
+  <div class="sec"><h2>1.3 · MySQL CLI &amp; phpMyAdmin: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Which of these does nothing in phpMyAdmin's SQL tab, because only the mysql command-line client understands it?</div><div class="opts"><div class="opt">A) <code class="inline">SHOW DATABASES;</code></div><div class="opt">B) <code class="inline">DESCRIBE user;</code></div><div class="opt correct">C) <code class="inline">SOURCE ~/mysql-course/hello.sql</code></div><div class="opt">D) <code class="inline">SELECT DATABASE();</code></div></div><div class="why"><b>Why:</b> <code class="inline">SOURCE</code> (like <code class="inline">\G</code>, <code class="inline">\c</code>, help and exit) is a client command: the mysql program handles it itself and never sends it to the server. phpMyAdmin has its own Import tab for files.<br><b>A</b> is wrong: SHOW DATABASES is SQL (a MySQL addition to the standard): every client can send it.<br><b>B</b> is wrong: DESCRIBE is SQL too; phpMyAdmin also shows it as the Structure tab.<br><b>D</b> is wrong: A SELECT is plain SQL and works in any client.</div></div>
+  <div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">You press Enter and the prompt changes from <code class="inline">mysql&gt;</code> to <code class="inline">'&gt;</code>. What does it mean?</div><div class="opts"><div class="opt">A) The statement only needs a semicolon</div><div class="opt correct">B) A single quote is still open: close it, then type ;</div><div class="opt">C) The server is still running the query</div><div class="opt">D) You were logged out</div></div><div class="why"><b>Why:</b> The client shows <code class="inline">'&gt;</code> while a text value in single quotes is unfinished. Close the quote, then end the statement with a semicolon (or <code class="inline">\c</code> after closing the quote to throw it away).<br><b>A</b> is wrong: That prompt is <code class="inline">-&gt;</code>; inside an open quote a semicolon is just part of the text.<br><b>C</b> is wrong: Nothing has been sent yet: the statement is not finished.<br><b>D</b> is wrong: Logging out prints Bye and returns you to the shell.</div></div>
+  <div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">On MySQL 9.7, how many rows does this print?</div><pre class="code"><span class="k">SHOW</span> <span class="k">TABLES</span> <span class="k">FROM</span> mysql <span class="k">LIKE</span> <span class="s">'time_zone%'</span>;</pre><div class="opts"><div class="opt correct">5 (<code class="inline">time_zone</code>, <code class="inline">time_zone_leap_second</code>, <code class="inline">time_zone_name</code>, <code class="inline">time_zone_transition</code>, <code class="inline">time_zone_transition_type</code>)</div></div><div class="why"><b>Why:</b> SHOW TABLES FROM lists another database's tables without switching to it, and LIKE filters the names: % means any characters. The mysql database keeps five time-zone tables.</div></div>
+  <div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">You type <code class="inline">mysql -u root -p secret123</code> (with a space after -p). What happens?</div><div class="opts"><div class="opt">A) It logs in with the password secret123</div><div class="opt">B) <code class="inline">ERROR 1045 (28000): Access denied</code></div><div class="opt">C) It logs in without asking for a password</div><div class="opt correct">D) It asks for the password, then fails with <code class="inline">ERROR 1049 (42000): Unknown database 'secret123'</code></div></div><div class="why"><b>Why:</b> -p on its own means "ask me"; the word after the space is read as the database to start in. Type the password at the prompt instead (the lesson's warning box).<br><b>A</b> is wrong: Only -psecret123 (no space) would pass it, and that leaves it in your shell history.<br><b>B</b> is wrong: The password typed at the prompt can be right; the failure is the unknown database.<br><b>C</b> is wrong: -p always makes the client ask.</div></div>
+  <div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">report.sql ends its query with <code class="inline">\G</code>. Which way of running it stops with Unknown command on MySQL 9.7?</div><div class="opts"><div class="opt correct">A) <code class="inline">mysql -u root -p &lt; report.sql</code></div><div class="opt">B) <code class="inline">SOURCE report.sql</code> at the mysql> prompt</div><div class="opt">C) <code class="inline">mysql --commands -u root -p &lt; report.sql</code></div><div class="opt">D) Typing the query at the prompt</div></div><div class="why"><b>Why:</b> Read from a redirected file, the 9.x client is in batch mode and ignores its own commands unless started with --commands. At the prompt, typed or SOURCEd, client commands always work.<br><b>B</b> is wrong: SOURCE runs the file as if you typed it: client commands work.<br><b>C</b> is wrong: --commands switches client commands back on in batch mode.<br><b>D</b> is wrong: Interactive use is not affected.</div></div>
+  <div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt">Which statement lists only the columns of mysql.user whose names contain lock?</div><div class="opts"><div class="opt">A) <code class="inline">SHOW TABLES FROM mysql LIKE '%lock%';</code></div><div class="opt correct">B) <code class="inline">SHOW COLUMNS FROM mysql.user LIKE '%lock%';</code></div><div class="opt">C) <code class="inline">DESCRIBE mysql.user WHERE lock;</code></div><div class="opt">D) <code class="inline">SELECT lock FROM mysql.user;</code></div></div><div class="why"><b>Why:</b> SHOW COLUMNS FROM table LIKE 'pattern' is DESCRIBE with a filter. On 9.7 it prints two columns: Lock_tables_priv and account_locked (LIKE ignores case).<br><b>A</b> is wrong: That lists tables, not columns.<br><b>C</b> is wrong: DESCRIBE takes no WHERE: a syntax error.<br><b>D</b> is wrong: There is no column named lock: ERROR 1054.</div></div>
+
+  <div class="sec"><h2>1.3 · MySQL CLI &amp; phpMyAdmin: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> <span class="k">DATABASE</span>() <span class="k">AS</span> before_use;
+<span class="k">USE</span> mysql;
+<span class="k">SELECT</span> <span class="k">DATABASE</span>() <span class="k">AS</span> after_use;</pre><div class="opts"><div class="opt correct"><pre class="out">+------------+
+| before_use |
++------------+
+| NULL       |
++------------+
+Database changed
++-----------+
+| after_use |
++-----------+
+| mysql     |
++-----------+</pre></div></div><div class="why"><b>Why:</b> Before the first USE a session has no current database, so DATABASE() is NULL. <code class="inline">USE mysql;</code> prints <code class="inline">Database changed</code>, and from then on it is mysql.</div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> mysql.user <span class="k">LIKE</span> <span class="s">'account_locked'</span>;</pre><div class="opts"><div class="opt correct"><pre class="out">+----------------+---------------+------+-----+---------+-------+
+| Field          | Type          | Null | Key | Default | Extra |
++----------------+---------------+------+-----+---------+-------+
+| account_locked | enum('N','Y') | NO   |     | N       |       |
++----------------+---------------+------+-----+---------+-------+</pre></div></div><div class="why"><b>Why:</b> account_locked is an ENUM of two letters, required, N by default: new accounts are unlocked unless you lock them.</div></div>
+
+  <div class="sec"><h2>2.1 · Creating Databases &amp; Tables: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">What happens when this runs?</div><pre class="code"><span class="k">CREATE</span> <span class="k">DATABASE</span> kit_q7 <span class="k">CHARACTER</span> <span class="k">SET</span> utf8;
+<span class="k">SHOW</span> <span class="k">WARNINGS</span>;</pre><div class="opts"><div class="opt">A) <code class="inline">ERROR 1064</code>: utf8 is not a character set</div><div class="opt">B) The database stores full Unicode, emoji included</div><div class="opt">C) Nothing: CHARACTER SET is ignored</div><div class="opt correct">D) The database is created with utf8mb3 (no emoji), and warning 3719 says to use utf8mb4</div></div><div class="why"><b>Why:</b> MySQL's utf8 is an alias for the three-byte utf8mb3, which cannot store emoji and some rarer characters. The statement works and warns; always write utf8mb4.<br><b>A</b> is wrong: utf8 is accepted, with a warning.<br><b>B</b> is wrong: Only utf8mb4 stores every character.<br><b>C</b> is wrong: It is used: the database gets utf8mb3.</div></div>
+  <div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">Which column does the last statement list first?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> members (
+    id   <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    name <span class="k">VARCHAR</span>(<span class="s">40</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">ALTER</span> <span class="k">TABLE</span> members <span class="k">ADD</span> <span class="k">COLUMN</span> email <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">FIRST</span>;
+<span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> members;</pre><div class="opts"><div class="opt correct"><code class="inline">email</code> (then <code class="inline">id</code> and <code class="inline">name</code>)</div></div><div class="why"><b>Why:</b> ADD COLUMN puts a new column at the end unless you say AFTER column or FIRST. FIRST makes email the first column; existing rows would get NULL in it.</div></div>
+  <div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">A script stops with <code class="inline">ERROR 1046 (3D000): No database selected</code>. What does it mean?</div><div class="opts"><div class="opt correct">A) There is no current database: run USE first, or write database.table</div><div class="opt">B) The database name is misspelled</div><div class="opt">C) The table already exists</div><div class="opt">D) Your account may not create tables</div></div><div class="why"><b>Why:</b> A fresh session, or one whose current database was just dropped, has no current database, so a bare table name has nowhere to go.<br><b>B</b> is wrong: A misspelled database gives 1049 Unknown database.<br><b>C</b> is wrong: That is 1050.<br><b>D</b> is wrong: Permission errors are 1044 or 1142 (Lesson 7.4).</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">Which name follows the course's naming conventions for a table of book reviews?</div><div class="opts"><div class="opt">A) <code class="inline">BookReviews</code></div><div class="opt">B) <code class="inline">tbl_review</code></div><div class="opt correct">C) <code class="inline">book_reviews</code></div><div class="opt">D) <code class="inline">bookReview</code></div></div><div class="why"><b>Why:</b> Lowercase, snake_case, a plural noun. Lowercase also keeps the name working when the database moves to a Linux server, where table names are case-sensitive.<br><b>A</b> is wrong: Capitals can break on Linux servers.<br><b>B</b> is wrong: No tbl_ prefix, and tables are plural.<br><b>D</b> is wrong: camelCase and singular.</div></div>
+  <div class="q" data-sc="11"><div class="qn">Q11</div><div class="qt">In <code class="inline">shelf</code>, title was <code class="inline">VARCHAR(200) NOT NULL</code>. After the ALTER below, what is true?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> shelf (
+    id    <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    title <span class="k">VARCHAR</span>(<span class="s">200</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">ALTER</span> <span class="k">TABLE</span> shelf <span class="k">CHANGE</span> <span class="k">COLUMN</span> title book_title <span class="k">VARCHAR</span>(<span class="s">250</span>);
+<span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> shelf;</pre><div class="opts"><div class="opt">A) The column is now book_title and is still required</div><div class="opt correct">B) The column is now book_title, VARCHAR(250), and allows NULL</div><div class="opt">C) ERROR: CHANGE cannot rename a column</div><div class="opt">D) title is kept and a new column book_title is added</div></div><div class="why"><b>Why:</b> CHANGE takes the old name, the new name and the FULL new definition. Whatever is left out, here NOT NULL, is gone: SHOW COLUMNS prints YES under Null. Repeat every constraint, then check.<br><b>A</b> is wrong: Only a definition that says NOT NULL keeps it.<br><b>C</b> is wrong: Renaming plus redefining is exactly what CHANGE is for.<br><b>D</b> is wrong: CHANGE replaces the column; ADD COLUMN would add one.</div></div>
+  <div class="q" data-sc="12" data-kind="short"><div class="qn">Q12</div><div class="qt">Write the one statement that removes every row of the customers table, keeps the table and starts the ids at 1 again.</div><div class="opts"><div class="opt correct"><code class="inline">TRUNCATE TABLE customers;</code></div></div><div class="why"><b>Why:</b> TRUNCATE empties the table and resets AUTO_INCREMENT. DELETE FROM customers; also removes every row but keeps counting ids; DROP TABLE removes the table itself.</div></div>
+
+  <div class="sec"><h2>2.1 · Creating Databases &amp; Tables: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> tickets (
+    id    <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    label <span class="k">VARCHAR</span>(<span class="s">20</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> tickets (label) <span class="k">VALUES</span> (<span class="s">'first'</span>), (<span class="s">'second'</span>);
+<span class="k">TRUNCATE</span> <span class="k">TABLE</span> tickets;
+<span class="k">INSERT</span> <span class="k">INTO</span> tickets (label) <span class="k">VALUES</span> (<span class="s">'third'</span>);
+<span class="k">SELECT</span> * <span class="k">FROM</span> tickets;</pre><div class="opts"><div class="opt correct"><pre class="out">+----+-------+
+| id | label |
++----+-------+
+|  1 | third |
++----+-------+</pre></div></div><div class="why"><b>Why:</b> TRUNCATE removed both rows AND reset the AUTO_INCREMENT counter, so the next row gets id 1. A DELETE FROM tickets would have given id 3.</div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> notes (
+    id    <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    body  <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">ALTER</span> <span class="k">TABLE</span> notes <span class="k">MODIFY</span> <span class="k">COLUMN</span> body <span class="k">TEXT</span>;
+<span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> notes <span class="k">LIKE</span> <span class="s">'body'</span>;</pre><div class="opts"><div class="opt correct"><pre class="out">+-------+------+------+-----+---------+-------+
+| Field | Type | Null | Key | Default | Extra |
++-------+------+------+-----+---------+-------+
+| body  | text | YES  |     | NULL    |       |
++-------+------+------+-----+---------+-------+</pre></div></div><div class="why"><b>Why:</b> MODIFY replaced the whole definition with <code class="inline">TEXT</code> alone, so NOT NULL is gone: Null says YES. Write <code class="inline">MODIFY COLUMN body TEXT NOT NULL</code> to keep the rule.</div></div>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Lab 1.3-A: labs/module-02/l1_3-mysql-cli-phpmyadmin/find_your_way_starter.sql → find_your_way_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">Database changed
++-------------+
+| current_db  |
++-------------+
+| kit_s2_cafe |
++-------------+
++-----------------------+
+| Tables_in_kit_s2_cafe |
++-----------------------+
+| cafe_orders           |
+| menu_items            |
+| staff_notes           |
++-----------------------+
++----------+--------------+------+-----+---------+----------------+
+| Field    | Type         | Null | Key | Default | Extra          |
++----------+--------------+------+-----+---------+----------------+
+| id       | int          | NO   | PRI | NULL    | auto_increment |
+| name     | varchar(60)  | NO   | UNI | NULL    |                |
+| price    | decimal(5,2) | NO   |     | NULL    |                |
+| vegan    | tinyint(1)   | YES  |     | 0       |                |
+| added_on | date         | YES  |     | NULL    |                |
++----------+--------------+------+-----+---------+----------------+
++------------+----------+------+-----+---------+-------+
+| Field      | Type     | Null | Key | Default | Extra |
++------------+----------+------+-----+---------+-------+
+| ordered_at | datetime | NO   |     | NULL    |       |
+| paid_at    | datetime | YES  |     | NULL    |       |
++------------+----------+------+-----+---------+-------+
++------------------------------+
+| Tables_in_mysql (time_zone%) |
++------------------------------+
+| time_zone                    |
+| time_zone_leap_second        |
+| time_zone_name               |
+| time_zone_transition         |
+| time_zone_transition_type    |
++------------------------------+
+*************************** 1. row ***************************
+      id: 3
+    name: Oat Latte
+   price: 4.10
+   vegan: 1
+added_on: 2026-02-14
+*************************** 1. row ***************************
+       Table: staff_notes
+Create Table: CREATE TABLE `staff_notes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `note` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci</pre><p>Reading it: menu_items has <code class="inline">id</code> as the primary key (PRI) and <code class="inline">name</code> as a unique column (UNI); <code class="inline">name</code> and <code class="inline">price</code> say NO under Null, so they are required; <code class="inline">vegan</code> is a BOOLEAN shown as tinyint(1) with default 0. Of the <code class="inline">_at</code> columns only <code class="inline">paid_at</code> may be empty. TODO 4 reaches the mysql database with FROM, without leaving the café. TODO 5's vertical row and TODO 6's definition use <code class="inline">\G</code>. Learners who wrote <code class="inline">LIKE '%_at'</code> get the same two rows here (the <code class="inline">_</code> matches any one character, and the only candidates end in _at); <code class="inline">'%\_at'</code> is the exact form.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 1.3-B: labs/module-02/l1_3-mysql-cli-phpmyadmin/system_tour_starter.sql → system_tour_solution.sql</div>
+<p>The solution prints (MySQL 9.7):</p>
+<pre class="out">+--------------+
+| user_columns |
++--------------+
+|           51 |
++--------------+
++--------------+
+| priv_columns |
++--------------+
+|           31 |
++--------------+
++-----------------------+-------------+-------------+
+| COLUMN_NAME           | COLUMN_TYPE | IS_NULLABLE |
++-----------------------+-------------+-------------+
+| Host                  | char(255)   | NO          |
+| User                  | char(32)    | NO          |
+| plugin                | char(64)    | NO          |
+| password_last_changed | timestamp   | YES         |
++-----------------------+-------------+-------------+
++---------------+------------+
+| TABLE_NAME    | TABLE_ROWS |
++---------------+------------+
+| help_category |         53 |
+| help_keyword  |        922 |
+| help_relation |       2265 |
+| help_topic    |        706 |
++---------------+------------+
++----------------------------------------+
+| Tables_in_information_schema (COLUMN%) |
++----------------------------------------+
+| COLUMNS                                |
+| COLUMNS_EXTENSIONS                     |
+| COLUMN_PRIVILEGES                      |
+| COLUMN_STATISTICS                      |
++----------------------------------------+</pre><p>Reading it: 51 columns, 31 of them privilege flags (one per kind of permission, Lesson 7.4). Host and User are fixed-length CHAR; <code class="inline">password_last_changed</code> is the only one of the four that may be NULL. TABLE_ROWS is an estimate for InnoDB tables. On 8.4 the help-table estimates differ; on MariaDB <code class="inline">mysql.user</code> is a view with 47 columns (see the README).</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-02/l1_3-mysql-cli-phpmyadmin/debug_lost.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints (the four errors, then the accounts):</p>
+<pre class="out">ERROR 1049 (42000): Unknown database 'mysq'
+Database changed
+ERROR 1146 (42S02): Table 'mysql.users' doesn't exist
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'current_date' at line 1
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'SELECT CURRENT_USER() AS account' at line 2
++------------------+-----------+
+| User             | Host      |
++------------------+-----------+
+| mysql.infoschema | localhost |
+| mysql.session    | localhost |
+| mysql.sys        | localhost |
+| root             | localhost |
++------------------+-----------+</pre><ol class="steps">
+  <li><b>Bug A, 1049:</b> <code class="inline">mysq</code> is a typo. Fix: <code class="inline">USE mysql;</code> (SHOW DATABASES; and copy the exact name).</li>
+  <li><b>Bug B, 1146:</b> the accounts table is <code class="inline">user</code>, singular; the message names the database it looked in (<code class="inline">mysql.users</code>). Fix: <code class="inline">FROM user</code>.</li>
+  <li><b>Bug C, 1064:</b> <code class="inline">current_date</code> is a built-in function (like current_time in the lesson). Fix: <code class="inline">AS today</code> or backticks.</li>
+  <li><b>Bug D, 1064:</b> no semicolon after the first SELECT, so MySQL reads both lines as one statement and gets lost at the second SELECT (<code class="inline">near 'SELECT CURRENT_USER() ...' at line 2</code>). Fix: end the first line with <code class="inline">;</code>.</li>
+</ol>
+<p>Fixed, the file prints version, account, a date and the four accounts with no ERROR lines. Docker adds root with host <code class="inline">%</code>.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 2.1-A: labs/module-02/l2_1-creating-databases-tables/events_build_starter.sql → events_build_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">Database changed
++-------+------+------------------------------+
+| Level | Code | Message                      |
++-------+------+------------------------------+
+| Note  | 1050 | Table 'rooms' already exists |
++-------+------+------------------------------+
++------------+--------------------+
+| TABLE_NAME | TABLE_COLLATION    |
++------------+--------------------+
+| readings   | utf8mb4_unicode_ci |
+| rooms      | utf8mb4_unicode_ci |
++------------+--------------------+
++------------+---------------+
+| TABLE_NAME | columns_count |
++------------+---------------+
+| readings   |             7 |
+| rooms      |             3 |
++------------+---------------+
++--------------+--------------+------+-----+---------+----------------+
+| Field        | Type         | Null | Key | Default | Extra          |
++--------------+--------------+------+-----+---------+----------------+
+| id           | int          | NO   | PRI | NULL    | auto_increment |
+| author       | varchar(100) | NO   |     | NULL    |                |
+| book_title   | varchar(200) | NO   |     | NULL    |                |
+| room_id      | int          | NO   |     | NULL    |                |
+| starts_at    | datetime     | NO   |     | NULL    |                |
+| ticket_price | decimal(6,2) | YES  |     | 0.00    |                |
+| sold_out     | tinyint(1)   | YES  |     | 0       |                |
++--------------+--------------+------+-----+---------+----------------+</pre><p>Reading it: IF NOT EXISTS turned the second CREATE TABLE rooms into a Note (1050), and rooms kept its three columns. Both tables inherited <code class="inline">utf8mb4_unicode_ci</code> from the database. In DESCRIBE, <code class="inline">ticket_price</code> shows default 0.00 and <code class="inline">sold_out</code> (BOOLEAN) shows tinyint(1) with default 0. Accept <code class="inline">INT UNSIGNED</code> for seats and a <code class="inline">UNIQUE</code> on readings' author plus starts_at as good extras; <code class="inline">DATE</code> for starts_at loses the time of day: ask for DATETIME.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 2.1-B: labs/module-02/l2_1-creating-databases-tables/change_request_starter.sql → change_request_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">Database changed
++------------+--------------+------+-----+---------+----------------+
+| Field      | Type         | Null | Key | Default | Extra          |
++------------+--------------+------+-----+---------+----------------+
+| id         | int          | NO   | PRI | NULL    | auto_increment |
+| email      | varchar(100) | NO   | UNI | NULL    |                |
+| first_name | varchar(60)  | NO   |     | NULL    |                |
+| city       | varchar(50)  | YES  |     | NULL    |                |
+| joined_on  | date         | YES  |     | NULL    |                |
+| source     | varchar(20)  | YES  |     | website |                |
++------------+--------------+------+-----+---------+----------------+
++----+------------------+------------+--------+------------+---------+
+| id | email            | first_name | city   | joined_on  | source  |
++----+------------------+------------+--------+------------+---------+
+|  1 | maya@example.com | Maya       | Denver | 2026-03-01 | website |
+|  2 | omar@example.com | Omar       | NULL   | 2026-03-04 | website |
++----+------------------+------------+--------+------------+---------+
++----+-------------------+---------+
+| id | email             | source  |
++----+-------------------+---------+
+|  1 | again@example.com | website |
++----+-------------------+---------+
++--------------------------+
+| Tables_in_kit_s2_signups |
++--------------------------+
+| newsletter_signups       |
++--------------------------+</pre><p>Reading it: after the four ALTERs both rows survived with their values, and the new <code class="inline">source</code> column shows <code class="inline">website</code> for both (a DEFAULT fills existing rows when the column is added). <code class="inline">first_name</code> is varchar(60) and still NO under Null because TODO 3 repeated NOT NULL; without it the column would silently accept NULL. TRUNCATE reset the counter, so Again got id 1. SHOW TABLES at the end lists only newsletter_signups: the copy was renamed and dropped.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-02/l2_1-creating-databases-tables/debug_build_script.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 1007 (HY000): Can't create database 'kit_s2_shelf'; database exists
+Database changed
+ERROR 1046 (3D000): No database selected
+Database changed
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ')' at line 6
+ERROR 1050 (42S01): Table 'shelves' already exists
+ERROR 1146 (42S02): Table 'kit_s2_shelf.shelf' doesn't exist</pre><ol class="steps">
+  <li><b>Bug A, 1007:</b> the database already exists. Fix: <code class="inline">CREATE DATABASE IF NOT EXISTS kit_s2_shelf;</code> (or delete the line: the database was just created).</li>
+  <li><b>Bug B, 1046:</b> the session's current database (<code class="inline">kit_s2_scratch</code>) was dropped one line earlier, so there is no database selected. Fix: delete the stray CREATE TABLE (it belonged to the scratch database), or <code class="inline">USE kit_s2_shelf;</code> before it and drop the later duplicate.</li>
+  <li><b>Bug C, 1064:</b> a comma after the last column; MySQL gets lost at the closing <code class="inline">)</code>. Fix: remove the comma after <code class="inline">capacity INT NOT NULL</code>.</li>
+  <li><b>Bug D, 1050:</b> the table already exists, as it will whenever a script is rerun. Fix: <code class="inline">CREATE TABLE IF NOT EXISTS shelves</code>, or a <code class="inline">DROP TABLE IF EXISTS shelves;</code> before it.</li>
+  <li><b>Bug E, 1146:</b> the table is <code class="inline">shelves</code>, plural (the message names <code class="inline">kit_s2_shelf.shelf</code>). Fix: <code class="inline">DESCRIBE shelves;</code>.</li>
+</ol>
+<p>Fixed, the file prints DESCRIBE shelves with four columns (id, label UNI, genre, capacity) and no ERROR lines.</p>
+</div>
+
+  <div class="sec"><h2>The Lesson Pages' Own Quick Quizzes</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Lesson 1.3 · MySQL CLI &amp; phpMyAdmin</div>
+<ol class="steps" data-lesson-quiz="1.3">
+  <li><b>A</b> The statement has no semicolon yet, so the client is waiting for more: The client sends a statement only when it sees the terminator. The arrow prompt means it is waiting for the rest; type a semicolon.</li>
+  <li><b>B</b> ERROR 1146: Table 'mysql.customers' doesn't exist: MySQL looks for the table in the current database, mysql, and reports the full name it tried: Table 'mysql.customers' doesn't exist.</li>
+  <li><b>C</b> \G at the end of a query: Backslash commands such as \G are handled by the mysql client itself and never reach the server, so other tools do not understand them.</li>
+  <li><b>B</b> ERROR 1064, because current_time is a reserved word: CURRENT_TIME is a reserved word (a built-in function), so it cannot be a plain alias. Rename it (now_time) or wrap it in backticks.</li>
+  <li><b>A</b> End the statements with ; instead of \G (or run the client with --commands): In batch mode the 9.x client ignores its own commands. Ending statements with semicolons makes the file work everywhere; --commands is the alternative.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Lesson 2.1 · Creating Databases &amp; Tables</div>
+<ol class="steps" data-lesson-quiz="2.1">
+  <li><b>C</b> Nothing changes; MySQL reports a note and keeps the existing table: IF NOT EXISTS turns the error into a note (1050) and leaves the existing table and its rows exactly as they were. The new definition is ignored.</li>
+  <li><b>A</b> SHOW CREATE TABLE books;: SHOW CREATE TABLE prints the exact CREATE TABLE statement that would rebuild the table, with every constraint, the engine and the character set and collation.</li>
+  <li><b>B</b> title is VARCHAR(250) and now allows NULL: MODIFY replaces the whole column definition with exactly what you typed. NOT NULL was not repeated, so title now accepts NULL, without any warning.</li>
+  <li><b>A</b> A table with one row, id 1: TRUNCATE removes every row and resets the AUTO_INCREMENT counter, so the next row gets id 1. The table itself, with its columns and keys, stays.</li>
+  <li><b>C</b> MySQL's utf8 is a three-byte subset that cannot store every character: In MySQL, utf8 means utf8mb3, a three-byte subset that cannot store emoji and some rarer characters, and MySQL warns about it (warning 3719). utf8mb4 is full Unicode.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li>Name two statements that work in phpMyAdmin's SQL tab and one command that only the mysql client understands. <b>Answer:</b> SQL (any client): <code class="inline">SHOW TABLES;</code>, <code class="inline">DESCRIBE books;</code>, <code class="inline">USE bookstore;</code>, <code class="inline">SELECT DATABASE();</code>, <code class="inline">CREATE TABLE ...</code>. Client only: <code class="inline">\G</code>, <code class="inline">SOURCE file.sql</code>, <code class="inline">\c</code>, <code class="inline">help</code>, <code class="inline">exit</code>, <code class="inline">status</code>.</li>
+  <li>A script stops with <code class="inline">ERROR 1046 (3D000): No database selected</code>. Give two ways to fix it. <b>Answer:</b> Put <code class="inline">USE bookstore;</code> (the right database) before the statement, or write the full name <code class="inline">bookstore.books</code>. It happens in a fresh session and after dropping the database you were in.</li>
+  <li>title is <code class="inline">VARCHAR(200) NOT NULL</code>. You run <code class="inline">ALTER TABLE books MODIFY COLUMN title VARCHAR(250);</code>. What did you lose, and which statement shows it? <b>Answer:</b> The NOT NULL rule: MODIFY replaces the whole definition. <code class="inline">DESCRIBE books;</code> (or <code class="inline">SHOW COLUMNS FROM books LIKE 'title';</code>) shows YES under Null. Fix: repeat it, <code class="inline">VARCHAR(250) NOT NULL</code>.</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q1 B ("DESCRIBE does nothing in phpMyAdmin").</b> Thinks only SELECT is SQL. Show the Structure tab and the SQL tab running DESCRIBE.</li>
+  <li><b>Q2 A ("it only needs a semicolon").</b> Has not seen the quote prompt. Type <code class="inline">SELECT 'abc;</code> live: the semicolon becomes part of the text.</li>
+  <li><b>Q4 B (1045).</b> Reads every login failure as a password problem. The message says Unknown database: read the message.</li>
+  <li><b>Q7 B ("utf8 stores emoji").</b> The most expensive misconception of the day: a database created with utf8 loses emoji years later. Repeat: always utf8mb4.</li>
+  <li><b>Q9 B ("misspelled database").</b> Mixes 1046 with 1049. Write the pair on the board: 1049 = no database by that name; 1046 = no database chosen.</li>
+  <li><b>Q11 A ("still required").</b> Expects ALTER to keep what it is not told. The MODIFY trap from the demo; the exit ticket's question 3.</li>
+  <li><b>Exit ticket 2 answered with "create the database".</b> Needs the cabinet picture: the database exists, the session is just not inside it.</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 2 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

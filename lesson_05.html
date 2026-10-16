@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn MySQL data types (INT, VARCHAR, TEXT, DECIMAL, DATE, BOOLEAN) and constraints (PRIMARY KEY, NOT NULL, UNIQUE, DEFAULT, AUTO_INCREMENT, CHECK) to build well-structured tables.">
-    <meta name="author" content="Ray De La Paz">
+    <meta name="description" content="Choose MySQL data types for numbers, money, text, dates and flags, and protect your data with NOT NULL, UNIQUE, DEFAULT, PRIMARY KEY, AUTO_INCREMENT and CHECK constraints. MySQL Foundations Lesson 2.2.">
+    <meta name="author" content="Ray de la Paz">
     <title>Data Types &amp; Constraints - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -43,30 +43,34 @@
         <ul>
             <li><a href="index.html">Home</a></li>
             <li><a href="index.html#modules">Module 2: Tables &amp; Data Types</a></li>
-            <li aria-current="page">Lesson 5: Data Types &amp; Constraints</li>
+            <li aria-current="page">Lesson 2.2: Data Types &amp; Constraints</li>
         </ul>
     </nav>
 
     <main id="main-content">
         <div class="container">
             <header>
-                <h1>🧱 Lesson 5: Data Types &amp; Constraints</h1>
-                <p class="lead">Every column in a table needs a data type — it tells MySQL what kind of information goes there and how much space to reserve. Constraints add rules that keep your data clean. Choosing wisely here means fewer bugs, faster queries, and happier databases.</p>
+                <h1>🧱 Lesson 2.2: Data Types &amp; Constraints</h1>
+                <p class="lead">In Lesson 2.1 you typed <code>INT</code>, <code>VARCHAR(200)</code> and <code>DECIMAL(8, 2)</code> on trust. This lesson explains the choices: what each type can hold, what MySQL does when a value does not fit, and how constraints such as <code>NOT NULL</code>, <code>UNIQUE</code> and <code>CHECK</code> stop bad data at the door instead of in next month's report.</p>
 
                 <div class="card card-info">
                     <h2>🎯 Learning Objectives</h2>
                     <p>By the end of this lesson, you will be able to:</p>
                     <ul>
-                        <li>Choose the right <strong>numeric</strong> type for whole numbers, decimals, and money</li>
-                        <li>Choose the right <strong>string</strong> type for short text, long text, and fixed-length codes</li>
-                        <li>Store <strong>dates and times</strong> correctly with DATE, DATETIME, and TIMESTAMP</li>
-                        <li>Understand how MySQL handles <strong>BOOLEAN</strong> values</li>
-                        <li>Apply constraints: <code>PRIMARY KEY</code>, <code>NOT NULL</code>, <code>UNIQUE</code>, <code>DEFAULT</code>, <code>AUTO_INCREMENT</code>, and <code>CHECK</code></li>
-                        <li>Know when to use <code>UNSIGNED</code>, <code>ENUM</code>, and <code>SET</code></li>
+                        <li>Pick an integer type and decide when <code>UNSIGNED</code> makes sense; explain why money is <code>DECIMAL</code>, never <code>FLOAT</code></li>
+                        <li>Choose between <code>CHAR</code>, <code>VARCHAR</code> and <code>TEXT</code>, and between <code>DATE</code>, <code>DATETIME</code> and <code>TIMESTAMP</code></li>
+                        <li>Use <code>BOOLEAN</code> and <code>ENUM</code> correctly, knowing what MySQL really stores</li>
+                        <li>Apply <code>PRIMARY KEY</code>, <code>AUTO_INCREMENT</code>, <code>NOT NULL</code>, <code>UNIQUE</code>, <code>DEFAULT</code> and named <code>CHECK</code> constraints</li>
+                        <li>Read the errors strict mode raises for bad values (1048, 1062, 1264, 1265, 1292, 1364, 1406, 3819)</li>
                     </ul>
-                    <p><strong>Estimated Time:</strong> 45 minutes</p>
-                    <p><strong>Prerequisites:</strong> Creating databases and tables (<a href="lesson_04.html">Lesson 4</a>)</p>
                 </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 100 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_04.html">Lesson 2.1: Creating Databases &amp; Tables</a></li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>employees.sql</code>: the bookstore's staff table with five kinds of constraint, tested with good and bad rows</li>
+                    <li><span class="meta-label">🗄️ Database</span> <code>bookstore</code> with the three empty tables from <a href="lesson_04.html#project">Lesson 2.1's build script</a></li>
+                </ul>
             </header>
 
             <details class="card toc-card" open>
@@ -78,825 +82,535 @@
                 <nav aria-label="Table of Contents">
                     <ol>
                         <li><a href="#why-types-matter" class="toc-link">Why Data Types Matter</a></li>
-                        <li><a href="#numeric-types" class="toc-link">Numeric Types</a></li>
-                        <li><a href="#string-types" class="toc-link">String Types</a></li>
-                        <li><a href="#date-time-types" class="toc-link">Date &amp; Time Types</a></li>
-                        <li><a href="#boolean-enum" class="toc-link">BOOLEAN, ENUM &amp; SET</a></li>
-                        <li><a href="#constraints" class="toc-link">Constraints</a></li>
-                        <li><a href="#choosing-types" class="toc-link">Choosing the Right Type — A Practical Guide</a></li>
-                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
-                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                        <li><a href="#numeric-types" class="toc-link">Numbers: Integers and Decimals</a></li>
+                        <li><a href="#string-types" class="toc-link">Text: CHAR, VARCHAR and TEXT</a></li>
+                        <li><a href="#date-time-types" class="toc-link">Dates and Times</a></li>
+                        <li><a href="#boolean-enum" class="toc-link">BOOLEAN, ENUM and SET</a></li>
+                        <li><a href="#constraints" class="toc-link">Constraints: Rules for Your Data</a></li>
+                        <li><a href="#choosing-types" class="toc-link">Choosing the Right Type</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: The Staff Table</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
                     </ol>
                 </nav>
             </details>
 
-            <!-- Section 1: Why Data Types Matter -->
             <section id="why-types-matter" class="lesson-section">
-                <h2>Why Data Types Matter</h2>
-                <p>You might wonder: why not just store everything as text? Three reasons:</p>
-
-                <div class="mermaid">
-                    graph LR
-                        A["Data Types"] --> B["🛡️ Validation"]
-                        A --> C["⚡ Performance"]
-                        A --> D["💾 Storage"]
-                        B --> E["MySQL rejects bad data<br/>e.g., 'hello' into an INT column"]
-                        C --> F["Numbers are compared faster<br/>than text; dates can be sorted"]
-                        D --> G["INT uses 4 bytes<br/>VARCHAR(10) uses up to 11 bytes<br/>TEXT uses up to 65KB"]
-                </div>
-
-                <p>Think of data types like containers: you wouldn't pour soup into a paper bag or store a feather in a shipping container. The right type holds the right data efficiently.</p>
-
-                <blockquote>
-                    <strong>💡 Rule of Thumb:</strong> Always pick the <em>smallest</em> type that can comfortably hold your data. Smaller types = less disk space, faster queries, and more rows in memory.
-                </blockquote>
-            </section>
-
-            <!-- Section 2: Numeric Types -->
-            <section id="numeric-types" class="lesson-section">
-                <h2>Numeric Types</h2>
-                <p>MySQL has several numeric types, divided into <strong>integers</strong> (whole numbers) and <strong>decimals</strong> (numbers with fractional parts).</p>
-
-                <h3>Integer Types</h3>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Bytes</th>
-                                <th>Signed Range</th>
-                                <th>Unsigned Range</th>
-                                <th>Use Case</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>TINYINT</code></td>
-                                <td>1</td>
-                                <td>-128 to 127</td>
-                                <td>0 to 255</td>
-                                <td>Age, rating (1-5), status codes</td>
-                            </tr>
-                            <tr>
-                                <td><code>SMALLINT</code></td>
-                                <td>2</td>
-                                <td>-32,768 to 32,767</td>
-                                <td>0 to 65,535</td>
-                                <td>Year, small counts</td>
-                            </tr>
-                            <tr>
-                                <td><code>MEDIUMINT</code></td>
-                                <td>3</td>
-                                <td>-8.3M to 8.3M</td>
-                                <td>0 to 16.7M</td>
-                                <td>Medium-sized IDs</td>
-                            </tr>
-                            <tr>
-                                <td><code>INT</code></td>
-                                <td>4</td>
-                                <td>-2.1B to 2.1B</td>
-                                <td>0 to 4.2B</td>
-                                <td>Most IDs, counts, general use</td>
-                            </tr>
-                            <tr>
-                                <td><code>BIGINT</code></td>
-                                <td>8</td>
-                                <td>-9.2 quintillion to 9.2 quintillion</td>
-                                <td>0 to 18.4 quintillion</td>
-                                <td>Huge IDs, social media post IDs</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <pre><code class="language-sql">
--- Integer examples
-CREATE TABLE integer_demo (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    age         TINYINT UNSIGNED,         -- 0-255, perfect for ages
-    year_born   SMALLINT,                 -- up to 32,767
-    page_count  INT UNSIGNED,             -- no negative pages!
-    tweet_id    BIGINT UNSIGNED           -- Twitter IDs are huge numbers
-);
-                </code></pre>
-
-                <h4>UNSIGNED — Positive Only</h4>
-                <p>Adding <code>UNSIGNED</code> after an integer type means it only stores positive numbers (and zero), but doubles the maximum value. Use it when negative values don't make sense — ages, counts, page numbers, IDs.</p>
-
-                <pre><code class="language-sql">
--- SIGNED (default): -128 to 127
--- UNSIGNED:          0 to 255
-age TINYINT UNSIGNED   -- Nobody has a negative age!
-                </code></pre>
-
-                <h3>Decimal / Fractional Types</h3>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Precision</th>
-                                <th>Use Case</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>DECIMAL(M, D)</code></td>
-                                <td>Exact — M total digits, D after decimal</td>
-                                <td>Money, financial calculations, anything requiring exact values</td>
-                            </tr>
-                            <tr>
-                                <td><code>FLOAT</code></td>
-                                <td>~7 significant digits (approximate)</td>
-                                <td>Scientific measurements, coordinates (when slight imprecision is OK)</td>
-                            </tr>
-                            <tr>
-                                <td><code>DOUBLE</code></td>
-                                <td>~15 significant digits (approximate)</td>
-                                <td>Higher-precision scientific calculations</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <pre><code class="language-sql">
--- DECIMAL examples
-price       DECIMAL(8, 2),    -- Up to 999,999.99
-tax_rate    DECIMAL(5, 4),    -- Up to 9.9999 (e.g., 0.0825)
-gpa         DECIMAL(3, 2),    -- Up to 9.99 (e.g., 3.85)
-                </code></pre>
-
-                <div class="card card-warning">
-                    <h4>⚠️ Never Use FLOAT for Money</h4>
-                    <p><code>FLOAT</code> and <code>DOUBLE</code> are <em>approximate</em> types — they can produce rounding errors. For example, <code>0.1 + 0.2</code> might equal <code>0.30000000000000004</code> in floating point. This is catastrophic for financial calculations. <strong>Always use <code>DECIMAL</code> for money.</strong></p>
-                </div>
-
-                <div class="card card-info">
-                    <h4>💡 Reading DECIMAL(M, D)</h4>
-                    <p><code>M</code> = total number of digits (both sides of the decimal point). <code>D</code> = digits after the decimal point. So <code>DECIMAL(8, 2)</code> means up to 6 digits before the decimal and 2 after it: <code>999999.99</code>. The maximum value of <code>M</code> is 65, and the maximum of <code>D</code> is 30.</p>
-                </div>
-            </section>
-
-            <!-- Section 3: String Types -->
-            <section id="string-types" class="lesson-section">
-                <h2>String Types</h2>
-                <p>MySQL has many string types, but you'll use three most of the time: <code>CHAR</code>, <code>VARCHAR</code>, and <code>TEXT</code>.</p>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Max Length</th>
-                                <th>Storage</th>
-                                <th>Use Case</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>CHAR(N)</code></td>
-                                <td>255 characters</td>
-                                <td>Always N bytes (padded with spaces)</td>
-                                <td>Fixed-length: country codes, state abbreviations, hashes</td>
-                            </tr>
-                            <tr>
-                                <td><code>VARCHAR(N)</code></td>
-                                <td>65,535 characters</td>
-                                <td>Actual length + 1-2 bytes</td>
-                                <td>Variable-length: names, emails, titles, URLs</td>
-                            </tr>
-                            <tr>
-                                <td><code>TINYTEXT</code></td>
-                                <td>255 characters</td>
-                                <td>Actual length + 1 byte</td>
-                                <td>Short text (rarely used — VARCHAR is better)</td>
-                            </tr>
-                            <tr>
-                                <td><code>TEXT</code></td>
-                                <td>~65,000 characters</td>
-                                <td>Actual length + 2 bytes</td>
-                                <td>Blog posts, descriptions, long-form content</td>
-                            </tr>
-                            <tr>
-                                <td><code>MEDIUMTEXT</code></td>
-                                <td>~16 million characters</td>
-                                <td>Actual length + 3 bytes</td>
-                                <td>Very long documents, articles</td>
-                            </tr>
-                            <tr>
-                                <td><code>LONGTEXT</code></td>
-                                <td>~4 billion characters</td>
-                                <td>Actual length + 4 bytes</td>
-                                <td>Huge data (rarely needed)</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3>CHAR vs. VARCHAR</h3>
-                <p>The key difference is how they store data:</p>
-
-                <div class="mermaid">
-                    graph LR
-                        subgraph CHAR_10["CHAR(10) — Always 10 bytes"]
-                            A["'hello     '"] --- B["Padded to 10"]
-                        end
-                        subgraph VARCHAR_10["VARCHAR(10) — Only what's needed"]
-                            C["'hello'"] --- D["5 bytes + 1"]
-                        end
-                </div>
-
-                <pre><code class="language-sql">
--- CHAR — fixed length, padded with spaces
-country_code  CHAR(2),          -- 'US', 'PH', 'JP' — always 2 chars
-state_code    CHAR(2),          -- 'NV', 'CA', 'TX'
-md5_hash      CHAR(32),         -- MD5 hashes are always 32 hex characters
-
--- VARCHAR — variable length, stores only what's needed
-first_name    VARCHAR(50),      -- 'Ray' stores as 3 + 1 bytes
-email         VARCHAR(100),     -- 'ray@email.com' stores as 13 + 1 bytes
-title         VARCHAR(200),     -- Book titles vary widely in length
-                </code></pre>
-
-                <div class="card card-success">
-                    <h4>✅ When to Use CHAR vs. VARCHAR</h4>
-                    <p>Use <code>CHAR</code> when every value has the <em>exact same length</em> (country codes, state abbreviations, UUIDs, hashes). Use <code>VARCHAR</code> for everything else — it's the most common string type by far.</p>
-                </div>
-
-                <h3>TEXT Types</h3>
-                <p>Use <code>TEXT</code> for long-form content that doesn't need a length limit:</p>
-
-                <pre><code class="language-sql">
--- TEXT for long content
-bio           TEXT,               -- User biography
-description   TEXT,               -- Product description
-article_body  MEDIUMTEXT,         -- Full blog article
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 VARCHAR vs. TEXT</h4>
-                    <p>Both can store text, but they differ in important ways:</p>
-                    <ul>
-                        <li><code>VARCHAR</code> can have a <code>DEFAULT</code> value; <code>TEXT</code> cannot (in most cases)</li>
-                        <li><code>VARCHAR</code> can be part of an index fully; <code>TEXT</code> requires a prefix length</li>
-                        <li><code>VARCHAR</code> is stored inline with the row; large <code>TEXT</code> values are stored separately</li>
-                    </ul>
-                    <p><strong>Rule:</strong> If you know the maximum length and it's under ~1000 characters, use <code>VARCHAR</code>. If the content is truly unbounded (blog posts, comments, descriptions), use <code>TEXT</code>.</p>
-                </div>
-            </section>
-
-            <!-- Section 4: Date & Time Types -->
-            <section id="date-time-types" class="lesson-section">
-                <h2>Date &amp; Time Types</h2>
-                <p>MySQL has dedicated types for dates and times — never store them as strings!</p>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Format</th>
-                                <th>Range</th>
-                                <th>Use Case</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>DATE</code></td>
-                                <td><code>YYYY-MM-DD</code></td>
-                                <td>1000-01-01 to 9999-12-31</td>
-                                <td>Birthdays, publication dates, deadlines</td>
-                            </tr>
-                            <tr>
-                                <td><code>TIME</code></td>
-                                <td><code>HH:MM:SS</code></td>
-                                <td>-838:59:59 to 838:59:59</td>
-                                <td>Duration, time of day</td>
-                            </tr>
-                            <tr>
-                                <td><code>DATETIME</code></td>
-                                <td><code>YYYY-MM-DD HH:MM:SS</code></td>
-                                <td>1000-01-01 to 9999-12-31</td>
-                                <td>Order timestamps, event start times</td>
-                            </tr>
-                            <tr>
-                                <td><code>TIMESTAMP</code></td>
-                                <td><code>YYYY-MM-DD HH:MM:SS</code></td>
-                                <td>1970-01-01 to 2038-01-19</td>
-                                <td>Created/updated timestamps, audit trails</td>
-                            </tr>
-                            <tr>
-                                <td><code>YEAR</code></td>
-                                <td><code>YYYY</code></td>
-                                <td>1901 to 2155</td>
-                                <td>Publication year, model year</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <pre><code class="language-sql">
--- Date and time examples
-CREATE TABLE events (
-    id           INT AUTO_INCREMENT PRIMARY KEY,
-    event_name   VARCHAR(100) NOT NULL,
-    event_date   DATE NOT NULL,              -- '2026-04-16'
-    start_time   TIME,                       -- '14:30:00'
-    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                         ON UPDATE CURRENT_TIMESTAMP
-);
-                </code></pre>
-
-                <h3>DATETIME vs. TIMESTAMP</h3>
-                <p>They look the same but behave differently:</p>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Feature</th>
-                                <th>DATETIME</th>
-                                <th>TIMESTAMP</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Storage</td>
-                                <td>8 bytes</td>
-                                <td>4 bytes</td>
-                            </tr>
-                            <tr>
-                                <td>Range</td>
-                                <td>1000–9999</td>
-                                <td>1970–2038</td>
-                            </tr>
-                            <tr>
-                                <td>Time zone</td>
-                                <td>Stores as-is (no conversion)</td>
-                                <td>Converts to UTC on storage, back to local on retrieval</td>
-                            </tr>
-                            <tr>
-                                <td>Best for</td>
-                                <td>Event dates, birthdates, historical dates</td>
-                                <td>Record creation/modification tracking</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="card card-success">
-                    <h4>✅ Auto-Tracking Timestamps</h4>
-                    <p>A very common pattern is automatically recording when a row was created and last updated:</p>
-                    <pre><code class="language-sql">
-created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ON UPDATE CURRENT_TIMESTAMP
-                    </code></pre>
-                    <p><code>created_at</code> is set once when the row is inserted. <code>updated_at</code> is automatically refreshed every time the row changes. You'll see this pattern in almost every production database.</p>
-                </div>
-
-                <div class="card card-warning">
-                    <h4>⚠️ Never Store Dates as Strings</h4>
-                    <p>It's tempting to use <code>VARCHAR(10)</code> for dates like <code>'04/16/2026'</code>, but this breaks sorting, comparisons, and date arithmetic. MySQL can't calculate "30 days from now" on a string. <strong>Always use DATE, DATETIME, or TIMESTAMP.</strong></p>
-                </div>
-            </section>
-
-            <!-- Section 5: BOOLEAN, ENUM & SET -->
-            <section id="boolean-enum" class="lesson-section">
-                <h2>BOOLEAN, ENUM &amp; SET</h2>
-
-                <h3>BOOLEAN</h3>
-                <p>MySQL doesn't have a true boolean type — <code>BOOLEAN</code> is an alias for <code>TINYINT(1)</code>:</p>
-
-                <pre><code class="language-sql">
--- These are equivalent:
-is_active  BOOLEAN DEFAULT TRUE,
-is_active  TINYINT(1) DEFAULT 1,
-                </code></pre>
-
-                <p>MySQL stores <code>TRUE</code> as <code>1</code> and <code>FALSE</code> as <code>0</code>. You can use either in queries:</p>
-
-                <pre><code class="language-sql">
--- Both work:
-SELECT * FROM books WHERE in_stock = TRUE;
-SELECT * FROM books WHERE in_stock = 1;
-                </code></pre>
-
-                <h3>ENUM — Pick One from a List</h3>
-                <p><code>ENUM</code> restricts a column to a predefined set of values. Only one value can be chosen:</p>
-
-                <pre><code class="language-sql">
-CREATE TABLE shirts (
-    id     INT AUTO_INCREMENT PRIMARY KEY,
-    size   ENUM('XS', 'S', 'M', 'L', 'XL', 'XXL') NOT NULL,
-    color  ENUM('red', 'blue', 'green', 'black', 'white') NOT NULL
-);
-
--- Valid:
-INSERT INTO shirts (size, color) VALUES ('M', 'blue');
-
--- Invalid — MySQL will reject or warn:
-INSERT INTO shirts (size, color) VALUES ('XXXL', 'purple');
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 ENUM Pros and Cons</h4>
-                    <p><strong>Pros:</strong> Enforces valid values, very compact storage (1-2 bytes regardless of string length), self-documenting.</p>
-                    <p><strong>Cons:</strong> Adding or removing values requires <code>ALTER TABLE</code>, which can be slow on large tables. If the list changes frequently, a lookup table (a separate table with the valid values) is often a better choice.</p>
-                </div>
-
-                <h3>SET — Pick Multiple from a List</h3>
-                <p><code>SET</code> is like <code>ENUM</code> but allows multiple values per row:</p>
-
-                <pre><code class="language-sql">
-CREATE TABLE user_preferences (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    username    VARCHAR(50) NOT NULL,
-    interests   SET('sports', 'music', 'tech', 'gaming', 'cooking')
-);
-
--- One interest:
-INSERT INTO user_preferences (username, interests)
-VALUES ('alice', 'music');
-
--- Multiple interests (comma-separated, no spaces):
-INSERT INTO user_preferences (username, interests)
-VALUES ('bob', 'tech,gaming,music');
-                </code></pre>
-
-                <div class="card card-accent">
-                    <h4>📖 In Practice</h4>
-                    <p><code>SET</code> is rarely used in modern databases. For many-to-many relationships like "a user has multiple interests," a <strong>junction table</strong> (covered in <a href="lesson_11.html">Lesson 11</a>) is the standard and more flexible approach.</p>
-                </div>
-            </section>
-
-            <!-- Section 6: Constraints -->
-            <section id="constraints" class="lesson-section">
-                <h2>Constraints</h2>
-                <p>Constraints are rules enforced by MySQL at the database level. They prevent invalid data from ever entering your tables — acting as a safety net regardless of which application or user is inserting data.</p>
-
-                <div class="mermaid">
-                    graph TD
-                        A["Constraints"] --> B["PRIMARY KEY<br/>Unique identifier for each row"]
-                        A --> C["NOT NULL<br/>Column must have a value"]
-                        A --> D["UNIQUE<br/>No duplicate values"]
-                        A --> E["DEFAULT<br/>Fallback value if none given"]
-                        A --> F["AUTO_INCREMENT<br/>Auto-generates sequential IDs"]
-                        A --> G["CHECK<br/>Custom validation rule"]
-                        A --> H["FOREIGN KEY<br/>Links to another table"]
-                </div>
-
-                <h3>PRIMARY KEY</h3>
-                <p>Every table should have a primary key — it uniquely identifies each row. A primary key is automatically <code>NOT NULL</code> and <code>UNIQUE</code>.</p>
-
-                <pre><code class="language-sql">
--- Column-level (most common for single-column keys)
-CREATE TABLE products (
-    id  INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL
-);
-
--- Table-level (required for composite keys)
-CREATE TABLE order_items (
-    order_id   INT,
-    product_id INT,
-    quantity   INT NOT NULL,
-    PRIMARY KEY (order_id, product_id)
-);
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 Composite Primary Keys</h4>
-                    <p>A <strong>composite primary key</strong> uses two or more columns together to identify a row. In the <code>order_items</code> example, neither <code>order_id</code> nor <code>product_id</code> alone is unique — but the <em>combination</em> of both is. This is common in junction tables for many-to-many relationships.</p>
-                </div>
-
-                <h3>NOT NULL</h3>
-                <p>Prevents a column from accepting <code>NULL</code> (empty/unknown) values. MySQL will reject any insert or update that tries to set a <code>NOT NULL</code> column to NULL.</p>
-
-                <pre><code class="language-sql">
--- first_name and email are required; city is optional
-first_name  VARCHAR(50) NOT NULL,
-email       VARCHAR(100) NOT NULL,
-city        VARCHAR(50),              -- allows NULL (default behavior)
-                </code></pre>
-
-                <blockquote>
-                    <strong>💡 Tip:</strong> Ask yourself: "Does this column <em>always</em> need a value for the row to make sense?" If yes, add <code>NOT NULL</code>. A customer without a name doesn't make sense — so <code>first_name</code> should be <code>NOT NULL</code>. A customer without a phone number might be fine — so <code>phone</code> can allow NULL.
-                </blockquote>
-
-                <h3>UNIQUE</h3>
-                <p>Ensures no two rows have the same value in a column. Unlike <code>PRIMARY KEY</code>, a table can have multiple <code>UNIQUE</code> columns, and <code>UNIQUE</code> columns can contain NULL values (but only one NULL per column).</p>
-
-                <pre><code class="language-sql">
--- Each customer must have a unique email
-email       VARCHAR(100) NOT NULL UNIQUE,
-
--- ISBN numbers are unique across all books
-isbn        VARCHAR(13) UNIQUE,
-
--- You can also name the constraint
-CONSTRAINT uq_email UNIQUE (email)
-                </code></pre>
-
-                <h3>DEFAULT</h3>
-                <p>Provides a value when one isn't specified during an <code>INSERT</code>:</p>
-
-                <pre><code class="language-sql">
-in_stock    BOOLEAN DEFAULT TRUE,
-role        VARCHAR(20) DEFAULT 'customer',
-created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-quantity    INT DEFAULT 0,
-                </code></pre>
-
-                <pre><code class="language-sql">
--- If we insert without specifying 'in_stock':
-INSERT INTO books (title, author, price)
-VALUES ('Dune', 'Frank Herbert', 12.99);
-
--- in_stock will automatically be TRUE (1)
-                </code></pre>
-
-                <h3>AUTO_INCREMENT</h3>
-                <p>Automatically generates sequential integer values (1, 2, 3, ...). Used almost exclusively for primary keys:</p>
-
-                <pre><code class="language-sql">
-id  INT AUTO_INCREMENT PRIMARY KEY
-                </code></pre>
-
-                <p>Key behaviors:</p>
+                <h2>🤔 Why Data Types Matter</h2>
+                <p>Why not store everything as text? Because a column's type is a promise about its values, and MySQL keeps that promise for you:</p>
                 <ul>
-                    <li>You don't include <code>id</code> in your <code>INSERT</code> — MySQL assigns it automatically</li>
-                    <li>If you delete row 5, the number 5 is <em>not</em> reused — the next insert gets 6</li>
-                    <li>You can check the current value: <code>SELECT LAST_INSERT_ID();</code></li>
-                    <li>Only one <code>AUTO_INCREMENT</code> column per table, and it must be indexed (usually as <code>PRIMARY KEY</code>)</li>
+                    <li><strong>Validation:</strong> a <code>DATE</code> column refuses <code>'2026-02-30'</code>; an <code>INT</code> column refuses <code>'many'</code>.</li>
+                    <li><strong>Correct behavior:</strong> numbers add up, dates sort in time order and can be subtracted. As text, <code>'10'</code> sorts before <code>'9'</code>.</li>
+                    <li><strong>Size and speed:</strong> an <code>INT</code> always takes 4 bytes, and smaller rows mean more of the table fits in memory.</li>
                 </ul>
 
-                <h3>CHECK (MySQL 8.0.16+)</h3>
-                <p>Enforces a custom condition on column values:</p>
-
-                <pre><code class="language-sql">
-CREATE TABLE products (
-    id       INT AUTO_INCREMENT PRIMARY KEY,
-    name     VARCHAR(100) NOT NULL,
-    price    DECIMAL(8, 2) NOT NULL,
-    quantity INT NOT NULL DEFAULT 0,
-
-    -- Prices must be positive
-    CONSTRAINT chk_price CHECK (price > 0),
-
-    -- Quantity can't be negative
-    CONSTRAINT chk_quantity CHECK (quantity >= 0)
-);
-
--- This will FAIL:
-INSERT INTO products (name, price, quantity)
-VALUES ('Widget', -5.00, 10);
--- ERROR: Check constraint 'chk_price' is violated.
-                </code></pre>
-
-                <pre><code class="language-sql">
--- More CHECK examples
-age     TINYINT UNSIGNED CHECK (age >= 0 AND age <= 150),
-rating  DECIMAL(3,2) CHECK (rating >= 0 AND rating <= 5),
-status  VARCHAR(20) CHECK (status IN ('active', 'inactive', 'pending')),
-                </code></pre>
-
-                <div class="card card-warning">
-                    <h4>⚠️ CHECK Constraint History</h4>
-                    <p>Before MySQL 8.0.16, <code>CHECK</code> constraints were accepted in SQL syntax but <strong>silently ignored</strong>. If you're using MySQL 8.0.16 or later (which you should be), they work as expected. Always verify your MySQL version: <code>SELECT VERSION();</code></p>
-                </div>
-
-                <h3>FOREIGN KEY (Preview)</h3>
-                <p>Foreign keys link a column in one table to the primary key of another table. This enforces <strong>referential integrity</strong> — you can't add an order for a customer that doesn't exist. We'll cover foreign keys in depth in <a href="lesson_12.html">Lesson 12</a>.</p>
-
-                <pre><code class="language-sql">
--- Quick preview — full explanation in Lesson 12
-CREATE TABLE orders (
-    id           INT AUTO_INCREMENT PRIMARY KEY,
-    customer_id  INT NOT NULL,
-    order_date   DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
-);
-                </code></pre>
-
-                <h3>Constraints Quick Reference</h3>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Constraint</th>
-                                <th>What It Enforces</th>
-                                <th>Can a Table Have Multiple?</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>PRIMARY KEY</code></td>
-                                <td>Uniquely identifies each row (NOT NULL + UNIQUE)</td>
-                                <td>No — one per table</td>
-                            </tr>
-                            <tr>
-                                <td><code>NOT NULL</code></td>
-                                <td>Column must always have a value</td>
-                                <td>Yes</td>
-                            </tr>
-                            <tr>
-                                <td><code>UNIQUE</code></td>
-                                <td>No duplicate values in the column</td>
-                                <td>Yes</td>
-                            </tr>
-                            <tr>
-                                <td><code>DEFAULT</code></td>
-                                <td>Provides a fallback value on INSERT</td>
-                                <td>Yes</td>
-                            </tr>
-                            <tr>
-                                <td><code>AUTO_INCREMENT</code></td>
-                                <td>Auto-generates sequential integer values</td>
-                                <td>No — one per table</td>
-                            </tr>
-                            <tr>
-                                <td><code>CHECK</code></td>
-                                <td>Validates against a custom condition</td>
-                                <td>Yes</td>
-                            </tr>
-                            <tr>
-                                <td><code>FOREIGN KEY</code></td>
-                                <td>References a row in another table</td>
-                                <td>Yes</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Section 7: Choosing the Right Type -->
-            <section id="choosing-types" class="lesson-section">
-                <h2>Choosing the Right Type — A Practical Guide</h2>
-                <p>When designing a table, use this flowchart to pick the right data type:</p>
-
                 <div class="mermaid">
-                    graph TD
-                        A["What kind of data?"] --> B{"Is it a number?"}
-                        A --> C{"Is it text?"}
-                        A --> D{"Is it a date/time?"}
-                        A --> E{"Is it true/false?"}
-
-                        B -->|"Whole number"| F["INT or TINYINT/SMALLINT/BIGINT<br/>based on range needed"]
-                        B -->|"Decimal / Money"| G["DECIMAL(M,D)<br/>NEVER use FLOAT for money"]
-
-                        C -->|"Fixed length ≤255"| H["CHAR(N)<br/>Codes, hashes, abbreviations"]
-                        C -->|"Variable length ≤65K"| I["VARCHAR(N)<br/>Names, emails, titles"]
-                        C -->|"Long text"| J["TEXT or MEDIUMTEXT<br/>Articles, descriptions"]
-
-                        D -->|"Date only"| K["DATE"]
-                        D -->|"Date + time"| L["DATETIME or TIMESTAMP"]
-                        D -->|"Time only"| M["TIME"]
-
-                        E --> N["BOOLEAN<br/>(stored as TINYINT)"]
+graph TD
+    A["a value arrives"] --> B{"fits the column type?"}
+    B -->|"yes"| C{"passes the constraints?"}
+    B -->|"no"| D["error: row rejected"]
+    C -->|"yes"| E["row stored"]
+    C -->|"no"| D
                 </div>
 
-                <h3>Common Column Patterns</h3>
-                <p>Here are types you'll use again and again in real projects:</p>
+                <div class="card card-accent">
+                    <h4>🔑 Strict mode</h4>
+                    <p>That "row rejected" box depends on a setting. MySQL 9.7 and 8.4 (and MariaDB) start with <code>STRICT_TRANS_TABLES</code> in their <code>sql_mode</code>, so a value that does not fit is an <strong>error</strong>. Without strict mode, MySQL would quietly change the value (cut text short, clamp a number) and only warn. Old tutorials sometimes show that behavior, and some hosts still turn strict mode off. Keep it on.</p>
+                </div>
 
+                <div class="card card-info">
+                    <h4>💡 Follow along</h4>
+                    <p>Run <code>USE bookstore;</code> first. This lesson creates a few small demo tables next to <code>books</code>, <code>customers</code> and <code>categories</code>, and drops them all in the project's last step. Rows are added with <code>INSERT INTO table (columns) VALUES (...)</code>, which you saw briefly in Lesson 2.1; <a href="lesson_06.html">Lesson 2.3</a> covers it in full.</p>
+                </div>
+            </section>
+
+            <section id="numeric-types" class="lesson-section">
+                <h2>🔢 Numbers: Integers and Decimals</h2>
+                <h3>Integer types</h3>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Column Purpose</th>
-                                <th>Recommended Type</th>
-                                <th>Example</th>
-                            </tr>
+                            <tr><th>Type</th><th>Bytes</th><th>Signed range</th><th>UNSIGNED range</th><th>Typical use</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Primary key</td>
-                                <td><code>INT AUTO_INCREMENT PRIMARY KEY</code></td>
-                                <td><code>id INT AUTO_INCREMENT PRIMARY KEY</code></td>
-                            </tr>
-                            <tr>
-                                <td>Person's name</td>
-                                <td><code>VARCHAR(50-100)</code></td>
-                                <td><code>first_name VARCHAR(50) NOT NULL</code></td>
-                            </tr>
-                            <tr>
-                                <td>Email address</td>
-                                <td><code>VARCHAR(100) NOT NULL UNIQUE</code></td>
-                                <td><code>email VARCHAR(100) NOT NULL UNIQUE</code></td>
-                            </tr>
-                            <tr>
-                                <td>Phone number</td>
-                                <td><code>VARCHAR(20)</code></td>
-                                <td><code>phone VARCHAR(20)</code></td>
-                            </tr>
-                            <tr>
-                                <td>Money / price</td>
-                                <td><code>DECIMAL(10, 2)</code></td>
-                                <td><code>price DECIMAL(10, 2) NOT NULL</code></td>
-                            </tr>
-                            <tr>
-                                <td>Age</td>
-                                <td><code>TINYINT UNSIGNED</code></td>
-                                <td><code>age TINYINT UNSIGNED</code></td>
-                            </tr>
-                            <tr>
-                                <td>Country code</td>
-                                <td><code>CHAR(2)</code></td>
-                                <td><code>country_code CHAR(2)</code></td>
-                            </tr>
-                            <tr>
-                                <td>URL</td>
-                                <td><code>VARCHAR(2083)</code></td>
-                                <td><code>website VARCHAR(2083)</code></td>
-                            </tr>
-                            <tr>
-                                <td>Blog post body</td>
-                                <td><code>TEXT</code> or <code>MEDIUMTEXT</code></td>
-                                <td><code>body TEXT NOT NULL</code></td>
-                            </tr>
-                            <tr>
-                                <td>Active/inactive flag</td>
-                                <td><code>BOOLEAN DEFAULT TRUE</code></td>
-                                <td><code>is_active BOOLEAN DEFAULT TRUE</code></td>
-                            </tr>
-                            <tr>
-                                <td>Creation timestamp</td>
-                                <td><code>DATETIME DEFAULT CURRENT_TIMESTAMP</code></td>
-                                <td><code>created_at DATETIME DEFAULT CURRENT_TIMESTAMP</code></td>
-                            </tr>
-                            <tr>
-                                <td>Last-modified timestamp</td>
-                                <td><code>DATETIME ... ON UPDATE</code></td>
-                                <td><code>updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP</code></td>
-                            </tr>
+                            <tr><td><code>TINYINT</code></td><td>1</td><td>-128 to 127</td><td>0 to 255</td><td>Ratings, small codes, flags</td></tr>
+                            <tr><td><code>SMALLINT</code></td><td>2</td><td>-32,768 to 32,767</td><td>0 to 65,535</td><td>Copies in stock, years</td></tr>
+                            <tr><td><code>MEDIUMINT</code></td><td>3</td><td>about ±8.4 million</td><td>0 to about 16.8 million</td><td>Rarely needed</td></tr>
+                            <tr><td><code>INT</code></td><td>4</td><td>about ±2.1 billion</td><td>0 to about 4.3 billion</td><td>Ids, counts, page numbers: the default choice</td></tr>
+                            <tr><td><code>BIGINT</code></td><td>8</td><td>about ±9.2 quintillion</td><td>0 to about 18.4 quintillion</td><td>Ids of very large tables, byte counts</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p><code>UNSIGNED</code> means "no negative numbers"; the range shifts up so it starts at 0 and the maximum roughly doubles. Use it when a negative value would be nonsense, such as a number of copies.</p>
+
+                <h3>Decimal types</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Type</th><th>Precision</th><th>Typical use</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>DECIMAL(M, D)</code></td><td>Exact: <em>M</em> digits in total, <em>D</em> of them after the point</td><td>Money, and anything that must add up to the cent</td></tr>
+                            <tr><td><code>FLOAT</code></td><td>Approximate, about 7 significant digits</td><td>Sensor readings, where tiny errors do not matter</td></tr>
+                            <tr><td><code>DOUBLE</code></td><td>Approximate, about 15 significant digits</td><td>Scientific values, coordinates</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p><code>DECIMAL(8, 2)</code>, the type of <code>books.price</code>, holds up to 6 digits before the point and 2 after: the largest value is 999999.99.</p>
+
+                <p>A demo table with one column of each kind:</p>
+                <pre><code class="language-sql">CREATE TABLE number_demo (
+    stars     TINYINT,
+    copies    SMALLINT UNSIGNED,
+    price     DECIMAL(8, 2),
+    weight_kg FLOAT
+);
+INSERT INTO number_demo (stars, copies, price, weight_kg)
+VALUES (5, 120, 14.99, 0.1);
+SELECT * FROM number_demo;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------+--------+-------+-----------+
+| stars | copies | price | weight_kg |
++-------+--------+-------+-----------+
+|     5 |    120 | 14.99 |       0.1 |
++-------+--------+-------+-----------+</code></pre>
+                </div>
+
+                <h3>When a number does not fit</h3>
+                <pre data-raises="ERROR 1264"><code class="language-sql">INSERT INTO number_demo (stars) VALUES (200);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1264 (22003): Out of range value for column 'stars' at row 1</code></pre>
+                </div>
+                <p>A <code>TINYINT</code> stops at 127, so 200 is out of range. A negative value in the <code>UNSIGNED</code> <code>copies</code> column, or 1234567.00 in <code>price</code> (seven digits before the point), fails with the same error.</p>
+
+                <p>Too many decimal places is different: MySQL rounds and records a note.</p>
+                <pre><code class="language-sql">INSERT INTO number_demo (price) VALUES (12.345);
+SHOW WARNINGS;
+SELECT price FROM number_demo WHERE stars IS NULL;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Query OK, 1 row affected, 1 warning
++-------+------+--------------------------------------------+
+| Level | Code | Message                                    |
++-------+------+--------------------------------------------+
+| Note  | 1265 | Data truncated for column 'price' at row 1 |
++-------+------+--------------------------------------------+
+1 row in set
++-------+
+| price |
++-------+
+| 12.35 |
++-------+
+1 row in set</code></pre>
+                </div>
+                <p>12.345 became 12.35. Rounding to the column's precision is usually what you want, but it is worth knowing it happens.</p>
+
+                <h3>Why money is never FLOAT</h3>
+                <p><code>FLOAT</code> and <code>DOUBLE</code> store binary fractions, and most decimal fractions, like 0.1, have no exact binary form. Look at what the stored 0.1 really is when you calculate with it:</p>
+                <pre><code class="language-sql">SELECT
+    price * 3                 AS decimal_times_3,
+    weight_kg * 3             AS float_times_3,
+    weight_kg = 0.1           AS float_equals_0_1
+FROM number_demo
+WHERE stars = 5;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------+---------------------+------------------+
+| decimal_times_3 | float_times_3       | float_equals_0_1 |
++-----------------+---------------------+------------------+
+|           44.97 | 0.30000000447034836 |                0 |
++-----------------+---------------------+------------------+</code></pre>
+                </div>
+                <p>The <code>DECIMAL</code> result is exactly 44.97. The <code>FLOAT</code> one is 0.30000000447034836, and the stored value is not even equal to 0.1 (the comparison returns 0, false). Over thousands of orders those crumbs add up to real money that no report can explain. <strong>Money is always <code>DECIMAL</code>.</strong></p>
+            </section>
+
+            <section id="string-types" class="lesson-section">
+                <h2>🔤 Text: CHAR, VARCHAR and TEXT</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Type</th><th>Holds</th><th>Typical use</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>CHAR(n)</code></td><td>Exactly <em>n</em> characters (n up to 255), padded with spaces</td><td>Codes that always have the same length: <code>'US'</code>, an ISBN-13</td></tr>
+                            <tr><td><code>VARCHAR(n)</code></td><td>Up to <em>n</em> characters, stored at their real length</td><td>Names, emails, titles, cities: almost all text</td></tr>
+                            <tr><td><code>TEXT</code></td><td>Up to 65,535 bytes</td><td>Descriptions, reviews</td></tr>
+                            <tr><td><code>MEDIUMTEXT</code> / <code>LONGTEXT</code></td><td>Up to 16 MB / 4 GB</td><td>Whole articles; rarely needed</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>The number in <code>VARCHAR(100)</code> counts <strong>characters</strong>, not bytes. With <code>utf8mb4</code> a character takes 1 to 4 bytes, so the byte limits in the table above hold fewer characters when the text is not plain English.</p>
+
+                <pre><code class="language-sql">CREATE TABLE text_demo (
+    code  CHAR(5),
+    label VARCHAR(5)
+);
+INSERT INTO text_demo VALUES ('ab  ', 'ab  ');
+SELECT
+    CONCAT('[', code, ']')  AS code,
+    CONCAT('[', label, ']') AS label
+FROM text_demo;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------+--------+
+| code | label  |
++------+--------+
+| [ab] | [ab  ] |
++------+--------+</code></pre>
+                </div>
+                <p>Both columns received <code>'ab'</code> plus two spaces. <code>VARCHAR</code> kept the spaces; <code>CHAR</code> pads to its length when storing and strips trailing spaces when reading. That is fine for fixed-length codes and surprising for anything else: one more reason <code>VARCHAR</code> is the default choice.</p>
+
+                <pre data-raises="ERROR 1406"><code class="language-sql">INSERT INTO text_demo (label) VALUES ('Fahrenheit 451');</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1406 (22001): Data too long for column 'label' at row 1</code></pre>
+                </div>
+                <p>Fourteen characters do not fit in <code>VARCHAR(5)</code>. Strict mode refuses the row rather than storing <code>'Fahre'</code>.</p>
+
+                <div class="card card-info">
+                    <h4>💡 VARCHAR or TEXT?</h4>
+                    <p>If you can name a sensible maximum (a title, an email, a URL), use <code>VARCHAR</code>: it can be fully indexed and can have a plain <code>DEFAULT</code>. Use <code>TEXT</code> for open-ended writing such as reviews or descriptions. Phone numbers, ZIP codes and ISBNs are text too: they can start with 0 or <code>+</code>, contain dashes, and nobody adds them up.</p>
+                </div>
+            </section>
+
+            <section id="date-time-types" class="lesson-section">
+                <h2>📅 Dates and Times</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Type</th><th>Format</th><th>Range</th><th>Typical use</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>DATE</code></td><td><code>'YYYY-MM-DD'</code></td><td>1000-01-01 to 9999-12-31</td><td>Publication dates, birthdays, order dates</td></tr>
+                            <tr><td><code>DATETIME</code></td><td><code>'YYYY-MM-DD hh:mm:ss'</code></td><td>1000 to 9999</td><td>When something happened or is scheduled</td></tr>
+                            <tr><td><code>TIMESTAMP</code></td><td><code>'YYYY-MM-DD hh:mm:ss'</code></td><td>1970-01-01 to 2038-01-19 (UTC)</td><td>Moments that must convert between time zones</td></tr>
+                            <tr><td><code>TIME</code></td><td><code>'hh:mm:ss'</code></td><td>-838:59:59 to 838:59:59</td><td>Opening hours, durations</td></tr>
+                            <tr><td><code>YEAR</code></td><td><code>YYYY</code></td><td>1901 to 2155</td><td>Model years (not old books: 1813 does not fit)</td></tr>
                         </tbody>
                     </table>
                 </div>
 
+                <pre><code class="language-sql">CREATE TABLE date_demo (
+    d   DATE,
+    dt  DATETIME,
+    ts  TIMESTAMP NULL,
+    t   TIME
+);
+INSERT INTO date_demo VALUES
+    ('1965-08-01', '2026-03-10 14:30:00', '2026-03-10 14:30:00', '09:00:00');
+SELECT * FROM date_demo;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+---------------------+---------------------+----------+
+| d          | dt                  | ts                  | t        |
++------------+---------------------+---------------------+----------+
+| 1965-08-01 | 2026-03-10 14:30:00 | 2026-03-10 14:30:00 | 09:00:00 |
++------------+---------------------+---------------------+----------+</code></pre>
+                </div>
+                <p>Dates are always written year first, as text in quotes. MySQL checks that the date really exists:</p>
+                <pre data-raises="ERROR 1292"><code class="language-sql">INSERT INTO date_demo (d) VALUES ('2026-02-30');</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1292 (22007): Incorrect date value: '2026-02-30' for column 'd' at row 1</code></pre>
+                </div>
+
+                <h3>DATETIME vs. TIMESTAMP</h3>
+                <p>They look identical, but a <code>TIMESTAMP</code> is stored in UTC and converted to your session's time zone when you read it; a <code>DATETIME</code> is stored exactly as written. Watch both columns after the session's time zone changes (<code>SET time_zone</code> only affects your own connection):</p>
+                <pre><code class="language-sql">DELETE FROM date_demo;
+SET time_zone = '+00:00';
+INSERT INTO date_demo (dt, ts)
+VALUES ('2026-03-10 14:30:00', '2026-03-10 14:30:00');
+SET time_zone = '-05:00';
+SELECT dt, ts FROM date_demo;
+SET time_zone = SYSTEM;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------+---------------------+
+| dt                  | ts                  |
++---------------------+---------------------+
+| 2026-03-10 14:30:00 | 2026-03-10 09:30:00 |
++---------------------+---------------------+</code></pre>
+                </div>
+                <p>The <code>DATETIME</code> still says 14:30; the <code>TIMESTAMP</code> now shows the same moment in a time zone five hours behind UTC. (<code>DELETE FROM date_demo</code> emptied the demo table first; Lesson 2.3 covers <code>DELETE</code>.) The catch is the range:</p>
+                <pre data-raises="ERROR 1292"><code class="language-sql">INSERT INTO date_demo (ts) VALUES ('2040-01-01 00:00:00');</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1292 (22007): Incorrect datetime value: '2040-01-01 00:00:00' for column 'ts' at row 1</code></pre>
+                </div>
+                <p>A <code>TIMESTAMP</code> ends in January 2038, which is already inside the life of a long loan or a subscription. This course uses <code>DATETIME</code> (and <code>DATE</code>) everywhere.</p>
                 <div class="card card-info">
-                    <h4>💡 Why VARCHAR(20) for Phone Numbers?</h4>
-                    <p>Phone numbers look like numbers, but they're actually text! They can start with a <code>0</code> or <code>+</code>, contain dashes and spaces, and you never do math on them. <code>'+1 (702) 555-0123'</code> is a string, not a number. Always store phone numbers as <code>VARCHAR</code>.</p>
+                    <h4>🐬 Version note: TIMESTAMP on MariaDB</h4>
+                    <p>Recent MariaDB releases (11.5 and later) extend <code>TIMESTAMP</code> to the year 2106, so the 2040 insert above succeeds there. MySQL 9.7 and 8.4 still stop in 2038. <code>DATETIME</code> behaves the same everywhere.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ The created/updated pattern</h4>
+                    <p>Many tables record when each row was added and last changed. Both defaults are filled in by MySQL:</p>
+                    <pre data-norun><code class="language-sql">created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP</code></pre>
+                    <p><code>created_at</code> is set once, when the row is inserted; <code>updated_at</code> changes every time the row does. <code>customers.created_at</code> in the bookstore uses the first half of this pattern.</p>
                 </div>
             </section>
 
-            <!-- Section 8: Exercises -->
-            <section id="exercises" class="lesson-section">
-                <h2>Exercises</h2>
+            <section id="boolean-enum" class="lesson-section">
+                <h2>🔘 BOOLEAN, ENUM and SET</h2>
+                <h3>BOOLEAN is a small number</h3>
+                <p>MySQL has no separate true/false type. <code>BOOLEAN</code> is another name for <code>TINYINT(1)</code>, <code>TRUE</code> is 1 and <code>FALSE</code> is 0. You saw this in <code>DESCRIBE books</code> in Lesson 2.1, and it has a consequence you will meet in Common Mistakes.</p>
+
+                <h3>ENUM: one value from a fixed list</h3>
+                <pre><code class="language-sql">CREATE TABLE format_demo (
+    title  VARCHAR(50) NOT NULL,
+    format ENUM('paperback', 'hardcover', 'ebook') NOT NULL DEFAULT 'paperback'
+);
+INSERT INTO format_demo (title, format) VALUES ('Dune', 'hardcover');
+INSERT INTO format_demo (title) VALUES ('Emma');
+INSERT INTO format_demo (title, format) VALUES ('1984', 'EBOOK');
+SELECT title, format FROM format_demo;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------+-----------+
+| title | format    |
++-------+-----------+
+| Dune  | hardcover |
+| Emma  | paperback |
+| 1984  | ebook     |
++-------+-----------+</code></pre>
+                </div>
+                <p><em>Emma</em> got the default, and <code>'EBOOK'</code> was accepted as <code>'ebook'</code> because the comparison is case-insensitive. A value that is not on the list is refused (Common Mistakes, number 2).</p>
+                <div class="card card-info">
+                    <h4>💡 ENUM: good for short, stable lists</h4>
+                    <p>An <code>ENUM</code> is compact and documents the allowed values right in the table. But adding a value means an <code>ALTER TABLE</code>, and <code>ORDER BY format</code> sorts by list position (paperback, hardcover, ebook), not alphabetically. When the list changes often, or needs extra information per value, use a separate lookup table instead: that is exactly what <code>categories</code> is.</p>
+                </div>
+
+                <h3>SET: several values from a fixed list</h3>
+                <p><code>SET('signed', 'used', 'bestseller')</code> lets a row hold any combination, written as one string: <code>'signed,used'</code>. It exists, you may meet it in older databases, and you will rarely want it: Module 4 shows the standard way to store "many values per row" with a junction table.</p>
+            </section>
+
+            <section id="constraints" class="lesson-section">
+                <h2>🛡️ Constraints: Rules for Your Data</h2>
+                <p>A type says what <em>kind</em> of value a column holds. A <strong>constraint</strong> adds a rule: must be present, must be unique, must be positive. The database enforces it for every program and every person that writes to the table, which is far safer than hoping each one checks.</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Constraint</th><th>Rule</th><th>How many per table</th><th>Error when broken</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>PRIMARY KEY</code></td><td>Identifies each row: unique and never <code>NULL</code></td><td>One (it may span several columns)</td><td>1062</td></tr>
+                            <tr><td><code>AUTO_INCREMENT</code></td><td>MySQL numbers new rows 1, 2, 3...</td><td>One, and it must be a key</td><td>(1075 at CREATE time)</td></tr>
+                            <tr><td><code>NOT NULL</code></td><td>A value is required</td><td>Any</td><td>1048, or 1364 if left out</td></tr>
+                            <tr><td><code>UNIQUE</code></td><td>No two rows share a value (<code>NULL</code>s excepted)</td><td>Any</td><td>1062</td></tr>
+                            <tr><td><code>DEFAULT</code></td><td>The value used when none is given</td><td>One per column</td><td>None: it fills a gap</td></tr>
+                            <tr><td><code>CHECK</code></td><td>A condition every row must meet</td><td>Any</td><td>3819</td></tr>
+                            <tr><td><code>FOREIGN KEY</code></td><td>The value must exist in another table</td><td>Any</td><td>1452 (Lesson 4.2)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p>Here is a table for the store's discount coupons that uses all but the last:</p>
+                <pre><code class="language-sql">CREATE TABLE coupons (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    code         VARCHAR(20) NOT NULL UNIQUE,
+    percent_off  TINYINT UNSIGNED NOT NULL,
+    min_order    DECIMAL(8, 2) NOT NULL DEFAULT 0.00,
+    expires      DATE,
+    CONSTRAINT chk_coupon_percent CHECK (percent_off BETWEEN 5 AND 50)
+);
+INSERT INTO coupons (code, percent_off, expires) VALUES ('WELCOME10', 10, '2026-12-31');
+INSERT INTO coupons (code, percent_off, min_order) VALUES ('BIGBASKET', 20, 50.00);
+SELECT * FROM coupons;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+-----------+-------------+-----------+------------+
+| id | code      | percent_off | min_order | expires    |
++----+-----------+-------------+-----------+------------+
+|  1 | WELCOME10 |          10 |      0.00 | 2026-12-31 |
+|  2 | BIGBASKET |          20 |     50.00 | NULL       |
++----+-----------+-------------+-----------+------------+</code></pre>
+                </div>
+                <p>MySQL numbered the rows, filled <code>min_order</code> with its default for <code>WELCOME10</code>, and left <code>expires</code> empty (<code>NULL</code>) for <code>BIGBASKET</code>, which is allowed because that column has no <code>NOT NULL</code>. Now break each rule in turn.</p>
+
+                <h3>NOT NULL</h3>
+                <pre data-raises="ERROR 1048"><code class="language-sql">INSERT INTO coupons (code, percent_off) VALUES (NULL, 15);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1048 (23000): Column 'code' cannot be null</code></pre>
+                </div>
+                <pre data-raises="ERROR 1364"><code class="language-sql">INSERT INTO coupons (code) VALUES ('SPRING15');</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1364 (HY000): Field 'percent_off' doesn't have a default value</code></pre>
+                </div>
+                <p>Two flavors of the same rule: an explicit <code>NULL</code> gives 1048; leaving a required column out when it has no default gives 1364. Ask of every column: "does a row make sense without this?" A coupon without a code does not; a coupon without an expiry date can (it never expires).</p>
+
+                <h3>UNIQUE</h3>
+                <pre data-raises="ERROR 1062"><code class="language-sql">INSERT INTO coupons (code, percent_off) VALUES ('WELCOME10', 15);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1062 (23000): Duplicate entry 'WELCOME10' for key 'coupons.code'</code></pre>
+                </div>
+                <p>The message names the value and the key (<code>coupons.code</code>, the name MySQL gave the unique index). A <code>UNIQUE</code> column may hold several <code>NULL</code>s, because <code>NULL</code> means "unknown" and two unknowns are not considered equal; add <code>NOT NULL</code>, as here, when every row needs a value.</p>
+
+                <h3>CHECK</h3>
+                <pre data-raises="ERROR 3819"><code class="language-sql">INSERT INTO coupons (code, percent_off) VALUES ('HALFPRICE', 75);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3819 (HY000): Check constraint 'chk_coupon_percent' is violated.</code></pre>
+                </div>
+                <p>This is why the constraint has a name: <code>chk_coupon_percent</code> tells you exactly which rule failed. Without <code>CONSTRAINT name</code>, MySQL invents one like <code>coupons_chk_1</code>.</p>
+                <div class="card card-info">
+                    <h4>🐬 Version note: CHECK in old tutorials</h4>
+                    <p>Before MySQL 8.0.16, <code>CHECK</code> was accepted and then silently ignored, so older articles say "MySQL does not support CHECK". MySQL 9.7 and 8.4 enforce it, and so does MariaDB, with a different message: <code>ERROR 4025 (23000): CONSTRAINT `chk_coupon_percent` failed for `bookstore`.`coupons`</code>.</p>
+                </div>
+
+                <h3>PRIMARY KEY and AUTO_INCREMENT</h3>
+                <pre><code class="language-sql">INSERT INTO coupons (code, percent_off) VALUES ('SUMMER25', 25);
+SELECT LAST_INSERT_ID();
+SELECT id, code FROM coupons ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (your id numbers could differ)</h4>
+                    <pre><code>+------------------+
+| LAST_INSERT_ID() |
++------------------+
+|                4 |
++------------------+
++----+-----------+
+| id | code      |
++----+-----------+
+|  1 | WELCOME10 |
+|  2 | BIGBASKET |
+|  4 | SUMMER25  |
++----+-----------+</code></pre>
+                </div>
+                <p><code>LAST_INSERT_ID()</code> returns the id MySQL just gave your row, which a program needs right after an insert. Notice the gap at 3: one of the failed inserts above used up an id number without saving a row. Gaps are normal and harmless; an id is a label, not a count, and is never reused.</p>
+                <p>A primary key can also span several columns, written as a table-level constraint. A book can be in several categories and a category holds many books, but each pair should appear only once:</p>
+                <pre data-norun><code class="language-sql">CREATE TABLE book_categories (
+    book_id     INT,
+    category_id INT,
+    PRIMARY KEY (book_id, category_id)
+);</code></pre>
+                <p>You will build exactly this table, with foreign keys to <code>books</code> and <code>categories</code>, in Module 4.</p>
+            </section>
+
+            <section id="choosing-types" class="lesson-section">
+                <h2>🧭 Choosing the Right Type</h2>
+                <p>Most columns fall into a handful of patterns. When in doubt, start here:</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>The column holds</th><th>Use</th><th>Example</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>A row's id</td><td><code>INT AUTO_INCREMENT PRIMARY KEY</code></td><td><code>id</code></td></tr>
+                            <tr><td>A count that cannot be negative</td><td><code>INT UNSIGNED</code> (or smaller)</td><td><code>copies INT UNSIGNED NOT NULL DEFAULT 0</code></td></tr>
+                            <tr><td>Money</td><td><code>DECIMAL(8, 2)</code> or wider</td><td><code>price DECIMAL(8, 2) NOT NULL</code></td></tr>
+                            <tr><td>A name, title, email, city</td><td><code>VARCHAR(n)</code></td><td><code>email VARCHAR(100) NOT NULL UNIQUE</code></td></tr>
+                            <tr><td>A fixed-length code</td><td><code>CHAR(n)</code></td><td><code>country CHAR(2)</code>, <code>isbn CHAR(13)</code></td></tr>
+                            <tr><td>A phone number, ZIP code</td><td><code>VARCHAR(n)</code>, never a number type</td><td><code>phone VARCHAR(20)</code></td></tr>
+                            <tr><td>Long free text</td><td><code>TEXT</code></td><td><code>review TEXT</code></td></tr>
+                            <tr><td>A calendar date</td><td><code>DATE</code></td><td><code>published DATE</code></td></tr>
+                            <tr><td>A moment in time</td><td><code>DATETIME</code></td><td><code>created_at DATETIME DEFAULT CURRENT_TIMESTAMP</code></td></tr>
+                            <tr><td>Yes or no</td><td><code>BOOLEAN</code> with a default</td><td><code>in_stock BOOLEAN DEFAULT TRUE</code></td></tr>
+                            <tr><td>One of a few fixed options</td><td><code>ENUM(...)</code>, or a lookup table if the list grows</td><td><code>format ENUM('paperback', 'hardcover', 'ebook')</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card card-success">
+                    <h4>✅ Rule of thumb</h4>
+                    <p>Choose the type that says what the value <em>is</em>, then the smallest size that comfortably fits the biggest value you can imagine. Then add <code>NOT NULL</code> to every column a row cannot do without.</p>
+                </div>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Writing dates the way people do</h3>
+                <pre data-raises="ERROR 1292"><code class="language-sql">INSERT INTO date_demo (d) VALUES ('03/10/2026');</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1292 (22007): Incorrect date value: '03/10/2026' for column 'd' at row 1</code></pre>
+                </div>
+                <p><strong>What it means:</strong> MySQL reads dates only as year, month, day. <code>'03/10/2026'</code> is March 10 to an American and October 3 to most of the world, and MySQL refuses to guess. <strong>Fix:</strong> write <code>'2026-03-10'</code>. When dates arrive in another format (a spreadsheet export), convert them with <code>STR_TO_DATE('03/10/2026', '%m/%d/%Y')</code>.</p>
+
+                <h3>2. A value that is not on the ENUM list</h3>
+                <pre data-raises="ERROR 1265"><code class="language-sql">INSERT INTO format_demo (title, format) VALUES ('Dune', 'audiobook');</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1265 (01000): Data truncated for column 'format' at row 1</code></pre>
+                </div>
+                <p><strong>What it means:</strong> "Data truncated" is MySQL's way of saying the value could not be stored as one of the allowed options. <strong>Fix:</strong> use one of the listed values, or add the new one with <code>ALTER TABLE format_demo MODIFY COLUMN format ENUM('paperback', 'hardcover', 'ebook', 'audiobook') NOT NULL DEFAULT 'paperback';</code>, repeating the whole definition as Lesson 2.1 taught.</p>
+
+                <h3>3. Giving a TEXT column a plain default</h3>
+                <pre data-raises="ERROR 1101"><code class="language-sql">CREATE TABLE reviews (
+    id   INT AUTO_INCREMENT PRIMARY KEY,
+    body TEXT DEFAULT 'No review yet'
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1101 (42000): BLOB, TEXT, GEOMETRY or JSON column 'body' can't have a default value</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>TEXT</code> (and <code>BLOB</code> and <code>JSON</code>) columns cannot take a literal default. <strong>Fix:</strong> use <code>VARCHAR</code> if the text has a sensible maximum, or write the default as an expression in parentheses, <code>DEFAULT ('No review yet')</code>, which MySQL 8.0.13 and later accept. (MariaDB allows a plain literal default on <code>TEXT</code>, so this statement runs there; the parenthesized form works on all three servers.)</p>
+
+                <h3>4. AUTO_INCREMENT on a column that is not a key</h3>
+                <pre data-raises="ERROR 1075"><code class="language-sql">CREATE TABLE gift_cards (
+    id      INT AUTO_INCREMENT,
+    balance DECIMAL(8, 2) NOT NULL
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1075 (42000): Incorrect table definition; there can be only one auto column and it must be defined as a key</code></pre>
+                </div>
+                <p><strong>What it means:</strong> MySQL needs an index on the counter column to find the next number. <strong>Fix:</strong> add <code>PRIMARY KEY</code>: <code>id INT AUTO_INCREMENT PRIMARY KEY</code>. Every table in this course has exactly that line.</p>
+
+                <h3>5. Comparing a BOOLEAN with TRUE (silent)</h3>
+                <p>A program stores "in stock" as the number of copies instead of 1, and nothing stops it:</p>
+                <pre><code class="language-sql">CREATE TABLE flag_demo (title VARCHAR(50), in_stock BOOLEAN);
+INSERT INTO flag_demo VALUES ('Dune', TRUE), ('Emma', FALSE), ('1984', 5);
+SELECT title, in_stock FROM flag_demo WHERE in_stock = TRUE;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------+----------+
+| title | in_stock |
++-------+----------+
+| Dune  |        1 |
++-------+----------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>BOOLEAN</code> is a <code>TINYINT</code>, so 5 is accepted. <code>= TRUE</code> means <code>= 1</code>, and <em>1984</em> silently disappears from the "in stock" list. <strong>Fix:</strong> test truth the way MySQL defines it, <code>WHERE in_stock</code> (any non-zero value) or <code>WHERE in_stock &lt;&gt; 0</code>, and if you want only 0 or 1 in the column, enforce it: <code>CHECK (in_stock IN (0, 1))</code>.</p>
+                <pre><code class="language-sql">SELECT title, in_stock FROM flag_demo WHERE in_stock;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------+----------+
+| title | in_stock |
++-------+----------+
+| Dune  |        1 |
+| 1984  |        5 |
++-------+----------+</code></pre>
+                </div>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: The Staff Table</h2>
+                <p>The bookstore is hiring, and it needs a table for its staff. You will design it with the right types and constraints, save it as <code>employees.sql</code>, and prove each rule works by trying to break it. Allow about 35 minutes.</p>
 
                 <div class="card card-info">
-                    <h3>🏋️ Exercise 1: Pick the Right Type</h3>
-                    <p>For each piece of data below, choose the most appropriate MySQL data type and explain why:</p>
-                    <ol>
-                        <li>A customer's ZIP code (US format: "89002" or "89002-1234")</li>
-                        <li>The price of a product</li>
-                        <li>The number of items in stock</li>
-                        <li>A user's biography</li>
-                        <li>Whether an account is active or suspended</li>
-                        <li>A country's two-letter ISO code (like "US" or "PH")</li>
-                        <li>A student's GPA (0.00 to 4.00)</li>
-                        <li>The date a book was published</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <ol>
-                            <li><code>VARCHAR(10)</code> — ZIP codes can have leading zeros and hyphens; they're text, not numbers</li>
-                            <li><code>DECIMAL(10, 2) NOT NULL</code> — exact precision for money; never FLOAT</li>
-                            <li><code>INT UNSIGNED DEFAULT 0</code> — whole number, can't be negative</li>
-                            <li><code>TEXT</code> — biographies can be long and have no fixed upper limit</li>
-                            <li><code>BOOLEAN DEFAULT TRUE</code> — simple true/false toggle</li>
-                            <li><code>CHAR(2) NOT NULL</code> — always exactly 2 characters, CHAR is perfect</li>
-                            <li><code>DECIMAL(3, 2)</code> — holds 0.00 to 9.99, perfect for GPA</li>
-                            <li><code>DATE</code> — date only, no time needed</li>
-                        </ol>
-                    </details>
+                    <h3>🛠️ Step 1: Decide the columns on paper <span class="step-time">(5 min)</span></h3>
+                    <p>The owner's requirements: a first and last name (required), a work email (required, never shared), a hire date (required), a yearly salary in dollars and cents (required, must be positive), a department (one of sales, inventory, management, support), and whether the person still works there (yes by default). Write down a type and the constraints for each before you look at Step 2.</p>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🏋️ Exercise 2: Build a Table with Constraints</h3>
-                    <p>Create an <code>employees</code> table inside the <code>bookstore</code> database with the following requirements:</p>
-                    <ul>
-                        <li><code>id</code> — auto-incrementing primary key</li>
-                        <li><code>first_name</code> — up to 50 characters, required</li>
-                        <li><code>last_name</code> — up to 50 characters, required</li>
-                        <li><code>email</code> — up to 100 characters, required, must be unique</li>
-                        <li><code>hire_date</code> — date only, required</li>
-                        <li><code>salary</code> — up to 999,999.99, required, must be positive</li>
-                        <li><code>department</code> — one of: 'sales', 'inventory', 'management', 'support'</li>
-                        <li><code>is_active</code> — boolean, defaults to true</li>
-                        <li><code>created_at</code> — auto-set to current timestamp</li>
-                    </ul>
+                    <h3>🛠️ Step 2: Create the table <span class="step-time">(5 min)</span></h3>
+                    <p>Start <code>employees.sql</code> with <code>USE bookstore;</code> and the table. <code>DROP TABLE IF EXISTS</code> first makes the script rerunnable, like your build script from Lesson 2.1.</p>
+                    <pre><code class="language-sql">USE bookstore;
 
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
-USE bookstore;
+DROP TABLE IF EXISTS employees;
 
-CREATE TABLE IF NOT EXISTS employees (
+CREATE TABLE employees (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     first_name  VARCHAR(50) NOT NULL,
     last_name   VARCHAR(50) NOT NULL,
@@ -905,149 +619,335 @@ CREATE TABLE IF NOT EXISTS employees (
     salary      DECIMAL(8, 2) NOT NULL,
     department  ENUM('sales', 'inventory', 'management', 'support'),
     is_active   BOOLEAN DEFAULT TRUE,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT chk_salary CHECK (salary > 0)
-);
-
-DESCRIBE employees;
-                        </code></pre>
-                    </details>
+    CONSTRAINT chk_salary CHECK (salary &gt; 0)
+);</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Database changed</code></pre>
+                    </div>
+                    <p><code>DECIMAL(8, 2)</code> allows salaries up to 999,999.99, plenty for a bookstore. Compare with your paper design: did you pick the same types?</p>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🏋️ Exercise 3: Fix the Bad Table</h3>
-                    <p>This table has several design problems. Identify and fix them:</p>
-                    <pre><code class="language-sql">
-CREATE TABLE Orders (
-    OrderID VARCHAR(10),
-    CustomerName VARCHAR(500),
-    Price FLOAT,
-    OrderDate VARCHAR(20),
-    phone INT,
-    Status VARCHAR(100)
-);
-                    </code></pre>
+                    <h3>🛠️ Step 3: Add three real staff members <span class="step-time">(5 min)</span></h3>
+                    <pre><code class="language-sql">INSERT INTO employees (first_name, last_name, email, hire_date, salary, department) VALUES
+    ('Maria', 'Santos', 'maria.santos@bookstore.example', '2015-03-02', 92000.00, 'management'),
+    ('Daniel', 'Reyes', 'daniel.reyes@bookstore.example', '2017-06-12', 68000.00, 'management'),
+    ('Priya', 'Nair', 'priya.nair@bookstore.example', '2019-04-01', 46000.00, 'sales');
+SELECT * FROM employees;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+----+------------+-----------+--------------------------------+------------+----------+------------+-----------+
+| id | first_name | last_name | email                          | hire_date  | salary   | department | is_active |
++----+------------+-----------+--------------------------------+------------+----------+------------+-----------+
+|  1 | Maria      | Santos    | maria.santos@bookstore.example | 2015-03-02 | 92000.00 | management |         1 |
+|  2 | Daniel     | Reyes     | daniel.reyes@bookstore.example | 2017-06-12 | 68000.00 | management |         1 |
+|  3 | Priya      | Nair      | priya.nair@bookstore.example   | 2019-04-01 | 46000.00 | sales      |         1 |
++----+------------+-----------+--------------------------------+------------+----------+------------+-----------+</code></pre>
+                    </div>
+                    <p>Nobody typed an <code>id</code> or <code>is_active</code>: <code>AUTO_INCREMENT</code> and <code>DEFAULT</code> filled them in.</p>
+                </div>
 
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: Try to break every rule <span class="step-time">(10 min)</span></h3>
+                    <p>Add these four statements to the script under a comment <code>-- These must fail</code>. Each one should be refused, each for a different reason. Predict the error number before you run it.</p>
+                    <pre data-raises="ERROR 3819,ERROR 1062,ERROR 1265,ERROR 1364"><code class="language-sql">-- These must fail
+INSERT INTO employees (first_name, last_name, email, hire_date, salary)
+VALUES ('Tom', 'Becker', 'tom.becker@bookstore.example', '2022-09-15', 0);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary)
+VALUES ('Tom', 'Becker', 'priya.nair@bookstore.example', '2022-09-15', 38000.00);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department)
+VALUES ('Tom', 'Becker', 'tom.becker@bookstore.example', '2022-09-15', 38000.00, 'marketing');
+
+INSERT INTO employees (first_name, last_name, email, salary)
+VALUES ('Tom', 'Becker', 'tom.becker@bookstore.example', 38000.00);</code></pre>
+                    <div class="card card-output">
+                        <h4>Error</h4>
+                        <pre><code>ERROR 3819 (HY000): Check constraint 'chk_salary' is violated.
+ERROR 1062 (23000): Duplicate entry 'priya.nair@bookstore.example' for key 'employees.email'
+ERROR 1265 (01000): Data truncated for column 'department' at row 1
+ERROR 1364 (HY000): Field 'hire_date' doesn't have a default value</code></pre>
+                    </div>
+                    <p>A salary of 0 breaks <code>chk_salary</code> (3819), Priya's email is taken (1062), there is no marketing department (1265), and the hire date is required (1364). In a script run with <code>SOURCE</code>, the mysql client reports each error and carries on with the next statement.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: Confirm nothing slipped through <span class="step-time">(5 min)</span></h3>
+                    <pre><code class="language-sql">SELECT COUNT(*) AS staff FROM employees;
+SHOW CREATE TABLE employees\G</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------+
+| staff |
++-------+
+|     3 |
++-------+
+*************************** 1. row ***************************
+       Table: employees
+Create Table: CREATE TABLE `employees` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `hire_date` date NOT NULL,
+  `salary` decimal(8,2) NOT NULL,
+  `department` enum('sales','inventory','management','support') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT '1',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  CONSTRAINT `chk_salary` CHECK ((`salary` &gt; 0))
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci</code></pre>
+                    </div>
+                    <p>Still three rows. In the definition, find the <code>UNIQUE KEY</code> MySQL built for <code>email</code> and the <code>chk_salary</code> constraint. The <code>AUTO_INCREMENT=</code> value near the end is the next id MySQL will hand out, so it may be higher than 4 after the failed inserts.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 6: Clean up the database <span class="step-time">(5 min)</span></h3>
+                    <p>Your script is saved, so the table can go: the full staff table, with a <code>manager_id</code> column that links each person to their boss, arrives with the course database in Module 4. Drop it and all of this lesson's demo tables, so <code>bookstore</code> is back to the three tables Lesson 2.3 expects:</p>
+                    <pre><code class="language-sql">DROP TABLE IF EXISTS employees, number_demo, text_demo, date_demo,
+                     format_demo, coupons, flag_demo;
+SHOW TABLES;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+---------------------+
+| Tables_in_bookstore |
++---------------------+
+| books               |
+| categories          |
+| customers           |
++---------------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>employees.sql</code> starts with <code>USE bookstore;</code> and <code>DROP TABLE IF EXISTS employees;</code></li>
+                        <li>Salary is <code>DECIMAL(8, 2)</code> with a named <code>CHECK</code>; email is <code>NOT NULL UNIQUE</code>; department is an <code>ENUM</code></li>
+                        <li>The three good rows go in with ids and <code>is_active</code> filled in automatically</li>
+                        <li>All four bad rows are refused, with errors 3819, 1062, 1265 and 1364</li>
+                        <li>After cleanup, <code>SHOW TABLES</code> lists only <code>books</code>, <code>categories</code> and <code>customers</code></li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: Pick the Type</h3>
+                    <p>Choose a MySQL type (and constraints, if any) for each value: a customer's ZIP code ("89002" or "89002-1234"); the number of copies of a book in the warehouse; a book's back-cover blurb; a two-letter country code; an average customer rating from 1.0 to 5.0, one decimal; the date and time an order was placed.</p>
                     <details>
                         <summary>💡 Hint</summary>
-                        <p>Look for: naming conventions, missing primary key, wrong data types (money, dates, phone numbers), missing constraints, oversized columns.</p>
+                        <p>Ask of each: is it a quantity you would do math on, or an identifier that happens to contain digits? Is its length fixed, limited, or open-ended?</p>
                     </details>
-
                     <details>
                         <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
-CREATE TABLE orders (
-    id             INT AUTO_INCREMENT PRIMARY KEY,
-    customer_name  VARCHAR(100) NOT NULL,
-    price          DECIMAL(10, 2) NOT NULL,
-    order_date     DATETIME DEFAULT CURRENT_TIMESTAMP,
-    phone          VARCHAR(20),
-    status         ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled')
-                       DEFAULT 'pending',
-
-    CONSTRAINT chk_price CHECK (price > 0)
-);
-                        </code></pre>
-                        <p><strong>Issues fixed:</strong></p>
                         <ul>
-                            <li>Table and column names → lowercase snake_case</li>
-                            <li>Added <code>INT AUTO_INCREMENT PRIMARY KEY</code> instead of <code>VARCHAR(10)</code></li>
-                            <li>Reduced <code>customer_name</code> from 500 to a reasonable 100 chars</li>
-                            <li><code>FLOAT</code> → <code>DECIMAL(10, 2)</code> for money</li>
-                            <li><code>VARCHAR(20)</code> → <code>DATETIME</code> for dates</li>
-                            <li><code>INT</code> → <code>VARCHAR(20)</code> for phone numbers</li>
-                            <li><code>VARCHAR(100)</code> → <code>ENUM</code> for status (or VARCHAR with CHECK)</li>
-                            <li>Added <code>NOT NULL</code> and <code>CHECK</code> constraints</li>
+                            <li>ZIP code: <code>VARCHAR(10)</code>. It can start with 0 and contain a dash; it is an identifier, not a number.</li>
+                            <li>Copies: <code>INT UNSIGNED NOT NULL DEFAULT 0</code> (or <code>SMALLINT UNSIGNED</code> if 65,535 is surely enough).</li>
+                            <li>Blurb: <code>TEXT</code>, or <code>VARCHAR(1000)</code> if the shop sets a limit.</li>
+                            <li>Country code: <code>CHAR(2)</code>, always exactly two characters.</li>
+                            <li>Rating: <code>DECIMAL(2, 1)</code> with <code>CHECK (rating BETWEEN 1.0 AND 5.0)</code>.</li>
+                            <li>Order time: <code>DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP</code>.</li>
                         </ul>
                     </details>
                 </div>
 
-                <!-- Quiz -->
+                <div class="card">
+                    <h3>🏋️ Exercise 2: Prove DECIMAL Rounds</h3>
+                    <p>Create a table <code>price_test</code> with one column <code>amount DECIMAL(5, 2)</code>. Insert 19.999, 0.005 and 999.99, show the stored values, then find the smallest value that does <em>not</em> fit. Drop the table at the end.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p><code>DECIMAL(5, 2)</code> has 3 digits before the point. Values are rounded to 2 decimals before they are checked against the range.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">CREATE TABLE price_test (amount DECIMAL(5, 2));
+INSERT INTO price_test VALUES (19.999), (0.005), (999.99);
+SELECT amount FROM price_test;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+--------+
+| amount |
++--------+
+|  20.00 |
+|   0.01 |
+| 999.99 |
++--------+</code></pre>
+                        </div>
+                        <pre data-raises="ERROR 1264"><code class="language-sql">INSERT INTO price_test VALUES (999.995);</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 1264 (22003): Out of range value for column 'amount' at row 1</code></pre>
+                        </div>
+                        <pre><code class="language-sql">DROP TABLE price_test;</code></pre>
+                        <p>19.999 rounded up to 20.00 and 0.005 to 0.01. 999.995 would round to 1000.00, which needs four digits before the point, so it is out of range: the largest value is 999.99.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: Fix the Bad Table</h3>
+                    <p>This statement runs, but almost every column is a poor choice. List the problems and write a better version as <code>orders_demo</code>; create it, check it with <code>DESCRIBE</code>, and drop it.</p>
+                    <pre data-norun><code class="language-sql">CREATE TABLE Orders (
+    OrderID VARCHAR(10),
+    CustomerName VARCHAR(500),
+    Total FLOAT,
+    OrderDate VARCHAR(20),
+    Phone INT,
+    Status VARCHAR(100)
+);</code></pre>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Look for: naming conventions, the missing primary key, money, dates, phone numbers, oversized text, and missing <code>NOT NULL</code>s.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">CREATE TABLE orders_demo (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    customer_name  VARCHAR(100) NOT NULL,
+    total          DECIMAL(8, 2) NOT NULL,
+    order_date     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    phone          VARCHAR(20),
+    status         ENUM('pending', 'shipped', 'delivered', 'cancelled') NOT NULL DEFAULT 'pending',
+    CONSTRAINT chk_orders_demo_total CHECK (total &gt;= 0)
+);
+DESCRIBE orders_demo;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+---------------+---------------------------------------------------+------+-----+-------------------+-------------------+
+| Field         | Type                                              | Null | Key | Default           | Extra             |
++---------------+---------------------------------------------------+------+-----+-------------------+-------------------+
+| id            | int                                               | NO   | PRI | NULL              | auto_increment    |
+| customer_name | varchar(100)                                      | NO   |     | NULL              |                   |
+| total         | decimal(8,2)                                      | NO   |     | NULL              |                   |
+| order_date    | datetime                                          | NO   |     | CURRENT_TIMESTAMP | DEFAULT_GENERATED |
+| phone         | varchar(20)                                       | YES  |     | NULL              |                   |
+| status        | enum('pending','shipped','delivered','cancelled') | NO   |     | pending           |                   |
++---------------+---------------------------------------------------+------+-----+-------------------+-------------------+</code></pre>
+                        </div>
+                        <pre><code class="language-sql">DROP TABLE orders_demo;</code></pre>
+                        <p>Fixed: lowercase snake_case names; an <code>INT AUTO_INCREMENT PRIMARY KEY</code>; a sensible name length; <code>DECIMAL</code> for money with a check; a real <code>DATETIME</code>; the phone as text (an <code>INT</code> drops leading zeros and tops out at 2,147,483,647, shorter than many phone numbers); an <code>ENUM</code> for the status; <code>NOT NULL</code> wherever a row needs the value. The real bookstore keeps no order total at all (it is calculated from the order's items), as Module 6 explains.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): Track Changes Automatically</h3>
+                    <p>Create <code>notes_demo</code> with an id, a <code>body VARCHAR(200) NOT NULL</code>, and <code>created_at</code> / <code>updated_at</code> columns that MySQL maintains by itself. Insert a note, change its body with <code>UPDATE notes_demo SET body = 'edited' WHERE id = 1;</code> a few seconds later, and compare the two timestamps. Drop the table when you are done.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Use the created/updated pattern from the dates section: <code>DEFAULT CURRENT_TIMESTAMP</code>, plus <code>ON UPDATE CURRENT_TIMESTAMP</code> for the second column.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">CREATE TABLE notes_demo (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    body        VARCHAR(200) NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+INSERT INTO notes_demo (body) VALUES ('first draft');
+UPDATE notes_demo SET body = 'edited' WHERE id = 1;
+SELECT * FROM notes_demo;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output (your timestamps will differ)</h4>
+                            <pre><code>+----+--------+---------------------+---------------------+
+| id | body   | created_at          | updated_at          |
++----+--------+---------------------+---------------------+
+|  1 | edited | 2026-03-10 14:30:00 | 2026-03-10 14:30:12 |
++----+--------+---------------------+---------------------+</code></pre>
+                        </div>
+                        <pre><code class="language-sql">DROP TABLE notes_demo;</code></pre>
+                        <p><code>updated_at</code> moved forward with the edit; <code>created_at</code> stayed. If you run the <code>UPDATE</code> with the same body again, <code>updated_at</code> does not change: MySQL only touches it when a value really changes.</p>
+                    </details>
+                </div>
+            </section>
+
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
                 <div class="card quiz-container">
-                    <h3>🎯 Quick Quiz</h3>
+                    <h3>🎯 Check Your Understanding</h3>
 
                     <div class="quiz-question">
-                        <p><strong>Question 1:</strong> Which data type should you use for storing prices?</p>
+                        <p><strong>Question 1:</strong> Which type should <code>books.price</code> have?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="FLOAT is approximate and can cause rounding errors with money.">
-                                A) FLOAT
+                            <button class="quiz-option" data-correct="false" data-hint="FLOAT is approximate: 0.1 is stored as 0.10000000149..., and the errors add up.">
+                                A) <code>FLOAT</code>
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! DECIMAL provides exact precision, which is critical for financial calculations.">
-                                B) DECIMAL
+                            <button class="quiz-option" data-correct="true" data-explanation="DECIMAL stores exact decimal values, so prices and totals are correct to the cent. DECIMAL(8, 2) holds up to 999999.99.">
+                                B) <code>DECIMAL(8, 2)</code>
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="INT can only store whole numbers — no cents!">
-                                C) INT
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Storing prices as text prevents sorting and math operations.">
-                                D) VARCHAR
+                            <button class="quiz-option" data-correct="false" data-hint="Text cannot be added up or sorted as numbers: '10.99' sorts before '9.99'.">
+                                C) <code>VARCHAR(10)</code>
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 2:</strong> What does UNSIGNED do to an integer type?</p>
+                        <p><strong>Question 2:</strong> <code>stars</code> is a <code>TINYINT</code>. With MySQL's default strict mode, what does <code>INSERT INTO number_demo (stars) VALUES (200);</code> do?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="UNSIGNED affects the range, not the storage size.">
-                                A) Doubles the storage size
+                            <button class="quiz-option" data-correct="false" data-hint="That is what MySQL did without strict mode. Strict mode is on by default.">
+                                A) Stores 127 and shows a warning
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! UNSIGNED removes negative numbers, allowing the positive range to double. For example, TINYINT goes from -128..127 to 0..255.">
-                                B) Removes negative values and doubles the positive range
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL never silently changes the column's type.">
+                                B) Stores 200 by widening the column
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="UNSIGNED restricts the range, it doesn't remove it.">
-                                C) Allows any value without restriction
+                            <button class="quiz-option" data-correct="true" data-explanation="A signed TINYINT holds -128 to 127. In strict mode an out-of-range value is an error (1264) and the row is not stored.">
+                                C) Fails with error 1264, Out of range value
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 3:</strong> Why should phone numbers be stored as VARCHAR instead of INT?</p>
+                        <p><strong>Question 3:</strong> A column is <code>email VARCHAR(100) NOT NULL UNIQUE</code>. Which insert fails with error 1062?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="Phone numbers aren't typically that long — 15-20 characters max.">
-                                A) Phone numbers are too long for INT
+                            <button class="quiz-option" data-correct="true" data-explanation="UNIQUE refuses a second row with the same value, with error 1062 Duplicate entry. A NULL would fail too, but with 1048, because of NOT NULL.">
+                                A) One with an email that another row already has
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Phone numbers can start with 0 or +, contain dashes and spaces, and you never do math on them. They're identifiers, not quantities.">
-                                B) Phone numbers can have leading zeros, plus signs, and dashes
+                            <button class="quiz-option" data-correct="false" data-hint="NOT NULL stops that, with a different error number (1048).">
+                                B) One with <code>NULL</code> as the email
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="VARCHAR can actually be less efficient for short fixed-length data, but that's not the main reason.">
-                                C) VARCHAR is more memory-efficient than INT
+                            <button class="quiz-option" data-correct="false" data-hint="Too long is error 1406, Data too long.">
+                                C) One with a 120-character email
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 4:</strong> When should you use CHAR instead of VARCHAR?</p>
+                        <p><strong>Question 4:</strong> Which column is the best fit for <code>CHAR</code> rather than <code>VARCHAR</code>?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="CHAR is actually fixed-size — it wastes space on variable-length data.">
-                                A) When you want to save storage space
+                            <button class="quiz-option" data-correct="false" data-hint="Titles vary a lot in length; CHAR would pad every one to the maximum.">
+                                A) A book title
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Longer strings are perfect for VARCHAR, not CHAR.">
-                                B) When the text is very long
+                            <button class="quiz-option" data-correct="false" data-hint="Emails vary in length too.">
+                                B) A customer's email
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! CHAR is ideal for fixed-length data like country codes (CHAR(2)), state abbreviations, or MD5 hashes (CHAR(32)) — values that are always the same length.">
-                                C) When every value has the exact same length
+                            <button class="quiz-option" data-correct="false" data-hint="Reviews are long and open-ended: TEXT territory.">
+                                C) A customer review
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="CHAR suits values that always have the same length, such as a two-letter country code or a 13-digit ISBN.">
+                                D) A two-letter country code
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 5:</strong> What constraint automatically sets a column to the next sequential number?</p>
+                        <p><strong>Question 5:</strong> <code>in_stock</code> is <code>BOOLEAN</code> and one row holds 5. Which condition finds every row that counts as true?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="DEFAULT provides a static fallback value, not an auto-incrementing sequence.">
-                                A) DEFAULT
+                            <button class="quiz-option" data-correct="false" data-hint="TRUE is just 1, so this skips the row holding 5.">
+                                A) <code>WHERE in_stock = TRUE</code>
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="UNIQUE prevents duplicates but doesn't generate values automatically.">
-                                B) UNIQUE
+                            <button class="quiz-option" data-correct="true" data-explanation="BOOLEAN is a TINYINT, and MySQL treats any non-zero number as true. WHERE in_stock keeps 1, 5 and every other non-zero value.">
+                                B) <code>WHERE in_stock</code>
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! AUTO_INCREMENT automatically assigns 1, 2, 3, etc. to new rows, ensuring each row gets a unique ID without you specifying one.">
-                                C) AUTO_INCREMENT
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="CHECK validates conditions but doesn't generate values.">
-                                D) CHECK
+                            <button class="quiz-option" data-correct="false" data-hint="1 and TRUE are the same value, so this misses the 5 as well.">
+                                C) <code>WHERE in_stock = 1</code>
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
@@ -1055,41 +955,103 @@ CREATE TABLE orders (
                 </div>
             </section>
 
-            <!-- Section 9: Summary -->
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Why VARCHAR(255) everywhere in other tutorials?</summary>
+                    <p>Habit, mostly: 255 was once the <code>VARCHAR</code> limit. Today a <code>VARCHAR</code> can be much longer, and a number that fits the data is better documentation: <code>VARCHAR(50)</code> for a first name tells the next developer something; <code>VARCHAR(255)</code> tells them nothing. The size also limits what bad input can store.</p>
+                </details>
+                <details>
+                    <summary>Is a UUID a better id than AUTO_INCREMENT?</summary>
+                    <p>Sometimes. UUIDs (<code>UUID()</code>) are unique across servers and hard to guess, which helps when ids appear in public URLs or several databases create rows. They are larger and slower as primary keys. For a beginner's database, and for most real ones, <code>INT AUTO_INCREMENT</code> (or <code>BIGINT</code> for huge tables) is the right default.</p>
+                </details>
+                <details>
+                    <summary>Can I see MySQL's strict mode setting?</summary>
+                    <p>Yes: <code>SELECT @@sql_mode;</code>. You should see <code>STRICT_TRANS_TABLES</code> in the list. If it is missing on a shared host, ask for it, or add it for your own session with <code>SET SESSION sql_mode = CONCAT(@@sql_mode, ',STRICT_TRANS_TABLES');</code>. Never remove it to make an insert "work": the insert would then store wrong data.</p>
+                </details>
+                <details>
+                    <summary>Can I add a constraint to a table that already exists?</summary>
+                    <p>Yes, with <code>ALTER TABLE</code>: <code>ALTER TABLE coupons ADD CONSTRAINT chk_min_order CHECK (min_order &gt;= 0);</code> or <code>ALTER TABLE customers MODIFY COLUMN city VARCHAR(50) NOT NULL;</code>. MySQL first checks the existing rows; if any break the new rule, the change is refused, so clean the data first.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>Constraints can compare two columns. Create a <code>promotions_demo</code> table with <code>starts_on DATE NOT NULL</code> and <code>ends_on DATE NOT NULL</code>, and a <code>CHECK</code> that a promotion cannot end before it starts. Then add a second rule: a promotion may last at most 31 days (<code>DATEDIFF(ends_on, starts_on)</code> gives the days between two dates). Test both rules with a good row and two bad ones, and read which constraint name each error reports.</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Take out the table sketch from Lesson 2.1's journal. Revise every column with what you know now: its exact type and size, whether it is <code>NOT NULL</code>, and one <code>CHECK</code> or <code>UNIQUE</code> rule it should have. Which of your first guesses changed, and why?</p>
+                </div>
+            </section>
+
             <section id="summary" class="lesson-section">
-                <h2>Summary</h2>
+                <h2>📝 Lesson Summary</h2>
 
                 <div class="card card-success">
-                    <h3>🎉 Key Takeaways</h3>
+                    <h3>🎓 Key Takeaways</h3>
                     <ul>
-                        <li><strong>Numeric types:</strong> Use <code>INT</code> for most whole numbers, <code>TINYINT</code>/<code>SMALLINT</code>/<code>BIGINT</code> when you need a specific range, and <code>DECIMAL</code> for exact decimals (especially money)</li>
-                        <li><strong>Never use FLOAT for money</strong> — it produces rounding errors</li>
-                        <li><strong>String types:</strong> <code>VARCHAR</code> for most text, <code>CHAR</code> for fixed-length values, <code>TEXT</code> for long-form content</li>
-                        <li><strong>Date types:</strong> <code>DATE</code> for dates, <code>DATETIME</code> for timestamps, <code>TIMESTAMP</code> for auto-tracking. Never store dates as strings</li>
-                        <li><strong>BOOLEAN</strong> is really <code>TINYINT(1)</code> — <code>TRUE</code> = 1, <code>FALSE</code> = 0</li>
-                        <li><strong>ENUM</strong> restricts a column to specific values; good for stable, small lists</li>
-                        <li><strong>Constraints</strong> enforce data integrity: <code>PRIMARY KEY</code>, <code>NOT NULL</code>, <code>UNIQUE</code>, <code>DEFAULT</code>, <code>AUTO_INCREMENT</code>, <code>CHECK</code></li>
-                        <li><code>UNSIGNED</code> removes negative numbers and doubles the positive range</li>
-                        <li>Always pick the <strong>smallest type</strong> that comfortably holds your data</li>
-                        <li>Phone numbers, ZIP codes, and other "numeric-looking" identifiers should be stored as <code>VARCHAR</code></li>
+                        <li>A column's type validates values, makes math and sorting work, and decides storage size</li>
+                        <li>With strict mode (the default), a value that does not fit is an error, not a silent change</li>
+                        <li><code>INT</code> is the default integer; <code>UNSIGNED</code> forbids negatives. Money is <code>DECIMAL</code>, never <code>FLOAT</code></li>
+                        <li><code>VARCHAR(n)</code> for most text, <code>CHAR(n)</code> for fixed-length codes, <code>TEXT</code> for long writing; phone numbers and ZIP codes are text</li>
+                        <li>Dates are written <code>'YYYY-MM-DD'</code>; prefer <code>DATETIME</code> over <code>TIMESTAMP</code> unless you need time-zone conversion</li>
+                        <li><code>BOOLEAN</code> is <code>TINYINT(1)</code>: test it with <code>WHERE col</code>, not <code>= TRUE</code></li>
+                        <li>Constraints enforce rules for every writer: <code>PRIMARY KEY</code>, <code>AUTO_INCREMENT</code>, <code>NOT NULL</code>, <code>UNIQUE</code>, <code>DEFAULT</code>, named <code>CHECK</code></li>
                     </ul>
                 </div>
 
-                <h3>📚 Additional Resources</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Error</th><th>Means</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>1048 / 1364</td><td>A required column got <code>NULL</code> / was left out</td></tr>
+                            <tr><td>1062</td><td>Duplicate value in a <code>UNIQUE</code> column or primary key</td></tr>
+                            <tr><td>1264</td><td>Number out of the column's range</td></tr>
+                            <tr><td>1265</td><td>Value cannot be stored as given (for example, not on the <code>ENUM</code> list)</td></tr>
+                            <tr><td>1292</td><td>Not a valid date or time</td></tr>
+                            <tr><td>1406</td><td>Text longer than the column allows</td></tr>
+                            <tr><td>3819</td><td>A <code>CHECK</code> constraint failed</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You watched MySQL refuse bad numbers, text and dates, and know what each error number means</li>
+                        <li>You saw with your own eyes why money must be <code>DECIMAL</code></li>
+                        <li>You designed the bookstore's staff table and proved its five rules by trying to break them</li>
+                        <li>You found a silent <code>BOOLEAN</code> trap that no error message would have warned you about</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>In <a href="lesson_06.html"><strong>Lesson 2.3: CRUD Operations</strong></a> you will finally fill the bookstore: insert its first books, customers and categories, read them back with <code>SELECT</code>, change them with <code>UPDATE</code>, remove them with <code>DELETE</code>, and handle "insert it, or update it if it is already there". Every constraint you met today will step in when a statement goes wrong.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
                 <ul>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/data-types.html" target="_blank" rel="noopener">MySQL Docs — Data Types</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_blank" rel="noopener">MySQL Docs — Integer Types</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html" target="_blank" rel="noopener">MySQL Docs — DECIMAL and NUMERIC</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/string-types.html" target="_blank" rel="noopener">MySQL Docs — String Types</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/create-table-check-constraints.html" target="_blank" rel="noopener">MySQL Docs — CHECK Constraints</a></li>
+                    <li>Run <code>SHOW TABLES;</code> in <code>bookstore</code>: you should see only <code>books</code>, <code>categories</code> and <code>customers</code> (if not, rerun <code>create_bookstore.sql</code> from Lesson 2.1)</li>
+                    <li>Keep <code>employees.sql</code>; rerun it once from a fresh session to see the four failures again</li>
+                    <li>Try the bonus challenge with a two-column <code>CHECK</code></li>
                 </ul>
 
-                <h3>🚀 What's Next?</h3>
-                <p>Now that you know <em>what</em> types of data go into tables and <em>how</em> to protect them with constraints, it's time to put data in and get it back out. In the next lesson, you'll learn the four fundamental operations every database developer uses daily — <strong>INSERT, SELECT, UPDATE, and DELETE</strong> — collectively known as <strong>CRUD</strong>.</p>
-
-                <div class="card card-accent" style="text-align: center; padding: 2rem;">
-                    <h3>🎉 Congratulations!</h3>
-                    <p>You now know how to choose the right data type for any column and enforce rules with constraints. This knowledge will guide every table you design from here on out!</p>
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>This was a lesson full of tables and error numbers, and you do not need to memorize any of them. What matters is the habit you practiced: for every column, ask what it holds, how big it can get, and what must never be allowed in. Databases that last for years are built by people who ask those three questions, and the error messages you saw today are MySQL keeping your answers for you.</p>
                 </div>
             </section>
 
@@ -1102,7 +1064,7 @@ CREATE TABLE orders (
     </main>
 
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>

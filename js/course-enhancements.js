@@ -362,4 +362,4 @@ function throttle(fn, ms) {
 }
 
 // Expose for other scripts
-window.courseEnhancements = { debounce, throttle, applyTheme, reinitMermaid, updateProgressIndicators };
+window.courseEnhancements = { debounce, throttle, applyTheme, reinitMermaid };

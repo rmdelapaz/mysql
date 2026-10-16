@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 13</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 13: Final Project Kickoff and Studio I</h1>
+    <p class="sub">How to run the first final-project studio. Launch the Maple Street Tool Library brief and its rubric, show the build mistakes that cost the most time, and get every learner from Rosa's eight requirements to a checked design, a re-runnable schema whose constraints are proven by failing tests, and test data that plants the edge cases.</p>
+    <div class="meta-row">
+      <span class="chip"><b>1</b> lesson (first half)</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lesson <b>8.2</b> · Milestones <b>1–3</b></span>
+      <span class="chip">Session <b>13</b> of 14 · Part 2</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Session 13 is a <b>studio</b>: one lesson (8.2, the final project) and most of the room's time spent building. The shape: warm-up → kickoff (the brief, the files, the rubric) → a short frame and live demo → Milestone 1 in the room → a guided lab on the bookstore → Milestones 2 and 3 in the room. You circulate and run short <b>check-ins</b> at the end of each milestone instead of teaching new material.</li>
+  <li>Type, do not paste, in the demo. Every SQL block below was run to produce the output printed under it, on MySQL 9.7 (the lesson's own blocks were run as one session, exactly as the page shows them, and match the page). Read error numbers aloud from the left.</li>
+  <li>The lesson page is the brief and the reference. Keep <code class="inline">lesson_final_project.html</code> open in a tab: The Brief, Milestones and Timeline, From Requirements to Tables, How Your Work Is Assessed, Common Mistakes. <b>Do not open the reference solutions on the projector</b> before learners have attempted a milestone; the page hides them on purpose.</li>
+  <li>The assessment, the rubric with scoring guidance and the instructor answer notes with real reference numbers are in <code class="inline">final-assessment.html</code> at the kit root (Part 2 section). Print the rubric for learners from there.</li>
+  <li>Session 14 continues the same project (Milestones 5 to 7 in the room, then the showcase and Lesson 8.3). Teal blocks are hands-on, amber blocks are watch-outs.</li>
+</ul>
+<div class="note warn"><div class="t">The #1 risk of Session 13: a design nobody checked</div>
+<p>A learner who starts typing CREATE TABLE before every requirement has a home spends Session 14 rebuilding. The two most expensive design errors are (1) trying to put a rule that looks at other rows into a CHECK (it cannot work, and the learner discovers that at Milestone 5) and (2) storing derived data (an <code class="inline">is_available</code> or <code class="inline">times_borrowed</code> column) that the queries then trust. <b>The defense:</b> nobody starts Milestone 2 without a passed design check-in (two minutes: point at each of Rosa's eight requirements and say where it lives). Keep a tally on the studio tracker below; visit the learners without a tick first.</p>
+</div>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Check what Session 12 handed out:</b> the brief (the lesson page's "The Brief" section, or the printed one-pager) and the reading for this session (the brief and "From Requirements to Tables"). Learners who did not read it can still do Milestone 1 in the room; it takes them ten minutes longer.</li>
+  <li>☐ <b>Print or share:</b> the rubric and the milestone checklist (from <code class="inline">final-assessment.html</code>, Part 2), the workbook (its Milestone tracker), and sticky notes for the check-ins. Optional: A3 paper for design diagrams.</li>
+  <li>☐ <b>Files to hand out:</b> <code class="inline">labs/module-13/</code> without the <code class="inline">*_solution.sql</code> files. Run <code class="inline">python3 labs/check_labs.py module-13</code> once (6 files, every line PASS, a few seconds).</li>
+  <li>☐ <b>Projector machine:</b> MySQL 9.7 with the bookstore loaded (the guided lab uses it: <code class="inline">SOURCE labs/_states/bookstore.sql</code>), a terminal in the course folder at 18 pt, a second terminal inside an empty <code class="inline">tool-library</code> folder (the demo of where to start the client), browser tabs <code class="inline">lesson_final_project.html</code> and <code class="inline">final-assessment.html</code>.</li>
+  <li>☐ <b>Board, before learners arrive:</b> a three-column table headed "Rosa's requirement · Where it lives · Why", with rows 1 to 8 and the middle column empty; the four error numbers 1064 · 3780 · 3814 · 1824; and "Rules about ONE row → constraint · rules about OTHER rows → procedure + transaction".</li>
+  <li>☐ <b>Decide the alternative-brief policy:</b> the lesson's FAQ allows another business (at least five tables, a many-to-many relationship, a rule across rows, two kinds of users; the clinic brief is ready-made). Approve own briefs in writing today; they cannot use the reference numbers in <code class="inline">final-assessment.html</code>, so they write their own expected results.</li>
+</ul>
+<div class="blk warn"><div class="h">Known traps in this session</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><code class="inline">SOURCE 01_schema.sql</code> inside 02_data.sql: <code class="inline">Failed to open file '01_schema.sql', error: 2</code></td><td>SOURCE paths are relative to the folder the CLIENT was started in, not to the file that contains the SOURCE line (measured)</td><td>Start the client inside the project folder: <code class="inline">cd tool-library</code>, then <code class="inline">mysql -u root -p</code>. Or write the path from the course folder in both places.</td></tr>
+<tr><td><code class="inline">ERROR 1064 ... near 'condition</code></td><td>A reserved word as a column name</td><td>Rename it (<code class="inline">tool_condition</code>); not backticks.</td></tr>
+<tr><td><code class="inline">ERROR 3780 ... are incompatible</code></td><td>INT versus INT UNSIGNED or BIGINT on the two sides of a foreign key</td><td>One key type everywhere (INT).</td></tr>
+<tr><td><code class="inline">ERROR 1824 Failed to open the referenced table</code></td><td>Child table created before its parent</td><td>Reorder: lookup tables, then the tables that point at them, junction and history last.</td></tr>
+<tr><td><code class="inline">ERROR 3814 ... contains disallowed function: curdate</code></td><td>A time rule written as a CHECK</td><td>Compare two columns of the row; time rules go in the procedure.</td></tr>
+<tr><td>Second run of 01_schema.sql fails with <code class="inline">ERROR 1050 Table ... already exists</code></td><td>The script has no <code class="inline">DROP DATABASE IF EXISTS</code> first line</td><td>Add it; rerun the whole file.</td></tr>
+<tr><td>The data script stops halfway: <code class="inline">ERROR 1452</code></td><td>A loan or course record points at an id that was not inserted (or inserted later)</td><td>Explicit ids, parents' INSERTs first (members, categories, courses, tools, then member_courses and loans).</td></tr>
+<tr><td>Someone's dates fail <code class="inline">chk_loans_due</code> (3819)</td><td>due_on typed before loaned_on, or the two dates swapped in the VALUES list</td><td>Read the column list of the INSERT against the VALUES; the CHECK just caught a real data error.</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 13 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">15</td><td>Warm-up</td><td>Five retrieval questions on Lessons 7.4 and 8.1 and the brief from Session 12; a show of hands: who has a design draft?</td></tr>
+      <tr><td class="t">0:15</td><td class="t">15</td><td><b>8.2</b> Kickoff: the brief, deliverables and rubric</td><td>Rosa's eight requirements read aloud; the six files to hand in; the 100-point rubric; how the studio runs; the tool-library folder.</td></tr>
+      <tr><td class="t">0:30</td><td class="t">20</td><td><b>8.2</b> Frame and live demo</td><td>From requirements to tables (nouns, verbs, where each rule lives); four build mistakes and the silent LEFT JOIN, typed live.</td></tr>
+      <tr><td class="t">0:50</td><td class="t">30</td><td><b>8.2</b> Studio: Milestone 1, Design</td><td>Tables, keys, relationships and every requirement mapped to its home; a two-minute design check-in with each learner.</td></tr>
+      <tr><td class="t">1:20</td><td class="t">10</td><td>Break</td><td>Leave the requirement-to-home table on the board. Learners without a passed design check-in see you first after the break.</td></tr>
+      <tr><td class="t">1:30</td><td class="t">15</td><td><b>8.2</b> Guided lab</td><td><code class="inline">labs/module-13/l8_2-final-project/gift_cards_starter.sql</code>, then <code class="inline">debug_gift_card_proofs.sql</code>: named constraints and the tests that prove them, on the bookstore.</td></tr>
+      <tr><td class="t">1:45</td><td class="t">40</td><td><b>8.2</b> Studio: Milestone 2, Build the schema</td><td>01_schema.sql, re-runnable, parents first, every constraint named; one failing test per constraint in a rolled-back transaction; schema check-in.</td></tr>
+      <tr><td class="t">2:25</td><td class="t">25</td><td><b>8.2</b> Studio: Milestone 3, Test data</td><td>02_data.sql rebuilds the schema and plants the edge cases; the row-count query; data check-in.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up</td><td>Exit ticket, what goes home (Milestones 3 and 4), bring list for Session 14.</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> The lesson estimates 240 minutes of focused work for eight milestones (30 + 40 + 25 + 45 + 40 + 20 + 20 + 20). This session gives the room Milestones 1 to 3 (95 minutes of the lesson's estimate) plus the kickoff, a demo and a guided lab on the bookstore. Session 14 takes Milestones 5 to 7 in the room. Milestone 4 (the Saturday queries) and Milestone 8 (self-review and the README) are homework, because they are individual, quiet work that does not need the room.</p>
+<p><b>Goes home (about 3 to 5 hours).</b> Finish Milestones 1 to 3 if the room did not; Milestone 4 (all six Saturday queries with <code class="inline">@today = '2026-06-15'</code>, two checked by hand); the edge-cases lab (<code class="inline">edge_cases_starter.sql</code>), which practices exactly the patterns Milestone 4 needs; the journal entry. The lesson's Quick Quiz and Exercises wait until after Milestone 5 (they run on the database as Milestone 5 leaves it).</p>
+<p><b>Protect, in this order:</b> the design check-in for every learner (no Milestone 2 without it); the re-runnable 01_schema.sql with its constraint tests; the demo's Mistake 5 (the silent LEFT JOIN). <b>Cut first:</b> the guided lab (hand out <code class="inline">gift_cards_starter.sql</code> as homework and show the test pattern in the Milestone 2 mini-demo instead), then Mistakes 2 and 4 in the demo (they are on the lesson page), then the Milestone 3 studio (it becomes homework: it is mostly typing).</p>
+<div class="blk"><div class="h">Studio tracker (copy one per group)</div>
+<p>Tick each milestone when the check-in passes. A blank cell at the end of the session is a name for the Session 14 warm-up.</p>
+<table class="timing">
+<thead><tr><th>Learner</th><th>M1 design: every requirement has a home</th><th>M2 runs twice, tests refused</th><th>M3 counts 8/5/2/7/12/16 or own</th><th>Note for Session 14</th></tr></thead>
+<tbody>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Warm-up and Kickoff</h3><span class="dur">30 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">15m</td><td>Warm-up: five retrieval questions (four on Lessons 7.4 and 8.1, one on the brief); hands up for a design draft</td></tr>
+<tr><td class="t">15m</td><td>Kickoff: the brief, the six deliverables, the rubric, how the studio runs, the tool-library folder</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Warm-up questions (answers in the Answer Key)</div>
+<p>Learners answer on the workbook's warm-up page (5 minutes), then you take answers by cold call. W1 to W4 are the Session 12 lessons, which the project uses in Milestones 6 and 7; W5 checks the reading.</p>
+<div class="q"><div class="qn">W1</div><div class="qt">The treasurer's account was granted the reporting role, but every SELECT gives ERROR 1142. What was forgotten? <i>(Lesson 7.4)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Someone types <code class="inline">mysqldump -u root -p bookstore &gt; backup.sql</code> at the <code class="inline">mysql&gt;</code> prompt. What happens? <i>(Lesson 8.1)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">A dump of one database restores perfectly on a new laptop, but the web form cannot log in. Why? <i>(Lesson 8.1)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">Which mysqldump option puts the stored procedures into the dump? <i>(Lesson 8.1)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">From Rosa's brief: name the tables you would build, and one rule that cannot be a CHECK constraint. <i>(the brief)</i></div><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Sequence and talking points</div>
+<ul class="tick">
+  <li><b>Warm-up debrief (5m).</b> For each question, one learner answers, one adds. On W5 write the six table names on the board; if nobody names <code class="inline">member_courses</code>, ask: "a member finishes many courses, a course is finished by many members: where does the date go?" Then: "hands up if you have a design draft from the reading." Note the hands: those learners do the Milestone 1 check-in first.</li>
+  <li><b>The brief (5m).</b> Read Rosa's eight requirements aloud from the lesson page while learners follow in the workbook. Say: "This is a real kind of client: she describes problems, not tables. Your job is to turn eight sentences into six tables, a view, two procedures, two roles and a backup." Point at requirement 5: "five rules in one sentence; most of the project's thinking is here."</li>
+  <li><b>The deliverables (3m).</b> Show "What you hand in": <code class="inline">01_schema.sql</code>, <code class="inline">02_data.sql</code>, <code class="inline">03_queries.sql</code>, <code class="inline">04_logic.sql</code>, <code class="inline">05_security.sql</code>, a tested backup and <code class="inline">README.md</code>. Say: "Numbered scripts, each one runs with SOURCE, and 02_data.sql runs 01_schema.sql first, so the whole database rebuilds from files. That is what makes it portfolio-ready."</li>
+  <li><b>The rubric (4m).</b> Hand out the printed rubric (seven areas, 100 points; 0, half or full points per area; 80 or more is solid). Say: "Notice what earns full points: proof. A constraint is proven when a statement that breaks it is refused. A query is checked when you compared it with the data by hand." Then the timeline: Milestones 1 to 3 today, 4 at home, 5 to 7 in Session 14, 8 and the README at home; submission one week after Session 14.</li>
+  <li><b>The folder (3m).</b> On the projector: make a <code class="inline">tool-library</code> folder next to <code class="inline">labs/</code>, <code class="inline">cd</code> into it, start the client THERE. Say: "02_data.sql says SOURCE 01_schema.sql. SOURCE looks in the folder the client was started in, not next to the file. Start the client inside tool-library and it just works." (Measured on 9.7; the lesson page does not say it.)</li>
+</ul>
+</div>
+<div class="blk warn"><div class="h">Watch-outs</div>
+<ul class="tick">
+  <li><b>"Can I look at the reference?"</b> Yes, after trying: the lesson says so. Ask them to try for at least the milestone's time first, then compare and write one difference into their design notes. Copying the reference wholesale scores poorly on Design ("every rule mapped ... with reasons") because the reasons are missing.</li>
+  <li><b>Own briefs</b> need your written approval today (see Before the Session). Hold them to the same structure: five tables, a many-to-many, a rule across rows, two kinds of users.</li>
+  <li><b>Learners who missed Session 12</b> have not seen roles (7.4) or mysqldump (8.1). They can do all of today; send them to Lessons 7.4 and 8.1 before Session 14.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plan</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">8.2</span><h3>Final Project: Design and Build a Database</h3><span class="dur">140 min (of 240)</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Turn a written brief into entities, relationships and business rules, and draw them as a diagram</li>
+  <li>Build a normalized schema in a re-runnable script, with keys, foreign keys and CHECK constraints that you have tested</li>
+  <li>Answer business questions with joins, GROUP BY, CTEs and window functions, using a fixed report date</li>
+  <li>Enforce rules that span several rows in a stored procedure with a transaction</li>
+  <li>Secure the database with roles and least-privilege accounts, then back it up and prove the backup restores</li>
+</ul>
+<p>Today covers the first two objectives in the room (design, schema with tested constraints) and starts the third at home (the Saturday queries). Session 14 covers the last two.</p>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">20m</td><td>Frame and live demo: from requirements to tables; four build mistakes and the silent LEFT JOIN</td></tr>
+<tr><td class="t">30m</td><td>Studio: Milestone 1, design, with a check-in per learner</td></tr>
+<tr><td class="t">15m</td><td>Guided lab: <code class="inline">gift_cards_starter.sql</code>, then <code class="inline">debug_gift_card_proofs.sql</code></td></tr>
+<tr><td class="t">40m</td><td>Studio: Milestone 2, 01_schema.sql and its constraint tests (5-minute mini-demo of the test pattern first)</td></tr>
+<tr><td class="t">25m</td><td>Studio: Milestone 3, 02_data.sql with the edge cases</td></tr>
+<tr><td class="t">10m</td><td>(in the wrap-up) Milestone 4 explained for home</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say (5 minutes)</div>
+<p>Use the lesson's four moves, pointing at the board's empty table: "<b>Underline the nouns.</b> Things with their own facts become tables; facts about a thing become columns. <b>Read the verbs</b> and ask 'one or many?' in both directions: one-to-many puts the foreign key on the many side; many-to-many needs a junction table, and here the junction carries its own fact, the completion date."</p>
+<p>Then the move that decides the project: "<b>Sort the rules by where they can live.</b> A rule about ONE value, a type or a constraint: NOT NULL, UNIQUE, ENUM, CHECK. A rule BETWEEN tables, a foreign key. A rule that has to LOOK AT OTHER ROWS (only one open loan per tool, at most three per member) can never be a CHECK: it goes in the procedure that creates loans, inside a transaction." Fill in two rows of the board table together (requirement 2: tools columns, ENUM, CHECK &gt; 0; requirement 5: checkout_tool), then leave the rest for the studio.</p>
+<p>Last: "<b>Leave out what can be calculated.</b> Overdue, days late, available: they depend on today or on other rows, so they are computed in queries, never stored."</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow; 15 minutes)</div>
+<p>The lesson's Common Mistakes, typed in the <code class="inline">mysql&gt;</code> client (any folder; the scratch database is dropped at the end). Ask for a prediction before each block. The outputs are the real ones; they match the lesson page.</p>
+<ol class="steps">
+  <li><b>A scratch database for the mistakes (1m).</b> "Before you build Rosa's database, five mistakes that cost the most time in projects like this. I make them in a scratch database so nothing collides with your project."
+<pre class="code"><span class="k">CREATE</span> <span class="k">DATABASE</span> pitfall_demo;
+<span class="k">USE</span> pitfall_demo;</pre>
+<pre class="out">Database changed</pre></li>
+  <li><b>Mistake 1: a reserved word (2m).</b> Ask first: "tool condition is in the brief. What could go wrong with this column?" Then run it.
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_tools (
+    id        <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    condition <span class="k">VARCHAR</span>(<span class="s">10</span>)
+);</pre>
+<pre class="out">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'condition VARCHAR(10)
+)' at line 3</pre>
+CONDITION is reserved (stored programs use it). Read where the parser stopped: <code class="inline">near 'condition</code>. Fix: <code class="inline">tool_condition</code>. Same trap: <code class="inline">order</code>, <code class="inline">group</code>, <code class="inline">rank</code>, <code class="inline">key</code>.</li>
+  <li><b>Mistake 2: a foreign key whose type does not match (3m).</b> "A parent table, then a loans table whose tool_id is BIGINT."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_tools (id <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">50</span>));
+
+<span class="k">CREATE</span> <span class="k">TABLE</span> demo_loans (
+    id      <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    tool_id <span class="k">BIGINT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">FOREIGN</span> <span class="k">KEY</span> (tool_id) <span class="k">REFERENCES</span> demo_tools (id)
+);</pre>
+<pre class="out">ERROR 3780 (HY000): Referencing column 'tool_id' and referenced column 'id' in foreign key constraint 'demo_loans_ibfk_1' are incompatible.</pre>
+INT and BIGINT clash; so do INT and INT UNSIGNED. Decide one key type now and write it in the design notes.</li>
+  <li><b>Mistake 3: today's date in a CHECK (2m).</b> "Due dates must be in the future. Sounds like a CHECK, right?" Let them say yes, then run it.
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_loans (
+    id     <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    due_on <span class="k">DATE</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> chk_due_future <span class="k">CHECK</span> (due_on &gt;= CURDATE())
+);</pre>
+<pre class="out">ERROR 3814 (HY000): An expression of a check constraint 'chk_due_future' contains disallowed function: curdate.</pre>
+A CHECK must give the same answer for a row forever. Compare columns of the same row (<code class="inline">due_on &gt;= loaned_on</code>) and put time rules in the procedure.</li>
+  <li><b>Mistake 4: the child before the parent (2m).</b> "The course records table, written before the members table."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_courses_done (
+    member_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">FOREIGN</span> <span class="k">KEY</span> (member_id) <span class="k">REFERENCES</span> demo_members (id)
+);</pre>
+<pre class="out">ERROR 1824 (HY000): Failed to open the referenced table 'demo_members'</pre>
+Parents first, junction and history tables last; drop in the reverse order.</li>
+  <li><b>Mistake 5: the silent one (4m).</b> "June loans per member, members with none should show 0." Ask for a prediction: how many rows? Most say three.
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_members (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">50</span>));
+<span class="k">CREATE</span> <span class="k">TABLE</span> demo_member_loans (member_id <span class="k">INT</span>, loaned_on <span class="k">DATE</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> demo_members <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Rosa'</span>), (<span class="s">2</span>, <span class="s">'Kevin'</span>), (<span class="s">3</span>, <span class="s">'Tessa'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> demo_member_loans <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'2026-06-06'</span>), (<span class="s">2</span>, <span class="s">'2026-05-02'</span>);
+
+<span class="k">SELECT</span> m.name, COUNT(l.member_id) <span class="k">AS</span> june_loans
+<span class="k">FROM</span> demo_members <span class="k">AS</span> m
+<span class="k">LEFT</span> <span class="k">JOIN</span> demo_member_loans <span class="k">AS</span> l <span class="k">ON</span> l.member_id = m.id
+<span class="k">WHERE</span> l.loaned_on &gt;= <span class="s">'2026-06-01'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> m.id, m.name
+<span class="k">ORDER</span> <span class="k">BY</span> m.name;</pre>
+<pre class="out">+------+------------+
+| name | june_loans |
++------+------------+
+| Rosa |          1 |
++------+------------+</pre>
+Kevin and Tessa vanished, with no error. WHERE runs after the join and throws away the NULL rows. This is the mistake the rubric's Queries row is most often lost on.</li>
+  <li><b>The fix: the condition moves into ON (1m).</b> "Conditions on the right-hand table of a LEFT JOIN belong in ON."
+<pre class="code"><span class="k">SELECT</span> m.name, COUNT(l.member_id) <span class="k">AS</span> june_loans
+<span class="k">FROM</span> demo_members <span class="k">AS</span> m
+<span class="k">LEFT</span> <span class="k">JOIN</span> demo_member_loans <span class="k">AS</span> l
+       <span class="k">ON</span> l.member_id = m.id <span class="k">AND</span> l.loaned_on &gt;= <span class="s">'2026-06-01'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> m.id, m.name
+<span class="k">ORDER</span> <span class="k">BY</span> m.name;
+
+<span class="k">DROP</span> <span class="k">DATABASE</span> pitfall_demo;</pre>
+<pre class="out">+-------+------------+
+| name  | june_loans |
++-------+------------+
+| Kevin |          0 |
+| Rosa  |          1 |
+| Tessa |          0 |
++-------+------------+</pre>
+The DROP at the end removes the scratch database. Leave the four error numbers on the board: 1064, 3780, 3814, 1824.</li>
+</ol>
+</div>
+<div class="blk lab"><div class="h">Studio: Milestone 1, Design (30 minutes)</div>
+<ul class="tick">
+  <li><b>Task (lesson, Milestone 1):</b> on paper or in a text file, the tables with their columns, types and keys; the relationships (a sketch like the lesson's diagram is enough); and each of Rosa's eight requirements next to where the design enforces or answers it. No SQL yet.</li>
+  <li><b>Use the workbook's Milestone 1 page:</b> the eight-row requirement table and the starter schema checklist (primary keys, named foreign keys with matching types and a deliberate ON DELETE, NOT NULL and UNIQUE, ENUM or lookup table with a reason, DECIMAL and DATE, two or more CHECKs, indexes for the open-loan lookups, no derived data, snake_case plural names).</li>
+  <li><b>Check-in (2 minutes each, from minute 10):</b> the learner points at each requirement and says where it lives. Pass = all eight have a home and requirement 5's five rules are in a procedure, not in CHECKs. Ask one "why" question: "why an ENUM there?", "what happens to a member's loans if the member is deleted?". Tick the tracker.</li>
+  <li><b>Common design slips to coach:</b> a <code class="inline">courses</code> text column in members ("how do you store the date for each course?"); <code class="inline">available</code> or <code class="inline">times_borrowed</code> columns ("what if a return is recorded and the flag is not reset?"); one <code class="inline">name</code> column for tools AND members in one table; <code class="inline">ON DELETE CASCADE</code> on loans ("Rosa said nobody may delete history"); no <code class="inline">returned_on</code> ("how do you know a loan is open?").</li>
+  <li><b>Fast finishers:</b> compare with the reference design on the lesson page (open it now) and write one difference they can defend in their notes; then start Milestone 2.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab (15 minutes)</div>
+<p><b>Files:</b> <code class="inline">labs/module-13/l8_2-final-project/gift_cards_starter.sql</code>, then <code class="inline">labs/module-13/l8_2-final-project/debug_gift_card_proofs.sql</code>; reference <code class="inline">labs/module-13/l8_2-final-project/gift_cards_solution.sql</code>. New practice on the bookstore (reload it first: <code class="inline">SOURCE labs/_states/bookstore.sql</code>): a gift-card feature with two tables, built like Milestone 2 asks: re-runnable, parents first, every constraint named.</p>
+<ul class="tick">
+  <li><b>Run it as shipped (2m):</b> four constraints come back (two foreign keys on gift_card_uses, the amount CHECK and PRIMARY on gift_cards) and a TODO line for the balances.</li>
+  <li><b>TODOs 1 to 4 (8m):</b> one named constraint each: <code class="inline">uq_gift_cards_code</code>, <code class="inline">fk_gift_cards_customer</code>, <code class="inline">chk_gift_cards_dates</code> (two columns, never CURDATE), the junction's composite PRIMARY KEY and <code class="inline">chk_gcu_amount</code>. <b>Expected:</b> nine constraints, three CHECK clauses. TODO 5 (the balance, derived with LEFT JOIN and COALESCE) is for fast finishers.</li>
+  <li><b>Then the proofs (5m):</b> learners write the expected error number next to each test in <code class="inline">debug_gift_card_proofs.sql</code>, then run it. <b>Expected:</b> 3819, 3819, 1452, 1062, 1265, 1452 in that order, one row inside the transaction, zero after ROLLBACK. Ask: "which test would have passed silently before your TODOs?" (B, C and D.)</li>
+  <li><b>Debrief (1m):</b> "This file is your Milestone 2 test block in miniature. Copy the shape: START TRANSACTION, one good parent row, one bad statement per rule, ROLLBACK, a count."</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Studio: Milestone 2, Build the schema (40 minutes)</div>
+<ul class="tick">
+  <li><b>Mini-demo first (5m), the test pattern from the lesson:</b> with the reference schema loaded on the projector (run the lesson's <code class="inline">01_schema.sql</code> in your tool-library terminal), show the transaction and two of the four tests. The real outputs:</li>
+</ul>
+<pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+
+<span class="k">INSERT</span> <span class="k">INTO</span> categories (name) <span class="k">VALUES</span> (<span class="s">'Hand Tools'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> members (first_name, last_name, email, joined_on)
+<span class="k">VALUES</span> (<span class="s">'Test'</span>, <span class="s">'Member'</span>, <span class="s">'test@example.org'</span>, <span class="s">'2026-01-01'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> tools (name, category_id, replacement_value, acquired_on)
+<span class="k">VALUES</span> (<span class="s">'Test hammer'</span>, <span class="s">1</span>, <span class="s">15.00</span>, <span class="s">'2026-01-01'</span>);</pre><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> loans (tool_id, member_id, loaned_on, due_on)
+<span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">1</span>, <span class="s">'2026-06-10'</span>, <span class="s">'2026-06-03'</span>);</pre><pre class="out">ERROR 3819 (HY000): Check constraint 'chk_loans_due' is violated.</pre><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> tools (name, category_id, replacement_value, acquired_on)
+<span class="k">VALUES</span> (<span class="s">'Mystery tool'</span>, <span class="s">99</span>, <span class="s">10.00</span>, <span class="s">'2026-01-01'</span>);</pre><pre class="out">ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (`tool_library`.`tools`, CONSTRAINT `fk_tools_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`))</pre><pre class="code"><span class="k">ROLLBACK</span>;
+
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> members_left <span class="k">FROM</span> members;</pre><pre class="out">+--------------+
+| members_left |
++--------------+
+|            0 |
++--------------+</pre><ul class="tick">
+  <li>Say: "a failed statement inside a transaction only undoes itself; ROLLBACK removes the good rows too. CREATE TABLE cannot be rolled back, which is why the tests come after the schema."</li>
+  <li><b>Task (lesson, Milestone 2):</b> <code class="inline">01_schema.sql</code> starting with <code class="inline">DROP DATABASE IF EXISTS tool_library;</code>, tables parents first, every constraint named, the open-loan indexes; then one statement each constraint must reject.</li>
+  <li><b>Check-in (from minute 25):</b> the learner runs <code class="inline">SOURCE 01_schema.sql</code> twice in a row (no ERROR either time), then the test block (every test refused, <code class="inline">members_left</code> or their equivalent 0). Tick the tracker.</li>
+  <li><b>Coach:</b> a FK with a different type (3780) or a parent created later (1824): the demo's numbers on the board; a test that is NOT refused (a missing constraint: "which rule did this test expect?"); constraints without names (the error then says <code class="inline">loans_chk_1</code>: ask them to name it so the error explains itself).</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Studio: Milestone 3, Test data (25 minutes)</div>
+<ul class="tick">
+  <li><b>Task (lesson, Milestone 3):</b> <code class="inline">02_data.sql</code> that first runs <code class="inline">SOURCE 01_schema.sql</code>, then about 8 members, 5 categories, 2 courses, 12 tools and 15 or more loans over several months, with explicit ids and the planted edge cases: a suspended member, a member who never borrowed, a tool in repair, a tool never lent, a tie for most popular in a category, loans open, overdue and returned late.</li>
+  <li><b>Learners following the reference data</b> get exactly these counts from the lesson's last query (real run):</li>
+</ul>
+<pre class="out">+----------------+-----------+
+| table_name     | row_count |
++----------------+-----------+
+| members        |         8 |
+| categories     |         5 |
+| safety_courses |         2 |
+| member_courses |         7 |
+| tools          |        12 |
+| loans          |        16 |
++----------------+-----------+</pre><ul class="tick">
+  <li><b>Check-in:</b> the counts query, then "show me your suspended member, your never-borrowed member and your overdue loan". Learners with their own data must be able to point at each edge case by id.</li>
+  <li><b>Coach:</b> 1452 halfway through (a child row before its parent's INSERT, or an id typo); 3819 from <code class="inline">chk_loans_due</code> (dates swapped: the CHECK just caught a real data error, say so); loans for the suspended member that start AFTER the suspension (fine, but say how the story goes) and two open loans for the same tool (the procedure will refuse that later, but INSERT does not: ask them to fix the data).</li>
+</ul>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Rules that look at other rows written as CHECKs.</b> "CHECK ((SELECT COUNT(*) ...) &lt; 3)" fails (subqueries are not allowed in a CHECK). Coach with the board's last line: "one row or other rows?" and move the rule to the Milestone 5 procedure, written down now in the design notes.</li>
+  <li><b>Scripts that only run once.</b> A learner fixes a column with ALTER TABLE at the prompt and the script no longer matches the database. Coach: "change the file, run the file": the rubric's Schema row and Milestone 8's rebuild depend on it.</li>
+  <li><b>Happy-path test data.</b> Every member borrowed, nothing overdue. Coach with the edge-cases lab and Q10: "which of your queries would return nothing? Is that the right answer, or is the data hiding a bug?"</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the check-ins:</p>
+<ul class="tick">
+  <li>Where does "at most three tools at once" live, and why not a CHECK? <b>Answer:</b> in checkout_tool, inside a transaction: it counts other rows, and a CHECK sees only the row being written.</li>
+  <li>Which table carries <code class="inline">completed_on</code>, and why there? <b>Answer:</b> member_courses: it is a fact about the pair member + course.</li>
+  <li>Why does a failed test INSERT not stop your test block? <b>Answer:</b> a failed statement only undoes itself; the transaction stays open until ROLLBACK.</li>
+  <li>Which of your tables would you create last, and drop first? <b>Answer:</b> loans (it points at tools and members), and member_courses.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q12 (learners do them at home, after Milestone 3).</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">C) In <code class="inline">checkout_tool</code>, inside a transaction that locks the tool's row</span>; <b>Q2</b> <span data-sc="2">B) <code class="inline">completed_on</code>, the date the member finished the course</span>; <b>Q3</b> <span data-sc="3">One row only: <code class="inline">Ana</code> with <code class="inline">2</code> (Ben and Cy are gone)</span>; <b>Q4</b> <span data-sc="4">B) <code class="inline">ERROR 3780 (HY000): Referencing column 'tool_id' and referenced column 'id' in foreign key constraint 'fk_loans_tool' are incompatible.</code></span>; <b>Q5</b> <span data-sc="5">A) So the script can be run again from scratch and always gives the same result</span>; <b>Q6</b> <span data-sc="6">C) The number of days a loan is overdue</span>; <b>Q7</b> <span data-sc="7"><code class="inline">0</code> (in a column named <code class="inline">courses_left</code>)</span>; <b>Q8</b> <span data-sc="8">B) <code class="inline">categories</code>, <code class="inline">members</code>, <code class="inline">tools</code>, <code class="inline">loans</code></span>; <b>Q9</b> <span data-sc="9">A) The loans foreign keys have no ON DELETE rule (refuse), and no account is granted DELETE</span>; <b>Q10</b> <span data-sc="10">D) The test data has no overdue loan and every member has borrowed something</span>; <b>Q11</b> <span data-sc="11">The library adds and lists categories (they are data); the conditions are a fixed list the code relies on</span>; <b>Q12</b> <span data-sc="12">A) <code class="inline">ERROR 1064 (42000): You have an error in your SQL syntax ... near 'condition VARCHAR(10)</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> learners who struggle with the design start from the lesson's reference design table (open the hidden block) and write the "why" for each row in their own words: that is honest Design work at the "meets" level. In Milestone 2, pair them for the test block. A learner far behind can type the reference <code class="inline">01_schema.sql</code> and then write their OWN tests (the tests are where the understanding shows).</p>
+<p><b>Stretch:</b> the lesson's Exercise 4 idea early (a generated column that makes "one open loan per tool" a UNIQUE constraint); the FAQ's alternative clinic brief as a second design; a lookup table for tool conditions instead of the ENUM, with the trade-off written down.</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 4 minutes)</div>
+<p>On the slide. Learners answer in the workbook's Exit Ticket box or on a sticky note. Sort into "got it" / "not yet" before Session 14: question 2's pile is the list for the Session 14 warm-up.</p>
+<ol class="steps">
+  <li>Name one of Rosa's rules that must live in a procedure, and say why it cannot be a CHECK. <b>Answer:</b> any of: one open loan per tool, at most three per member, course before the chainsaw, not while in repair, not while suspended: each looks at other rows (or another table), and a CHECK sees only the row being written.</li>
+  <li>Your 01_schema.sql ran once. What must be true for it to run a second time without an error? <b>Answer:</b> it starts with <code class="inline">DROP DATABASE IF EXISTS tool_library;</code> (or drops its tables, children first) and creates everything again.</li>
+  <li>Write one test statement that proves a CHECK on your loans table works. What should MySQL answer? <b>Answer:</b> for example an INSERT with <code class="inline">due_on</code> before <code class="inline">loaned_on</code>; MySQL must answer <code class="inline">ERROR 3819 ... Check constraint 'chk_loans_due' is violated.</code></li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 3 to 5 hours)</div>
+<ul class="tick">
+  <li><b>Finish Milestones 1 to 3</b> if the room did not: the design with every requirement mapped, <code class="inline">01_schema.sql</code> running twice with its tests, <code class="inline">02_data.sql</code> with the edge cases and the counts query.</li>
+  <li><b>Milestone 4, the Saturday questions</b> (<code class="inline">03_queries.sql</code>): six commented queries, all with <code class="inline">SET @today = '2026-06-15';</code>, at least two checked by hand against the data. Learners on the reference data can compare with the lesson's hidden reference; everyone writes down the two hand checks.</li>
+  <li><b>Lab:</b> <code class="inline">labs/module-13/l8_2-final-project/edge_cases_starter.sql</code>: four report queries that only edge cases can test (an inner join that should be a LEFT JOIN, a WHERE that should be in ON, ROW_NUMBER that should be RANK). It is Milestone 4's patterns on the bookstore.</li>
+  <li><b>Optional:</b> <code class="inline">labs/module-13/l8_2-final-project/debug_build_order.sql</code> (four build mistakes in a bike-share script); the self-check Q1 to Q12 in the workbook.</li>
+  <li><b>Journal:</b> the lesson's prompt can wait for Session 14; tonight write which requirement was hardest to place and where you put it.</li>
+  <li><b>Read ahead for Session 14:</b> Milestones 5 to 7 on the lesson page (try them first, the reference stays hidden) and Lesson 7.2's EXIT HANDLER pattern.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Bring list for Session 14</div>
+<ul class="tick">
+  <li>The <code class="inline">tool-library</code> folder with <code class="inline">01_schema.sql</code>, <code class="inline">02_data.sql</code> and <code class="inline">03_queries.sql</code> that rebuild the database from scratch (Session 14 starts by running them).</li>
+  <li>The design notes and the printed rubric.</li>
+  <li>A laptop with MySQL 9.7 and the bookstore loaded (the Session 14 labs use it), and the root password.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> a passed design check-in for every learner; 01_schema.sql running twice with its tests; the demo's Mistake 5.</li>
+  <li><b>Cut first (saves 15m):</b> the guided lab. Hand out the gift-cards files as homework; the Milestone 2 mini-demo shows the test pattern.</li>
+  <li><b>Cut second (saves 6m):</b> demo Mistakes 2 and 4. Point at the lesson page and the trap table.</li>
+  <li><b>Cut third (saves 25m):</b> the Milestone 3 studio: it becomes homework (it is mostly typing). Make sure everyone has seen the edge-case list on the slide.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>Start Milestone 4 together: query 1 (on the shelf now) with NOT EXISTS, checked by hand against the data (7 of 12 tools for the reference data).</li>
+  <li>Run <code class="inline">debug_build_order.sql</code> for everyone; each fix is one volunteer.</li>
+  <li>Show the reference design and let pairs argue for one difference in their own design (two minutes each).</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 13 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

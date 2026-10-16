@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 1</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 1: What Databases Are and Installing MySQL</h1>
+    <p class="sub">How to teach the first session of MySQL Foundations. Welcome a room of beginners, find out which machines have a working MySQL 9.7 and what the room already knows about spreadsheets and files, then show why databases exist (a sheet that cannot keep one customer's name straight, a server that refuses bad rows with numbered errors) and make every laptop ready: an install clinic, connect and verify, and a health check learners can rerun all course.</p>
+    <div class="meta-row">
+      <span class="chip"><b>2</b> lessons</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lessons <b>1.1–1.2</b></span>
+      <span class="chip">Session <b>1</b> of 14 · Part 1</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Same rhythm for both lessons: frame (the goal and one mental model) → live demo (you type, they type along) → guided lab (a kit lab, new practice on the lesson's ideas) → start the lesson's own project. The lesson exercises, quiz and journal are homework.</li>
+  <li>Type, do not paste. Every SQL block below was run to produce the output printed under it, on MySQL 9.7.2 with the default settings. Ask for a prediction before every statement that prints something, and read error messages from the left, out loud: the number, then the reason.</li>
+  <li>The lessons are the reference. Keep <code class="inline">lesson_01.html</code> and <code class="inline">lesson_02.html</code> open in browser tabs for the diagrams (the application, the server and the files; client, port and server) and the per-platform installation sections. Labs live in <code class="inline">labs/module-01/</code>: <code class="inline">_starter.sql</code> files are handouts, <code class="inline">_solution.sql</code> files are yours.</li>
+  <li>Session 1 is different in two ways. It opens with 30 minutes of welcome, environment check and diagnostic instead of the usual 10-minute warm-up, and Lesson 1.2's room time is mostly an <b>install clinic</b>: installing MySQL is prework (the kit's setup guide follows Lesson 1.2), so the room fixes what went wrong instead of watching progress bars.</li>
+  <li>Part 1 (Sessions 1 to 7) can run on its own as a short course; nothing in this session depends on Part 2. Teal blocks are hands-on, amber blocks are watch-outs. Lesson codes (1.1, 1.2) match the course site.</li>
+</ul>
+<div class="note warn"><div class="t">The #1 risk of Session 1: the install eats the session</div>
+<p>MySQL installs differently on every platform, and each one has its own trap: the Windows MSI does not put <code class="inline">mysql</code> on the PATH; Homebrew's <code class="inline">mysql@9.7</code> is keg-only; Ubuntu's own package is 8.0 or 8.4 and logs root in through <code class="inline">sudo</code>; Docker needs a free port 3306. Done together on venue Wi-Fi, installation fills three hours and nobody writes a line of SQL. <b>Before:</b> send the setup guide a week ahead (install MySQL 9.7 with Lesson 1.2's section for your platform, then run the environment check) and ask every learner to reply with the check's last table. <b>In the room:</b> the check gets 12 minutes in the opening; a NOT READY machine gets a ready partner until the 25-minute install clinic at 1:45, not your attention during Lesson 1.1. <b>After:</b> whoever is still not ready leaves with a numbered plan and runs the check again before Session 2.</p>
+</div>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>A week before:</b> email the setup guide (install MySQL 9.7 LTS following Lesson 1.2's section for your platform, set a strong root password, then run <code class="inline">labs/module-01/l1_0-orientation/check_environment.sh</code> on macOS and Linux or <code class="inline">labs/module-01/l1_0-orientation/check_environment.ps1</code> on Windows). Ask learners to reply with the last table it prints. No reply means an install risk: chase it.</li>
+  <li>☐ <b>Files to hand out</b> (shared folder or USB stick, in case the network fails): the whole <code class="inline">labs/</code> folder <b>without</b> the <code class="inline">*_solution.sql</code> files, and the workbook. Learners keep <code class="inline">labs/</code> in the course folder the setup guide has them create (<code class="inline">mysql-course</code> in their home folder) and open their terminal there, so <code class="inline">SOURCE labs/...</code> paths work. Put the platform installers on the stick too (Windows MSI, macOS DMG for both processor types): a 200 MB download per learner over venue Wi-Fi is how a clinic stalls.</li>
+  <li>☐ <b>Run the kit check once:</b> <code class="inline">python3 labs/check_labs.py module-01</code> from this kit's folder. Every line should say PASS (13 files, a few seconds). Then run the environment check on the projector machine so you can show what READY looks like.</li>
+  <li>☐ <b>Downloads:</b> none for the course database today (Lesson 2.1 builds <code class="inline">bookstore</code> in Session 2). The Docker image <code class="inline">mysql:9.7</code> (about 250 MB) if you will demonstrate Docker.</li>
+  <li>☐ <b>Projector machine:</b> MySQL 9.7 running, a terminal open in your course folder (the one with <code class="inline">labs/</code>) at 18 pt or larger, logged out (you log in during the 1.2 demo), and a second terminal already in the <code class="inline">mysql&gt;</code> client for the 1.1 demo. Browser tabs: the course home page, <code class="inline">lesson_01.html</code>, <code class="inline">lesson_02.html</code>.</li>
+  <li>☐ <b>Board, before learners arrive:</b> three boxes, "client (you type)" → "server (mysqld, port 3306)" → "data on disk", with "a database lives inside the server" written under the middle box; the error triage line "command not found = PATH · 1045 = credentials · 2002/2003 = server stopped or wrong address"; and an empty box headed "CRUD".</li>
+  <li>☐ <b>Print or share:</b> the workbook (its Start Here page has the environment checklist and the diagnostic), sticky notes for help flags and the exit ticket, and paper for the 1.1 project sketch.</li>
+</ul>
+<div class="blk warn"><div class="h">Known environment traps</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>Windows: <code class="inline">mysql</code> "is not recognized as the name of a cmdlet"</td><td>The MSI does not add the client to the PATH</td><td>Lesson 1.2, Windows Step 4: add <code class="inline">C:\Program Files\MySQL\MySQL Server 9.7\bin</code> to the user Path, then open a NEW PowerShell window.</td></tr>
+<tr><td>macOS: <code class="inline">zsh: command not found: mysql</code> after <code class="inline">brew install mysql@9.7</code></td><td>Versioned formulae are keg-only</td><td>The <code class="inline">export PATH="$(brew --prefix)/opt/mysql@9.7/bin:$PATH"</code> line from the lesson, in <code class="inline">~/.zshrc</code>, then a new Terminal window.</td></tr>
+<tr><td><code class="inline">SELECT VERSION();</code> says 26.x</td><td><code class="inline">brew install mysql</code> or <code class="inline">mysql:latest</code> gave an innovation release</td><td>Fine for today; reinstall <code class="inline">mysql@9.7</code> / <code class="inline">mysql:9.7</code> at home to match the lesson outputs.</td></tr>
+<tr><td>Ubuntu: version 8.0.x, or root works only with <code class="inline">sudo mysql</code></td><td>The distribution's own package (and its auth_socket root)</td><td>Add MySQL's APT repository (Lesson 1.2), or set a password with the lesson's ALTER USER statement.</td></tr>
+<tr><td><code class="inline">ERROR 1045 (28000): Access denied</code></td><td>Wrong password, a missing <code class="inline">-p</code>, or a Docker container whose password was set on an earlier first start</td><td>Retype carefully; Docker: <code class="inline">MYSQL_ROOT_PASSWORD</code> counts only on the very first start of a volume.</td></tr>
+<tr><td><code class="inline">ERROR 2002</code> (socket) or <code class="inline">ERROR 2003</code> (port)</td><td>The server is stopped, or the client asks the wrong place (<code class="inline">localhost</code> with Docker on macOS/Linux)</td><td>Start it (<code class="inline">Start-Service</code>, <code class="inline">brew services start mysql@9.7</code>, <code class="inline">sudo systemctl start mysql</code>, <code class="inline">docker start mysql97</code>); Docker: <code class="inline">-h 127.0.0.1 -P 3306</code>.</td></tr>
+<tr><td><code class="inline">docker run</code> fails: port is already allocated</td><td>Another MySQL, MariaDB, XAMPP or MAMP already listens on 3306</td><td>Stop the old server, or publish on another port: <code class="inline">-p 3307:3306</code>, then connect with <code class="inline">-P 3307</code>.</td></tr>
+<tr><td>The check says <code class="inline">CHECK  MariaDB, not MySQL</code></td><td>XAMPP or a distribution's default package</td><td>Fine to follow along with the version notes; install MySQL 9.7 at home for matching outputs.</td></tr>
+<tr><td>Windows: the <code class="inline">.ps1</code> check "cannot be loaded because running scripts is disabled"</td><td>PowerShell's execution policy</td><td>Run it with <code class="inline">powershell -ExecutionPolicy Bypass -File ...</code> as the README shows (nothing to change system-wide).</td></tr>
+<tr><td>A locked work laptop: nothing can be installed</td><td>No administrator rights</td><td>Pair today. Docker Desktop or a personal laptop at home; MySQL's "ZIP Archive" for Windows runs without installing but needs manual setup (instructor help, not in the room).</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 1 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">30</td><td>Welcome, environment check and diagnostic</td><td>Introductions, how the course runs, <code class="inline">check_environment</code> on every machine, a six-question spreadsheet-to-SQL diagnostic (not graded).</td></tr>
+      <tr><td class="t">0:30</td><td class="t">10</td><td><b>1.1</b> Frame and mental model</td><td>The bookshop that outgrew its spreadsheet; the application, the server and the files; tables and keys.</td></tr>
+      <tr><td class="t">0:40</td><td class="t">20</td><td><b>1.1</b> Live demo</td><td>The lesson's first taste of SQL typed live: a practice database, CRUD, three refused rows, cleanup.</td></tr>
+      <tr><td class="t">1:00</td><td class="t">15</td><td><b>1.1</b> Guided lab</td><td><code class="inline">labs/module-01/l1_1-what-is-a-database/order_sheet_starter.sql</code> in pairs: what one big sheet gets wrong.</td></tr>
+      <tr><td class="t">1:15</td><td class="t">10</td><td><b>1.1</b> Start the lesson project</td><td>Sketch the bookstore on paper, Steps 1 and 2; Steps 3 to 5 go home.</td></tr>
+      <tr><td class="t">1:25</td><td class="t">10</td><td>Break</td><td>NOT READY machines line up for the install clinic. Leave the server, client and database picture on the board.</td></tr>
+      <tr><td class="t">1:35</td><td class="t">10</td><td><b>1.2</b> Frame and mental model</td><td>Server, client, port; LTS versus innovation releases; one install path per laptop.</td></tr>
+      <tr><td class="t">1:45</td><td class="t">25</td><td><b>1.2</b> Install clinic</td><td>Fix the machines that were NOT READY by platform; ready learners help, then rerun the check.</td></tr>
+      <tr><td class="t">2:10</td><td class="t">15</td><td><b>1.2</b> Live demo</td><td>Connect and verify; the health-check queries; two pieces of old advice that fail on purpose.</td></tr>
+      <tr><td class="t">2:25</td><td class="t">15</td><td><b>1.2</b> Guided lab</td><td><code class="inline">labs/module-01/l1_2-installing-mysql/server_facts_starter.sql</code>: ask your server who it is.</td></tr>
+      <tr><td class="t">2:40</td><td class="t">10</td><td><b>1.2</b> Start the lesson project</td><td>The installation health check, Steps 3 and 4; Step 5 goes home.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up</td><td>Exit ticket (3 questions), homework, bring list for Session 2.</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> The lesson pages estimate 75 + 90 = 165 minutes for a solo learner, and after the 30-minute opening, the break and the wrap-up the room has 130. Lesson 1.1 keeps its full shape (model, demo, lab, project start). Lesson 1.2's installation sections are prework from the setup guide: the room uses its time for an install clinic, a connect-and-verify demo, a short lab and the start of the health check.</p>
+<p><b>Goes home (about 2 to 3 hours).</b> The bookstore sketch Steps 3 to 5 and the health check Step 5 (stop, fail, start); each lesson's Hands-on Exercises; both Quick Quizzes; both journal entries; Lesson 1.2's "Before the Next Lesson" list. Anyone still NOT READY finishes the installation with the numbered plan from the clinic.</p>
+<p><b>Protect, in this order:</b> the environment check result for every learner (nobody leaves without knowing whether their machine is ready and what to do next); the install clinic; the 1.1 demo through the three refused rows (the database saying no is the idea the whole course leans on); the order-sheet lab's TODO 3 (Dune Messiah). <b>Cut first:</b> the 1.2 demo Steps 9 and 10 (the old advice; hand out <code class="inline">debug_old_advice.sql</code> instead), then the 1.1 project start (send all five steps home), then the 1.2 project start (the lab already ran most of those queries).</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Welcome, Environment Check and Diagnostic</h3><span class="dur">30 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">5m</td><td>Welcome and introductions</td></tr>
+<tr><td class="t">5m</td><td>How the course runs: 14 sessions in two parts, two lessons a session, the room and home split, the journal</td></tr>
+<tr><td class="t">12m</td><td>Environment check: <code class="inline">check_environment</code> ends with READY on every machine, or the machine gets a partner and a clinic slot</td></tr>
+<tr><td class="t">8m</td><td>Diagnostic: six spreadsheet and computer questions, not graded</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Sequence and talking points</div>
+<ul class="tick">
+  <li><b>Welcome (5m).</b> One minute on yourself, including a time when data in the wrong place cost someone (a spreadsheet with two versions of the truth works well). Then a quick round: name, where they meet data today (spreadsheets, a web shop, reports), and one question they wish they could ask their data. Write three or four on the board; they come back in the 1.1 journal prompt. Housekeeping in one breath: break at 1:25, where the lab files are, and "if you are stuck, put a sticky note on your laptop lid and keep trying while I get to you."</li>
+  <li><b>How the course runs (5m).</b> Show the course home page. Say: "Fourteen sessions of three hours in two parts. Part 1, the first seven sessions, takes you from nothing to joining tables; Part 2 goes beyond the basics and ends with a database you design yourself. Every lesson uses the same online bookstore, so by the end you will know its books, customers and orders well." Then the deal: "Each lesson was written for someone working alone for 75 to 110 minutes, so two do not fit in three hours. In this room we do what is hard alone: the mental model, a live demo, a guided lab, and the first steps of each project. At home you finish the projects and do the exercises, quiz and journal: plan on two to three hours a week." Scroll once through <code class="inline">lesson_01.html</code>: objectives, sections with real output, common mistakes, a project in steps, exercises with hidden solutions, a quiz, a journal prompt.</li>
+  <li><b>Environment check (12m).</b> Say: "Before any new ideas, we find out which machines are ready." On the projector, then theirs: <b>1</b> open a terminal in the course folder (the one with <code class="inline">labs/</code>); <b>2</b> macOS/Linux: <code class="inline">bash labs/module-01/l1_0-orientation/check_environment.sh</code>, Windows: <code class="inline">powershell -ExecutionPolicy Bypass -File labs\module-01\l1_0-orientation\check_environment.ps1</code>; <b>3</b> type the root password when asked. Done = the last table says <code class="inline">READY for MySQL Foundations</code> (<code class="inline">READY WITH NOTES</code> on 8.4 or MariaDB is fine for today). Anyone who saw READY at home runs it again and becomes a helper. NOT READY falls into three piles: client not found (PATH: often one minute, fix now), 1045 / 2002 / 2003 (password or server stopped: two minutes, fix now), nothing installed (do not start a download now: pair with a ready neighbor; install clinic at 1:45). Write the third pile's names on a sticky note.</li>
+  <li><b>Diagnostic (8m).</b> Say: "Six quick questions on the spreadsheet and computer skills SQL builds on. Not a test, nobody collects it. It tells you what to practice and tells me what to slow down for." Learners answer D1 to D6 on the workbook's Start Here page (about four minutes), then show fingers (1 to 4 for A to D) as you reveal each. Keep a tally of wrong answers per question on a sticky note.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Diagnostic answers and how to read the tally</div>
+<p>Answers: <b>D1</b> B) 2; <b>D2</b> C) Dune; <b>D3</b> A) 1; <b>D4</b> D) 44.97; <b>D5</b> B) 5; <b>D6</b> B) <code class="inline">Downloads/bookstore.sql</code>.</p>
+<ul class="tick">
+  <li><b>D1 (filter) and D2 (sort)</b> are WHERE and ORDER BY in disguise: the shape of every query in Module 3. Misses here are rare; if a third of the room misses either, read the 1.1 demo's SELECT aloud as a filter ("keep the rows where the city is Chicago").</li>
+  <li><b>D3 (AND versus OR)</b> is the single best predictor of trouble in Lesson 3.1. Two or more misses: in the 1.1 lab, do TODO 1 together and say the WHERE line aloud each time.</li>
+  <li><b>D4 (a formula column) and D5 (empty cells)</b> come back as expressions in SELECT and as NULL. Misses on D5 are common and not urgent: Lessons 2.2 and 3.3 teach NULL properly.</li>
+  <li><b>D6 (paths)</b> predicts trouble with <code class="inline">SOURCE labs/...</code> today and with running <code class="inline">.sql</code> files in Session 2. Learners who missed it get the typing role in the lab pair, with you nearby for the first SOURCE.</li>
+  <li><b>Three or more wrong:</b> not a problem to announce. Pair them with a strong neighbor today, and at the wrap-up hand them <code class="inline">labs/module-01/l1_0-orientation/diagnostic_starter.sql</code>: the same six moves done in SQL, one small gap each (<code class="inline">diagnostic_solution.sql</code> is your reference). The workbook's Start Here page says where each skill comes back.</li>
+</ul>
+</div>
+<div class="blk warn"><div class="h">Watch-outs</div>
+<ul class="tick">
+  <li><b>Do not debug one machine in front of the room.</b> Two minutes per machine during the check, then pair and move on: the install clinic at 1:45 exists so that you can say "we will fix that at 1:45" with a straight face.</li>
+  <li><b>Mixed backgrounds.</b> Some learners live in spreadsheets and have never opened a terminal; some write code and have never designed a table. The diagnostic and the terminal steps are for both groups.</li>
+  <li><b>"I already use SQL."</b> Welcome them and give them a job: helper during the check and the clinic, and the stretch tasks in each lab. Ask them to watch for the habits today is about (reading error numbers, checking which server answered), which experienced people skip most.</li>
+  <li><b>MariaDB and other versions.</b> XAMPP and some hosts ship MariaDB under the name MySQL. Today it only changes a few outputs; the check says so in a CHECK line. Do not reinstall in the room.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plans</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">1.1</span><h3>What Is a Database?</h3><span class="dur">55 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Explain what a database and a database management system (DBMS) are, and name three problems a database solves that a spreadsheet does not</li>
+  <li>Tell relational databases apart from the main non-relational kinds, and pick a sensible type for a simple scenario</li>
+  <li>Point to the table, columns, rows, primary key and foreign key in a small example</li>
+  <li>Describe what SQL is and match the four CRUD operations to INSERT, SELECT, UPDATE and DELETE</li>
+  <li>Sketch the tables of a small online bookstore on paper, with keys and relationships</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: the bookshop that outgrew its spreadsheet; application, server, files; tables, rows, keys</td></tr>
+<tr><td class="t">20m</td><td>Live demo: the lesson's first taste of SQL, three refused rows, cleanup</td></tr>
+<tr><td class="t">15m</td><td>Guided lab: <code class="inline">order_sheet_starter.sql</code> in pairs</td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: sketch the bookstore, Steps 1 and 2</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Tell the story while you draw it: "A small online bookstore keeps everything in one spreadsheet: one row per order, with the customer's name, email and city, and the books typed into a cell. It works for fifty orders. At five thousand, Alice's name is spelled three ways, Bob lives in two cities at once, and two people saving the file overwrite each other."</p>
+<p>Then the three boxes on the board: "Your application never touches the data files. It sends SQL to a <b>server</b>, the DBMS, and the server reads and writes the files, enforces the rules and answers. MySQL is that server. A <b>database</b> is your data inside it."</p>
+<p>Then the one idea of relational design, pointing at two small tables you draw: "Store each fact once, and point to it with a key. Alice lives in the customers table exactly once, with id 1. Every order stores only her id. Change her email in one place and every order is right." Write <b>primary key</b> (tells rows apart) and <b>foreign key</b> (points to another table's row) next to the two columns.</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>This is the lesson's "A First Taste of SQL" and its Common Mistakes, typed live in the <code class="inline">mysql&gt;</code> client on the projector. Ready learners type along; the rest watch and get their turn after the clinic. Ask for a prediction before every statement that prints something; read every error number aloud.</p>
+<ol class="steps">
+  <li><b>A practice database, and a table (3m).</b> "Everything I type goes to the MySQL server; the server does the reading and writing. First a practice database, then a table for customers. Every column gets a name, a type and its rules." Read the column lines aloud: AUTO_INCREMENT hands out ids, NOT NULL means required, UNIQUE means no two alike.
+<pre class="code"><span class="k">CREATE</span> <span class="k">DATABASE</span> preview_shop;   <span class="c">-- a new, empty database</span>
+<span class="k">USE</span> preview_shop;               <span class="c">-- work inside it from now on</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> customers (
+    id         <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    first_name <span class="k">VARCHAR</span>(<span class="s">50</span>)  <span class="k">NOT</span> <span class="k">NULL</span>,
+    last_name  <span class="k">VARCHAR</span>(<span class="s">50</span>)  <span class="k">NOT</span> <span class="k">NULL</span>,
+    email      <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">UNIQUE</span>,
+    city       <span class="k">VARCHAR</span>(<span class="s">50</span>)
+);</pre>
+<pre class="out">Database changed</pre>
+MySQL only answers <code class="inline">Database changed</code> after <code class="inline">USE</code>; the other two statements succeed quietly. Ready learners type along; the others watch (they install at 1:45).</li>
+  <li><b>Create: three customers (2m).</b> "INSERT is the C in CRUD. I leave out id: MySQL fills it in."
+<pre class="code"><span class="c">-- @status</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> customers (first_name, last_name, email, city)
+<span class="k">VALUES</span> (<span class="s">'Alice'</span>, <span class="s">'Johnson'</span>,  <span class="s">'alice@example.com'</span>, <span class="s">'New York'</span>),
+       (<span class="s">'Bob'</span>,   <span class="s">'Smith'</span>,    <span class="s">'bob@example.com'</span>,   <span class="s">'Chicago'</span>),
+       (<span class="s">'Carol'</span>, <span class="s">'Williams'</span>, <span class="s">'carol@example.com'</span>, <span class="s">'Los Angeles'</span>);</pre>
+<pre class="out">Query OK, 3 rows affected
+Records: 3  Duplicates: 0  Warnings: 0</pre></li>
+  <li><b>Read: one city (2m).</b> "SELECT is the R. You say WHAT you want, never HOW to find it: that is what declarative means." Ask for a prediction first: how many rows?
+<pre class="code"><span class="k">SELECT</span> first_name, last_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'Chicago'</span>;</pre>
+<pre class="out">+------------+-----------+---------+
+| first_name | last_name | city    |
++------------+-----------+---------+
+| Bob        | Smith     | Chicago |
++------------+-----------+---------+</pre>
+Read the statement as English: select first name, last name and city from customers where the city is Chicago.</li>
+  <li><b>Update: Bob moves (2m).</b> "The WHERE line picks the one row to change. Without it, everybody moves to Boston."
+<pre class="code"><span class="c">-- @status</span>
+<span class="k">UPDATE</span> customers
+<span class="k">SET</span> city = <span class="s">'Boston'</span>
+<span class="k">WHERE</span> id = <span class="s">2</span>;</pre>
+<pre class="out">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0</pre></li>
+  <li><b>Delete, then look at everything (2m).</b> "DELETE is the D. SELECT star means all columns." Point at the gap: Carol's id 3 is gone and will not be reused.
+<pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> customers
+<span class="k">WHERE</span> id = <span class="s">3</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> customers;</pre>
+<pre class="out">+----+------------+-----------+-------------------+----------+
+| id | first_name | last_name | email             | city     |
++----+------------+-----------+-------------------+----------+
+|  1 | Alice      | Johnson   | alice@example.com | New York |
+|  2 | Bob        | Smith     | bob@example.com   | Boston   |
++----+------------+-----------+-------------------+----------+</pre></li>
+  <li><b>Refused 1: a duplicate key (2m).</b> "Now I break the rules on purpose. A spreadsheet takes anything; a database says no, with a number. Read the message from the left: number, then the reason."
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> customers (id, first_name, last_name, email)
+<span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Dave'</span>, <span class="s">'Brown'</span>, <span class="s">'dave@example.com'</span>);</pre>
+<pre class="out">ERROR 1062 (23000): Duplicate entry '1' for key 'customers.PRIMARY'</pre>
+id 1 is Alice's. Fix: leave id out and let AUTO_INCREMENT choose.</li>
+  <li><b>Refused 2: text where a number belongs (1m).</b> "id is a whole number. 'abc' is not."
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> customers (id, first_name, last_name, email)
+<span class="k">VALUES</span> (<span class="s">'abc'</span>, <span class="s">'Dave'</span>, <span class="s">'Brown'</span>, <span class="s">'dave@example.com'</span>);</pre>
+<pre class="out">ERROR 1366 (HY000): Incorrect integer value: 'abc' for column 'id' at row 1</pre></li>
+  <li><b>Refused 3: a required value missing (2m).</b> "last_name was declared NOT NULL and has no default." Then the silent fourth problem from the lesson, said aloud: copying a customer's name into every order raises no error at all; that is what the lab is about.
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> customers (first_name, email)
+<span class="k">VALUES</span> (<span class="s">'Dave'</span>, <span class="s">'dave@example.com'</span>);</pre>
+<pre class="out">ERROR 1364 (HY000): Field 'last_name' doesn't have a default value</pre></li>
+  <li><b>Clean up (1m).</b> "DROP DATABASE deletes a database and everything in it, with no undo. Read the name twice before you press Enter."
+<pre class="code"><span class="k">DROP</span> <span class="k">DATABASE</span> preview_shop;</pre>
+No output on success. Draw the server / client / database picture again: preview_shop lived INSIDE the server and is now gone; the server is still running.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Server, client and database blur together.</b> "I installed MySQL but I can't find my database" or "is MySQL the database?" Coach with the board: point at the three boxes and ask "which box are you talking about?" Then the lesson's own line: the server runs in the background, the client is what you type into, a database lives inside the server and you create it.</li>
+  <li><b>A missing semicolon.</b> The client shows <code class="inline">-&gt;</code> and waits; learners think it froze. Coach: "What does the prompt look like? <code class="inline">-&gt;</code> means MySQL is waiting for the end of the statement: type <code class="inline">;</code> and Enter." (Lesson 1.3 covers the prompts properly.)</li>
+  <li><b>Treating every column of a sheet as one table.</b> In the project, a learner draws one big table with <code class="inline">book1</code>, <code class="inline">book2</code>, <code class="inline">book3</code> or a comma-separated list. Coach with the lab's TODO 3: "How would you find every order that contains Dune? What about Dune Messiah?" Then: "a list in a cell needs its own table, one row per item."</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> learners open <code class="inline">labs/module-01/l1_1-what-is-a-database/order_sheet_starter.sql</code>; your reference is <code class="inline">labs/module-01/l1_1-what-is-a-database/order_sheet_solution.sql</code>. It practices the lesson's first section (why a spreadsheet is not enough) on a new sheet: each TODO changes one value in a ready-made query and reveals one spreadsheet problem.</p>
+<ul class="tick">
+  <li><b>SOURCE it first, as shipped (2m).</b> Show the command on the projector: <code class="inline">SOURCE labs/module-01/l1_1-what-is-a-database/order_sheet_starter.sql</code> from a client started in the course folder. Everyone should see the six-row sheet, three <code class="inline">Empty set</code> answers and a 0-row answer. A learner who sees <code class="inline">Failed to open file</code> started the client in another folder: <code class="inline">exit</code>, <code class="inline">cd</code> into the course folder, log in again.</li>
+  <li><b>TODO 1 together on the projector (3m), TODOs 2 to 4 in pairs (8m).</b> Each TODO is a one-word edit in a text editor, then SOURCE again. Circulate for quotes deleted along with the placeholder (an <code class="inline">ERROR 1064</code> syntax error: show them the quotes in the original) and for edits made in the client instead of the file.</li>
+  <li><b>Expected:</b> TODO 1 three spellings of Alice (orders 1, 2 and 6); TODO 2 Bob in Chicago (order 3) and Boston (order 4); TODO 3 four rows (orders 1, 3, 4, 5), and order 4 is Dune Messiah, a different book; TODO 4 order 5 with <code class="inline">about 26</code> in the total column.</li>
+  <li><b>Debrief (2m):</b> one sentence per TODO, from the pairs: copies drift apart (1 and 2), a list in a cell cannot be searched reliably (3), a column with no type accepts anything (4). Then: "Every one of these problems disappears when each fact is stored once, in the right type, and connected with keys. That is what the next twenty-three lessons build." The solution file's step 5 shows the two-table fix in miniature: show its last two results if time allows.</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-01/l1_1-what-is-a-database/crud_tour_starter.sql</code> (the four CRUD statements on a books table, turned off with <code class="inline">--</code> until the learner predicts the result), then <code class="inline">labs/module-01/l1_1-what-is-a-database/debug_rules.sql</code>: four INSERTs that MySQL refuses with errors 1062, 1364, 1366 and 1406.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>Sketch the Bookstore</b>: a paper design of the database this course builds. In the room, do Steps 1 and 2 only (10 minutes).</p>
+<ul class="tick">
+  <li>Read the store's description aloud from the lesson page (Step 1). Learners underline the nouns and turn them into about five table names.</li>
+  <li>Step 2 in pairs: four to six columns per table, each with a type (text, whole number, decimal, date, yes/no).</li>
+  <li><b>Done in the room</b> = five tables (customers, orders, books, authors, categories) with typed columns. Do not show the course design yet.</li>
+  <li><b>Goes home:</b> Step 3 (primary keys: why a title or an email makes a poor one), Step 4 (foreign keys and the two linking tables) and Step 5 (compare with the course design on the lesson page). They keep the sketch: Sessions 2 and 6 compare it with the real tables.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab (cold-call gently, or think-pair-share):</p>
+<ul class="tick">
+  <li>Is MySQL the database? <b>Answer:</b> no: MySQL is the server software (a DBMS); a database such as <code class="inline">preview_shop</code> lives inside it.</li>
+  <li>Which CRUD letter is SELECT? And DROP DATABASE? <b>Answer:</b> SELECT is Read. DROP DATABASE is not CRUD at all: it removes the structure, not rows.</li>
+  <li>Why does an orders table store <code class="inline">customer_id</code> instead of the customer's name? <b>Answer:</b> the name lives once in customers; the id points to it, so a correction happens in one place.</li>
+  <li>Which of the three refused rows would a spreadsheet have accepted? <b>Answer:</b> all three: the duplicate id, the text in a number column and the missing last name.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6 (learners do them at the end of the block or at home).</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">B) MySQL is a database management system: server software that stores databases, enforces their rules and answers SQL</span>; <b>Q2</b> <span data-sc="2">C) <code class="inline">author_id</code></span>; <b>Q3</b> <span data-sc="3">Two rows: <code class="inline">Tom</code> and <code class="inline">Fido</code></span>; <b>Q4</b> <span data-sc="4">A) <code class="inline">ERROR 1062 (23000): Duplicate entry '2' for key 'pets.PRIMARY'</code></span>; <b>Q5</b> <span data-sc="5">D) A key-value store such as Redis</span>; <b>Q6</b> <span data-sc="6">B) <code class="inline">DELETE FROM customers WHERE id = 3;</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> learners whose machines are not ready do the lab with a ready neighbor (one keyboard, two heads, the NOT READY learner types the edits). For learners new to the terminal, write <code class="inline">SOURCE labs/module-01/...</code> on the board and leave it there; tab completion of the path helps.</p>
+<p><b>Stretch:</b> <code class="inline">crud_tour_starter.sql</code> and <code class="inline">debug_rules.sql</code>; then the lesson's Exercise 4 (design a table for a collection they know, and spot the column that is secretly a list) and the Bonus Challenge (five tables of an app they use every day).</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">1.2</span><h3>Installing MySQL</h3><span class="dur">75 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Choose the right MySQL release (9.7 LTS) and installation method for your computer, and recognize when a package gives you something else (an older MySQL, or MariaDB)</li>
+  <li>Install MySQL 9.7 LTS with the Windows MSI, the macOS package or Homebrew, the MySQL APT repository, or the official Docker image</li>
+  <li>Start and stop the server, and set a strong root password</li>
+  <li>Connect with mysql -u root -p and verify the version, user and character set with SQL</li>
+  <li>Diagnose the four classic first-day errors: command not found, 1045, 2002 and 2003</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: server, client, port; LTS versus innovation releases; one installation per laptop</td></tr>
+<tr><td class="t">25m</td><td>Install clinic: the machines that were NOT READY, by platform</td></tr>
+<tr><td class="t">15m</td><td>Live demo: connect and verify, the health-check queries, two pieces of old advice</td></tr>
+<tr><td class="t">15m</td><td>Guided lab: <code class="inline">server_facts_starter.sql</code></td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: the health check, Steps 3 and 4</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Back to the three boxes: "Installing MySQL means two programs. The <b>server</b>, <code class="inline">mysqld</code>, runs in the background, owns the data files and listens on a <b>port</b>, 3306, like a shop with a door number. A <b>client</b>, the <code class="inline">mysql</code> command, knocks on that door and carries your SQL in. They can be on different machines; today they are on the same laptop."</p>
+<p>Then versions, in one breath: "MySQL ships LTS releases that stay the same for years, and innovation releases with new features every few months. This course uses <b>9.7 LTS</b>. 'Latest' on a download page usually means an innovation release, numbered like 26.x; Ubuntu's own package is older; XAMPP gives you MariaDB, a close relative. Whatever you installed, the first thing you ask after logging in is SELECT VERSION()."</p>
+<p>Then the triage line on the board, which is worth the whole lesson: <b>command not found = PATH · 1045 = the server answered and refused you · 2002/2003 = nothing answered.</b></p>
+</div>
+<div class="blk lab"><div class="h">Install clinic</div>
+<p>Learners from the opening's NOT READY pile sit together by platform; ready learners pair with them as helpers. You move from table to table; each fix ends with the environment check run again. Twenty-five minutes is enough to fix configuration and start an install, not to download and install on slow Wi-Fi: use the USB stick.</p>
+<table class="timing">
+<thead><tr><th>Platform</th><th>Most likely state</th><th>Clinic fix (in this order)</th></tr></thead>
+<tbody>
+<tr><td>Windows</td><td>MSI installed, <code class="inline">mysql</code> not recognized; or Configurator never finished</td><td>PATH (Lesson 1.2 Step 4, a NEW PowerShell window); Services app: is MySQL97 running? Re-run MySQL Configurator if the service does not exist.</td></tr>
+<tr><td>macOS (Homebrew)</td><td><code class="inline">brew install mysql</code> gave 26.x; or <code class="inline">mysql@9.7</code> not on the PATH; root with no password</td><td>The keg-only PATH line; <code class="inline">brew services start mysql@9.7</code>; <code class="inline">mysql_secure_installation</code> for the root password. 26.x: fine today, reinstall at home.</td></tr>
+<tr><td>macOS (DMG)</td><td>Installed, <code class="inline">/usr/local/mysql/bin</code> not on the PATH</td><td>The export PATH line; start the server from the MySQL pane in System Settings.</td></tr>
+<tr><td>Linux</td><td>Ubuntu's package: 8.0/8.4, root through <code class="inline">sudo mysql</code> only</td><td>Today: <code class="inline">sudo mysql</code>, then the lesson's ALTER USER statement to set a password. At home: the MySQL APT repository for 9.7.</td></tr>
+<tr><td>Docker</td><td>Port 3306 taken, or connecting with localhost</td><td><code class="inline">-p 3307:3306</code> and <code class="inline">-h 127.0.0.1 -P 3307</code>; or <code class="inline">docker exec -it mysql97 mysql -u root -p</code>.</td></tr>
+<tr><td>Nothing installed</td><td>Setup guide not done</td><td>Docker Desktop if already installed; otherwise the installer from the USB stick, started now, finished at home. Pair for the rest of today.</td></tr>
+</tbody>
+</table>
+<p>Done for each machine = the environment check prints READY (or READY WITH NOTES). Anyone not done by 2:10 leaves with a numbered plan written in their workbook's Start Here box, and you check it at the start of Session 2.</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>Connect and verify, from a fresh terminal on the projector. The two shell steps print text that differs on every machine (the lesson shows each platform's version); everything else is real output from a MySQL 9.7 server.</p>
+<ol class="steps">
+  <li><b>Client version: no server needed (1m).</b> "First the program on my laptop. This works even with the server stopped."
+<pre class="code">mysql --version</pre>
+The output is the lesson's "Output" card for your platform (for example <code class="inline">mysql  Ver 9.7.2 for Linux on x86_64 (MySQL Community Server - GPL)</code>). Your exact text will differ.</li>
+  <li><b>Log in (1m).</b> "-u is the user, -p means ask me for the password. Nothing appears while I type it: that is normal."
+<pre class="code">mysql -u root -p</pre>
+Docker: <code class="inline">docker exec -it mysql97 mysql -u root -p</code>.</li>
+  <li><b>Which server answered? (1m).</b> "Now ask the SERVER."
+<pre class="code"><span class="k">SELECT</span> VERSION();</pre>
+<pre class="out">+-----------+
+| VERSION() |
++-----------+
+| 9.7.2     |
++-----------+</pre>
+Any 9.7.x is right. 8.4, 26.x or a version containing MariaDB means another server than intended: Common Mistake 5.</li>
+  <li><b>What is in it? (1m).</b> "A fresh server holds four system databases. Never put your own tables in them."
+<pre class="code"><span class="k">SHOW</span> <span class="k">DATABASES</span>;</pre>
+<pre class="out">+--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+</pre></li>
+  <li><b>Who am I? (1m).</b> "root, connected from this computer."
+<pre class="code"><span class="k">SELECT</span> CURRENT_USER();</pre>
+<pre class="out">+----------------+
+| CURRENT_USER() |
++----------------+
+| root@localhost |
++----------------+</pre>
+Through Docker's published port with <code class="inline">-h 127.0.0.1</code> it says <code class="inline">root@%</code>.</li>
+  <li><b>The health check, part 1 (2m).</b> "These are the lesson project's Step 3 queries. @@ names read server settings." (The lesson's version also prints @@port: show it on your server; it is 3306 on a standard install.)
+<pre class="code"><span class="k">SELECT</span> VERSION() <span class="k">AS</span> version, @@version_comment <span class="k">AS</span> edition;</pre>
+<pre class="out">+---------+------------------------------+
+| version | edition                      |
++---------+------------------------------+
+| 9.7.2   | MySQL Community Server - GPL |
++---------+------------------------------+</pre></li>
+  <li><b>The health check, part 2 (2m).</b> "utf8mb4 is full Unicode: every language and emoji. It is the default since 8.0."
+<pre class="code"><span class="k">SELECT</span>
+    CURRENT_USER()         <span class="k">AS</span> logged_in_as,
+    @@character_set_server <span class="k">AS</span> charset,
+    @@collation_server     <span class="k">AS</span> collation;</pre>
+<pre class="out">+----------------+---------+--------------------+
+| logged_in_as   | charset | collation          |
++----------------+---------+--------------------+
+| root@localhost | utf8mb4 | utf8mb4_0900_ai_ci |
++----------------+---------+--------------------+</pre></li>
+  <li><b>How does root log in? (2m).</b> "Accounts live in the mysql.user table. Look, never edit by hand."
+<pre class="code"><span class="k">SELECT</span> user, host, plugin
+<span class="k">FROM</span> mysql.user
+<span class="k">WHERE</span> user = <span class="s">'root'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> host;</pre>
+<pre class="out">+------+-----------+-----------------------+
+| user | host      | plugin                |
++------+-----------+-----------------------+
+| root | localhost | caching_sha2_password |
++------+-----------+-----------------------+</pre>
+Docker shows a second row, root with host %. Ubuntu's own package shows auth_socket until a password is set.</li>
+  <li><b>Old advice 1, on purpose (2m).</b> "A forum says: create your app's user with mysql_native_password. On 9.7:"
+<pre class="code"><span class="k">CREATE</span> <span class="k">USER</span> <span class="s">'legacy_app'</span>@<span class="s">'localhost'</span>
+    <span class="k">IDENTIFIED</span> <span class="k">WITH</span> mysql_native_password <span class="k">BY</span> <span class="s">'placeholder-password'</span>;</pre>
+<pre class="out">ERROR 1524 (HY000): Plugin 'mysql_native_password' is not loaded</pre>
+The plugin is gone in 9.x (disabled in 8.4). Fix: leave IDENTIFIED WITH out; update the client instead of weakening the server. No account was created.</li>
+  <li><b>Old advice 2, on purpose (1m).</b> "And the setting old tutorials tell you to check:"
+<pre class="code"><span class="k">SELECT</span> @@default_authentication_plugin;</pre>
+<pre class="out">ERROR 1193 (HY000): Unknown system variable 'default_authentication_plugin'</pre>
+Removed too; the modern setting is <code class="inline">@@authentication_policy</code>.</li>
+  <li><b>Leave cleanly (1m).</b> "exit, or Ctrl+D on macOS and Linux."
+<pre class="code">exit</pre></li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Asking the client instead of the server.</b> "<code class="inline">mysql --version</code> says 9.7, so my server is 9.7." Coach: "Which box does that command ask? Log in and ask the server." (Self-check Q7 and the lesson's Exercise 1.)</li>
+  <li><b>Reading the wrong half of an error.</b> Learners stop at "ERROR" and guess. Coach the triage line: "Which number? 1045, the server answered and said no: check the password. 2002 or 2003, nobody answered: check that the server runs and where you are knocking."</li>
+  <li><b>Weakening the server to fix a client.</b> Someone finds advice to switch root to <code class="inline">mysql_native_password</code> (or tries it and gets 1524). Coach: "That method was removed in 9.x for good reasons; update the tool instead." Never run anything that changes root's login method in class.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li><b>File:</b> <code class="inline">labs/module-01/l1_2-installing-mysql/server_facts_starter.sql</code>; reference <code class="inline">labs/module-01/l1_2-installing-mysql/server_facts_solution.sql</code>. Read-only: it asks the server what it is and how it is set up. Questions 1 and 2 run as shipped; TODOs 3 to 6 each replace a placeholder SELECT with a real one (TODO 3 gives the full statement, TODO 4 and 5 only the setting names).</li>
+  <li><b>Expected:</b> <code class="inline">9.7.2</code> and <code class="inline">MySQL Community Server - GPL</code>; <code class="inline">is_mysql_97</code> 1 and <code class="inline">is_mariadb</code> 0; <code class="inline">utf8mb4</code> / <code class="inline">utf8mb4_0900_ai_ci</code>; <code class="inline">InnoDB</code> and <code class="inline">lower_case_names</code> 0 (Windows prints 1, macOS 2: a good moment to say that table names may be case-sensitive on Linux servers); <code class="inline">max_connections</code> 151; the four system databases.</li>
+  <li><b>Circulate for:</b> a missing comma between two columns (<code class="inline">ERROR 1064</code>), <code class="inline">@@</code> written as <code class="inline">@</code> (a user variable: NULL, not an error), and learners on MariaDB (<code class="inline">is_mariadb</code> 1 and another collation: say "that is the version note in action").</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-01/l1_2-installing-mysql/accounts_check_starter.sql</code> (who may log in, and how: three locked helper accounts, no native-password accounts), then <code class="inline">labs/module-01/l1_2-installing-mysql/debug_old_advice.sql</code> (the two errors from the demo, to explain in writing).</li>
+  <li><b>Debrief (1m):</b> "Write the version, the character set and root's plugin on your health-check page. When something breaks in week five, these three lines tell you in a minute whether the server changed."</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is the <b>Installation Health Check</b>: a few queries that describe the server, saved in the journal. Steps 1 and 2 (install, secure root) were the prework and the clinic. In the room: Steps 3 and 4 (10 minutes).</p>
+<ul class="tick">
+  <li>Everyone runs Step 3's two queries and Step 4's query from the lesson page and copies the answers into the journal.</li>
+  <li><b>Done in the room</b> = version, port, charset (<code class="inline">utf8mb4</code>), collation and root's plugin (<code class="inline">caching_sha2_password</code>) written down; Docker users have a second root row with host <code class="inline">%</code>.</li>
+  <li><b>Goes home:</b> Step 5: stop the server, see the 2002 or 2003 error on purpose, start it again, and write the start and stop commands for their platform in the journal.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the clinic, the demo and the lab:</p>
+<ul class="tick">
+  <li>Your client prints 9.7.2 but <code class="inline">SELECT VERSION();</code> prints 8.4.x. Which is the server? <b>Answer:</b> 8.4: only the query asks the server.</li>
+  <li>1045 or 2003: which one means the server is running? <b>Answer:</b> 1045: it answered and refused the credentials.</li>
+  <li>Why connect to a Docker container with <code class="inline">127.0.0.1</code> rather than <code class="inline">localhost</code>? <b>Answer:</b> on macOS and Linux, <code class="inline">localhost</code> makes the client use a local socket file and ignore the port.</li>
+  <li>Is root without a password acceptable on a laptop? <b>Answer:</b> no: any program on the computer could connect. A strong password costs nothing.</li>
+</ul>
+<p>Workbook self-check, items Q7 to Q12 (learners do them at the end of the block or at home).</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">C) The mysql client program is installed and on your PATH</span>; <b>Q8</b> <span data-sc="8">A) The user name or the password</span>; <b>Q9</b> <span data-sc="9"><code class="inline">1</code> (in a column named <code class="inline">on_97</code>)</span>; <b>Q10</b> <span data-sc="10">D) <code class="inline">brew install mysql@9.7</code></span>; <b>Q11</b> <span data-sc="11">C) <code class="inline">mysql -h 127.0.0.1 -P 3307 -u root -p</code></span>; <b>Q12</b> <span data-sc="12"><code class="inline">caching_sha2_password</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> learners who spent the clinic installing do the lab at home; give them the README's expected outputs. For anyone overwhelmed by the terminal, one card with three lines: <code class="inline">cd</code> to the course folder, <code class="inline">mysql -u root -p</code>, <code class="inline">SOURCE labs/...</code>.</p>
+<p><b>Stretch:</b> <code class="inline">accounts_check_starter.sql</code> and <code class="inline">debug_old_advice.sql</code>; the lesson's Exercise 4 (a second server side by side in Docker, MySQL 8.4 on port 3307, confirmed with <code class="inline">SELECT VERSION();</code>) and the Bonus Challenge (find <code class="inline">@@datadir</code> and the error log).</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 4 minutes)</div>
+<p>Put the three questions on the slide. Learners answer in the workbook's Exit Ticket box or on a sticky note and leave it on the way out. Sort the notes into "got it" and "not yet" before Session 2: question 1's pile tells you how much of the Session 2 warm-up goes to the server, client and database picture.</p>
+<ol class="steps">
+  <li>In one sentence each: what is the MySQL server, what is a client, and what is a database? <b>Answer:</b> the server (<code class="inline">mysqld</code>) is the program that stores data and answers SQL; a client (the <code class="inline">mysql</code> command, phpMyAdmin) is what you type into and it sends SQL to the server; a database (such as <code class="inline">preview_shop</code>, later <code class="inline">bookstore</code>) is a named collection of tables inside the server.</li>
+  <li>You type <code class="inline">mysql -u root -p</code> and get <code class="inline">ERROR 2002</code>. What do you check first? And if it were <code class="inline">ERROR 1045</code>? <b>Answer:</b> 2002: is the server running (and am I asking the right place)? 1045: the user name and password.</li>
+  <li><code class="inline">orders(id, customer_id, order_date)</code>: name the primary key and the foreign key. Why not store the customer's name in orders? <b>Answer:</b> <code class="inline">id</code> is the primary key, <code class="inline">customer_id</code> the foreign key. The name lives once in customers; copies in every order would drift apart.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours)</div>
+<ul class="tick">
+  <li><b>Finish both lesson projects.</b> The bookstore sketch (Steps 3 to 5: keys, linking tables, compare with the course design) and the health check (Step 5: stop, see the error, start, write the commands).</li>
+  <li><b>Lesson exercises.</b> 1.1: Exercises 1 to 3 (parts of a table, spreadsheet problems, database types); Exercise 4 is a stretch. 1.2: Exercises 1 to 3 (client versus server version, read two settings, break it on purpose); Exercise 4 is a stretch.</li>
+  <li><b>Both Quick Quizzes</b> on the lesson pages (five questions each; answers are in the Answer Key).</li>
+  <li><b>Journal:</b> both entries. The 1.2 prompt asks for their installation story, including the exact error they saw: it will save them an hour next time.</li>
+  <li><b>Before the Next Lesson (from 1.2):</b> log in once more from a fresh terminal; install a code editor for <code class="inline">.sql</code> files if they have none (VS Code); optionally set up phpMyAdmin for the Lesson 1.3 tour.</li>
+  <li><b>If the environment check was not READY:</b> follow the numbered plan from the clinic, run the check again and email you its last table.</li>
+  <li><b>Optional:</b> <code class="inline">labs/module-01/l1_0-orientation/diagnostic_starter.sql</code> for anyone who missed two or more diagnostic questions; <code class="inline">crud_tour_starter.sql</code> and <code class="inline">accounts_check_starter.sql</code> for anyone who did not reach them.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Bring list for Session 2</div>
+<ul class="tick">
+  <li>A laptop on which the environment check ends with READY (or READY WITH NOTES), and the root password (in a password manager, not on a sticky note).</li>
+  <li>The course folder (<code class="inline">mysql-course</code> in your home folder) with the <code class="inline">labs/</code> folder in it. Lesson 1.3's <code class="inline">hello.sql</code> and Lesson 2.1's <code class="inline">create_bookstore.sql</code> will be saved there too. Session 2's starters are in <code class="inline">labs/module-02/</code>.</li>
+  <li>The bookstore sketch from the 1.1 project: Lesson 2.1 builds the first three of its tables.</li>
+  <li>The workbook and the journal with the health-check answers. No downloads needed.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> the check result for every learner; the install clinic; 1.1 demo Steps 1 to 8; the order-sheet lab through TODO 3.</li>
+  <li><b>Cut first (saves 3m):</b> 1.2 demo Steps 9 and 10. Say: "two pieces of old advice fail on 9.7; the handout <code class="inline">debug_old_advice.sql</code> shows you why".</li>
+  <li><b>Cut second (saves 10m):</b> the 1.1 project start. Read the store's description aloud, send all five steps home.</li>
+  <li><b>Cut third (saves 10m):</b> the 1.2 project start: the guided lab already ran the same kind of queries; Steps 3 to 5 go home.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>Run <code class="inline">debug_rules.sql</code> for everyone and fix the four statements together: one error number per volunteer.</li>
+  <li>The lesson's 1.2 Exercise 3 live: stop your server, show 2002, start it, show 1045 with a wrong password. Then the triage line once more.</li>
+  <li>Start the 1.1 Bonus Challenge together: the five tables of a food-delivery app, and one value it should copy on purpose (the price paid, like <code class="inline">order_items.price_at_time</code>).</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 1 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

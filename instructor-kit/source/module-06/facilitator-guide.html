@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 6</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 6: Relationships and Foreign Keys</h1>
+    <p class="sub">How to teach the sixth session of MySQL Foundations: from one flat table to a relational database. Learners watch an update anomaly happen, migrate the books' author text into an authors table with a checked, reversible sequence, build a junction table, then put the foreign keys to the test: 1452 and 1451, CASCADE, SET NULL and RESTRICT inside transactions, and keys added to data that already holds an orphan.</p>
+    <div class="meta-row">
+      <span class="chip"><b>2</b> lessons</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lessons <b>4.1–4.2</b></span>
+      <span class="chip">Session <b>6</b> of 14 · Part 1</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Same rhythm for both lessons: frame (one mental model) → live demo → guided lab (new practice, never the lesson project) → start the lesson's own project. Exercises, quiz and journal are homework.</li>
+  <li>Type the short statements; paste the long INSERTs (the 25 links, the authors). Every SQL block below was run on MySQL 9.7.2: Lesson 4.1's demo from the flat bookstore, in one session, through the migration; Lesson 4.2's demo from a fresh <code class="inline">bookstore.sql</code>.</li>
+  <li><b>This session changes the database.</b> Lesson 4.1 turns the flat bookstore into the relational one, and from Lesson 4.2 on every lesson starts by loading <code class="inline">bookstore.sql</code> (8 tables: authors 10, books 11, categories 5, links 25, customers 8, orders 12, order items 18, employees 10). After the 4.1 project start, every machine loads it; nobody needs to finish the migration by hand to follow 4.2.</li>
+  <li>The lessons are the reference: keep <code class="inline">lesson_11.html</code> (the ER diagrams) and <code class="inline">lesson_12.html</code> (the rules diagram) open. Labs live in <code class="inline">labs/module-06/</code>.</li>
+  <li>Part 1 (Sessions 1 to 7) can run on its own; Session 7 is the Part 1 assessment. Tell the room today: next session ends with it, and today's tables are in it.</li>
+</ul>
+<div class="note warn"><div class="t">The #1 risk of Session 6: half the room in the flat database, half in the relational one</div>
+<p>4.1 migrates live data. Learners who mistype a step (a missing comma in the ALTER, the UPDATE run twice, a DROP COLUMN before the check) end up between the two shapes, and from then on nothing on the projector matches their screen. <b>Prevent it:</b> in the 4.1 demo, ready learners type along in their flat bookstore, but say clearly that the outcome does not matter: at 1:05 EVERYONE loads <code class="inline">bookstore.sql</code> (<code class="inline">SOURCE bookstore.sql</code> from the course folder, or <code class="inline">labs/_states/bookstore.sql</code>), and the counts query proves it (10, 11, 5, 25, 8, 12, 18, 10). <b>Recover:</b> anyone confused before then reloads the flat state (<code class="inline">SOURCE labs/_states/flat.sql</code>) and watches. The 4.1 lab works on two practice tables of its own, so it cannot damage either shape.</p>
+</div>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Data:</b> learners arrive with the flat bookstore (Module 3) loaded and <code class="inline">bookstore.sql</code> saved in the course folder (Session 5's bring list). Have <code class="inline">labs/_states/flat.sql</code> and <code class="inline">labs/_states/bookstore.sql</code> on a USB stick for anyone without them.</li>
+  <li>☐ <b>Files to hand out:</b> <code class="inline">labs/module-06/</code> without the <code class="inline">*_solution.sql</code> files. Check: <code class="inline">python3 labs/check_labs.py module-06</code> (10 files, every line PASS).</li>
+  <li>☐ <b>Projector machine:</b> MySQL 9.7 with the FLAT bookstore loaded (for the 4.1 demo) and <code class="inline">bookstore.sql</code> ready for 1:05; terminal at 18 pt; browser tabs <code class="inline">lesson_11.html</code>, <code class="inline">lesson_12.html</code>. Keep the long INSERTs (authors, the 25 links) in a text file to paste.</li>
+  <li>☐ <b>Board, before learners arrive:</b> "Can one A have many Bs? Can one B have many As?" with the three answers (1:M key on the many side · 1:1 key + UNIQUE · M:M junction table); and the rules diagram: "Can the child exist without its parent? no → CASCADE · yes → must it keep naming the parent? yes → RESTRICT, no → SET NULL".</li>
+  <li>☐ <b>Print or share:</b> the workbook (warm-up, the club worked example, predict-then-run, self-check, the relationship map page), sticky notes for the exit ticket, paper for the crow's foot sketch.</li>
+</ul>
+<div class="blk warn"><div class="h">Known traps today</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><code class="inline">ERROR 1054 Unknown column 'author'</code> in Lesson 3 queries</td><td>The learner is already in the relational bookstore (the author text column is gone)</td><td>Expected from 4.1 on; joins (4.3) bring the name back. For 3.x homework: <code class="inline">SOURCE labs/_states/flat.sql</code>.</td></tr>
+<tr><td><code class="inline">ERROR 1138 Invalid use of NULL value</code> in Step 4 of the migration</td><td>A book's author_id is still NULL (a typo in the authors INSERT)</td><td>Run the IS NULL check, fix the author name or the id, then the ALTER again.</td></tr>
+<tr><td><code class="inline">ERROR 1824 Failed to open the referenced table</code></td><td>A child created before its parent, or a misspelled parent (<code class="inline">book</code>)</td><td>Create parents first; check the table name.</td></tr>
+<tr><td><code class="inline">ERROR 1452</code> with a table called <code class="inline">#sql-...</code></td><td>Adding a key to a table that already holds an orphan</td><td>Find orphans with <code class="inline">NOT IN (SELECT id FROM parent)</code>, fix them, add the key again.</td></tr>
+<tr><td>MariaDB: <code class="inline">ERROR 1005 ... errno: 150</code></td><td>MariaDB's single message for a badly formed key (MySQL: 3780, 6125, 1830, 1824)</td><td>Walk the requirements: same type and sign, parent key exists and is unique, SET NULL needs a nullable column.</td></tr>
+<tr><td>A delete "does nothing" after a test</td><td>A transaction left open (START TRANSACTION without ROLLBACK or COMMIT)</td><td>Type <code class="inline">ROLLBACK;</code> and look again. Every test in the labs ends with ROLLBACK.</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 6 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">10</td><td>Warm-up</td><td>Five retrieval questions on Lessons 3.3 and 3.4 (COUNT and NULL, WHERE or HAVING, the row behind MAX, the NOT IN trap, 1055); homework check.</td></tr>
+      <tr><td class="t">0:10</td><td class="t">10</td><td><b>4.1</b> Frame and mental model</td><td>Store each fact once and point to it; the anomalies of one big table; where the foreign key goes.</td></tr>
+      <tr><td class="t">0:20</td><td class="t">30</td><td><b>4.1</b> Live demo</td><td>The update anomaly in the flat bookstore, then the migration live: authors, author_id, UPDATE ... JOIN, the NULL check, lock-in, a junction table.</td></tr>
+      <tr><td class="t">0:50</td><td class="t">15</td><td><b>4.1</b> Guided lab</td><td><code class="inline">labs/module-06/l4_1-table-relationships/publisher_split_starter.sql</code> in pairs: the same migration on new data, with a typo to catch.</td></tr>
+      <tr><td class="t">1:05</td><td class="t">10</td><td><b>4.1</b> Start the lesson project</td><td>Load bookstore.sql, then read the project's design (orders, order_items, employees) together; the typing goes home.</td></tr>
+      <tr><td class="t">1:15</td><td class="t">10</td><td>Break</td><td>Everyone's bookstore is now the relational one: 8 tables (`SHOW TABLES;`).</td></tr>
+      <tr><td class="t">1:25</td><td class="t">10</td><td><b>4.2</b> Frame and mental model</td><td>Referential integrity: no orphans; who is checked when (child insert 1452, parent delete 1451); three rules.</td></tr>
+      <tr><td class="t">1:35</td><td class="t">25</td><td><b>4.2</b> Live demo</td><td>1452 and 1451, CASCADE and SET NULL inside transactions, ON UPDATE, every rule from information_schema, adding a key to data with an orphan.</td></tr>
+      <tr><td class="t">2:00</td><td class="t">20</td><td><b>4.2</b> Guided lab</td><td><code class="inline">labs/module-06/l4_2-foreign-keys/delete_rules_starter.sql</code>: predict, then watch each rule act.</td></tr>
+      <tr><td class="t">2:20</td><td class="t">20</td><td><b>4.2</b> Start the lesson project</td><td>Book reviews with two delete rules: Steps 1 to 4 (decide, create, refuse an orphan, test CASCADE).</td></tr>
+      <tr><td class="t">2:40</td><td class="t">10</td><td>Relationship map</td><td>Sketch the eight tables with crow's foot lines and label each key's delete rule; check against information_schema.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up</td><td>Exit ticket (3 questions), homework, bring list for Session 7 (the Part 1 assessment).</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> The lesson pages estimate 105 + 100 = 205 minutes for a solo learner; the room has 140. Lesson 4.1's live migration is the heart of the session (it is the one time learners watch a table change shape under its data); the 4.1 project is mostly pasting CREATE TABLE and INSERT statements, so the room reads its design and the typing goes home. Lesson 4.2 keeps its full shape.</p>
+<p><b>Goes home (about 2 to 3 hours).</b> The 4.1 project (orders, order_items, employees; or simply compare with <code class="inline">bookstore.sql</code> after loading it) and the 4.2 project Steps 5 and 6; each lesson's Hands-on Exercises; both Quick Quizzes; both journal entries; the labs not finished in class (<code class="inline">navigate_links_starter.sql</code>, <code class="inline">orphan_audit_starter.sql</code>, the two debug handouts). <b>Plus preparation for the Part 1 assessment</b> (see the bring list).</p>
+<p><b>Protect, in this order:</b> the 4.1 anomaly and the four migration steps with the NULL check (demo Steps 2 to 8); everyone loading <code class="inline">bookstore.sql</code> at 1:05; the 4.2 pair 1452/1451 and the CASCADE and SET NULL tests (Steps 1 to 4); the 4.2 lab. <b>Cut first:</b> the relationship map (it becomes homework), then 4.1 demo Steps 11 and 12 (one-to-one: show the slide), then 4.2 demo Steps 8 to 10 (adding a key to dirty data: the <code class="inline">orphan_audit</code> lab does it).</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Warm-up: Aggregates and Subqueries</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">6m</td><td>Five retrieval questions on Lessons 3.3 and 3.4, answered in the workbook, then on the projector</td></tr>
+<tr><td class="t">4m</td><td>Homework check: the inventory report and the price review run end to end with SOURCE?</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Retrieval questions and answers</div>
+<p>Questions on the slide; learners answer in the workbook's Warm-up box, then you run the SQL ones in the flat bookstore (still loaded from Session 5).</p>
+<ol class="steps">
+  <li><b>Three numbers: predict them.</b> (Customers 1 to 5 signed up before 25 January; Eve has no city.)<pre class="code"><span class="k">SELECT</span> COUNT(*), COUNT(city), COUNT(<span class="k">DISTINCT</span> city)
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> created_at &lt; <span class="s">'2026-01-25'</span>;</pre><pre class="out">+----------+-------------+----------------------+
+| COUNT(*) | COUNT(city) | COUNT(DISTINCT city) |
++----------+-------------+----------------------+
+|        5 |           4 |                    4 |
++----------+-------------+----------------------+</pre><b>Answer:</b> 5, 4, 4. <code class="inline">COUNT(*)</code> counts rows; COUNT(city) skips Eve's NULL; the four filled-in cities are all different.</li>
+  <li><b><code class="inline">price &gt; 10</code> and <code class="inline">COUNT(*) &gt; 1</code>: which goes in WHERE and which in HAVING?</b> <b>Answer:</b> <code class="inline">price &gt; 10</code> in WHERE (one row's column), <code class="inline">COUNT(*) &gt; 1</code> in HAVING (a group's aggregate).</li>
+  <li><b>Which book is it?</b><pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> pages = (<span class="k">SELECT</span> MAX(pages) <span class="k">FROM</span> books);</pre><pre class="out">+-------------------+
+| title             |
++-------------------+
+| Lord of the Rings |
++-------------------+</pre><b>Answer:</b> Lord of the Rings: the row behind MAX(pages). If two books tied, both would come back.</li>
+  <li><b>How many customers?</b> (Customer 7 is Grace in Chicago, 8 is Hank with no city.)<pre class="code"><span class="k">SELECT</span> COUNT(*)
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="k">SELECT</span> city <span class="k">FROM</span> customers <span class="k">WHERE</span> id &gt; <span class="s">6</span>);</pre><pre class="out">+----------+
+| COUNT(*) |
++----------+
+|        0 |
++----------+</pre><b>Answer:</b> 0. The list is ('Chicago', NULL), and one NULL empties a NOT IN. Fix: <code class="inline">AND city IS NOT NULL</code> inside, or NOT EXISTS.</li>
+  <li><b>What is wrong, and what is the error number?</b><pre class="code"><span class="k">SELECT</span> author, title, MAX(price)
+<span class="k">FROM</span> books
+<span class="k">GROUP</span> <span class="k">BY</span> author;</pre><pre class="out">ERROR 1055 (42000): Expression #2 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'bookstore.books.title' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by</pre><b>Answer:</b> 1055: title is neither grouped nor aggregated (Tolkien's pile has two titles). Fix: drop title, or <code class="inline">MIN(title)</code>.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">How to read the warm-up</div>
+<ul class="tick">
+  <li><b>Q4 wrong for more than a third of the room:</b> the NOT IN trap comes back today (the lesson's orphan query uses <code class="inline">NOT IN (SELECT id FROM parent)</code>, safe only because a primary key is never NULL). Say so when you reach it.</li>
+  <li><b>Q1 or Q5 wrong:</b> pair these learners with someone confident for the 4.1 lab; the migration's IS NULL check leans on COUNT.</li>
+  <li><b>Projects not running end to end:</b> a 2-minute fix at the break, not now. Both scripts are good revision for the Part 1 assessment next session.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plans</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">4.1</span><h3>Table Relationships</h3><span class="dur">65 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Explain the update, insert and delete problems of a flat table, using the bookstore's own data</li>
+  <li>Tell one-to-many, one-to-one and many-to-many relationships apart, and say where the foreign key goes in each</li>
+  <li>Move a repeated text column into its own table with CREATE TABLE, ALTER TABLE and UPDATE ... JOIN</li>
+  <li>Build a junction table with a composite primary key, with and without extra columns</li>
+  <li>Read a crow's foot ER diagram of the finished bookstore database</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: one big sales table and its four anomalies; primary and foreign keys; where the key goes</td></tr>
+<tr><td class="t">30m</td><td>Live demo: the update anomaly, then the migration (parent, column, UPDATE ... JOIN, NULL check, lock-in), one-to-one, a junction table</td></tr>
+<tr><td class="t">15m</td><td>Guided lab: <code class="inline">publisher_split_starter.sql</code> in pairs</td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: load bookstore.sql, read the design of orders, order_items and employees</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Draw the one-big-table sales sheet from the lesson (Alice's name and email on every row she bought) and name the four anomalies as you point: "duplication; change her email and miss a row (update); delete Bob's only sale and Bob is gone (delete); a new customer who bought nothing has nowhere to go (insert)."</p>
+<p>Then the relational idea: "Store each fact once, in the table it describes, and let other tables point at it by its id. The table with the id is the parent; the table holding the pointer is the child."</p>
+<p>Then the one question that places every foreign key, written on the board: <b>"Can one A have many Bs? Can one B have many As?"</b> One yes: the key goes on the many side. Two yeses: a junction table. One-to-one is a one-to-many whose key is UNIQUE.</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>The lesson's own migration, in the flat bookstore, in one session. Ready learners type along; the outcome on their machines does not matter, because everyone loads <code class="inline">bookstore.sql</code> at 1:05.</p>
+<ol class="steps">
+  <li><b>The repeated text (2m).</b> "Lesson 3.3's report counted books per author. Look how the author is stored."
+<pre class="code"><span class="k">SELECT</span> id, title, author
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> author = <span class="s">'J.R.R. Tolkien'</span>;</pre>
+<pre class="out">+----+-------------------+----------------+
+| id | title             | author         |
++----+-------------------+----------------+
+|  6 | The Hobbit        | J.R.R. Tolkien |
+|  9 | Lord of the Rings | J.R.R. Tolkien |
++----+-------------------+----------------+</pre>
+The same 14 characters typed twice.</li>
+  <li><b>The update anomaly, on purpose (3m).</b> "A staff member adds spaces to the initials on one row. No rule stops them." Ask: how many Tolkiens does the database believe in now?
+<pre class="code"><span class="k">UPDATE</span> books <span class="k">SET</span> author = <span class="s">'J. R. R. Tolkien'</span> <span class="k">WHERE</span> id = <span class="s">9</span>;
+<span class="k">SELECT</span> author, COUNT(*) <span class="k">AS</span> books
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> author <span class="k">LIKE</span> <span class="s">'%Tolkien%'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> author
+<span class="k">ORDER</span> <span class="k">BY</span> author;</pre>
+<pre class="out">+------------------+-------+
+| author           | books |
++------------------+-------+
+| J. R. R. Tolkien |     1 |
+| J.R.R. Tolkien   |     1 |
++------------------+-------+</pre>
+No error, and every report that groups by author is quietly wrong.</li>
+  <li><b>Put it back (1m).</b> 
+<pre class="code"><span class="c">-- @status</span>
+<span class="k">UPDATE</span> books <span class="k">SET</span> author = <span class="s">'J.R.R. Tolkien'</span> <span class="k">WHERE</span> id = <span class="s">9</span>;</pre>
+<pre class="out">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0</pre>
+Then the relational idea on the board: <b>store each fact once, in the table it describes; point at it by id.</b></li>
+  <li><b>Step 1: the parent table (3m).</b> "Each author once, with an id. Asimov has no books yet: allowed on the 'one' side." Paste the INSERT (the point is the structure, not the typing).
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> authors (
+    id          <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    name        <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    birth_year  <span class="k">INT</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> authors (id, name, birth_year) <span class="k">VALUES</span>
+    (<span class="s">1</span>, <span class="s">'Frank Herbert'</span>, <span class="s">1920</span>), (<span class="s">2</span>, <span class="s">'George Orwell'</span>, <span class="s">1903</span>),
+    (<span class="s">3</span>, <span class="s">'Harper Lee'</span>, <span class="s">1926</span>), (<span class="s">4</span>, <span class="s">'F. Scott Fitzgerald'</span>, <span class="s">1896</span>),
+    (<span class="s">5</span>, <span class="s">'Jane Austen'</span>, <span class="s">1775</span>), (<span class="s">6</span>, <span class="s">'J.R.R. Tolkien'</span>, <span class="s">1892</span>),
+    (<span class="s">7</span>, <span class="s">'Aldous Huxley'</span>, <span class="s">1894</span>), (<span class="s">8</span>, <span class="s">'J.D. Salinger'</span>, <span class="s">1919</span>),
+    (<span class="s">9</span>, <span class="s">'Ray Bradbury'</span>, <span class="s">1920</span>), (<span class="s">10</span>, <span class="s">'Isaac Asimov'</span>, <span class="s">1920</span>);
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> authors <span class="k">FROM</span> authors;</pre>
+<pre class="out">+---------+
+| authors |
++---------+
+|      10 |
++---------+</pre></li>
+  <li><b>Step 2: the foreign key column (2m).</b> "Can one author have many books? Yes, so the key goes in books."
+<pre class="code"><span class="k">ALTER</span> <span class="k">TABLE</span> books <span class="k">ADD</span> <span class="k">COLUMN</span> author_id <span class="k">INT</span> <span class="k">AFTER</span> title;
+<span class="k">SELECT</span> id, title, author, author_id
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> id &lt;= <span class="s">3</span>;</pre>
+<pre class="out">+----+-----------------------+---------------+-----------+
+| id | title                 | author        | author_id |
++----+-----------------------+---------------+-----------+
+|  1 | Dune                  | Frank Herbert |      NULL |
+|  2 | 1984                  | George Orwell |      NULL |
+|  3 | To Kill a Mockingbird | Harper Lee    |      NULL |
++----+-----------------------+---------------+-----------+</pre>
+Empty (NULL) on every row: nothing is filled in yet.</li>
+  <li><b>Step 3: fill it by matching names (4m).</b> "For every pair of a book and an author whose name equals the book's author text, copy the id." JOIN ... ON pairs rows of two tables; Lesson 4.3 is all about it, today only this one pattern.
+<pre class="code"><span class="k">UPDATE</span> books
+<span class="k">JOIN</span> authors <span class="k">ON</span> authors.name = books.author
+<span class="k">SET</span> books.author_id = authors.id;
+<span class="k">SELECT</span> id, title, author, author_id
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> id <span class="k">IN</span> (<span class="s">6</span>, <span class="s">9</span>, <span class="s">10</span>)
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+<pre class="out">+----+-------------------+----------------+-----------+
+| id | title             | author         | author_id |
++----+-------------------+----------------+-----------+
+|  6 | The Hobbit        | J.R.R. Tolkien |         6 |
+|  9 | Lord of the Rings | J.R.R. Tolkien |         6 |
+| 10 | Fahrenheit 451    | Ray Bradbury   |         9 |
++----+-------------------+----------------+-----------+</pre>
+Both Tolkien books carry 6. (The lesson shows all ten rows; three are enough on the projector.)</li>
+  <li><b>The check before anything is dropped (2m).</b> "A misspelled name would have matched nothing and left a NULL. Count them BEFORE you drop the text column: DROP COLUMN has no undo."
+<pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> books_without_author_id
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> author_id <span class="k">IS</span> <span class="k">NULL</span>;</pre>
+<pre class="out">+-------------------------+
+| books_without_author_id |
++-------------------------+
+|                       0 |
++-------------------------+</pre></li>
+  <li><b>Step 4: lock it in (4m).</b> "Three changes in one ALTER: required, the old column gone, the key declared and named." Point at MUL in the Key column: MySQL indexed the foreign key.
+<pre class="code"><span class="k">ALTER</span> <span class="k">TABLE</span> books
+    <span class="k">MODIFY</span> <span class="k">COLUMN</span> author_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">DROP</span> <span class="k">COLUMN</span> author,
+    <span class="k">ADD</span> <span class="k">CONSTRAINT</span> fk_books_author
+        <span class="k">FOREIGN</span> <span class="k">KEY</span> (author_id) <span class="k">REFERENCES</span> authors(id)
+        <span class="k">ON</span> <span class="k">DELETE</span> <span class="k">RESTRICT</span>
+        <span class="k">ON</span> <span class="k">UPDATE</span> <span class="k">CASCADE</span>;
+<span class="k">DESCRIBE</span> books;</pre>
+<pre class="out">+-----------+--------------+------+-----+---------+----------------+
+| Field     | Type         | Null | Key | Default | Extra          |
++-----------+--------------+------+-----+---------+----------------+
+| id        | int          | NO   | PRI | NULL    | auto_increment |
+| title     | varchar(200) | NO   |     | NULL    |                |
+| author_id | int          | NO   | MUL | NULL    |                |
+| price     | decimal(8,2) | NO   |     | NULL    |                |
+| pages     | int          | YES  |     | NULL    |                |
+| published | date         | YES  |     | NULL    |                |
+| in_stock  | tinyint(1)   | YES  |     | 1       |                |
++-----------+--------------+------+-----+---------+----------------+</pre></li>
+  <li><b>Use the relationship (2m).</b> "A book's author is one lookup away: a correlated subquery from Lesson 3.4."
+<pre class="code"><span class="k">SELECT</span>
+    title,
+    (<span class="k">SELECT</span> name <span class="k">FROM</span> authors <span class="k">WHERE</span> authors.id = books.author_id) <span class="k">AS</span> author
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> author_id <span class="k">IN</span> (<span class="s">2</span>, <span class="s">6</span>)
+<span class="k">ORDER</span> <span class="k">BY</span> title;</pre>
+<pre class="out">+-------------------+----------------+
+| title             | author         |
++-------------------+----------------+
+| 1984              | George Orwell  |
+| Lord of the Rings | J.R.R. Tolkien |
+| The Hobbit        | J.R.R. Tolkien |
++-------------------+----------------+</pre></li>
+  <li><b>Add a book the relational way (2m).</b> "Animal Farm: Orwell's second book, by id. His name can never be split again."
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> books (id, title, author_id, price, pages, published, in_stock) <span class="k">VALUES</span>
+    (<span class="s">11</span>, <span class="s">'Animal Farm'</span>, <span class="s">2</span>, <span class="s">8.49</span>, <span class="s">112</span>, <span class="s">'1945-08-17'</span>, <span class="k">TRUE</span>);
+<span class="k">SELECT</span> author_id, COUNT(*) <span class="k">AS</span> books
+<span class="k">FROM</span> books
+<span class="k">GROUP</span> <span class="k">BY</span> author_id
+<span class="k">HAVING</span> COUNT(*) &gt; <span class="s">1</span>
+<span class="k">ORDER</span> <span class="k">BY</span> author_id;</pre>
+<pre class="out">+-----------+-------+
+| author_id | books |
++-----------+-------+
+|         2 |     2 |
+|         6 |     2 |
++-----------+-------+</pre></li>
+  <li><b>One-to-one: a UNIQUE foreign key (2m).</b> "A profile per customer, at most one. The UNIQUE on customer_id is the 'one'." The second INSERT is refused.
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> customer_profiles (
+    id             <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    customer_id    <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">UNIQUE</span>,
+    favorite_genre <span class="k">VARCHAR</span>(<span class="s">50</span>),
+    <span class="k">CONSTRAINT</span> fk_profiles_customer
+        <span class="k">FOREIGN</span> <span class="k">KEY</span> (customer_id) <span class="k">REFERENCES</span> customers(id)
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> customer_profiles (customer_id, favorite_genre) <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Science Fiction'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> customer_profiles (customer_id, favorite_genre) <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Fantasy'</span>);</pre>
+<pre class="out">ERROR 1062 (23000): Duplicate entry '1' for key 'customer_profiles.customer_id'</pre>
+Without UNIQUE it would succeed, and the relationship would silently become one-to-many. Drop the table: the course database has no profiles.</li>
+  <li><b>Clean up the profile table.</b> 
+<pre class="code"><span class="k">DROP</span> <span class="k">TABLE</span> customer_profiles;</pre></li>
+  <li><b>Many-to-many: a junction table (3m).</b> "1984 is Fiction, Classic and Dystopian. One column cannot hold that; a third table can: one row per link, a composite primary key." Paste the 25 links.
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> book_categories (
+    book_id     <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    category_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> (book_id, category_id),
+    <span class="k">CONSTRAINT</span> fk_bc_book
+        <span class="k">FOREIGN</span> <span class="k">KEY</span> (book_id) <span class="k">REFERENCES</span> books(id) <span class="k">ON</span> <span class="k">DELETE</span> <span class="k">CASCADE</span>,
+    <span class="k">CONSTRAINT</span> fk_bc_category
+        <span class="k">FOREIGN</span> <span class="k">KEY</span> (category_id) <span class="k">REFERENCES</span> categories(id) <span class="k">ON</span> <span class="k">DELETE</span> <span class="k">CASCADE</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> book_categories (book_id, category_id) <span class="k">VALUES</span>
+    (<span class="s">1</span>, <span class="s">1</span>), (<span class="s">1</span>, <span class="s">2</span>), (<span class="s">2</span>, <span class="s">1</span>), (<span class="s">2</span>, <span class="s">3</span>), (<span class="s">2</span>, <span class="s">5</span>), (<span class="s">3</span>, <span class="s">1</span>), (<span class="s">3</span>, <span class="s">3</span>), (<span class="s">4</span>, <span class="s">1</span>), (<span class="s">4</span>, <span class="s">3</span>),
+    (<span class="s">5</span>, <span class="s">1</span>), (<span class="s">5</span>, <span class="s">3</span>), (<span class="s">6</span>, <span class="s">1</span>), (<span class="s">6</span>, <span class="s">4</span>), (<span class="s">7</span>, <span class="s">1</span>), (<span class="s">7</span>, <span class="s">2</span>), (<span class="s">7</span>, <span class="s">5</span>), (<span class="s">8</span>, <span class="s">1</span>), (<span class="s">8</span>, <span class="s">3</span>),
+    (<span class="s">9</span>, <span class="s">1</span>), (<span class="s">9</span>, <span class="s">4</span>), (<span class="s">10</span>, <span class="s">1</span>), (<span class="s">10</span>, <span class="s">2</span>), (<span class="s">10</span>, <span class="s">5</span>), (<span class="s">11</span>, <span class="s">1</span>), (<span class="s">11</span>, <span class="s">3</span>);
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> links <span class="k">FROM</span> book_categories;</pre>
+<pre class="out">+-------+
+| links |
++-------+
+|    25 |
++-------+</pre></li>
+  <li><b>Follow the links (1m).</b> "Which categories is 1984 in?"
+<pre class="code"><span class="k">SELECT</span> name
+<span class="k">FROM</span> categories
+<span class="k">WHERE</span> id <span class="k">IN</span> (<span class="k">SELECT</span> category_id <span class="k">FROM</span> book_categories <span class="k">WHERE</span> book_id = <span class="s">2</span>)
+<span class="k">ORDER</span> <span class="k">BY</span> name;</pre>
+<pre class="out">+-----------+
+| name      |
++-----------+
+| Classic   |
+| Dystopian |
+| Fiction   |
++-----------+</pre></li>
+  <li><b>The same link twice (1m).</b> "1984 is already Dystopian."
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> book_categories (book_id, category_id) <span class="k">VALUES</span> (<span class="s">2</span>, <span class="s">5</span>);</pre>
+<pre class="out">ERROR 1062 (23000): Duplicate entry '2-5' for key 'book_categories.PRIMARY'</pre>
+The composite key doing its job: each pair once. Every learner's database now matches the lesson's catalog half; the project adds orders, order_items and employees, which is why everyone loads bookstore.sql next.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>The key on the wrong side.</b> <code class="inline">customers.order_id</code> "so each customer points at their order". Coach with the question: "Can one customer have many orders? Then where can all those pointers live?"</li>
+  <li><b>Dropping before checking.</b> DROP COLUMN, then discovering a NULL author_id (and the 1138 at NOT NULL). Coach the order: add, fill, COUNT the NULLs, then lock in. The lab has a typo planted to make the check matter.</li>
+  <li><b>A list in one column.</b> <code class="inline">categories = 'Fiction,Fantasy'</code>. Coach with the lesson's Mistake 4: "<code class="inline">= 'Fiction'</code> finds nothing; <code class="inline">LIKE '%Fiction%'</code> finds Science Fiction too." Many values = many rows in a junction table.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-06/l4_1-table-relationships/publisher_split_starter.sql</code>; reference <code class="inline">labs/module-06/l4_1-table-relationships/publisher_split_solution.sql</code>. The same migration on new data: six (fictional) editions that type each publisher's name and city into every row. It works on two practice tables (<code class="inline">kit_editions</code>, <code class="inline">kit_publishers</code>) and drops them at the end, so it is safe in either shape of the bookstore.</p>
+<ul class="tick">
+  <li><b>As shipped (1m):</b> Step 1 prints the anomalies: Harbor Lane Press in Boston AND Cambridge, and North Star split in two by a typo (<code class="inline">North Star Book</code>).</li>
+  <li><b>Steps 2 to 6 in pairs (12m):</b> each step is turned off with <code class="inline">--</code>; learners turn on one at a time and SOURCE again. Step 3 has one gap (<code class="inline">kit_publishers.id</code>), Step 4 one gap (row 5).</li>
+  <li><b>Expected:</b> Step 4 finds exactly one unmatched row (5, Fahrenheit 451, <code class="inline">North Star Book</code>) and 0 after the fix; Step 6 shows each publisher with 2 editions. The planted typo is the point: without the check, Step 5's NOT NULL fails with 1138 (or worse, on a real migration, a book loses its publisher).</li>
+  <li><b>Circulate for:</b> a step turned on with its comment lines too (harmless) or with the <code class="inline">--</code> left on one line of a multi-line statement (1064 near the next line); Step 5 run before the fix (1138: "good, now you know why the check exists").</li>
+  <li><b>Debrief (2m):</b> "Which city did you give Harbor Lane Press, and how did you decide?" A migration forces a decision about which copy was right; that is the update anomaly's cost.</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-06/l4_1-table-relationships/navigate_links_starter.sql</code> (needs the relational bookstore: after 1:05), then <code class="inline">labs/module-06/l4_1-table-relationships/debug_relationships.sql</code> (1824, 1062, 1138).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>Orders, Order Items and Staff</b>: three more tables that finish the bookstore every later lesson uses. Its value is the design; its typing is long INSERTs. In the room (10 minutes):</p>
+<ul class="tick">
+  <li><b>Everyone loads the finished database:</b> <code class="inline">SOURCE bookstore.sql</code> (from the course folder; or <code class="inline">SOURCE labs/_states/bookstore.sql</code>). It drops and rebuilds <code class="inline">bookstore</code>, so the flat shape is gone for good.</li>
+  <li><b>Run Step 5's counts query together</b> (the lesson's eight-subquery SELECT plus SHOW TABLES): 10, 11, 5, 25, 8, 12, 18, 10 and eight tables on every machine.</li>
+  <li><b>Read the design aloud</b> with <code class="inline">SHOW CREATE TABLE orders\G</code>: no total column on purpose (Lesson 6.3), order_items as a junction table with extra facts (quantity, price_at_time: history, not duplication), employees pointing at itself.</li>
+  <li><b>Goes home:</b> the project's Steps 1 to 4 typed into a practice copy if they want the practice (the lesson's "I made a mistake" FAQ explains how to start over), Step 6 (compare their CREATE TABLEs with <code class="inline">bookstore.sql</code>), and the sketch from the lesson's "Before the Next Lesson".</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li>Where does the key go for authors and books, and why? <b>Answer:</b> books.author_id: one author, many books.</li>
+  <li>Why count the NULL author_ids before DROP COLUMN? <b>Answer:</b> a NULL means a name did not match; dropping the text would lose that book's author for good.</li>
+  <li>What turns a one-to-many into a one-to-one? <b>Answer:</b> UNIQUE on the foreign key column.</li>
+  <li>Why does order_items store price_at_time when books has a price? <b>Answer:</b> it records what the customer paid then; the book's price may change later.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6:</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">B) <code class="inline">addresses.customer_id</code></span>; <b>Q2</b> <span data-sc="2">C) Students and the courses they take</span>; <b>Q3</b> <span data-sc="3">Three rows: books <code class="inline">2</code>, <code class="inline">7</code> and <code class="inline">10</code>, each with <code class="inline">3</code></span>; <b>Q4</b> <span data-sc="4">A) An update anomaly: one fact stored twice now disagrees with itself</span>; <b>Q5</b> <span data-sc="5">D) One-to-many: a customer can now have several profiles</span>; <b>Q6</b> <span data-sc="6"><code class="inline">ERROR 1824 (HY000): Failed to open the referenced table 'book'</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> learners overwhelmed by the live ALTERs watch and do the lab only (it is the same four steps on six rows); the workbook's club example is a complete, small many-to-many to reread at home.</p>
+<p><b>Stretch:</b> <code class="inline">navigate_links_starter.sql</code> and <code class="inline">debug_relationships.sql</code>; the lesson's Exercise 4 (a music library schema) and the Bonus Challenge (build the authors list with INSERT ... SELECT: do the ids match?).</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">4.2</span><h3>Foreign Keys &amp; Referential Integrity</h3><span class="dur">75 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Explain referential integrity and predict when MySQL raises errors 1452 and 1451</li>
+  <li>Choose RESTRICT, CASCADE or SET NULL for ON DELETE and ON UPDATE, and justify the choice</li>
+  <li>Add, drop and change a named foreign key on an existing table, cleaning up orphan rows first</li>
+  <li>List a database's foreign keys and their rules from information_schema</li>
+  <li>Diagnose the errors raised by a badly formed key (3780, 6125, 1830)</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: referential integrity; four moments MySQL checks; three rules and the two questions</td></tr>
+<tr><td class="t">25m</td><td>Live demo: 1452, 1451, CASCADE and SET NULL in transactions, ON UPDATE, the rules from information_schema, a key on dirty data</td></tr>
+<tr><td class="t">20m</td><td>Guided lab: <code class="inline">delete_rules_starter.sql</code></td></tr>
+<tr><td class="t">20m</td><td>Start the lesson project: book reviews, Steps 1 to 4</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>"Referential integrity means every foreign key value points at a row that really exists. A child without its parent is an orphan, and a declared key makes orphans impossible." Then the four moments, as a two-by-two on the board: <b>child INSERT or UPDATE of the key</b> → does the parent exist? (1452) · <b>parent DELETE or key UPDATE</b> → do children point at it? then apply the rule (1451 under RESTRICT).</p>
+<p>Then the rules, with the two questions: "Can the child exist without its parent? No: CASCADE (an order line without its order). Yes, and it must keep naming the parent: RESTRICT (an order must keep its customer: deactivate the customer instead). Yes, and the link is optional: SET NULL (staff stay when a manager leaves)." And the safety net: <b>when in doubt, RESTRICT</b>: a refused delete costs one step, a wrong cascade costs data.</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>From a freshly loaded <code class="inline">bookstore.sql</code>. Every destructive test runs inside START TRANSACTION ... ROLLBACK; say so every time, and end every block with ROLLBACK before anything else.</p>
+<ol class="steps">
+  <li><b>An order for nobody (2m).</b> "Customer 999 does not exist." Read the message from the END: the constraint, the table, the column, the parent.
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> orders (customer_id, order_date) <span class="k">VALUES</span> (<span class="s">999</span>, <span class="s">'2026-06-15'</span>);</pre>
+<pre class="out">ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (`bookstore`.`orders`, CONSTRAINT `fk_orders_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE)</pre>
+"add or update a CHILD row": 1452 is always about the child.</li>
+  <li><b>Delete a customer with orders (2m).</b> "Alice has three orders, and fk_orders_customer says RESTRICT."
+<pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">1</span>;</pre>
+<pre class="out">ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`bookstore`.`orders`, CONSTRAINT `fk_orders_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE)</pre>
+"delete or update a PARENT row": 1451. Alice and her history stay; RESTRICT makes you decide.</li>
+  <li><b>CASCADE, safely (4m).</b> "Order lines mean nothing without their order. I wrap the test in a transaction: START TRANSACTION begins, ROLLBACK undoes everything (Lesson 7.2)."
+<pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">SELECT</span> id, order_id, book_id <span class="k">FROM</span> order_items <span class="k">WHERE</span> order_id = <span class="s">1</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> orders <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SELECT</span> id, order_id, book_id <span class="k">FROM</span> order_items <span class="k">WHERE</span> order_id = <span class="s">1</span>;
+<span class="k">ROLLBACK</span>;</pre>
+<pre class="out">+----+----------+---------+
+| id | order_id | book_id |
++----+----------+---------+
+|  1 |        1 |       1 |
+|  2 |        1 |       2 |
++----+----------+---------+
+Empty set</pre>
+One DELETE on orders removed two rows of order_items. After ROLLBACK they are back.</li>
+  <li><b>SET NULL (3m).</b> "Priya manages Tom, Lena and Ben. Priya leaves."
+<pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> employees <span class="k">WHERE</span> id = <span class="s">3</span>;
+<span class="k">SELECT</span> id, first_name, manager_id
+<span class="k">FROM</span> employees
+<span class="k">WHERE</span> id <span class="k">IN</span> (<span class="s">4</span>, <span class="s">5</span>, <span class="s">10</span>)
+<span class="k">ORDER</span> <span class="k">BY</span> id;
+<span class="k">ROLLBACK</span>;</pre>
+<pre class="out">+----+------------+------------+
+| id | first_name | manager_id |
++----+------------+------------+
+|  4 | Tom        |       NULL |
+|  5 | Lena       |       NULL |
+| 10 | Ben        |       NULL |
++----+------------+------------+</pre>
+The reports stay, with no manager. The column must allow NULL (error 1830 otherwise; Step 11).</li>
+  <li><b>ON UPDATE CASCADE (2m).</b> "Renumber Orwell from 2 to 20: his books follow."
+<pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> authors <span class="k">SET</span> id = <span class="s">20</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">SELECT</span> id, title, author_id
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> author_id = <span class="s">20</span>
+<span class="k">ORDER</span> <span class="k">BY</span> id;
+<span class="k">ROLLBACK</span>;</pre>
+<pre class="out">+----+-------------+-----------+
+| id | title       | author_id |
++----+-------------+-----------+
+|  2 | 1984        |        20 |
+| 11 | Animal Farm |        20 |
++----+-------------+-----------+</pre></li>
+  <li><b>No ON UPDATE rule = NO ACTION (1m).</b> "The employees self-reference has no ON UPDATE."
+<pre class="code"><span class="k">UPDATE</span> employees <span class="k">SET</span> id = <span class="s">100</span> <span class="k">WHERE</span> id = <span class="s">1</span>;</pre>
+<pre class="out">ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`bookstore`.`employees`, CONSTRAINT `fk_employees_manager` FOREIGN KEY (`manager_id`) REFERENCES `employees` (`id`) ON DELETE SET NULL)</pre>
+NO ACTION behaves exactly like RESTRICT in MySQL.</li>
+  <li><b>Every rule in the bookstore (3m).</b> "information_schema describes all the other databases. Read each row as a decision." Walk the two-question diagram: can the child exist without its parent? Must it keep naming it?
+<pre class="code"><span class="k">SELECT</span> TABLE_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME,
+       DELETE_RULE, UPDATE_RULE
+<span class="k">FROM</span> information_schema.REFERENTIAL_CONSTRAINTS
+<span class="k">WHERE</span> CONSTRAINT_SCHEMA = <span class="s">'bookstore'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> TABLE_NAME, CONSTRAINT_NAME;</pre>
+<pre class="out">+-----------------+----------------------+-----------------------+-------------+-------------+
+| TABLE_NAME      | CONSTRAINT_NAME      | REFERENCED_TABLE_NAME | DELETE_RULE | UPDATE_RULE |
++-----------------+----------------------+-----------------------+-------------+-------------+
+| book_categories | fk_bc_book           | books                 | CASCADE     | NO ACTION   |
+| book_categories | fk_bc_category       | categories            | CASCADE     | NO ACTION   |
+| books           | fk_books_author      | authors               | RESTRICT    | CASCADE     |
+| employees       | fk_employees_manager | employees             | SET NULL    | NO ACTION   |
+| order_items     | fk_items_book        | books                 | RESTRICT    | CASCADE     |
+| order_items     | fk_items_order       | orders                | CASCADE     | CASCADE     |
+| orders          | fk_orders_customer   | customers             | RESTRICT    | CASCADE     |
++-----------------+----------------------+-----------------------+-------------+-------------+</pre></li>
+  <li><b>A table that started without a key (2m).</b> "Most real tables get their keys late. Kim's department 7 does not exist."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_departments (
+    id   <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    name <span class="k">VARCHAR</span>(<span class="s">50</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">CREATE</span> <span class="k">TABLE</span> demo_staff (
+    id            <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    name          <span class="k">VARCHAR</span>(<span class="s">50</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    department_id <span class="k">INT</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> demo_departments (id, name) <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Front desk'</span>), (<span class="s">2</span>, <span class="s">'Warehouse'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> demo_staff (id, name, department_id) <span class="k">VALUES</span>
+    (<span class="s">1</span>, <span class="s">'Ana'</span>, <span class="s">1</span>), (<span class="s">2</span>, <span class="s">'Raj'</span>, <span class="s">2</span>), (<span class="s">3</span>, <span class="s">'Kim'</span>, <span class="s">7</span>);</pre></li>
+  <li><b>Adding the key fails (2m).</b> "MySQL copies the table to add the key and finds the orphan." The #sql name differs on every server.
+<pre class="code"><span class="k">ALTER</span> <span class="k">TABLE</span> demo_staff
+    <span class="k">ADD</span> <span class="k">CONSTRAINT</span> fk_staff_department
+        <span class="k">FOREIGN</span> <span class="k">KEY</span> (department_id) <span class="k">REFERENCES</span> demo_departments(id)
+        <span class="k">ON</span> <span class="k">DELETE</span> <span class="k">SET</span> <span class="k">NULL</span>;</pre>
+<pre class="out">ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (`bookstore`.`#sql-80218_2020`, CONSTRAINT `fk_staff_department` FOREIGN KEY (`department_id`) REFERENCES `demo_departments` (`id`) ON DELETE SET NULL)</pre></li>
+  <li><b>Find the orphan, fix it, add the key (3m).</b> "Find with a subquery, fix with the truth (Kim is not assigned yet: NULL), then the key goes on."
+<pre class="code"><span class="k">SELECT</span> id, name, department_id
+<span class="k">FROM</span> demo_staff
+<span class="k">WHERE</span> department_id <span class="k">NOT</span> <span class="k">IN</span> (<span class="k">SELECT</span> id <span class="k">FROM</span> demo_departments);
+<span class="k">UPDATE</span> demo_staff <span class="k">SET</span> department_id = <span class="k">NULL</span> <span class="k">WHERE</span> id = <span class="s">3</span>;
+<span class="k">ALTER</span> <span class="k">TABLE</span> demo_staff
+    <span class="k">ADD</span> <span class="k">CONSTRAINT</span> fk_staff_department
+        <span class="k">FOREIGN</span> <span class="k">KEY</span> (department_id) <span class="k">REFERENCES</span> demo_departments(id)
+        <span class="k">ON</span> <span class="k">DELETE</span> <span class="k">SET</span> <span class="k">NULL</span>;</pre>
+<pre class="out">+----+------+---------------+
+| id | name | department_id |
++----+------+---------------+
+|  3 | Kim  |             7 |
++----+------+---------------+</pre>
+Choose the fix that tells the truth about the data; deleting Kim would be the most drastic.</li>
+  <li><b>A badly formed key: 1830 (1m).</b> "SET NULL on a column that forbids NULL."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_notes (
+    id          <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    customer_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> fk_notes_customer <span class="k">FOREIGN</span> <span class="k">KEY</span> (customer_id)
+        <span class="k">REFERENCES</span> customers(id) <span class="k">ON</span> <span class="k">DELETE</span> <span class="k">SET</span> <span class="k">NULL</span>
+);</pre>
+<pre class="out">ERROR 1830 (HY000): Column 'customer_id' cannot be NOT NULL: needed in a foreign key constraint 'fk_notes_customer' SET NULL</pre></li>
+  <li><b>Clean up.</b> Children first.
+<pre class="code"><span class="k">DROP</span> <span class="k">TABLE</span> demo_staff;
+<span class="k">DROP</span> <span class="k">TABLE</span> demo_departments;</pre></li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Reading 1451 and 1452 the wrong way round.</b> Coach: "Read the first words: 'add or update a CHILD row' (1452: the parent is missing) or 'delete or update a PARENT row' (1451: children still point at it)."</li>
+  <li><b>Cascading everything.</b> "CASCADE makes the error go away." Coach with the lesson's warning: if orders cascaded from customers, one DELETE would erase years of sales without a warning. Ask the two questions out loud for that key.</li>
+  <li><b>Switching the checks off.</b> <code class="inline">SET FOREIGN_KEY_CHECKS = 0</code> to get past an error. Coach: "Turning it back on does not re-check. The error was telling you about bad data." Never in class; the lesson's Mistake 5 shows the orphan that slips in.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-06/l4_2-foreign-keys/delete_rules_starter.sql</code>; reference <code class="inline">labs/module-06/l4_2-foreign-keys/delete_rules_solution.sql</code>. Five tests of the bookstore's rules on rows the lesson did not use; each in a transaction, each ending in ROLLBACK. As shipped, the changing line is turned off, so learners see the "before" picture, predict in the workbook, then turn the line on.</p>
+<ul class="tick">
+  <li><b>Predict first (3m):</b> for each test, which rule fires and what the SELECT will show. Learners look rules up with the demo's information_schema query.</li>
+  <li><b>Run them (12m), one TODO at a time.</b> Expected: links 25 → 22 (Dystopian's three links cascade); Sofia's manager_id NULL (SET NULL); 7 customers left (Hank has no orders: RESTRICT has nothing to protect); orders 6 and 11 now say customer 70 (ON UPDATE CASCADE); order lines 18 → 16 (order 9 had two). The last row is unchanged after every ROLLBACK: 5, 25, 8, 12, 18 and Sofia's manager 6.</li>
+  <li><b>Circulate for:</b> a DELETE run at the prompt outside a transaction (if it happened: <code class="inline">SOURCE labs/_states/bookstore.sql</code>), and a forgotten ROLLBACK when someone experiments by hand.</li>
+  <li><b>Debrief (3m):</b> the file's bonus question: "why is 'delete Alice' not in this file?" (1451: her orders RESTRICT it; an error would stop a lab file).</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-06/l4_2-foreign-keys/orphan_audit_starter.sql</code> (find two orphan gift cards, fix them, add the key with SET NULL, prove it), then <code class="inline">labs/module-06/l4_2-foreign-keys/debug_fk_errors.sql</code> (1452, 1451, 3780, 1830, 6125).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>Book Reviews with the Right Rules</b>: one table, two foreign keys, two different delete rules, each proved with a test that is undone. In the room: Steps 1 to 4 (20 minutes).</p>
+<ul class="tick">
+  <li>Step 1 (5m): decide the rules out loud with the two questions. Review → book: CASCADE (a review of nothing is meaningless). Review → customer: SET NULL (keep the review, "by a former customer"), so customer_id must allow NULL.</li>
+  <li>Step 2 (5m): create the table and insert four reviews (paste).</li>
+  <li>Step 3 (3m): the insert for book 42 is refused with 1452.</li>
+  <li>Step 4 (7m): delete The Great Gatsby (4) inside a transaction; its two reviews go with it; ROLLBACK.</li>
+  <li><b>Done in the room</b> = the four reviews exist, the 1452 was seen, the CASCADE test was run and rolled back.</li>
+  <li><b>Goes home:</b> Step 5 (the SET NULL test with Carol) and Step 6 (list the rules from information_schema, then drop the table: the course database has no reviews).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li>1452 or 1451: which one is about a missing parent? <b>Answer:</b> 1452 ("add or update a child row").</li>
+  <li>Which rule does order_items → orders use, and why? <b>Answer:</b> CASCADE: a line has no meaning without its order.</li>
+  <li>What happens when you leave ON DELETE out? <b>Answer:</b> NO ACTION, which MySQL enforces exactly like RESTRICT.</li>
+  <li>Why must a SET NULL column allow NULL? <b>Answer:</b> the rule writes NULL into it; NOT NULL makes the key impossible (1830).</li>
+</ul>
+<p>Workbook self-check, items Q7 to Q12:</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">B) <code class="inline">ERROR 1452 (23000): Cannot add or update a child row</code></span>; <b>Q8</b> <span data-sc="8">A) <code class="inline">16</code></span>; <b>Q9</b> <span data-sc="9"><code class="inline">NULL</code> (Nina stays, with no manager)</span>; <b>Q10</b> <span data-sc="10">C) go with it: ON DELETE CASCADE</span>; <b>Q11</b> <span data-sc="11">D) <code class="inline">DROP FOREIGN KEY fk_items_order</code>, then <code class="inline">ADD CONSTRAINT fk_items_order ... ON DELETE RESTRICT</code></span>; <b>Q12</b> <span data-sc="12"><code class="inline">SET NULL</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> the workbook's worked example (deleting Eve: refused, then her order, then her) shows RESTRICT and CASCADE working together in one transaction. Learners who struggle do tests 1 to 3 of the lab only.</p>
+<p><b>Stretch:</b> <code class="inline">orphan_audit_starter.sql</code> and <code class="inline">debug_fk_errors.sql</code>; the lesson's Exercise 4 (tighten a rule, then restore it) and the Bonus Challenge (a three-level cascade: how many rows disappeared in total?).</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2:40</span><h3>Relationship Map</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk lab"><div class="h">How it runs</div>
+<p>A consolidation of both lessons, on paper. Learners draw the eight tables as boxes and every foreign key as a crow's foot line (the lesson's ER diagram is the model, but they draw from memory first), then label each line with its delete rule. Then they check against the database:</p>
+<pre class="code"><span class="k">SELECT</span> TABLE_NAME, CONSTRAINT_NAME, DELETE_RULE, UPDATE_RULE
+<span class="k">FROM</span> information_schema.REFERENTIAL_CONSTRAINTS
+<span class="k">WHERE</span> CONSTRAINT_SCHEMA = <span class="s">'bookstore'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> TABLE_NAME, CONSTRAINT_NAME;</pre><pre class="out">+-----------------+----------------------+-------------+-------------+
+| TABLE_NAME      | CONSTRAINT_NAME      | DELETE_RULE | UPDATE_RULE |
++-----------------+----------------------+-------------+-------------+
+| book_categories | fk_bc_book           | CASCADE     | NO ACTION   |
+| book_categories | fk_bc_category       | CASCADE     | NO ACTION   |
+| books           | fk_books_author      | RESTRICT    | CASCADE     |
+| employees       | fk_employees_manager | SET NULL    | NO ACTION   |
+| order_items     | fk_items_book        | RESTRICT    | CASCADE     |
+| order_items     | fk_items_order       | CASCADE     | CASCADE     |
+| orders          | fk_orders_customer   | RESTRICT    | CASCADE     |
++-----------------+----------------------+-------------+-------------+</pre><ul class="tick">
+  <li>Seven keys: one 1:M per line, plus the employees self-reference. Ask for the two junction tables (book_categories, order_items) and what extra facts order_items carries.</li>
+  <li>For each rule, one learner says the reason in one sentence (the lesson's "Choosing the Rules" table). Every UPDATE_RULE that says NO ACTION was simply not written: it behaves like RESTRICT.</li>
+  <li>This map is the best single revision sheet for the Part 1 assessment: tell them to bring it.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 4 minutes)</div>
+<p>Learners answer in the workbook's Exit Ticket box or on a sticky note. Sort before Session 7: question 1's misses predict trouble with the assessment's table-design task; question 2's with reading its error messages.</p>
+<ol class="steps">
+  <li>For one-to-many, one-to-one and many-to-many: where does the foreign key go? <b>Answer:</b> on the many side; on either side with UNIQUE (usually the optional table); in a junction table with two foreign keys and a composite primary key.</li>
+  <li>You get <code class="inline">ERROR 1452</code>. Which table were you changing (parent or child), and what is missing? And <code class="inline">ERROR 1451</code>? <b>Answer:</b> 1452: inserting or updating a CHILD whose parent does not exist. 1451: deleting or changing a PARENT that children still point at (under RESTRICT or NO ACTION).</li>
+  <li>Choose an ON DELETE rule for <code class="inline">order_items.book_id → books</code> and justify it. <b>Answer:</b> RESTRICT: a book that was sold must stay on file for the sales history (mark it out of stock instead). CASCADE would delete sales lines; SET NULL would forget what was sold.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours)</div>
+<ul class="tick">
+  <li><b>Lesson projects:</b> 4.1 (compare your design with <code class="inline">bookstore.sql</code>; type the three tables into a practice database if you want the practice); 4.2 Steps 5 and 6.</li>
+  <li><b>Lesson exercises.</b> 4.1: Exercises 1 to 3 (Exercise 4 is a stretch). 4.2: Exercises 1 to 3 (Exercise 4 is a stretch).</li>
+  <li><b>Both Quick Quizzes</b> on the lesson pages; <b>both journal entries</b>.</li>
+  <li><b>Labs not finished in class:</b> <code class="inline">navigate_links_starter.sql</code>, <code class="inline">orphan_audit_starter.sql</code>, the two debug handouts; the relationship map if it was cut.</li>
+  <li><b>Prepare for the Part 1 assessment (Session 7, second half, 60 minutes, open book):</b> reread your project scripts from Sessions 3 to 6 and your two debug-handout notes; redo one exercise per lesson from Module 2 to 4 without looking; make sure <code class="inline">SOURCE</code> works from your course folder. It covers creating tables with keys and constraints, CRUD, filtering and sorting, aggregates, subqueries, foreign keys, and the basic joins taught in the first half of Session 7.</li>
+  <li><b>Before the Next Lesson (from 4.2):</b> reload <code class="inline">bookstore.sql</code>, run the "every rule" query once more, explain each rule aloud.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Bring list for Session 7</div>
+<ul class="tick">
+  <li>A laptop with <code class="inline">bookstore.sql</code> loaded (8 tables, the counts 10, 11, 5, 25, 8, 12, 18, 10), charged: the assessment needs your own machine for 60 minutes.</li>
+  <li>The course folder with <code class="inline">labs/</code> and every project script so far: the assessment is open book (lesson pages, your notes, your own scripts; no other people and no AI assistants).</li>
+  <li>The workbook with today's relationship map, and the journal.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> 4.1 demo Steps 2 to 8 (anomaly, the four migration steps, the NULL check); everyone loading <code class="inline">bookstore.sql</code>; 4.2 demo Steps 1 to 4; the 4.2 lab tests 1 to 3.</li>
+  <li><b>Cut first (saves 10m):</b> the relationship map; it becomes homework with the query in the workbook.</li>
+  <li><b>Cut second (saves 4m):</b> 4.1 demo Steps 11 and 12 (one-to-one): show the slide; the self-check Q5 covers it.</li>
+  <li><b>Cut third (saves 7m):</b> 4.2 demo Steps 8 to 10 (a key added to dirty data): <code class="inline">orphan_audit_starter.sql</code> does it at home.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>Run <code class="inline">debug_fk_errors.sql</code> together: five errors, five sentences (child or parent, insert or delete or create).</li>
+  <li>The 4.2 Exercise 4 live: tighten fk_items_order to RESTRICT, show the 1451 on order 12, restore CASCADE, check with information_schema.</li>
+  <li>A mini-design on the board: a library (books, members, loans). Where does each key go, and which delete rule for loans → members?</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 6 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

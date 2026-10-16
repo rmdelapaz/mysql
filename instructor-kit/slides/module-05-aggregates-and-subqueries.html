@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides: Session 5</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--ink2:#9fb2cd;--accent:#93c5fd;--accent2:#2563eb;--py:#f6a53b;--lab:#34d3bd;--warn:#fbbf24;--line:#22314c;--code:#0a1526;color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100%;width:100%;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:6vh 8vw;gap:20px}
+  .slide.on{display:flex}
+  h1,h2,h3{font-family:"Archivo",sans-serif;line-height:1.1;text-wrap:balance}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .slide h1{font-size:clamp(2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+  .slide h2{font-size:clamp(1.5rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+  .slide p.lead{font-size:clamp(1.05rem,2.4vw,1.5rem);color:var(--ink2);max-width:34ch}
+  ul,ol.num{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  ul li{position:relative;padding-left:34px;font-size:clamp(1.05rem,2.3vw,1.6rem)}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+  ul.lab li::before{background:var(--lab)}
+  ol.num{counter-reset:n}
+  ol.num li{position:relative;padding-left:46px;font-size:clamp(1rem,2.1vw,1.45rem)}
+  ol.num li::before{counter-increment:n;content:counter(n);position:absolute;left:0;top:.05em;width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#fff;font-family:"JetBrains Mono",monospace;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+  code.k{font-family:"JetBrains Mono",monospace;font-variant-ligatures:none;color:#bfdbfe;font-size:.92em}
+  pre{white-space:pre;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px 24px;font-family:"JetBrains Mono",monospace;font-size:clamp(.8rem,1.7vw,1.15rem);line-height:1.5;overflow:auto;max-width:100%;font-variant-ligatures:none}
+  pre .k{color:#7dd3fc} pre .s{color:#86efac} pre .c{color:#7183a3;font-style:italic}
+  table.ag{border-collapse:collapse;font-size:clamp(.9rem,1.9vw,1.25rem);width:100%;max-width:60rem}
+  table.ag td{padding:7px 12px;border-bottom:1px solid var(--line)}
+  table.ag td.t{font-family:"JetBrains Mono",monospace;color:var(--ink2);white-space:nowrap}
+  table.ag tr.brk td{color:var(--py)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);color:var(--ink2)}
+  .tag .pill{background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;letter-spacing:.06em}
+  .tag .pill.lab{background:var(--lab);color:#062b26} .tag .pill.warn{background:var(--warn);color:#3a2a05}
+  .section{background:linear-gradient(135deg,#0f2a5c,#0b1220)}
+  .section .big{font-size:clamp(3rem,12vw,8rem);font-family:"Archivo";font-weight:800;color:#3b82f6;line-height:.9}
+  .section .big.py{color:var(--py)}
+  .two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:30px;align-items:start}
+  .two pre{font-size:clamp(.72rem,1.35vw,1rem);padding:16px 18px}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .bar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--py));width:0;transition:width .25s;z-index:5}
+  .count{position:fixed;right:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--ink2);z-index:5}
+  .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+  .nav button{pointer-events:auto;background:transparent;border:none;color:transparent;width:22vw;height:100vh;cursor:pointer}
+  .foot{position:fixed;left:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#5d7391;z-index:5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <section class="slide on section">
+    <div class="eyebrow">MySQL Foundations · Part 1 · Session 5 of 14 · 3 hours</div>
+    <h1>Session 5<br>Aggregates and Subqueries</h1>
+    <p class="lead">From rows to numbers, and questions that need an answer first.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Today</div>
+    <h2>Three hours, two lessons</h2>
+    <table class="ag">
+      <tr><td class="t">0:00</td><td>Warm-up: Lessons 3.1 and 3.2</td></tr>
+      <tr><td class="t">0:10</td><td>3.3 Aggregates and GROUP BY: model, demo, lab, project</td></tr>
+      <tr class="brk"><td class="t">1:10</td><td>Break (10 min)</td></tr>
+      <tr><td class="t">1:20</td><td>3.4 Subqueries: model, demo</td></tr>
+      <tr><td class="t">2:00</td><td>3.4 Lab and the price review</td></tr>
+      <tr><td class="t">2:40</td><td>Error clinic: eight numbered errors</td></tr>
+      <tr><td class="t">2:50</td><td>Exit ticket, homework, what to bring</td></tr>
+    </table>
+    <div class="tag"><span class="pill lab">LABS</span> <span>Labs: <code class="k">labs/module-05</code>. Data drifted? <code class="k">SOURCE labs/_states/flat.sql</code></span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Warm-up · 6 minutes</div>
+    <h2>Five questions from Lessons 3.1 and 3.2</h2>
+    <ol class="num">
+      <li><code class="k">city = 'Chicago' OR city = 'Houston' AND id &gt; 5</code>: who comes back?</li>
+      <li>Why does <code class="k">WHERE city = NULL</code> find nobody?</li>
+      <li>WHERE, ORDER BY, LIMIT: in which order?</li>
+      <li><code class="k">ORDER BY price DESC, title LIMIT 3 OFFSET 2</code>: which books?</li>
+      <li><code class="k">city NOT IN ('Chicago', NULL)</code>: how many rows?</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>Answer in the workbook first. No running yet.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Warm-up · Q5</div>
+    <h2>A NULL inside NOT IN</h2>
+    <pre class="code"><span class="k">SELECT</span> first_name
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="s">'Chicago'</span>, <span class="k">NULL</span>);</pre>
+    <pre class="code">Empty set</pre>
+    <div class="tag"><span class="pill warn">KEEP</span> <span>Remember this one. After the break it hides inside a subquery.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big">3.3</div><h2>Aggregate Functions &amp; GROUP BY</h2><p class="lead">Many rows in, one number out. One number per pile.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · Mental model</div>
+    <h2>The cashier's end-of-day slip</h2>
+    <ul>
+      <li>Nobody reads every receipt: they read the totals</li>
+      <li><code class="k">COUNT</code> <code class="k">SUM</code> <code class="k">AVG</code> <code class="k">MIN</code> <code class="k">MAX</code>: many rows, one value</li>
+      <li><code class="k">GROUP BY</code>: sort the rows into piles, one answer per pile</li>
+      <li>Every column you show: the pile's label, or a summary of the pile</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span>Every aggregate skips NULL, except COUNT(*).</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · Run order</div>
+    <h2>You write SELECT first; MySQL runs it fifth</h2>
+    <ol class="num">
+      <li>FROM: pick the table</li>
+      <li>WHERE: keep rows (the piles do not exist yet)</li>
+      <li>GROUP BY: make piles</li>
+      <li>HAVING: keep piles</li>
+      <li>SELECT, then ORDER BY, then LIMIT</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>Condition on one row: WHERE. Condition on a pile: HAVING.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · Code</div>
+    <h2>COUNT three ways</h2>
+    <pre class="code"><span class="k">SELECT</span>
+    COUNT(*)             <span class="k">AS</span> customers,
+    COUNT(city)          <span class="k">AS</span> with_a_city,
+    COUNT(<span class="k">DISTINCT</span> city) <span class="k">AS</span> cities
+<span class="k">FROM</span> customers;</pre>
+    <pre class="code">+-----------+-------------+--------+
+| customers | with_a_city | cities |
++-----------+-------------+--------+
+|         8 |           6 |      4 |
++-----------+-------------+--------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">COUNT(city)</code> skips Eve and Hank; <code class="k">DISTINCT</code> counts New York once.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · Code</div>
+    <h2>SUM and AVG: why six decimals?</h2>
+    <pre class="code"><span class="k">SELECT</span>
+    SUM(price)           <span class="k">AS</span> one_of_each,
+    AVG(price)           <span class="k">AS</span> avg_price,
+    ROUND(AVG(price), <span class="s">2</span>) <span class="k">AS</span> avg_rounded
+<span class="k">FROM</span> books;</pre>
+    <pre class="code">+-------------+-----------+-------------+
+| one_of_each | avg_price | avg_rounded |
++-------------+-----------+-------------+
+|      109.90 | 10.990000 |       10.99 |
++-------------+-----------+-------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Money for people: <code class="k">ROUND(AVG(price), 2)</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · Code</div>
+    <h2>MIN gives the value, not the row</h2>
+    <div class="two">
+    <pre class="code"><span class="k">SELECT</span> MIN(price) <span class="k">AS</span> cheapest, MAX(price) <span class="k">AS</span> priciest
+<span class="k">FROM</span> books;
+<span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price
+<span class="k">LIMIT</span> <span class="s">1</span>;</pre>
+    <div><pre class="code">+----------+----------+
+| cheapest | priciest |
++----------+----------+
+|     7.99 |    15.99 |
++----------+----------+
++---------------------+-------+
+| title               | price |
++---------------------+-------+
+| Pride and Prejudice |  7.99 |
++---------------------+-------+</pre></div>
+    </div>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Which book? Sort and LIMIT. Ties? After the break.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · Code</div>
+    <h2>Nothing matches: 0 and NULL</h2>
+    <pre class="code"><span class="k">SELECT</span>
+    COUNT(*)   <span class="k">AS</span> books_over_100,
+    SUM(price) <span class="k">AS</span> their_total
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &gt; <span class="s">100</span>;</pre>
+    <pre class="code">+----------------+-------------+
+| books_over_100 | their_total |
++----------------+-------------+
+|              0 |        NULL |
++----------------+-------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">COALESCE(SUM(price), 0)</code> when a report needs 0.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · GROUP BY</div>
+    <h2>One pile per author</h2>
+    <pre class="code"><span class="k">SELECT</span> author, COUNT(*) <span class="k">AS</span> book_count
+<span class="k">FROM</span> books
+<span class="k">GROUP</span> <span class="k">BY</span> author
+<span class="k">ORDER</span> <span class="k">BY</span> book_count <span class="k">DESC</span>, author
+<span class="k">LIMIT</span> <span class="s">4</span>;</pre>
+    <pre class="code">+---------------------+------------+
+| author              | book_count |
++---------------------+------------+
+| J.R.R. Tolkien      |          2 |
+| Aldous Huxley       |          1 |
+| F. Scott Fitzgerald |          1 |
+| Frank Herbert       |          1 |
++---------------------+------------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>GROUP BY does not sort (MySQL 8.0 and later). Always ORDER BY.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · GROUP BY</div>
+    <h2>Several aggregates per pile</h2>
+    <pre class="code"><span class="k">SELECT</span>
+    in_stock,
+    COUNT(*)             <span class="k">AS</span> books,
+    ROUND(AVG(price), <span class="s">2</span>) <span class="k">AS</span> avg_price,
+    MAX(pages)           <span class="k">AS</span> longest
+<span class="k">FROM</span> books
+<span class="k">GROUP</span> <span class="k">BY</span> in_stock
+<span class="k">ORDER</span> <span class="k">BY</span> in_stock <span class="k">DESC</span>;</pre>
+    <pre class="code">+----------+-------+-----------+---------+
+| in_stock | books | avg_price | longest |
++----------+-------+-----------+---------+
+|        1 |     8 |     11.49 |    1178 |
+|        0 |     2 |      8.99 |     234 |
++----------+-------+-----------+---------+</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · HAVING</div>
+    <h2>Keep whole piles</h2>
+    <pre class="code"><span class="k">SELECT</span> city, COUNT(*) <span class="k">AS</span> customers
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">IS</span> <span class="k">NOT</span> <span class="k">NULL</span>
+<span class="k">GROUP</span> <span class="k">BY</span> city
+<span class="k">HAVING</span> customers &gt; <span class="s">1</span>
+<span class="k">ORDER</span> <span class="k">BY</span> city;</pre>
+    <pre class="code">+----------+-----------+
+| city     | customers |
++----------+-----------+
+| Chicago  |         2 |
+| New York |         2 |
++----------+-----------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Houston and Los Angeles fail HAVING and disappear.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · HAVING</div>
+    <h2>WHERE and HAVING together</h2>
+    <div class="two">
+    <pre class="code"><span class="k">SELECT</span> author, ROUND(AVG(price), <span class="s">2</span>) <span class="k">AS</span> avg_price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> in_stock = <span class="k">TRUE</span>
+<span class="k">GROUP</span> <span class="k">BY</span> author
+<span class="k">HAVING</span> AVG(price) &gt; <span class="s">10</span>
+<span class="k">ORDER</span> <span class="k">BY</span> avg_price <span class="k">DESC</span>;</pre>
+    <div><pre class="code">+----------------+-----------+
+| author         | avg_price |
++----------------+-----------+
+| Frank Herbert  |     14.99 |
+| J.R.R. Tolkien |     13.49 |
+| Harper Lee     |     11.99 |
+| Ray Bradbury   |     10.49 |
++----------------+-----------+</pre></div>
+    </div>
+    <div class="tag"><span class="pill">WHY</span> <span>Rows out first (WHERE), piles out last (HAVING).</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · Errors on purpose</div>
+    <h2>Three numbered refusals</h2>
+    <pre class="code"><span class="k">SELECT</span> title, COUNT(*) <span class="k">FROM</span> books;
+<span class="k">SELECT</span> author, title, COUNT(*) <span class="k">AS</span> books <span class="k">FROM</span> books <span class="k">GROUP</span> <span class="k">BY</span> author;
+<span class="k">SELECT</span> author, COUNT(*) ... <span class="k">WHERE</span> COUNT(*) &gt; <span class="s">1</span> <span class="k">GROUP</span> <span class="k">BY</span> author;</pre>
+    <pre class="code">ERROR 1140 (42000)
+ERROR 1055 (42000)
+ERROR 1111 (HY000)</pre>
+    <ul>
+      <li>1140: ten titles, one row: which title?</li>
+      <li>1055: Tolkien's pile has two titles</li>
+      <li>1111: WHERE runs before the piles exist</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">SELECT</span> COUNT(*), COUNT(city), COUNT(<span class="k">DISTINCT</span> city)
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> id &gt; <span class="s">4</span>;</pre>
+    <ul>
+      <li>Customers 5 to 8: Eve and Hank have no city</li>
+      <li>Three numbers: write them down first</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · Guided lab · 15 minutes</div>
+    <h2>Summarize the customers</h2>
+    <ul class="lab">
+      <li><code class="k">customer_summary_starter.sql</code> in <code class="k">labs/module-05/l3_3-...</code></li>
+      <li>TODO 1 together: five placeholders, five aggregates</li>
+      <li>TODO 2: signups per month · TODO 3: HAVING · TODO 4: WHERE + COALESCE</li>
+      <li>Compare with "Expected when done" at the end of the file</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">page_report_starter.sql</code>, then <code class="k">debug_group_by.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.3 · Project</div>
+    <h2>The inventory report</h2>
+    <ul class="lab">
+      <li><code class="k">inventory_report.sql</code>: five commented queries, one file</li>
+      <li>Step 1: headline row (10, 8, 3824, 10.99)</li>
+      <li>Step 2: stock value by status with <code class="k">IF(in_stock, ...)</code></li>
+      <li>Steps 3 to 6 at home: bands, display table, cities, SOURCE it</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>Every grouped query ends with ORDER BY.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big py">10</div><h2>Break</h2><p class="lead">Back at 1:20. The run order stays on the board.</p></section>
+
+  <section class="slide section"><div class="big">3.4</div><h2>Subqueries &amp; Nested Queries</h2><p class="lead">A query inside a query: the inner one answers first.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Mental model</div>
+    <h2>Fill in the blank</h2>
+    <ul>
+      <li><code class="k">WHERE price &gt; ( ___ )</code>: before, you typed 10.99</li>
+      <li>Now a whole SELECT goes in the blank</li>
+      <li>Read from the inside out</li>
+      <li>The blank expects a shape: one value · a list · a named table</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span>Most subquery errors are a shape mismatch: 1242, 1241, 1248.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Code</div>
+    <h2>Above the average, computed fresh</h2>
+    <pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &gt; (<span class="k">SELECT</span> AVG(price) <span class="k">FROM</span> books)
+<span class="k">ORDER</span> <span class="k">BY</span> price;</pre>
+    <pre class="code">+-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| To Kill a Mockingbird | 11.99 |
+| Dune                  | 14.99 |
+| Lord of the Rings     | 15.99 |
++-----------------------+-------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Run the inner query alone first. Every time.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Code</div>
+    <h2>The row behind the maximum</h2>
+    <pre class="code"><span class="k">SELECT</span> title, author, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price = (<span class="k">SELECT</span> MAX(price) <span class="k">FROM</span> books);</pre>
+    <pre class="code">+-------------------+----------------+-------+
+| title             | author         | price |
++-------------------+----------------+-------+
+| Lord of the Rings | J.R.R. Tolkien | 15.99 |
++-------------------+----------------+-------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Ties? The subquery returns all of them; LIMIT 1 would hide one.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Code</div>
+    <h2>A list: IN with GROUP BY inside</h2>
+    <div class="two">
+    <pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">IN</span> (
+    <span class="k">SELECT</span> city <span class="k">FROM</span> customers
+    <span class="k">GROUP</span> <span class="k">BY</span> city
+    <span class="k">HAVING</span> COUNT(*) &gt; <span class="s">1</span>
+)
+<span class="k">ORDER</span> <span class="k">BY</span> city, first_name;</pre>
+    <div><pre class="code">+------------+----------+
+| first_name | city     |
++------------+----------+
+| Bob        | Chicago  |
+| Grace      | Chicago  |
+| Alice      | New York |
+| Frank      | New York |
++------------+----------+</pre></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · The NOT IN trap</div>
+    <h2>No error, no rows</h2>
+    <div class="two">
+    <pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> created_at &lt; <span class="s">'2026-02-01'</span>
+  <span class="k">AND</span> city <span class="k">NOT</span> <span class="k">IN</span> (
+      <span class="k">SELECT</span> city <span class="k">FROM</span> customers
+      <span class="k">WHERE</span> created_at &gt;= <span class="s">'2026-02-01'</span>
+  );</pre>
+    <div><pre class="code">inner query returns:
++---------+
+| city    |
++---------+
+| Chicago |
+| NULL    |
++---------+
+outer result:
+Empty set</pre></div>
+    </div>
+    <div class="tag"><span class="pill warn">RULE</span> <span>Every NOT IN subquery gets <code class="k">IS NOT NULL</code>. Or use NOT EXISTS.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Code</div>
+    <h2>The fix: keep NULL out of the list</h2>
+    <div class="two">
+    <pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> created_at &lt; <span class="s">'2026-02-01'</span>
+  <span class="k">AND</span> city <span class="k">NOT</span> <span class="k">IN</span> (
+      <span class="k">SELECT</span> city <span class="k">FROM</span> customers
+      <span class="k">WHERE</span> created_at &gt;= <span class="s">'2026-02-01'</span>
+        <span class="k">AND</span> city <span class="k">IS</span> <span class="k">NOT</span> <span class="k">NULL</span>
+  )
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre>
+    <div><pre class="code">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Alice      | New York    |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Frank      | New York    |
++------------+-------------+</pre></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Correlated</div>
+    <h2>Above their OWN author's average</h2>
+    <pre class="code"><span class="k">SELECT</span> b.title, b.author, b.price
+<span class="k">FROM</span> books <span class="k">AS</span> b
+<span class="k">WHERE</span> b.price &gt; (
+    <span class="k">SELECT</span> AVG(b2.price)
+    <span class="k">FROM</span> books <span class="k">AS</span> b2
+    <span class="k">WHERE</span> b2.author = b.author
+);</pre>
+    <pre class="code">+-------------------+----------------+-------+
+| title             | author         | price |
++-------------------+----------------+-------+
+| Lord of the Rings | J.R.R. Tolkien | 15.99 |
++-------------------+----------------+-------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>b = the row being tested · b2 = the inner scan of the same table.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Correlated</div>
+    <h2>Walk it one row at a time</h2>
+    <ol class="num">
+      <li>Outer row: The Hobbit, Tolkien, 10.99</li>
+      <li>Inner: average of Tolkien's books = 13.49</li>
+      <li>10.99 above 13.49? No: dropped</li>
+      <li>Next row: Lord of the Rings, 15.99 above 13.49? Yes: kept</li>
+      <li>Single-book authors: a price is never above itself</li>
+    </ol>
+    <div class="tag"><span class="pill lab">HOW</span> <span>Build it inner query first, for one author, then correlate.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · EXISTS</div>
+    <h2>Nobody else in my city</h2>
+    <div class="two">
+    <pre class="code"><span class="k">SELECT</span> c.first_name, c.city
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">WHERE</span> <span class="k">NOT</span> <span class="k">EXISTS</span> (
+    <span class="k">SELECT</span> <span class="s">1</span>
+    <span class="k">FROM</span> customers <span class="k">AS</span> other
+    <span class="k">WHERE</span> other.city = c.city
+      <span class="k">AND</span> other.id != c.id
+)
+<span class="k">ORDER</span> <span class="k">BY</span> c.first_name;</pre>
+    <div><pre class="code">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Eve        | NULL        |
+| Hank       | NULL        |
++------------+-------------+</pre></div>
+    </div>
+    <div class="tag"><span class="pill">WHY</span> <span>No NULL trap: Eve and Hank are kept.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Derived table</div>
+    <h2>A summary of a summary</h2>
+    <pre class="code"><span class="k">SELECT</span> ROUND(AVG(book_count), <span class="s">2</span>) <span class="k">AS</span> avg_books_per_author,
+       MAX(book_count)            <span class="k">AS</span> most_books
+<span class="k">FROM</span> (
+    <span class="k">SELECT</span> author, COUNT(*) <span class="k">AS</span> book_count
+    <span class="k">FROM</span> books
+    <span class="k">GROUP</span> <span class="k">BY</span> author
+) <span class="k">AS</span> author_counts;</pre>
+    <pre class="code">+----------------------+------------+
+| avg_books_per_author | most_books |
++----------------------+------------+
+|                 1.11 |          2 |
++----------------------+------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">AVG(COUNT(*))</code> in one level is error 1111. Two levels: FROM ( ... ) AS name.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · SELECT list</div>
+    <h2>A whole-table number on every row</h2>
+    <pre class="code"><span class="k">SELECT</span>
+    title,
+    price,
+    ROUND(price - (<span class="k">SELECT</span> AVG(price) <span class="k">FROM</span> books), <span class="s">2</span>) <span class="k">AS</span> diff_from_avg
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> diff_from_avg <span class="k">DESC</span>, title
+<span class="k">LIMIT</span> <span class="s">4</span>;</pre>
+    <pre class="code">+-----------------------+-------+---------------+
+| title                 | price | diff_from_avg |
++-----------------------+-------+---------------+
+| Lord of the Rings     | 15.99 |          5.00 |
+| Dune                  | 14.99 |          4.00 |
+| To Kill a Mockingbird | 11.99 |          1.00 |
+| The Hobbit            | 10.99 |          0.00 |
++-----------------------+-------+---------------+</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Errors on purpose</div>
+    <h2>Shape mismatches</h2>
+    <pre class="code"><span class="k">WHERE</span> price = (<span class="k">SELECT</span> price <span class="k">FROM</span> books <span class="k">WHERE</span> in_stock = <span class="k">FALSE</span>)
+<span class="k">FROM</span> (<span class="k">SELECT</span> author, COUNT(*) <span class="k">AS</span> book_count ... <span class="k">GROUP</span> <span class="k">BY</span> author);</pre>
+    <pre class="code">ERROR 1242 (21000): Subquery returns more than 1 row
+ERROR 1248 (42000): Every derived table must have its own alias</pre>
+    <div class="tag"><span class="pill warn">FIX</span> <span>1242: use IN or an aggregate · 1248: add AS name</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">SELECT</span> first_name
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="k">SELECT</span> city <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">5</span>);</pre>
+    <ul>
+      <li>Customer 5 is Eve: no city</li>
+      <li>How many first names come back?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Guided lab · 25 minutes</div>
+    <h2>Replace every typed number</h2>
+    <ul class="lab">
+      <li><code class="k">page_checks_starter.sql</code>: scalar, IN and ALL on dates and pages</li>
+      <li><code class="k">city_neighbors_starter.sql</code>: correlated, a derived table, the trap</li>
+      <li>TODO 4a prints nothing: find the NULL</li>
+      <li>Inner query first, for one example value</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">debug_subqueries.sql</code>: one bug per shape.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.4 · Project</div>
+    <h2>The price review</h2>
+    <ul class="lab">
+      <li><code class="k">price_review.sql</code>: no number typed by hand</li>
+      <li>Step 1: books above the store average</li>
+      <li>Step 2: each author's entry-level book (correlated)</li>
+      <li>Steps 3 to 6 at home: NOT EXISTS, top tier, headline, rerun</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>Write the inner query for Tolkien first, then correlate it.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Error clinic · 10 minutes</div>
+    <h2>Eight numbers, eight fixes</h2>
+    <ul class="lab">
+      <li>Half the room: <code class="k">debug_group_by.sql</code> (1140, 1055, 1111, 1064)</li>
+      <li>Other half: <code class="k">debug_subqueries.sql</code> (1242, 1241, 1248, 1235)</li>
+      <li>Per error: the number · what MySQL could not decide · the fix</li>
+      <li>One sentence each, aloud, in number order</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Wrap-up · 4 minutes</div>
+    <h2>Exit ticket</h2>
+    <ol class="num">
+      <li>One condition for WHERE, one for HAVING</li>
+      <li>NOT IN returns <code class="k">('Chicago', NULL)</code>: result? two fixes?</li>
+      <li>What makes a subquery correlated, and why aliases?</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>No notes. Workbook Exit Ticket box or a sticky note.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Before Session 6</div>
+    <h2>Homework and bring list</h2>
+    <ul class="lab">
+      <li>Finish the inventory report and the price review (Steps 3 to 6)</li>
+      <li>Exercises 1 to 3 of both lessons; both quizzes; both journals</li>
+      <li>Save <code class="k">bookstore.sql</code> in your course folder: do not run it yet</li>
+      <li>Bring: the flat bookstore loaded, your scripts, the workbook</li>
+    </ul>
+    <div class="tag"><span class="pill">NEXT</span> <span>Session 6: Relationships and Foreign Keys.</span></div>
+  </section>
+
+
+</div>
+
+<div class="foot">© 2026 Ray de la Paz · MySQL Foundations</div>
+<div class="count" id="count">1 / 1</div>
+<div class="nav"><button id="prev" aria-label="Previous slide"></button><button id="next" aria-label="Next slide"></button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'), count=document.getElementById('count');
+  let i=0;
+  function show(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%'; count.textContent=(i+1)+' / '+slides.length; }
+  document.getElementById('next').onclick=()=>show(i+1);
+  document.getElementById('prev').onclick=()=>show(i-1);
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0); else if(e.key==='End')show(slides.length-1);
+  });
+  show(0);
+</script>
+</body>
+</html>

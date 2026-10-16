@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Participant Workbook: Session 3</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Student workbook —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">write in it · bring it to every session</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Participant Workbook</div>
+    <h1>Session 3: Data Types, Constraints and CRUD</h1>
+    <p class="sub">Your workbook for Session 3: a warm-up on Session 2, the key ideas of Lessons 2.2 and 2.3, worked examples, the guided labs, predict-then-run practice, a self-check for each lesson, and your exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Lessons <b>2.2–2.3</b></span>
+      <span class="chip">Session <b>3</b> · 3 hours</span>
+      <span class="chip">Name: ____________________</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Session Goals</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Choose a type for every column: integers, DECIMAL for money, VARCHAR, CHAR, DATE and DATETIME, BOOLEAN, ENUM.</li>
+  <li>Add the rules that keep bad data out: PRIMARY KEY, NOT NULL, UNIQUE, DEFAULT, named CHECK, and read the error each one raises.</li>
+  <li>Add, read, change and remove rows with INSERT, SELECT, UPDATE and DELETE.</li>
+  <li>Change many rows safely: preview with SELECT, read Rows matched and Changed, use safe-updates mode.</li>
+  <li>Write an upsert, and load the bookstore's official data from a script you can rerun.</li>
+</ul>
+
+  <div class="sec"><h2>Warm-Up: Session 2</h2><span class="rule"></span></div>
+<p>Five questions from Lessons 1.3 and 2.1. Four minutes, no notes.</p>
+<div class="q"><div class="qn">W1</div><div class="qt">The prompt shows <code class="inline">-&gt;</code>. What do you type?</div><div class="opts"><div class="opt">A) <code class="inline">exit</code></div><div class="opt">B) <code class="inline">;</code> and Enter</div><div class="opt">C) Ctrl+C</div><div class="opt">D) <code class="inline">USE bookstore;</code></div></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">MySQL says <code class="inline">ERROR 1146 (42S02): Table 'mysql.books' doesn't exist</code>. What do you check first?</div><div class="opts"><div class="opt">A) Reinstall MySQL</div><div class="opt">B) Whether books was dropped</div><div class="opt">C) Which database you are in: the message says mysql, not bookstore</div><div class="opt">D) The password</div></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">Which of these works in phpMyAdmin's SQL tab?</div><div class="opts"><div class="opt">A) <code class="inline">DESCRIBE books;</code></div><div class="opt">B) <code class="inline">SOURCE create_bookstore.sql</code></div><div class="opt">C) <code class="inline">\G</code></div><div class="opt">D) <code class="inline">exit</code></div></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">What does SHOW COLUMNS print under Null?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> w4 (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, title <span class="k">VARCHAR</span>(<span class="s">200</span>) <span class="k">NOT</span> <span class="k">NULL</span>);
+<span class="k">ALTER</span> <span class="k">TABLE</span> w4 <span class="k">MODIFY</span> <span class="k">COLUMN</span> title <span class="k">VARCHAR</span>(<span class="s">250</span>);
+<span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> w4 <span class="k">LIKE</span> <span class="s">'title'</span>;</pre><div class="opts"><div class="opt">A) <code class="inline">NO</code>: NOT NULL is kept</div><div class="opt">B) <code class="inline">YES</code>: MODIFY replaced the whole definition</div><div class="opt">C) Nothing: ERROR 1064</div><div class="opt">D) <code class="inline">NO</code>, with a warning</div></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">Right after <code class="inline">DROP DATABASE scratch;</code> (you were inside scratch), <code class="inline">CREATE TABLE t (id INT);</code> fails. Why?</div><div class="opts"><div class="opt">A) The table exists (1050)</div><div class="opt">B) A syntax error (1064)</div><div class="opt">C) Permission denied</div><div class="opt">D) No database selected (1046): USE one, or write database.table</div></div></div>
+
+  <div class="sec"><h2>Lessons</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2.2</span><h3>Data Types &amp; Constraints</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Pick an integer type and decide when UNSIGNED makes sense; explain why money is DECIMAL, never FLOAT</li>
+  <li>Choose between CHAR, VARCHAR and TEXT, and between DATE, DATETIME and TIMESTAMP</li>
+  <li>Use BOOLEAN and ENUM correctly, knowing what MySQL really stores</li>
+  <li>Apply PRIMARY KEY, AUTO_INCREMENT, NOT NULL, UNIQUE, DEFAULT and named CHECK constraints</li>
+  <li>Read the errors strict mode raises for bad values (1048, 1062, 1264, 1265, 1292, 1364, 1406, 3819)</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>A type is a promise</b> MySQL keeps: it validates values, makes math and sorting work, and decides the size.</li>
+  <li><b>Strict mode</b> (the default) turns a value that does not fit into an error instead of a silent change. Keep it on.</li>
+  <li><b>Numbers:</b> INT is the default; TINYINT/SMALLINT for small ranges; UNSIGNED forbids negatives. <b>Money is DECIMAL(m, d), never FLOAT.</b></li>
+  <li><b>Text:</b> VARCHAR(n) for almost everything, CHAR(n) for fixed-length codes, TEXT for long writing. Phone numbers and ZIP codes are text.</li>
+  <li><b>Dates</b> are 'YYYY-MM-DD'. DATETIME for moments; TIMESTAMP converts time zones but ends in 2038.</li>
+  <li><b>BOOLEAN is TINYINT(1):</b> test it with <code class="inline">WHERE col</code>, not <code class="inline">= TRUE</code>. <b>ENUM</b> is one value from a short, stable list.</li>
+  <li><b>Constraints:</b> PRIMARY KEY, AUTO_INCREMENT, NOT NULL, UNIQUE, DEFAULT, named CHECK. Errors: 1048/1364 required · 1062 duplicate · 1264 out of range · 1265 not on the list · 1292 bad date · 1406 too long · 3819 CHECK.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: a preorder slip</div>
+<p>A preorder slip, with a type and rules for every column: the email and ISBN are required, the number of copies is small and never negative, the deposit is money with a limit, the format is one of three.</p>
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> kit_preorders (
+    id         <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    email      <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    isbn       <span class="k">CHAR</span>(<span class="s">13</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    copies     <span class="k">TINYINT</span> <span class="k">UNSIGNED</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">DEFAULT</span> <span class="s">1</span>,
+    deposit    <span class="k">DECIMAL</span>(<span class="s">6</span>, <span class="s">2</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">DEFAULT</span> <span class="s">0.00</span>,
+    format     <span class="k">ENUM</span>(<span class="s">'paperback'</span>, <span class="s">'hardcover'</span>, <span class="s">'ebook'</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">DEFAULT</span> <span class="s">'paperback'</span>,
+    wanted_by  <span class="k">DATE</span>,
+    <span class="k">CONSTRAINT</span> chk_preorder_deposit <span class="k">CHECK</span> (deposit &lt;= <span class="s">50</span>)
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> kit_preorders (email, isbn) <span class="k">VALUES</span> (<span class="s">'ana@example.com'</span>, <span class="s">'9780441013593'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> kit_preorders (email, isbn, copies, deposit, format, wanted_by)
+<span class="k">VALUES</span> (<span class="s">'ben@example.com'</span>, <span class="s">'9780547928227'</span>, <span class="s">2</span>, <span class="s">10.00</span>, <span class="s">'hardcover'</span>, <span class="s">'2026-12-15'</span>);</pre><p>Ana gave only the required values; the defaults filled in the rest:</p>
+<pre class="code"><span class="k">SELECT</span> id, email, copies, deposit, format, wanted_by
+<span class="k">FROM</span> kit_preorders
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+<pre class="out">+----+-----------------+--------+---------+-----------+------------+
+| id | email           | copies | deposit | format    | wanted_by  |
++----+-----------------+--------+---------+-----------+------------+
+|  1 | ana@example.com |      1 |    0.00 | paperback | NULL       |
+|  2 | ben@example.com |      2 |   10.00 | hardcover | 2026-12-15 |
++----+-----------------+--------+---------+-----------+------------+</pre><p>MySQL keeps every CHECK in information_schema, under the name you gave it:</p>
+<pre class="code"><span class="k">SELECT</span> CONSTRAINT_NAME, CHECK_CLAUSE
+<span class="k">FROM</span> information_schema.CHECK_CONSTRAINTS
+<span class="k">WHERE</span> CONSTRAINT_SCHEMA = <span class="k">DATABASE</span>();</pre>
+<pre class="out">+----------------------+-------------------+
+| CONSTRAINT_NAME      | CHECK_CLAUSE      |
++----------------------+-------------------+
+| chk_preorder_deposit | (`deposit` &lt;= 50) |
++----------------------+-------------------+</pre><p>Clean up (the slip was practice):</p>
+<pre class="code"><span class="k">DROP</span> <span class="k">TABLE</span> kit_preorders;</pre></div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li><code class="inline">USE bookstore;</code>, then SOURCE <code class="inline">labs/module-03/l2_2-data-types-constraints/types_matter_starter.sql</code> as it is.</li>
+  <li>Which of the four answers are wrong, and why? Write it down before you change anything.</li>
+  <li>TODOs 1 to 3: fix the three types (and convert the dates). Run it again.</li>
+</ul>
+<table class="timing">
+<thead><tr><th>Question</th><th>As shipped</th><th>With the right types</th></tr></thead>
+<tbody>
+<tr><td>Biggest delivery first</td><td></td><td></td></tr>
+<tr><td>Total cost</td><td></td><td></td></tr>
+<tr><td>Calendar order</td><td></td><td></td></tr>
+<tr><td>Last delivery</td><td></td><td></td></tr>
+</tbody>
+</table>
+<ul class="tick">
+  <li>Finished early? <code class="inline">membership_rules_starter.sql</code>, then <code class="inline">debug_bad_rows.sql</code>.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction first, then run the code in a practice database (<code class="inline">CREATE DATABASE scratch; USE scratch;</code>, and <code class="inline">DROP DATABASE scratch;</code> when you are done, then <code class="inline">USE bookstore;</code>).</p>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it. (Two spaces at the end, twice.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> codes (code <span class="k">CHAR</span>(<span class="s">6</span>), label <span class="k">VARCHAR</span>(<span class="s">6</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> codes <span class="k">VALUES</span> (<span class="s">'ab  '</span>, <span class="s">'ab  '</span>);
+<span class="k">SELECT</span> CHAR_LENGTH(code)  <span class="k">AS</span> code_len,
+       CHAR_LENGTH(label) <span class="k">AS</span> label_len
+<span class="k">FROM</span> codes;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it. (255 and then 256.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> counts (n <span class="k">TINYINT</span> <span class="k">UNSIGNED</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> counts <span class="k">VALUES</span> (<span class="s">255</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> counts <span class="k">VALUES</span> (<span class="s">256</span>);
+<span class="k">SELECT</span> n <span class="k">FROM</span> counts;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>The Staff Table</b> (lesson page, "Project: The Staff Table"). In class: Steps 1 to 4 and Step 6's cleanup. At home: Step 5 and a rerun.</p>
+<ul class="tick">
+  <li>☐ Step 1: my types and rules on paper, before I look</li>
+  <li>☐ Steps 2 and 3: the table and three staff members</li>
+  <li>☐ Step 4: four bad rows refused: 3819, 1062, 1265, 1364 (my predictions: ______)</li>
+  <li>☐ Step 5: COUNT is still 3; I found the UNIQUE KEY and chk_salary in SHOW CREATE TABLE</li>
+  <li>☐ Step 6: demo tables dropped; SHOW TABLES lists books, categories, customers</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">A column holds a discount as a whole percentage from 0 to 100. Which type is the smallest sensible choice?</div><div class="opts"><div class="opt">A) <code class="inline">TINYINT UNSIGNED</code></div><div class="opt">B) <code class="inline">INT</code></div><div class="opt">C) <code class="inline">DECIMAL(5, 2)</code></div><div class="opt">D) <code class="inline">VARCHAR(3)</code></div></div></div>
+<div class="q" data-sc="2" data-kind="short"><div class="qn">Q2</div><div class="qt">What does the SELECT print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> q2 (amount <span class="k">DECIMAL</span>(<span class="s">5</span>, <span class="s">2</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> q2 <span class="k">VALUES</span> (<span class="s">7.005</span>);
+<span class="k">SELECT</span> amount <span class="k">FROM</span> q2;</pre><div class="write"></div></div>
+<div class="q" data-sc="3"><div class="qn">Q3</div><div class="qt">What happens when this runs?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> q3 (due <span class="k">DATE</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> q3 <span class="k">VALUES</span> (<span class="s">'2026-04-31'</span>);</pre><div class="opts"><div class="opt">A) 2026-05-01 is stored</div><div class="opt">B) 2026-04-30 is stored</div><div class="opt">C) <code class="inline">ERROR 1292 (22007): Incorrect date value: '2026-04-31' for column 'due' at row 1</code></div><div class="opt">D) NULL is stored with a warning</div></div></div>
+<div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">A library stores the moment each long-term loan ends, some of them in 2045. Which type fits best?</div><div class="opts"><div class="opt">A) <code class="inline">TIMESTAMP</code></div><div class="opt">B) <code class="inline">DATE</code></div><div class="opt">C) <code class="inline">YEAR</code></div><div class="opt">D) <code class="inline">DATETIME</code></div></div></div>
+<div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">email is <code class="inline">NOT NULL</code>. An INSERT gives it the value NULL explicitly. Which error?</div><div class="opts"><div class="opt">A) <code class="inline">ERROR 1364</code>: Field 'email' doesn't have a default value</div><div class="opt">B) <code class="inline">ERROR 1048</code>: Column 'email' cannot be null</div><div class="opt">C) <code class="inline">ERROR 1062</code>: Duplicate entry</div><div class="opt">D) <code class="inline">ERROR 3819</code>: Check constraint is violated</div></div></div>
+<div class="q" data-sc="6" data-kind="short"><div class="qn">Q6</div><div class="qt">In which order does the SELECT list the three sizes?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> q6 (size <span class="k">ENUM</span>(<span class="s">'small'</span>, <span class="s">'medium'</span>, <span class="s">'large'</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> q6 <span class="k">VALUES</span> (<span class="s">'large'</span>), (<span class="s">'small'</span>), (<span class="s">'medium'</span>);
+<span class="k">SELECT</span> size <span class="k">FROM</span> q6 <span class="k">ORDER</span> <span class="k">BY</span> size;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Take out the table sketch from Lesson 2.1's journal. Revise every column with what you know now: its exact type and size, whether it is NOT NULL, and one CHECK or UNIQUE rule it should have. Which of your first guesses changed, and why?</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2.3</span><h3>CRUD Operations</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Create rows with INSERT: one row, many rows, with defaults, and read back the new id</li>
+  <li>Read rows with SELECT: chosen columns, aliases, calculated columns and DISTINCT</li>
+  <li>Update and delete exactly the rows you mean, using the "SELECT first" habit and safe-updates mode</li>
+  <li>Write an upsert with INSERT ... AS new ON DUPLICATE KEY UPDATE, and explain how it differs from REPLACE and INSERT IGNORE</li>
+  <li>Read and fix errors 1054, 1062, 1136 and 1175</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>CRUD:</b> INSERT creates, SELECT reads, UPDATE changes, DELETE removes. WHERE picks the rows; without it, every row.</li>
+  <li><b>INSERT</b> always with a column list; several value lists in one statement; <code class="inline">LAST_INSERT_ID()</code> is the id just given (the first one after a multi-row insert).</li>
+  <li><b>SELECT</b> names the columns it needs; <code class="inline">AS</code> renames; calculations never change the table; <code class="inline">DISTINCT</code> shows each value once.</li>
+  <li><b>Preview, change, compare:</b> a SELECT with the same WHERE first; then read <code class="inline">Rows matched</code> and <code class="inline">Changed</code>.</li>
+  <li><b>Safe-updates mode</b> (<code class="inline">SET SQL_SAFE_UPDATES = 1;</code>, <code class="inline">mysql --safe-updates</code>) refuses UPDATE/DELETE without a key in the WHERE: error 1175.</li>
+  <li><b>SET</b> separates assignments with commas, never AND. AUTO_INCREMENT ids are never reused.</li>
+  <li><b>Upsert:</b> <code class="inline">INSERT ... AS new ON DUPLICATE KEY UPDATE col = new.col</code> (1 inserted, 2 updated, 0 unchanged). REPLACE deletes and re-inserts; INSERT IGNORE skips.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: a change in three steps</div>
+<p>A change to several rows in three steps: preview, change with the same WHERE, check. Four customers first:</p>
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> customers (first_name, last_name, email, city, created_at) <span class="k">VALUES</span>
+    (<span class="s">'Nina'</span>, <span class="s">'Park'</span>, <span class="s">'nina@example.com'</span>, <span class="s">'Denver'</span>, <span class="s">'2026-03-01 09:00:00'</span>),
+    (<span class="s">'Omar'</span>, <span class="s">'Haddad'</span>, <span class="s">'omar@example.com'</span>, <span class="s">'Boston'</span>, <span class="s">'2026-03-02 10:30:00'</span>),
+    (<span class="s">'Paula'</span>, <span class="s">'Reyes'</span>, <span class="s">'paula@example.com'</span>, <span class="s">'Denver'</span>, <span class="s">'2026-03-03 12:00:00'</span>),
+    (<span class="s">'Quinn'</span>, <span class="s">'Lee'</span>, <span class="s">'quinn@example.com'</span>, <span class="k">NULL</span>, <span class="s">'2026-03-04 15:45:00'</span>);</pre><p>Step 1, the preview: who lives in Denver?</p>
+<pre class="code"><span class="k">SELECT</span> id, first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'Denver'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+<pre class="out">+----+------------+--------+
+| id | first_name | city   |
++----+------------+--------+
+|  1 | Nina       | Denver |
+|  3 | Paula      | Denver |
++----+------------+--------+</pre><p>Step 2, the same WHERE in the UPDATE. Read the second line: 2 matched, the same 2 the preview showed:</p>
+<pre class="code"><span class="k">UPDATE</span> customers
+<span class="k">SET</span> city = <span class="s">'Aurora'</span>
+<span class="k">WHERE</span> city = <span class="s">'Denver'</span>;</pre>
+<pre class="out">Query OK, 2 rows affected
+Rows matched: 2  Changed: 2  Warnings: 0</pre><p>Step 3, look at the result. Quinn's NULL city was not touched: <code class="inline">NULL = 'Denver'</code> is not true.</p>
+<pre class="code"><span class="k">SELECT</span> id, first_name, city
+<span class="k">FROM</span> customers
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+<pre class="out">+----+------------+--------+
+| id | first_name | city   |
++----+------------+--------+
+|  1 | Nina       | Aurora |
+|  2 | Omar       | Boston |
+|  3 | Paula      | Aurora |
+|  4 | Quinn      | NULL   |
++----+------------+--------+</pre><p>Clean up:</p>
+<pre class="code"><span class="k">TRUNCATE</span> <span class="k">TABLE</span> customers;</pre></div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li><code class="inline">USE bookstore;</code>, then SOURCE <code class="inline">labs/module-03/l2_3-crud-operations/new_arrivals_starter.sql</code>. Steps 1 and 2 run as they are.</li>
+  <li>TODOs 3 to 6: before you turn each one on, write what you expect (which rows, how many, which id).</li>
+  <li>Done when your results match the "Expected when done" comment.</li>
+  <li>Finished early? <code class="inline">category_feed_starter.sql</code>, then <code class="inline">debug_crud_slips.sql</code>.</li>
+</ul>
+<div class="write tall"></div>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction first, then run the code in a practice database (<code class="inline">CREATE DATABASE scratch; USE scratch;</code>, and <code class="inline">DROP DATABASE scratch;</code> when you are done, then <code class="inline">USE bookstore;</code>).</p>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it. (Delete id 3, then one more row.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> notes (id <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, t <span class="k">VARCHAR</span>(<span class="s">10</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> notes (t) <span class="k">VALUES</span> (<span class="s">'a'</span>), (<span class="s">'b'</span>), (<span class="s">'c'</span>);
+<span class="k">DELETE</span> <span class="k">FROM</span> notes <span class="k">WHERE</span> id = <span class="s">3</span>;
+<span class="k">INSERT</span> <span class="k">INTO</span> notes (t) <span class="k">VALUES</span> (<span class="s">'d'</span>);
+<span class="k">SELECT</span> * <span class="k">FROM</span> notes;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it. (An upsert that adds.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> tags (name <span class="k">VARCHAR</span>(<span class="s">20</span>) <span class="k">PRIMARY</span> <span class="k">KEY</span>, uses <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> tags <span class="k">VALUES</span> (<span class="s">'sale'</span>, <span class="s">1</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> tags <span class="k">VALUES</span> (<span class="s">'sale'</span>, <span class="s">1</span>) <span class="k">AS</span> new
+<span class="k">ON</span> <span class="k">DUPLICATE</span> <span class="k">KEY</span> <span class="k">UPDATE</span> uses = tags.uses + new.uses;
+<span class="k">SELECT</span> * <span class="k">FROM</span> tags;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>Stock the Bookstore</b> (lesson page, "Project: Stock the Bookstore"). All five steps in class.</p>
+<ul class="tick">
+  <li>☐ Step 1: header, USE, three TRUNCATEs</li>
+  <li>☐ Steps 2 and 3: 10 books, 8 customers, 5 categories, every INSERT with a column list</li>
+  <li>☐ Step 4: books end with 10 Fahrenheit 451; 8 customers; 5 categories</li>
+  <li>☐ Step 5: run twice, same result</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">Why should you avoid <code class="inline">INSERT INTO books VALUES (NULL, 'Emma', ...);</code> without a column list?</div><div class="opts"><div class="opt">A) It is slower than listing the columns</div><div class="opt">B) NULL is not allowed in an id</div><div class="opt">C) It inserts the row twice</div><div class="opt">D) It depends on the table's exact column order: an added column breaks it (1136) or shifts values silently</div></div></div>
+<div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">What does the last SELECT print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> q8 (id <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, t <span class="k">VARCHAR</span>(<span class="s">10</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> q8 (t) <span class="k">VALUES</span> (<span class="s">'a'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> q8 (t) <span class="k">VALUES</span> (<span class="s">'b'</span>), (<span class="s">'c'</span>), (<span class="s">'d'</span>);
+<span class="k">SELECT</span> LAST_INSERT_ID();</pre><div class="write"></div></div>
+<div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">An UPDATE reports <code class="inline">Rows matched: 0  Changed: 0  Warnings: 0</code>. What is most likely?</div><div class="opts"><div class="opt">A) The WHERE found no rows: often a typo in the value or the wrong column</div><div class="opt">B) It worked: every row was changed</div><div class="opt">C) The rows already had those values</div><div class="opt">D) Safe-updates mode refused it</div></div></div>
+<div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">After <code class="inline">SET SQL_SAFE_UPDATES = 1;</code>, which statement still runs? (id is the primary key.)</div><div class="opts"><div class="opt">A) <code class="inline">UPDATE books SET price = 0;</code></div><div class="opt">B) <code class="inline">DELETE FROM books WHERE price &gt; 10;</code></div><div class="opt">C) <code class="inline">UPDATE books SET price = 9.99 WHERE id = 2;</code></div><div class="opt">D) <code class="inline">DELETE FROM books;</code></div></div></div>
+<div class="q" data-sc="11"><div class="qn">Q11</div><div class="qt">A category name already exists. Which statement updates its description and keeps its id and every other column?</div><div class="opts"><div class="opt">A) <code class="inline">REPLACE INTO categories (name, description) VALUES (...);</code></div><div class="opt">B) <code class="inline">INSERT ... AS new ON DUPLICATE KEY UPDATE description = new.description;</code></div><div class="opt">C) <code class="inline">INSERT IGNORE INTO categories (name, description) VALUES (...);</code></div><div class="opt">D) <code class="inline">DELETE</code> the old row, then <code class="inline">INSERT</code> the new one</div></div></div>
+<div class="q" data-sc="12" data-kind="short"><div class="qn">Q12</div><div class="qt">What does ROW_COUNT() print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> q12 (name <span class="k">VARCHAR</span>(<span class="s">20</span>) <span class="k">PRIMARY</span> <span class="k">KEY</span>, note <span class="k">VARCHAR</span>(<span class="s">30</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> q12 <span class="k">VALUES</span> (<span class="s">'a'</span>, <span class="s">'x'</span>), (<span class="s">'b'</span>, <span class="s">'y'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> q12 <span class="k">VALUES</span> (<span class="s">'a'</span>, <span class="s">'x'</span>), (<span class="s">'b'</span>, <span class="s">'z'</span>), (<span class="s">'c'</span>, <span class="s">'w'</span>) <span class="k">AS</span> new
+<span class="k">ON</span> <span class="k">DUPLICATE</span> <span class="k">KEY</span> <span class="k">UPDATE</span> note = new.note;
+<span class="k">SELECT</span> ROW_COUNT() <span class="k">AS</span> affected;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Think of an app you use daily (a music player, a shopping site, a chat). Write down one real action for each CRUD letter in that app, and the WHERE clause the app would need for the update and the delete. What would happen to other users if that WHERE were missing?</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<p>Three questions, no notes.</p>
+<div class="q"><div class="qn">E1</div><div class="qt">Why is money stored as DECIMAL and never as FLOAT? One sentence and one example.</div><div class="write"></div></div>
+<div class="q"><div class="qn">E2</div><div class="qt">An UPDATE says <code class="inline">Rows matched: 3  Changed: 2</code>. What happened to the third row?</div><div class="write"></div></div>
+<div class="q"><div class="qn">E3</div><div class="qt">What do you run before every UPDATE or DELETE that touches more than one row, and why?</div><div class="write"></div></div>
+
+  <div class="sec"><h2>Notes</h2><span class="rule"></span></div>
+<div class="notes-lines"></div>
+
+  <div class="sec"><h2>Homework Checklist</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ employees.sql: Step 5, a rerun, Step 6's cleanup</li>
+  <li>☐ load_bookstore_data.sql finished and run once more (10 books, 8 customers, 5 categories)</li>
+  <li>☐ Lesson 2.2 Hands-on Exercises 1 to 3 (Exercise 4 is a stretch)</li>
+  <li>☐ Lesson 2.3 Hands-on Exercises 1 to 4 (Exercise 5 is a stretch)</li>
+  <li>☐ Both Quick Quizzes on the lesson pages</li>
+  <li>☐ Both journal entries</li>
+  <li>☐ Optional: <code class="inline">membership_rules_starter.sql</code>, <code class="inline">category_feed_starter.sql</code>, the two debug files; a week of <code class="inline">--safe-updates</code></li>
+  <li>☐ Bring to Session 4: bookstore loaded, my two scripts, this workbook, my notes (Checkpoint 1 on Modules 1 and 2, open notes)</li>
+</ul>
+
+  <div class="sec"><h2>Glossary</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>data type</td><td>What kind of value a column holds (INT, DECIMAL, VARCHAR, DATE...)</td></tr>
+<tr><td>strict mode</td><td><code class="inline">STRICT_TRANS_TABLES</code> in <code class="inline">sql_mode</code>: values that do not fit are errors, not silent changes</td></tr>
+<tr><td>UNSIGNED</td><td>No negative numbers; the range shifts up</td></tr>
+<tr><td>DECIMAL(m, d)</td><td>An exact number: m digits in all, d after the point; the type for money</td></tr>
+<tr><td>ENUM</td><td>One value from a fixed list; sorts by list position</td></tr>
+<tr><td>constraint</td><td>A rule MySQL enforces for every writer: PRIMARY KEY, NOT NULL, UNIQUE, DEFAULT, CHECK</td></tr>
+<tr><td>CRUD</td><td>Create, Read, Update, Delete: INSERT, SELECT, UPDATE, DELETE</td></tr>
+<tr><td>Rows matched / Changed</td><td>How many rows the WHERE found / how many got a new value</td></tr>
+<tr><td>LAST_INSERT_ID()</td><td>The AUTO_INCREMENT id your session's last INSERT received</td></tr>
+<tr><td>ROW_COUNT()</td><td>How many rows the previous statement changed</td></tr>
+<tr><td>safe-updates mode</td><td>Refuses UPDATE and DELETE without a key column in the WHERE (error 1175)</td></tr>
+<tr><td>upsert</td><td>Insert a row, or update it if its key already exists (<code class="inline">ON DUPLICATE KEY UPDATE</code>)</td></tr>
+</tbody>
+</table>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 3 · Participant Workbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn MySQL transactions — ACID properties, BEGIN, COMMIT, ROLLBACK, and savepoints — to guarantee data integrity when multiple operations must succeed or fail together.">
-    <meta name="author" content="Ray De La Paz">
+    <meta name="description" content="Group changes into all-or-nothing units with START TRANSACTION, COMMIT, ROLLBACK and savepoints, watch isolation and row locks with two connections, and write procedures that roll back on any error. MySQL Foundations Lesson 7.2.">
+    <meta name="author" content="Ray de la Paz">
     <title>Transactions - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -42,31 +42,35 @@
     <nav class="breadcrumb" aria-label="Breadcrumb">
         <ul>
             <li><a href="index.html">Home</a></li>
-            <li><a href="index.html#modules">Module 6: Advanced Features</a></li>
-            <li aria-current="page">Lesson 18: Transactions</li>
+            <li><a href="index.html#modules">Module 7: Advanced Features</a></li>
+            <li aria-current="page">Lesson 7.2: Transactions</li>
         </ul>
     </nav>
 
     <main id="main-content">
         <div class="container">
             <header>
-                <h1>🔒 Lesson 18: Transactions</h1>
-                <p class="lead">Imagine a customer places an order: you INSERT the order, INSERT the order items, and UPDATE the inventory. But what if the server crashes after the order is inserted but <em>before</em> the inventory is updated? You'd have an order with no inventory deduction — or worse, deducted inventory with no order. A <strong>transaction</strong> groups these operations into an all-or-nothing unit: either everything succeeds together, or everything is rolled back as if nothing happened.</p>
+                <h1>🔒 Lesson 7.2: Transactions</h1>
+                <p class="lead">Placing an order takes several statements: insert the order, insert its items, charge the customer. What if the third one fails, or the power goes out between the first and the second? A <strong>transaction</strong> turns several statements into one unit that either happens completely or not at all. This lesson shows how to use one, what other connections see while it runs, and how to make a procedure roll back on any error.</p>
 
                 <div class="card card-info">
                     <h2>🎯 Learning Objectives</h2>
                     <p>By the end of this lesson, you will be able to:</p>
                     <ul>
-                        <li>Explain the ACID properties of transactions</li>
-                        <li>Use <code>START TRANSACTION</code>, <code>COMMIT</code>, and <code>ROLLBACK</code></li>
-                        <li>Create and roll back to <code>SAVEPOINT</code>s</li>
-                        <li>Understand autocommit mode and how to control it</li>
-                        <li>Use transactions inside stored procedures</li>
-                        <li>Recognize common transaction patterns and pitfalls</li>
+                        <li>Group changes with <code>START TRANSACTION</code>, <code>COMMIT</code> and <code>ROLLBACK</code>, and explain autocommit and implicit commits</li>
+                        <li>Undo part of a transaction with <code>SAVEPOINT</code> and <code>ROLLBACK TO SAVEPOINT</code></li>
+                        <li>Predict what a second connection sees and when it has to wait, under MySQL's default <code>REPEATABLE READ</code> isolation</li>
+                        <li>Lock rows on purpose with <code>SELECT ... FOR UPDATE</code>, and read lock errors 1205 and 1213</li>
+                        <li>Write a stored procedure whose error handler rolls back the whole transaction and passes the error on</li>
                     </ul>
-                    <p><strong>Estimated Time:</strong> 45 minutes</p>
-                    <p><strong>Prerequisites:</strong> Stored Procedures &amp; Functions (<a href="lesson_17.html">Lesson 17</a>)</p>
                 </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 110 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_17.html">Lesson 7.1: Stored Procedures &amp; Functions</a></li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>checkout.sql</code>: a <code>checkout</code> procedure that places an order and charges store credit, all or nothing</li>
+                    <li><span class="meta-label">🗄️ Database</span> <code>bookstore</code>, freshly loaded from <a href="assets/sql/bookstore.sql" download>bookstore.sql</a>, plus an <code>accounts</code> table you create below</li>
+                </ul>
             </header>
 
             <details class="card toc-card" open>
@@ -78,877 +82,1176 @@
                 <nav aria-label="Table of Contents">
                     <ol>
                         <li><a href="#why-transactions" class="toc-link">Why Transactions?</a></li>
-                        <li><a href="#acid" class="toc-link">The ACID Properties</a></li>
-                        <li><a href="#basic-syntax" class="toc-link">Basic Transaction Syntax</a></li>
-                        <li><a href="#commit" class="toc-link">COMMIT — Make It Permanent</a></li>
-                        <li><a href="#rollback" class="toc-link">ROLLBACK — Undo Everything</a></li>
-                        <li><a href="#autocommit" class="toc-link">Autocommit Mode</a></li>
-                        <li><a href="#savepoints" class="toc-link">Savepoints — Partial Rollback</a></li>
-                        <li><a href="#transactions-in-procedures" class="toc-link">Transactions in Stored Procedures</a></li>
-                        <li><a href="#common-patterns" class="toc-link">Common Transaction Patterns</a></li>
-                        <li><a href="#pitfalls" class="toc-link">Pitfalls &amp; Best Practices</a></li>
-                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
-                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                        <li><a href="#setup" class="toc-link">Setup: Store Credit Accounts</a></li>
+                        <li><a href="#commit-rollback" class="toc-link">START TRANSACTION, COMMIT, ROLLBACK</a></li>
+                        <li><a href="#autocommit" class="toc-link">Autocommit and Implicit Commits</a></li>
+                        <li><a href="#savepoints" class="toc-link">Savepoints: Partial Rollback</a></li>
+                        <li><a href="#isolation" class="toc-link">Two Sessions: Isolation and Locks</a></li>
+                        <li><a href="#for-update" class="toc-link">Locking Rows with FOR UPDATE</a></li>
+                        <li><a href="#procedures" class="toc-link">Transactions in Stored Procedures</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: An All-or-Nothing Checkout</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
                     </ol>
                 </nav>
             </details>
 
-            <!-- Section 1: Why Transactions? -->
             <section id="why-transactions" class="lesson-section">
-                <h2>Why Transactions?</h2>
-                <p>Many real-world database operations involve <strong>multiple steps</strong> that must succeed or fail as a unit:</p>
-
-                <ul>
-                    <li><strong>Bank transfer:</strong> Debit Account A and credit Account B — both must happen, or neither</li>
-                    <li><strong>Order placement:</strong> Create the order, add line items, update inventory — all or nothing</li>
-                    <li><strong>User registration:</strong> Create the user account, create their profile, send a welcome email record — if any step fails, clean up</li>
-                </ul>
-
-                <p>Without transactions, a failure midway through leaves your data in an <strong>inconsistent state</strong> — some steps completed, others not. Transactions prevent this.</p>
+                <h2>🧱 Why Transactions?</h2>
+                <p>Many real changes are several statements that only make sense together. Move $30 of store credit from Alice to Bob: subtract from Alice, add to Bob. If the server stops after the first <code>UPDATE</code>, $30 has vanished. A transaction makes the pair <strong>atomic</strong>: the database keeps both changes or neither.</p>
 
                 <div class="mermaid">
-                    graph TD
-                        subgraph tx["Transaction"]
-                            S1["Step 1: INSERT order"] --> S2["Step 2: INSERT order_items"]
-                            S2 --> S3["Step 3: UPDATE inventory"]
-                        end
-                        S3 -->|"All succeed"| C["COMMIT ✅<br/>Changes saved permanently"]
-                        S2 -->|"Step 3 fails"| R["ROLLBACK ❌<br/>All changes undone"]
-                        S1 -->|"Step 2 fails"| R
+graph TD
+    A["START TRANSACTION"] --> B["UPDATE: Alice minus 30"]
+    B --> C["UPDATE: Bob plus 30"]
+    C --> D{"Everything worked?"}
+    D -->|"yes"| E["COMMIT: both kept"]
+    D -->|"no"| F["ROLLBACK: neither kept"]
                 </div>
-            </section>
 
-            <!-- Section 2: ACID -->
-            <section id="acid" class="lesson-section">
-                <h2>The ACID Properties</h2>
-                <p>Transactions guarantee four properties, known by the acronym <strong>ACID</strong>:</p>
-
+                <p>Database people summarize the guarantees as <strong>ACID</strong>:</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Property</th>
-                                <th>Meaning</th>
-                                <th>Example</th>
-                            </tr>
+                            <tr><th>Property</th><th>Meaning</th><th>In the bookstore</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><strong>Atomicity</strong></td>
-                                <td>All operations succeed or all are rolled back — no partial completion</td>
-                                <td>A bank transfer either moves money or doesn't — it can't debit without crediting</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Consistency</strong></td>
-                                <td>The database moves from one valid state to another — all constraints are maintained</td>
-                                <td>Account balances can't go negative if you have a CHECK constraint</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Isolation</strong></td>
-                                <td>Concurrent transactions don't interfere with each other</td>
-                                <td>Two people buying the last item — only one gets it, not both</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Durability</strong></td>
-                                <td>Once committed, data survives crashes, power failures, etc.</td>
-                                <td>After COMMIT, even a server restart won't lose the data</td>
-                            </tr>
+                            <tr><td><strong>Atomicity</strong></td><td>All of the transaction's changes happen, or none do</td><td>An order never exists without its items</td></tr>
+                            <tr><td><strong>Consistency</strong></td><td>Every committed state obeys the constraints</td><td>The <code>CHECK (balance &gt;= 0)</code> holds after every commit</td></tr>
+                            <tr><td><strong>Isolation</strong></td><td>Transactions running at the same time do not see each other's unfinished work</td><td>A report never counts a half-placed order</td></tr>
+                            <tr><td><strong>Durability</strong></td><td>Once committed, a change survives a crash or power cut</td><td>After <code>COMMIT</code>, the order is on disk</td></tr>
                         </tbody>
                     </table>
                 </div>
 
                 <div class="card card-info">
-                    <h4>💡 InnoDB Required</h4>
-                    <p>ACID transactions require the <strong>InnoDB</strong> storage engine, which is MySQL's default since version 5.5. The older MyISAM engine does <em>not</em> support transactions. You can check a table's engine with: <code>SHOW TABLE STATUS LIKE 'table_name';</code></p>
+                    <h4>💡 InnoDB does the work</h4>
+                    <p>Transactions are a feature of the storage engine. <strong>InnoDB</strong>, MySQL's default engine, supports them; the old <strong>MyISAM</strong> engine silently ignores them (Common Mistake 5). Every table in <code>bookstore.sql</code> is InnoDB, because no <code>ENGINE=</code> option means the default.</p>
                 </div>
             </section>
 
-            <!-- Section 3: Basic Syntax -->
-            <section id="basic-syntax" class="lesson-section">
-                <h2>Basic Transaction Syntax</h2>
+            <section id="setup" class="lesson-section">
+                <h2>💳 Setup: Store Credit Accounts</h2>
+                <p>Reload the bookstore so your numbers match this page (on Windows, use forward slashes in the path):</p>
+                <pre><code class="language-sql">SOURCE ~/mysql-course/bookstore.sql</code></pre>
+                <p>The bookstore sells gift cards, and each card's balance lives in an <code>accounts</code> table. It is not part of <code>bookstore.sql</code>; this lesson creates it. Account ids match customer ids: account 1 belongs to Alice, 2 to Bob, 3 to Carol. The <code>CHECK</code> constraint makes a negative balance impossible.</p>
+                <pre><code class="language-sql">DROP TABLE IF EXISTS accounts;
+CREATE TABLE accounts (
+    id      INT PRIMARY KEY,
+    name    VARCHAR(100) NOT NULL,
+    balance DECIMAL(10, 2) NOT NULL,
+    CONSTRAINT chk_balance CHECK (balance &gt;= 0)
+);
 
-                <pre><code class="language-sql">
--- Start a transaction
-START TRANSACTION;
+INSERT INTO accounts (id, name, balance) VALUES
+    (1, 'Alice Johnson', 150.00),
+    (2, 'Bob Smith', 50.00),
+    (3, 'Carol Williams', 0.00);
 
--- Do your work (INSERT, UPDATE, DELETE)
-INSERT INTO orders (customer_id, order_date) VALUES (1, CURRENT_DATE);
-INSERT INTO order_items (order_id, book_id, quantity) VALUES (LAST_INSERT_ID(), 1, 2);
-
--- If everything worked:
-COMMIT;
-
--- OR if something went wrong:
-ROLLBACK;
-                </code></pre>
-
-                <p>Between <code>START TRANSACTION</code> and <code>COMMIT</code> (or <code>ROLLBACK</code>), your changes are <strong>temporary</strong>. Other database connections can't see them yet. Only after COMMIT do they become permanent and visible.</p>
-
-                <div class="card card-info">
-                    <h4>💡 BEGIN vs START TRANSACTION</h4>
-                    <p>Both work identically in MySQL:</p>
-                    <pre><code class="language-sql">
-START TRANSACTION;   -- Standard SQL syntax
-BEGIN;               -- MySQL alias (same thing)
-BEGIN WORK;          -- Another alias (same thing)
-                    </code></pre>
-                    <p><code>START TRANSACTION</code> is the SQL standard and slightly more explicit. Both are fine.</p>
+SELECT * FROM accounts ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+----------------+---------+
+| id | name           | balance |
++----+----------------+---------+
+|  1 | Alice Johnson  |  150.00 |
+|  2 | Bob Smith      |   50.00 |
+|  3 | Carol Williams |    0.00 |
++----+----------------+---------+</code></pre>
                 </div>
             </section>
 
-            <!-- Section 4: COMMIT -->
-            <section id="commit" class="lesson-section">
-                <h2>COMMIT — Make It Permanent</h2>
-                <p><code>COMMIT</code> tells MySQL: "Everything since START TRANSACTION looks good — save it permanently."</p>
+            <section id="commit-rollback" class="lesson-section">
+                <h2>✅ START TRANSACTION, COMMIT, ROLLBACK</h2>
 
-                <pre><code class="language-sql">
-START TRANSACTION;
+                <h3>COMMIT: keep the changes</h3>
+                <p>Here is the transfer, wrapped in a transaction. The <code>Query OK</code> lines are shown on purpose this time: they tell you each <code>UPDATE</code> changed one row.</p>
+                <pre><code class="language-sql">START TRANSACTION;
 
--- Create a new order for Alice (customer_id = 1)
-INSERT INTO orders (customer_id, order_date)
-VALUES (1, '2026-04-16');
+UPDATE accounts SET balance = balance - 30 WHERE id = 1;
+UPDATE accounts SET balance = balance + 30 WHERE id = 2;
 
--- Get the new order's ID
-SET @new_order_id = LAST_INSERT_ID();
+SELECT * FROM accounts ORDER BY id;
 
--- Add items to the order
-INSERT INTO order_items (order_id, book_id, quantity)
-VALUES (@new_order_id, 1, 1);    -- 1 copy of Dune
+COMMIT;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Query OK, 0 rows affected
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
++----+----------------+---------+
+| id | name           | balance |
++----+----------------+---------+
+|  1 | Alice Johnson  |  120.00 |
+|  2 | Bob Smith      |   80.00 |
+|  3 | Carol Williams |    0.00 |
++----+----------------+---------+
+3 rows in set
+Query OK, 0 rows affected</code></pre>
+                </div>
+                <p>Between <code>START TRANSACTION</code> and <code>COMMIT</code>, the changes are visible to <em>your</em> session (the <code>SELECT</code> shows 120.00 and 80.00) but not yet to anyone else. <code>COMMIT</code> makes them permanent and visible to everyone, and ends the transaction. After a <code>COMMIT</code> there is nothing left to roll back.</p>
+                <p><code>BEGIN</code> and <code>BEGIN WORK</code> are synonyms for <code>START TRANSACTION</code> at the prompt. Inside a stored procedure, <code>BEGIN</code> opens a <code>BEGIN ... END</code> block instead, so this course always writes <code>START TRANSACTION</code>.</p>
 
-INSERT INTO order_items (order_id, book_id, quantity)
-VALUES (@new_order_id, 2, 3);    -- 3 copies of 1984
+                <h3>ROLLBACK: throw them away</h3>
+                <p>Now the nightmare: someone deletes every order line. Inside a transaction, it is a rehearsal.</p>
+                <pre><code class="language-sql">START TRANSACTION;
 
--- Everything succeeded — commit!
-COMMIT;
-                </code></pre>
-
-                <p>After COMMIT, the order and its items are permanently stored. Even if the server crashes immediately after, the data survives (that's <strong>durability</strong>).</p>
-
-                <h3>What Happens After COMMIT</h3>
-                <ul>
-                    <li>All changes become permanent on disk</li>
-                    <li>Other connections can now see the new data</li>
-                    <li>The transaction ends — you're back to normal mode</li>
-                    <li>You <strong>cannot</strong> ROLLBACK after COMMIT</li>
-                </ul>
-            </section>
-
-            <!-- Section 5: ROLLBACK -->
-            <section id="rollback" class="lesson-section">
-                <h2>ROLLBACK — Undo Everything</h2>
-                <p><code>ROLLBACK</code> tells MySQL: "Something went wrong — undo all changes since START TRANSACTION."</p>
-
-                <pre><code class="language-sql">
-START TRANSACTION;
-
--- Accidentally delete all books!
 DELETE FROM order_items;
-DELETE FROM books;
+SELECT COUNT(*) AS items_inside FROM order_items;
 
--- Oh no! Undo everything:
 ROLLBACK;
+SELECT COUNT(*) AS items_after_rollback FROM order_items;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+--------------+
+| items_inside |
++--------------+
+|            0 |
++--------------+
++----------------------+
+| items_after_rollback |
++----------------------+
+|                   18 |
++----------------------+</code></pre>
+                </div>
+                <p><code>ROLLBACK</code> undoes every change since <code>START TRANSACTION</code> and ends the transaction. All 18 order lines are back.</p>
 
--- Phew — books and order_items are still intact
-SELECT COUNT(*) FROM books;  -- Still has all rows
-                </code></pre>
-
-                <p>ROLLBACK is your safety net. The data is restored to exactly the state it was in before START TRANSACTION.</p>
-
-                <h3>Practical Example: Transfer with Validation</h3>
-
-                <pre><code class="language-sql">
--- Simulate a "balance transfer" between two accounts
--- accounts table: id, name, balance
-
-START TRANSACTION;
-
--- Debit the source account
-UPDATE accounts SET balance = balance - 500 WHERE id = 1;
-
--- Check if the balance went negative
-SELECT balance INTO @source_balance FROM accounts WHERE id = 1;
-
--- If negative, abort the whole thing
--- (In the CLI you'd check manually; in a procedure, use IF)
--- For now, let's assume it's fine and credit the destination:
-UPDATE accounts SET balance = balance + 500 WHERE id = 2;
-
--- Verify both accounts look correct, then commit:
-COMMIT;
-                </code></pre>
-
-                <div class="card card-warning">
-                    <h4>⚠️ ROLLBACK Only Undoes DML</h4>
-                    <p><code>ROLLBACK</code> undoes data changes (INSERT, UPDATE, DELETE). It does <strong>not</strong> undo DDL statements like CREATE TABLE, DROP TABLE, or ALTER TABLE — those are automatically committed and cannot be rolled back.</p>
+                <div class="card card-success">
+                    <h4>✅ A habit worth having</h4>
+                    <p>Before a risky <code>UPDATE</code> or <code>DELETE</code> by hand, type <code>START TRANSACTION;</code> first. Run the change, check the result with a <code>SELECT</code>, then decide: <code>COMMIT</code> or <code>ROLLBACK</code>. It costs one line and has saved many careers. Just do not walk away with the transaction open (see the two-session section for why).</p>
                 </div>
             </section>
 
-            <!-- Section 6: Autocommit -->
             <section id="autocommit" class="lesson-section">
-                <h2>Autocommit Mode</h2>
-                <p>By default, MySQL runs in <strong>autocommit mode</strong> — every single statement is automatically wrapped in its own transaction and committed immediately:</p>
+                <h2>⚙️ Autocommit and Implicit Commits</h2>
+                <p>If transactions are so useful, why did every <code>UPDATE</code> in earlier lessons stick without a <code>COMMIT</code>? Because of <strong>autocommit</strong>: unless you start a transaction yourself, MySQL wraps each statement in its own tiny transaction and commits it at once.</p>
+                <pre><code class="language-sql">SELECT @@autocommit;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+--------------+
+| @@autocommit |
++--------------+
+|            1 |
++--------------+</code></pre>
+                </div>
+                <p>1 means on, the default. <code>START TRANSACTION</code> suspends autocommit until the next <code>COMMIT</code> or <code>ROLLBACK</code>. You can also switch it off for your session, and then every statement waits for an explicit decision:</p>
+                <pre><code class="language-sql">SET autocommit = 0;
 
-                <pre><code class="language-sql">
--- With autocommit ON (default):
-INSERT INTO books (title, price, author_id) VALUES ('Foundation', 11.99, 4);
--- This is immediately committed — you can't ROLLBACK it
-
--- Check autocommit status:
-SELECT @@autocommit;  -- 1 = ON, 0 = OFF
-                </code></pre>
-
-                <p>When you write <code>START TRANSACTION</code>, autocommit is temporarily suspended for that transaction. After COMMIT or ROLLBACK, autocommit resumes.</p>
-
-                <h3>Disabling Autocommit</h3>
-
-                <pre><code class="language-sql">
--- Turn off autocommit for the current session
-SET autocommit = 0;
-
--- Now every statement is part of an implicit transaction
-INSERT INTO books (title, price, author_id) VALUES ('Foundation', 11.99, 4);
-UPDATE books SET price = 12.99 WHERE title = 'Foundation';
-
--- Nothing is saved until you explicitly COMMIT:
-COMMIT;
-
--- Or undo everything:
+UPDATE accounts SET balance = balance + 5 WHERE id = 3;
 ROLLBACK;
+SELECT id, balance FROM accounts WHERE id = 3;
 
--- Turn autocommit back on:
-SET autocommit = 1;
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 When to Disable Autocommit</h4>
-                    <p>Most applications use the default (autocommit ON) and explicitly wrap multi-step operations in <code>START TRANSACTION ... COMMIT</code>. Disabling autocommit for a whole session is uncommon but useful for bulk data loading or migration scripts where you want manual control over commits.</p>
+SET autocommit = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+---------+
+| id | balance |
++----+---------+
+|  3 |    0.00 |
++----+---------+</code></pre>
                 </div>
+                <p>Carol's balance is back to 0.00. Turning autocommit off for a whole session is rare and risky (forget one <code>COMMIT</code> and your work vanishes when you disconnect); prefer explicit <code>START TRANSACTION ... COMMIT</code> blocks.</p>
 
-                <h3>Implicit Commits</h3>
-                <p>Certain statements cause an <strong>implicit commit</strong> — they automatically commit any pending transaction, even if you didn't write COMMIT:</p>
-
+                <h3>Implicit commits</h3>
+                <p>Some statements cannot be part of a transaction. Before they run, MySQL quietly <strong>commits</strong> whatever transaction is open:</p>
                 <ul>
-                    <li>DDL statements: <code>CREATE TABLE</code>, <code>ALTER TABLE</code>, <code>DROP TABLE</code></li>
-                    <li><code>TRUNCATE TABLE</code></li>
-                    <li><code>CREATE INDEX</code>, <code>DROP INDEX</code></li>
-                    <li><code>CREATE USER</code>, <code>GRANT</code>, <code>REVOKE</code></li>
-                    <li>Starting a new <code>START TRANSACTION</code> (commits the previous one)</li>
+                    <li>Schema changes (DDL): <code>CREATE</code>, <code>ALTER</code>, <code>DROP</code>, <code>RENAME</code> and <code>TRUNCATE TABLE</code>, <code>CREATE INDEX</code>, creating or dropping a database, view or routine</li>
+                    <li>Account statements: <code>CREATE USER</code>, <code>GRANT</code>, <code>REVOKE</code>, <code>ALTER USER</code></li>
+                    <li>A second <code>START TRANSACTION</code> while one is open, and <code>LOCK TABLES</code></li>
                 </ul>
-
-                <div class="card card-warning">
-                    <h4>⚠️ Don't Mix DDL with Transactions</h4>
-                    <p>If you run a <code>CREATE TABLE</code> inside a transaction, it implicitly commits everything before it — including changes you might have wanted to roll back. Keep DDL statements outside of transactions.</p>
-                </div>
+                <p>So <code>ROLLBACK</code> can only undo data changes made after the last implicit commit. Common Mistake 2 shows how that bites.</p>
             </section>
 
-            <!-- Section 7: Savepoints -->
             <section id="savepoints" class="lesson-section">
-                <h2>Savepoints — Partial Rollback</h2>
-                <p>Sometimes you want to undo <em>part</em> of a transaction without losing everything. A <strong>savepoint</strong> is a named checkpoint you can roll back to.</p>
+                <h2>📍 Savepoints: Partial Rollback</h2>
+                <p>A <strong>savepoint</strong> is a named bookmark inside a transaction. <code>ROLLBACK TO SAVEPOINT name</code> undoes everything after the bookmark and keeps everything before it, and the transaction stays open.</p>
+                <p>Carol phones in an order for <em>The Hobbit</em>. The clerk then adds five copies of <em>Lord of the Rings</em>, and Carol says "no, just the Hobbit". Note that <code>price_at_time</code> is required: the item is inserted with the book's current price.</p>
+                <pre><code class="language-sql">START TRANSACTION;
 
-                <pre><code class="language-sql">
-START TRANSACTION;
+INSERT INTO orders (customer_id, order_date) VALUES (3, '2026-06-20');
+SET @carol_order = LAST_INSERT_ID();
 
--- Step 1: Create the order
-INSERT INTO orders (customer_id, order_date) VALUES (1, CURRENT_DATE);
-SET @order_id = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, book_id, quantity, price_at_time)
+SELECT @carol_order, id, 1, price FROM books WHERE id = 6;
 
-SAVEPOINT after_order;
+SAVEPOINT hobbit_added;
 
--- Step 2: Add items
-INSERT INTO order_items (order_id, book_id, quantity)
-VALUES (@order_id, 1, 1);
+INSERT INTO order_items (order_id, book_id, quantity, price_at_time)
+SELECT @carol_order, id, 5, price FROM books WHERE id = 9;
 
-SAVEPOINT after_items;
+ROLLBACK TO SAVEPOINT hobbit_added;
 
--- Step 3: Try something risky
-INSERT INTO order_items (order_id, book_id, quantity)
-VALUES (@order_id, 999, 1);  -- book_id 999 doesn't exist!
-
--- Step 3 failed — roll back to after_items, keeping Steps 1 & 2
-ROLLBACK TO SAVEPOINT after_items;
-
--- Steps 1 and 2 are still intact — commit them:
 COMMIT;
-                </code></pre>
+
+SELECT o.id AS order_id, b.title, oi.quantity, oi.price_at_time
+FROM orders AS o
+JOIN order_items AS oi ON oi.order_id = o.id
+JOIN books AS b ON b.id = oi.book_id
+WHERE o.id = @carol_order;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------+------------+----------+---------------+
+| order_id | title      | quantity | price_at_time |
++----------+------------+----------+---------------+
+|       13 | The Hobbit |        1 |         10.99 |
++----------+------------+----------+---------------+</code></pre>
+                </div>
+                <p>Order 13, Carol's first, holds only the Hobbit. The order row and the first item, made before the savepoint, survived; the Lord of the Rings line did not.</p>
 
                 <div class="mermaid">
-                    graph LR
-                        S["START"] --> O["INSERT order"]
-                        O --> SP1["SAVEPOINT after_order"]
-                        SP1 --> I["INSERT items"]
-                        I --> SP2["SAVEPOINT after_items"]
-                        SP2 --> R["Risky INSERT<br/>(fails)"]
-                        R -->|"ROLLBACK TO after_items"| SP2
-                        SP2 --> C["COMMIT ✅<br/>Order + items saved"]
+graph TD
+    A["INSERT order 13"] --> B["INSERT Hobbit line"]
+    B --> C["SAVEPOINT hobbit_added"]
+    C --> D["INSERT 5 x Lord of the Rings"]
+    D -->|"ROLLBACK TO hobbit_added"| C
+    C --> E["COMMIT: order + Hobbit kept"]
                 </div>
 
-                <h3>Savepoint Commands</h3>
-
-                <pre><code class="language-sql">
--- Create a savepoint
-SAVEPOINT savepoint_name;
-
--- Roll back to a savepoint (undo changes AFTER the savepoint)
-ROLLBACK TO SAVEPOINT savepoint_name;
-
--- Release (delete) a savepoint without rolling back
-RELEASE SAVEPOINT savepoint_name;
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 Savepoints Don't End the Transaction</h4>
-                    <p><code>ROLLBACK TO SAVEPOINT</code> undoes changes made after the savepoint, but the transaction is still active. You still need to <code>COMMIT</code> or <code>ROLLBACK</code> to end it. A full <code>ROLLBACK</code> (without a savepoint name) undoes <em>everything</em>, including all savepoints.</p>
-                </div>
-            </section>
-
-            <!-- Section 8: Transactions in Stored Procedures -->
-            <section id="transactions-in-procedures" class="lesson-section">
-                <h2>Transactions in Stored Procedures</h2>
-                <p>Transactions inside stored procedures are where the real power emerges — you can combine multi-step logic with error handling.</p>
-
-                <h3>Basic Pattern</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE place_order(
-    IN cust_id INT,
-    IN book_id_param INT,
-    IN qty INT,
-    OUT result_message VARCHAR(100)
-)
-BEGIN
-    DECLARE order_id INT;
-
-    -- Use a handler for errors
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        SET result_message = 'Error: Order failed — rolled back';
-    END;
-
-    START TRANSACTION;
-
-    -- Create the order
-    INSERT INTO orders (customer_id, order_date)
-    VALUES (cust_id, CURRENT_DATE);
-
-    SET order_id = LAST_INSERT_ID();
-
-    -- Add the item
-    INSERT INTO order_items (order_id, book_id, quantity)
-    VALUES (order_id, book_id_param, qty);
-
-    -- If we got here, everything worked
-    COMMIT;
-    SET result_message = CONCAT('Success: Order #', order_id, ' created');
-
-END //
-
-DELIMITER ;
-
--- Test it:
-CALL place_order(1, 1, 2, @msg);
-SELECT @msg;
--- 'Success: Order #4 created'
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 DECLARE ... HANDLER</h4>
-                    <p>The <code>DECLARE EXIT HANDLER FOR SQLEXCEPTION</code> block catches any SQL error during the transaction. When an error occurs, the handler runs: it rolls back the transaction and sets an error message. Without a handler, the procedure would stop at the error, leaving the transaction in a half-finished state.</p>
-                </div>
-
-                <h3>Transfer Between Accounts</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE transfer_funds(
-    IN from_account INT,
-    IN to_account INT,
-    IN amount DECIMAL(10,2),
-    OUT result VARCHAR(100)
-)
-BEGIN
-    DECLARE source_balance DECIMAL(10,2);
-
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        SET result = 'Error: Transfer failed';
-    END;
-
-    START TRANSACTION;
-
-    -- Check source balance
-    SELECT balance INTO source_balance
-    FROM accounts
-    WHERE id = from_account
-    FOR UPDATE;  -- Lock the row to prevent concurrent modification
-
-    IF source_balance < amount THEN
-        ROLLBACK;
-        SET result = 'Error: Insufficient funds';
-    ELSE
-        -- Debit source
-        UPDATE accounts SET balance = balance - amount
-        WHERE id = from_account;
-
-        -- Credit destination
-        UPDATE accounts SET balance = balance + amount
-        WHERE id = to_account;
-
-        COMMIT;
-        SET result = CONCAT('Success: Transferred $', amount);
-    END IF;
-
-END //
-
-DELIMITER ;
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 SELECT ... FOR UPDATE</h4>
-                    <p><code>FOR UPDATE</code> locks the selected rows until the transaction ends. This prevents another transaction from reading or modifying the same account balance between your check and your update — avoiding a <strong>race condition</strong> where two concurrent transfers both see "enough balance" and overdraft the account.</p>
-                </div>
-            </section>
-
-            <!-- Section 9: Common Transaction Patterns -->
-            <section id="common-patterns" class="lesson-section">
-                <h2>Common Transaction Patterns</h2>
-
-                <h3>1. The Try-Commit-Catch-Rollback Pattern</h3>
-                <p>The most common pattern — attempt the work, commit on success, rollback on failure:</p>
-
-                <pre><code class="language-sql">
-DECLARE EXIT HANDLER FOR SQLEXCEPTION
-BEGIN
-    ROLLBACK;
-    -- Log the error, set a message, etc.
-END;
-
-START TRANSACTION;
-    -- Multiple operations...
-COMMIT;
-                </code></pre>
-
-                <h3>2. Batch Insert with Transaction</h3>
-                <p>Wrap bulk inserts in a transaction — much faster than individual autocommitted inserts:</p>
-
-                <pre><code class="language-sql">
-START TRANSACTION;
-
-INSERT INTO books (title, price, author_id) VALUES ('Book 1', 9.99, 1);
-INSERT INTO books (title, price, author_id) VALUES ('Book 2', 12.99, 2);
-INSERT INTO books (title, price, author_id) VALUES ('Book 3', 7.99, 3);
--- ... hundreds more ...
-
-COMMIT;
-                </code></pre>
-
-                <div class="card card-success">
-                    <h4>✅ Performance Boost</h4>
-                    <p>Wrapping 1,000 INSERTs in a single transaction can be <strong>10–50x faster</strong> than 1,000 individual autocommitted INSERTs. Each COMMIT forces a disk sync — doing it once instead of 1,000 times is dramatically faster.</p>
-                </div>
-
-                <h3>3. Conditional Commit</h3>
-
-                <pre><code class="language-sql">
-START TRANSACTION;
-
-DELETE FROM order_items WHERE order_id = 5;
-DELETE FROM orders WHERE id = 5;
-
--- Check if we actually deleted anything meaningful:
--- (In a procedure, use ROW_COUNT() or a variable)
--- If something looks wrong:
---   ROLLBACK;
--- If everything is fine:
-COMMIT;
-                </code></pre>
-
-                <h3>4. Read-Only Transaction</h3>
-                <p>You can start a transaction in read-only mode — MySQL can optimize it since it knows no writes will happen:</p>
-
-                <pre><code class="language-sql">
-START TRANSACTION READ ONLY;
-
-SELECT * FROM customers;
-SELECT * FROM orders WHERE customer_id = 1;
-
-COMMIT;  -- Nothing changed, but ends the transaction
-                </code></pre>
-            </section>
-
-            <!-- Section 10: Pitfalls & Best Practices -->
-            <section id="pitfalls" class="lesson-section">
-                <h2>Pitfalls &amp; Best Practices</h2>
-
-                <h3>1. Keep Transactions Short</h3>
-                <p>Long transactions hold locks on rows, blocking other users. Do your prep work (validation, calculations) <em>before</em> starting the transaction, then keep the transaction itself as brief as possible.</p>
-
-                <pre><code class="language-sql">
--- ❌ BAD: Long transaction with unnecessary work inside
-START TRANSACTION;
-    -- 5 seconds of complex calculations...
-    -- Other users are waiting for locked rows
-    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-COMMIT;
-
--- ✅ GOOD: Do prep work first, then a quick transaction
--- Calculate everything first...
-START TRANSACTION;
-    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-    UPDATE accounts SET balance = balance + 100 WHERE id = 2;
-COMMIT;
-                </code></pre>
-
-                <h3>2. Always End Your Transactions</h3>
-                <p>A transaction that's never committed or rolled back holds locks indefinitely. Always ensure every <code>START TRANSACTION</code> has a matching <code>COMMIT</code> or <code>ROLLBACK</code> — even in error cases.</p>
-
-                <h3>3. Don't Mix DDL and DML in a Transaction</h3>
-
-                <pre><code class="language-sql">
--- ❌ BAD: DDL implicitly commits everything before it
-START TRANSACTION;
-    INSERT INTO orders (customer_id, order_date) VALUES (1, CURRENT_DATE);
-    CREATE TABLE temp_log (msg TEXT);  -- IMPLICIT COMMIT happens here!
-    -- The INSERT is now committed — you can't roll it back
-    ROLLBACK;  -- Only rolls back changes AFTER the implicit commit
-                </code></pre>
-
-                <h3>4. Handle Deadlocks</h3>
-                <p>When two transactions each hold a lock that the other needs, MySQL detects a <strong>deadlock</strong> and automatically rolls back one of them. Your application should catch this error and retry:</p>
-
-                <pre><code class="language-sql">
--- In application code (pseudocode):
--- retry_count = 0
--- while retry_count < 3:
---     try:
---         START TRANSACTION
---         ... do work ...
---         COMMIT
---         break
---     catch deadlock_error:
---         retry_count += 1
---         wait briefly, then retry
-                </code></pre>
-
-                <h3>5. Use Consistent Lock Order</h3>
-                <p>To minimize deadlocks, always access tables (and rows) in the same order across all transactions. If Transaction A locks customers then orders, and Transaction B locks orders then customers, they can deadlock. Both locking customers first prevents this.</p>
-
-                <div class="card card-success">
-                    <h4>✅ Transaction Best Practices Summary</h4>
-                    <ul>
-                        <li>Keep transactions as <strong>short</strong> as possible</li>
-                        <li>Always <strong>end</strong> transactions (COMMIT or ROLLBACK)</li>
-                        <li>Use <strong>error handlers</strong> in stored procedures to ensure ROLLBACK on failure</li>
-                        <li>Don't put <strong>DDL</strong> inside transactions</li>
-                        <li>Access tables in a <strong>consistent order</strong> to prevent deadlocks</li>
-                        <li>Use <code>FOR UPDATE</code> when you read-then-write to prevent race conditions</li>
-                        <li>Use transactions for <strong>batch inserts</strong> — dramatically faster than autocommit</li>
-                    </ul>
-                </div>
-            </section>
-
-            <!-- Section 11: Exercises -->
-            <section id="exercises" class="lesson-section">
-                <h2>Exercises</h2>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 1: Basic Transactions</h3>
-                    <p>Write SQL to:</p>
-                    <ol>
-                        <li>Start a transaction, insert a new author ("Ursula K. Le Guin"), insert a book by that author ("The Left Hand of Darkness", $10.99), then commit</li>
-                        <li>Start a transaction, delete all rows from <code>order_items</code>, then ROLLBACK (verify the data is restored)</li>
-                        <li>Start a transaction, insert two new customers, then commit. Verify they exist.</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- 1
-START TRANSACTION;
-INSERT INTO authors (name) VALUES ('Ursula K. Le Guin');
-SET @author_id = LAST_INSERT_ID();
-INSERT INTO books (title, price, author_id)
-VALUES ('The Left Hand of Darkness', 10.99, @author_id);
-COMMIT;
-
--- 2
-START TRANSACTION;
-DELETE FROM order_items;
-SELECT COUNT(*) FROM order_items;  -- 0 rows (temporarily)
-ROLLBACK;
-SELECT COUNT(*) FROM order_items;  -- All rows restored!
-
--- 3
-START TRANSACTION;
-INSERT INTO customers (first_name, last_name)
-VALUES ('Dave', 'Wilson');
-INSERT INTO customers (first_name, last_name)
-VALUES ('Eve', 'Brown');
-COMMIT;
-SELECT * FROM customers WHERE first_name IN ('Dave', 'Eve');
-                        </code></pre>
-                    </details>
-                </div>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 2: Savepoints</h3>
-                    <p>Write a transaction that:</p>
-                    <ol>
-                        <li>Inserts a new order for customer 2</li>
-                        <li>Creates a savepoint called <code>order_created</code></li>
-                        <li>Inserts an order item for book_id 1</li>
-                        <li>Creates a savepoint called <code>item_added</code></li>
-                        <li>Inserts another order item for a non-existent book (book_id 999)</li>
-                        <li>Rolls back to <code>item_added</code> (keeping the order and first item)</li>
-                        <li>Commits the transaction</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
-START TRANSACTION;
-
--- 1. Insert order
-INSERT INTO orders (customer_id, order_date) VALUES (2, CURRENT_DATE);
-SET @oid = LAST_INSERT_ID();
-
--- 2. Savepoint
-SAVEPOINT order_created;
-
--- 3. Insert valid item
-INSERT INTO order_items (order_id, book_id, quantity) VALUES (@oid, 1, 1);
-
--- 4. Savepoint
-SAVEPOINT item_added;
-
--- 5. Try invalid item (might cause FK error)
--- INSERT INTO order_items (order_id, book_id, quantity) VALUES (@oid, 999, 1);
-
--- 6. Roll back to item_added
-ROLLBACK TO SAVEPOINT item_added;
-
--- 7. Commit (order + first item are saved)
-COMMIT;
-                        </code></pre>
-                    </details>
-                </div>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 3: Transaction in a Stored Procedure</h3>
-                    <p>Create a stored procedure called <code>safe_delete_order</code> that:</p>
-                    <ul>
-                        <li>Takes an order ID as an IN parameter and a result message as an OUT parameter</li>
-                        <li>Uses a transaction to delete the order's items from <code>order_items</code> first, then the order from <code>orders</code></li>
-                        <li>Includes an error handler that rolls back on any SQL exception</li>
-                        <li>Sets the result message to indicate success or failure</li>
-                    </ul>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE safe_delete_order(
-    IN order_id_param INT,
-    OUT result VARCHAR(100)
-)
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        SET result = 'Error: Delete failed — rolled back';
-    END;
-
-    START TRANSACTION;
-
-    -- Delete items first (child rows)
-    DELETE FROM order_items WHERE order_id = order_id_param;
-
-    -- Then delete the order (parent row)
-    DELETE FROM orders WHERE id = order_id_param;
-
-    IF ROW_COUNT() = 0 THEN
-        ROLLBACK;
-        SET result = CONCAT('Error: Order #', order_id_param, ' not found');
-    ELSE
-        COMMIT;
-        SET result = CONCAT('Success: Order #', order_id_param, ' deleted');
-    END IF;
-END //
-
-DELIMITER ;
-
--- Test:
-CALL safe_delete_order(3, @msg);
-SELECT @msg;
-                        </code></pre>
-                    </details>
-                </div>
-
-                <!-- Quiz -->
-                <div class="card quiz-container">
-                    <h3>🎯 Quick Quiz</h3>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 1:</strong> What does "Atomicity" in ACID mean?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Atomicity means all operations in a transaction succeed together or all are rolled back together. There's no partial completion — it's all or nothing.">
-                                A) All operations in a transaction succeed or all are rolled back
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="That's Isolation — the property that prevents concurrent transactions from interfering with each other.">
-                                B) Transactions can't see each other's uncommitted changes
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="That's Durability — the property that committed data survives system failures.">
-                                C) Data survives server crashes after COMMIT
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 2:</strong> What happens to changes inside a transaction before COMMIT is called?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="Changes are NOT saved to disk permanently until COMMIT. That's the whole point of transactions — you can still ROLLBACK.">
-                                A) They are immediately saved to disk
-                            </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Before COMMIT, changes are temporary — visible to the current connection but not yet permanent. Other connections typically can't see them, and they can be undone with ROLLBACK.">
-                                B) They are temporary and can be undone with ROLLBACK
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Changes DO exist temporarily — you can SELECT and see them within your own connection. They just aren't permanent until COMMIT.">
-                                C) They don't exist anywhere yet
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 3:</strong> What does a SAVEPOINT allow you to do?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="SAVEPOINT doesn't commit anything — it just creates a named checkpoint within an active transaction.">
-                                A) Commit part of a transaction while keeping the rest open
-                            </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! SAVEPOINT creates a named checkpoint. ROLLBACK TO SAVEPOINT undoes changes made AFTER that point, while preserving changes made before it. The transaction remains active until you COMMIT or fully ROLLBACK.">
-                                B) Roll back to a specific point within a transaction without undoing everything
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Savepoints are strictly within a single transaction, not across multiple ones. They're checkpoints, not inter-transaction tools.">
-                                C) Save changes across multiple transactions
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 4:</strong> Why should you keep transactions short?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="MySQL can handle long transactions — there's no hard limit on duration. The issue is practical, not technical.">
-                                A) MySQL has a maximum transaction duration of 30 seconds
-                            </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Active transactions hold locks on rows they've modified (and sometimes read). Long transactions keep those locks for longer, blocking other users from accessing the same data. Short transactions minimize lock contention.">
-                                B) Long transactions hold locks that block other users from accessing the same data
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Transactions don't consume proportionally more memory based on duration. The concern is about lock contention, not memory.">
-                                C) Long transactions use too much memory
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Section 12: Summary -->
-            <section id="summary" class="lesson-section">
-                <h2>Summary</h2>
-
-                <div class="card card-success">
-                    <h3>🎉 Key Takeaways</h3>
-                    <ul>
-                        <li>A <strong>transaction</strong> groups operations into an all-or-nothing unit</li>
-                        <li><strong>ACID</strong>: Atomicity, Consistency, Isolation, Durability</li>
-                        <li><code>START TRANSACTION</code> begins, <code>COMMIT</code> saves permanently, <code>ROLLBACK</code> undoes everything</li>
-                        <li><strong>Autocommit</strong> is ON by default — each statement is its own transaction</li>
-                        <li><code>START TRANSACTION</code> temporarily suspends autocommit</li>
-                        <li><strong>Savepoints</strong> let you roll back to a checkpoint without undoing the entire transaction</li>
-                        <li>DDL statements (CREATE, ALTER, DROP) cause <strong>implicit commits</strong> — don't mix with DML transactions</li>
-                        <li>Use <code>DECLARE EXIT HANDLER FOR SQLEXCEPTION</code> in procedures to auto-rollback on errors</li>
-                        <li><code>SELECT ... FOR UPDATE</code> locks rows to prevent race conditions</li>
-                        <li>Keep transactions <strong>short</strong> to minimize lock contention</li>
-                        <li>Batch inserts inside a transaction are <strong>dramatically faster</strong> than individual autocommits</li>
-                    </ul>
-                </div>
-
-                <h3>Quick Reference</h3>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Command</th>
-                                <th>Purpose</th>
-                            </tr>
+                            <tr><th>Statement</th><th>Effect</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><code>START TRANSACTION</code></td>
-                                <td>Begin a transaction</td>
-                            </tr>
-                            <tr>
-                                <td><code>COMMIT</code></td>
-                                <td>Save all changes permanently</td>
-                            </tr>
-                            <tr>
-                                <td><code>ROLLBACK</code></td>
-                                <td>Undo all changes since START TRANSACTION</td>
-                            </tr>
-                            <tr>
-                                <td><code>SAVEPOINT name</code></td>
-                                <td>Create a named checkpoint</td>
-                            </tr>
-                            <tr>
-                                <td><code>ROLLBACK TO SAVEPOINT name</code></td>
-                                <td>Undo changes after the savepoint</td>
-                            </tr>
-                            <tr>
-                                <td><code>RELEASE SAVEPOINT name</code></td>
-                                <td>Delete a savepoint (no rollback)</td>
-                            </tr>
-                            <tr>
-                                <td><code>SET autocommit = 0/1</code></td>
-                                <td>Disable/enable autocommit</td>
-                            </tr>
-                            <tr>
-                                <td><code>SELECT ... FOR UPDATE</code></td>
-                                <td>Lock selected rows until transaction ends</td>
-                            </tr>
+                            <tr><td><code>SAVEPOINT name</code></td><td>Set a bookmark (same name again moves it)</td></tr>
+                            <tr><td><code>ROLLBACK TO SAVEPOINT name</code></td><td>Undo the changes after the bookmark; the transaction continues</td></tr>
+                            <tr><td><code>RELEASE SAVEPOINT name</code></td><td>Forget the bookmark; changes are kept</td></tr>
+                            <tr><td><code>COMMIT</code> / <code>ROLLBACK</code></td><td>End the transaction; all its savepoints disappear</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="isolation" class="lesson-section">
+                <h2>👥 Two Sessions: Isolation and Locks</h2>
+                <p>So far you have been alone. Real databases serve many connections at once: the website, the warehouse app, a report. To see what they see of each other, open a <strong>second</strong> terminal and log in again (<code>mysql -u root -p bookstore</code>), or a second query tab in Workbench. On this page:</p>
+                <ul>
+                    <li><strong>Session A</strong> is your first window, where you have worked all along.</li>
+                    <li><strong>Session B</strong> is the new window. Its blocks say "Session B" above them.</li>
+                </ul>
+                <p>Run the blocks in exactly the order shown, switching windows as you go.</p>
+
+                <h3>Uncommitted changes are invisible to others</h3>
+                <p><strong>Session A</strong> starts a transaction and takes $20 from Alice, without committing:</p>
+                <pre><code class="language-sql">START TRANSACTION;
+UPDATE accounts SET balance = balance - 20 WHERE id = 1;
+SELECT id, balance FROM accounts WHERE id = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (session A)</h4>
+                    <pre><code>+----+---------+
+| id | balance |
++----+---------+
+|  1 |  100.00 |
++----+---------+</code></pre>
+                </div>
+                <p><strong>Session B</strong> looks at the same row:</p>
+                <pre data-session="other"><code class="language-sql">SELECT id, balance FROM accounts WHERE id = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (session B)</h4>
+                    <pre><code>+----+---------+
+| id | balance |
++----+---------+
+|  1 |  120.00 |
++----+---------+</code></pre>
+                </div>
+                <p>B still sees 120.00, the last <em>committed</em> value. It did not have to wait: InnoDB keeps the old version of the row around and hands it to readers (this is called a <strong>consistent read</strong>). No session ever sees another's uncommitted work, a problem known as a <strong>dirty read</strong>.</p>
+
+                <h3>Writers wait for writers</h3>
+                <p>Now <strong>session B</strong> tries to change the same row:</p>
+                <pre data-session="other" data-raises="ERROR 1205"><code class="language-sql">UPDATE accounts SET balance = balance + 1 WHERE id = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Error (session B, after the wait)</h4>
+                    <pre><code>ERROR 1205 (HY000): Lock wait timeout exceeded; try restarting transaction</code></pre>
+                </div>
+                <p>Session A's <code>UPDATE</code> holds a <strong>row lock</strong> on Alice's account until A commits or rolls back. Session B's statement waits for it, and gives up after <code>innodb_lock_wait_timeout</code> seconds: 50 by default (this page's test server uses 5 to keep things quick). Only the waiting statement fails; nothing else is undone. If A commits within the timeout, B's <code>UPDATE</code> simply continues.</p>
+                <p><strong>Session A</strong> commits:</p>
+                <pre><code class="language-sql">COMMIT;</code></pre>
+                <p>and <strong>session B</strong> reads again:</p>
+                <pre data-session="other"><code class="language-sql">SELECT id, balance FROM accounts WHERE id = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (session B)</h4>
+                    <pre><code>+----+---------+
+| id | balance |
++----+---------+
+|  1 |  100.00 |
++----+---------+</code></pre>
+                </div>
+
+                <h3>Repeatable read: a transaction sees a snapshot</h3>
+                <p>MySQL's default <strong>isolation level</strong> is <code>REPEATABLE READ</code>:</p>
+                <pre><code class="language-sql">SELECT @@transaction_isolation;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------------+
+| @@transaction_isolation |
++-------------------------+
+| REPEATABLE-READ         |
++-------------------------+</code></pre>
+                </div>
+                <p>It means that inside one transaction, reading the same row twice gives the same answer, even if someone else commits a change in between. <strong>Session B</strong> starts a transaction and reads Bob's balance:</p>
+                <pre data-session="other"><code class="language-sql">START TRANSACTION;
+SELECT id, balance FROM accounts WHERE id = 2;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (session B)</h4>
+                    <pre><code>+----+---------+
+| id | balance |
++----+---------+
+|  2 |   80.00 |
++----+---------+</code></pre>
+                </div>
+                <p><strong>Session A</strong> gives Bob $10 (autocommit, so it is committed at once):</p>
+                <pre><code class="language-sql">UPDATE accounts SET balance = balance + 10 WHERE id = 2;
+SELECT id, balance FROM accounts WHERE id = 2;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (session A)</h4>
+                    <pre><code>+----+---------+
+| id | balance |
++----+---------+
+|  2 |   90.00 |
++----+---------+</code></pre>
+                </div>
+                <p><strong>Session B</strong> reads again inside its transaction, then after ending it:</p>
+                <pre data-session="other"><code class="language-sql">SELECT id, balance AS still_in_transaction FROM accounts WHERE id = 2;
+COMMIT;
+SELECT id, balance AS after_commit FROM accounts WHERE id = 2;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (session B)</h4>
+                    <pre><code>+----+----------------------+
+| id | still_in_transaction |
++----+----------------------+
+|  2 |                80.00 |
++----+----------------------+
++----+--------------+
+| id | after_commit |
++----+--------------+
+|  2 |        90.00 |
++----+--------------+</code></pre>
+                </div>
+                <p>Inside its transaction, B keeps seeing the snapshot taken at its first read (80.00). Once it ends the transaction, the next read sees the newest committed value (90.00). A long report run inside one transaction therefore adds up consistently, even while orders keep arriving.</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Isolation level</th><th>A plain SELECT sees</th><th>Typical use</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>READ UNCOMMITTED</code></td><td>Even other sessions' uncommitted changes (dirty reads)</td><td>Almost never</td></tr>
+                            <tr><td><code>READ COMMITTED</code></td><td>The latest committed data, fresh for each statement</td><td>The default in PostgreSQL and SQL Server</td></tr>
+                            <tr><td><code>REPEATABLE READ</code></td><td>One snapshot for the whole transaction</td><td><strong>MySQL and MariaDB default</strong></td></tr>
+                            <tr><td><code>SERIALIZABLE</code></td><td>Like repeatable read, but plain reads also take shared locks</td><td>Strictest, most waiting</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>You can change the level for your next transaction with <code>SET TRANSACTION ISOLATION LEVEL READ COMMITTED;</code>, but the default is a good choice for almost everything in this course.</p>
+            </section>
+
+            <section id="for-update" class="lesson-section">
+                <h2>🔐 Locking Rows with FOR UPDATE</h2>
+                <p>Snapshots have a catch. Suppose two cashiers both read Alice's balance (100.00), both decide "enough for a $60 purchase", and both subtract 60. Each read was correct, yet together they overspend. The fix is to <strong>lock the row when you read it</strong> if you intend to change it: <code>SELECT ... FOR UPDATE</code>.</p>
+                <p><strong>Session A</strong> reads Alice's balance with a lock:</p>
+                <pre><code class="language-sql">START TRANSACTION;
+SELECT id, balance FROM accounts WHERE id = 1 FOR UPDATE;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (session A)</h4>
+                    <pre><code>+----+---------+
+| id | balance |
++----+---------+
+|  1 |  100.00 |
++----+---------+</code></pre>
+                </div>
+                <p><strong>Session B</strong>, the second cashier, tries the same locking read and has to wait:</p>
+                <pre data-session="other" data-raises="ERROR 1205"><code class="language-sql">SELECT id, balance FROM accounts WHERE id = 1 FOR UPDATE;</code></pre>
+                <div class="card card-output">
+                    <h4>Error (session B, after the wait)</h4>
+                    <pre><code>ERROR 1205 (HY000): Lock wait timeout exceeded; try restarting transaction</code></pre>
+                </div>
+                <p>A plain <code>SELECT</code> in session B is <em>not</em> blocked; it reads the committed snapshot as before:</p>
+                <pre data-session="other"><code class="language-sql">SELECT id, balance FROM accounts WHERE id = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (session B)</h4>
+                    <pre><code>+----+---------+
+| id | balance |
++----+---------+
+|  1 |  100.00 |
++----+---------+</code></pre>
+                </div>
+                <p><strong>Session A</strong> finishes its purchase and commits, which releases the lock:</p>
+                <pre><code class="language-sql">UPDATE accounts SET balance = balance - 60 WHERE id = 1;
+COMMIT;
+SELECT id, balance FROM accounts WHERE id = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (session A)</h4>
+                    <pre><code>+----+---------+
+| id | balance |
++----+---------+
+|  1 |   40.00 |
++----+---------+</code></pre>
+                </div>
+                <p>Had B waited instead of timing out, its locking read would have returned 40.00, the balance <em>after</em> A's purchase, and B's cashier would have seen there was not enough left. That is the whole point: read-then-write logic needs <code>FOR UPDATE</code>. (<code>FOR SHARE</code> takes a weaker lock that lets others read with <code>FOR SHARE</code> too but blocks writers.)</p>
+
+                <h3>Deadlocks</h3>
+                <p>If session A locks row 1 and then wants row 2, while session B has locked row 2 and wants row 1, neither can ever continue. InnoDB notices such a <strong>deadlock</strong> immediately, picks one transaction as the victim, rolls it back <em>completely</em>, and gives it this error:</p>
+                <div class="card card-output">
+                    <h4>Error (the victim session)</h4>
+                    <pre><code>ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction</code></pre>
+                </div>
+                <p>The message is the advice: an app catches error 1213 and runs the whole transaction again. You make deadlocks rare by keeping transactions short and by touching rows in the same order everywhere (for example, always lock the lower account id first in a transfer).</p>
+
+                <div class="mermaid">
+graph TD
+    A["Session A locks row 1"] --> B["A waits for row 2"]
+    C["Session B locks row 2"] --> D["B waits for row 1"]
+    B --> E["InnoDB detects the cycle"]
+    D --> E
+    E --> F["One session rolled back: 1213"]
+                </div>
+            </section>
+
+            <section id="procedures" class="lesson-section">
+                <h2>🧰 Transactions in Stored Procedures</h2>
+                <p>At the prompt, you decide whether to commit. In a procedure, the code has to decide, and it has to roll back when <em>any</em> statement fails. That is the job of an <strong>error handler</strong>:</p>
+                <pre><code class="language-sql">DROP PROCEDURE IF EXISTS transfer;
+DELIMITER //
+CREATE PROCEDURE transfer(IN p_from INT, IN p_to INT, IN p_amount DECIMAL(10, 2))
+BEGIN
+    DECLARE v_balance DECIMAL(10, 2);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;   -- undo everything this call did
+        RESIGNAL;   -- and pass the original error to the caller
+    END;
+
+    IF p_amount IS NULL OR p_amount &lt;= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Amount must be positive';
+    END IF;
+
+    START TRANSACTION;
+
+    SELECT balance INTO v_balance FROM accounts WHERE id = p_from FOR UPDATE;
+    IF v_balance IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No such source account';
+    END IF;
+    IF v_balance &lt; p_amount THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient funds';
+    END IF;
+
+    UPDATE accounts SET balance = balance - p_amount WHERE id = p_from;
+    UPDATE accounts SET balance = balance + p_amount WHERE id = p_to;
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No such destination account';
+    END IF;
+
+    COMMIT;
+END //
+DELIMITER ;</code></pre>
+                <p>How it fits together:</p>
+                <ul>
+                    <li><code>DECLARE EXIT HANDLER FOR SQLEXCEPTION</code> says: if any statement in this procedure raises an error (including our own <code>SIGNAL</code>s), run this block, then leave the procedure. Handlers are declared after variables and before other statements.</li>
+                    <li><code>ROLLBACK</code> in the handler undoes the half-done transfer.</li>
+                    <li><code>RESIGNAL</code> re-raises the same error, so the caller still learns what went wrong. A handler that only rolls back and sets a "failed" message hides the real error from the app.</li>
+                    <li><code>FOR UPDATE</code> locks the source account between the check and the debit, the race from the previous section.</li>
+                </ul>
+                <p>A good transfer: Alice sends Carol $5.</p>
+                <pre><code class="language-sql">CALL transfer(1, 3, 5.00);
+SELECT * FROM accounts ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+----------------+---------+
+| id | name           | balance |
++----+----------------+---------+
+|  1 | Alice Johnson  |   35.00 |
+|  2 | Bob Smith      |   90.00 |
+|  3 | Carol Williams |    5.00 |
++----+----------------+---------+</code></pre>
+                </div>
+                <p>Carol tries to send $500 she does not have:</p>
+                <pre data-raises="ERROR 1644"><code class="language-sql">CALL transfer(3, 2, 500.00);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1644 (45000): Insufficient funds</code></pre>
+                </div>
+                <p>The hardest case: the debit succeeds, then the credit finds no account 99. Without the handler, Alice would lose $5 into thin air.</p>
+                <pre data-raises="ERROR 1644"><code class="language-sql">CALL transfer(1, 99, 5.00);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1644 (45000): No such destination account</code></pre>
+                </div>
+                <pre><code class="language-sql">SELECT * FROM accounts ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+----------------+---------+
+| id | name           | balance |
++----+----------------+---------+
+|  1 | Alice Johnson  |   35.00 |
+|  2 | Bob Smith      |   90.00 |
+|  3 | Carol Williams |    5.00 |
++----+----------------+---------+</code></pre>
+                </div>
+                <p>Alice still has 35.00: the handler rolled the debit back before passing the error on.</p>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Let the procedure own the transaction</h4>
+                    <p><code>START TRANSACTION</code> inside a procedure first commits any transaction the caller had open (an implicit commit). Decide who controls the transaction, the procedure or the app, and do not do both. The usual choice for a self-contained action like <code>transfer</code> is the procedure.</p>
+                </div>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Committing after an error (silent)</h3>
+                <p>A transfer from Carol (5.00) to Bob, typed by hand. The second <code>UPDATE</code> would make Carol's balance negative:</p>
+                <pre data-raises="ERROR 3819"><code class="language-sql">START TRANSACTION;
+UPDATE accounts SET balance = balance + 40 WHERE id = 2;
+UPDATE accounts SET balance = balance - 40 WHERE id = 3;
+COMMIT;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3819 (HY000): Check constraint 'chk_balance' is violated.</code></pre>
+                </div>
+                <pre><code class="language-sql">SELECT * FROM accounts ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+----------------+---------+
+| id | name           | balance |
++----+----------------+---------+
+|  1 | Alice Johnson  |   35.00 |
+|  2 | Bob Smith      |  130.00 |
+|  3 | Carol Williams |    5.00 |
++----+----------------+---------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> in MySQL, a failed statement undoes only <em>itself</em>; the transaction stays open with the earlier changes in it. The <code>COMMIT</code> then saved Bob's +40 without Carol's -40: $40 created from nothing. (PostgreSQL behaves differently and refuses to commit after an error, which surprises people moving between the two.) <strong>Fix:</strong> after an error inside a transaction, <code>ROLLBACK</code>; in code, use a handler like <code>transfer</code>'s. Now repair Bob's balance:</p>
+                <pre><code class="language-sql">UPDATE accounts SET balance = balance - 40 WHERE id = 2;</code></pre>
+                <div class="card card-info">
+                    <h4>🐬 Version note</h4>
+                    <p>MySQL 8.4 and MariaDB behave the same way here: the failed statement is undone, the transaction stays open. MariaDB reports the <code>CHECK</code> violation with a different number and text, <code>ERROR 4025 (23000): CONSTRAINT `chk_balance` failed for `bookstore`.`accounts`</code>, so an app that tests for error 3819 should test for 4025 too if it may run on MariaDB.</p>
+                </div>
+
+                <h3>2. A schema change in the middle of a transaction (silent)</h3>
+                <pre><code class="language-sql">START TRANSACTION;
+UPDATE accounts SET balance = 0 WHERE id = 2;
+CREATE TABLE demo_audit (note VARCHAR(100));
+ROLLBACK;
+SELECT id, balance FROM accounts WHERE id = 2;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+---------+
+| id | balance |
++----+---------+
+|  2 |    0.00 |
++----+---------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>CREATE TABLE</code> committed the open transaction before it ran, so the <code>ROLLBACK</code> had nothing left to undo, and Bob's balance is really 0. <strong>Fix:</strong> keep <code>CREATE</code>, <code>ALTER</code>, <code>DROP</code> and <code>TRUNCATE</code> out of transactions; run them before or after. Repair the damage and remove the demo table:</p>
+                <pre><code class="language-sql">UPDATE accounts SET balance = 90.00 WHERE id = 2;
+DROP TABLE demo_audit;</code></pre>
+
+                <h3>3. Rolling back to a savepoint that does not exist</h3>
+                <pre data-raises="ERROR 1305"><code class="language-sql">START TRANSACTION;
+UPDATE books SET price = ROUND(price * 0.9, 2);
+ROLLBACK TO SAVEPOINT before_sale;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1305 (42000): SAVEPOINT before_sale does not exist</code></pre>
+                </div>
+                <p><strong>What it means:</strong> no <code>SAVEPOINT before_sale</code> was set in this transaction (a typo, or it was set in an earlier transaction that has ended). The transaction is still open, with every price cut by 10%. <strong>Fix:</strong> set the savepoint before the change; here, roll the whole thing back:</p>
+                <pre><code class="language-sql">ROLLBACK;
+SELECT title, price FROM books WHERE id = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------+-------+
+| title | price |
++-------+-------+
+| Dune  | 14.99 |
++-------+-------+</code></pre>
+                </div>
+
+                <h3>4. Writing in a read-only transaction</h3>
+                <pre data-raises="ERROR 1792"><code class="language-sql">START TRANSACTION READ ONLY;
+UPDATE accounts SET balance = balance + 1 WHERE id = 3;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1792 (25006): Cannot execute statement in a READ ONLY transaction.</code></pre>
+                </div>
+                <pre><code class="language-sql">ROLLBACK;</code></pre>
+                <p><strong>What it means:</strong> <code>READ ONLY</code> is a promise that lets InnoDB skip some bookkeeping, and MySQL enforces it. It is a good fit for long reports. <strong>Fix:</strong> use a plain <code>START TRANSACTION</code> (or <code>READ WRITE</code>) when you need to change data.</p>
+
+                <h3>5. A table that ignores ROLLBACK (silent)</h3>
+                <pre><code class="language-sql">CREATE TABLE demo_log (note VARCHAR(100)) ENGINE = MyISAM;
+
+START TRANSACTION;
+INSERT INTO demo_log VALUES ('this should disappear');
+ROLLBACK;
+SHOW WARNINGS;
+SELECT COUNT(*) AS rows_left FROM demo_log;
+
+DROP TABLE demo_log;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------+------+---------------------------------------------------------------+
+| Level   | Code | Message                                                       |
++---------+------+---------------------------------------------------------------+
+| Warning | 1196 | Some non-transactional changed tables couldn't be rolled back |
++---------+------+---------------------------------------------------------------+
++-----------+
+| rows_left |
++-----------+
+|         1 |
++-----------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> MyISAM has no transactions, so the insert was permanent the moment it ran. MySQL only warns (1196), and the client shows warnings only when you ask with <code>SHOW WARNINGS</code>. You meet MyISAM in old databases and old tutorials. <strong>Fix:</strong> use InnoDB, the default (leave out <code>ENGINE=</code>, or convert with <code>ALTER TABLE t ENGINE = InnoDB;</code>). Check a table's engine with <code>SHOW TABLE STATUS LIKE 'accounts';</code>.</p>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: An All-or-Nothing Checkout</h2>
+                <p>The website's checkout must create an order, add the line item at the current price, and charge the customer's store credit. If any step fails (an unknown book, a book out of stock, not enough credit), nothing may remain: no empty order, no charge. You will write <code>checkout.sql</code> and then try hard to break it. Allow about 40 minutes.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: Write the procedure <span class="step-time">(12 min)</span></h3>
+                    <p>Create <code>checkout.sql</code> in your <code>mysql-course</code> folder. The procedure validates before it writes anything, then does all three writes inside one transaction guarded by a handler.</p>
+                    <pre><code class="language-sql">USE bookstore;
+
+DROP PROCEDURE IF EXISTS checkout;
+DELIMITER //
+CREATE PROCEDURE checkout(
+    IN  p_customer_id INT,
+    IN  p_book_id     INT,
+    IN  p_quantity    INT,
+    OUT p_order_id    INT
+)
+BEGIN
+    DECLARE v_price    DECIMAL(8, 2);
+    DECLARE v_in_stock BOOLEAN;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    IF p_quantity IS NULL OR p_quantity &lt; 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Quantity must be at least 1';
+    END IF;
+
+    SELECT MIN(price), MIN(in_stock) INTO v_price, v_in_stock
+    FROM books WHERE id = p_book_id;
+
+    IF v_price IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No such book';
+    END IF;
+    IF NOT v_in_stock THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Book is out of stock';
+    END IF;
+
+    START TRANSACTION;
+
+    INSERT INTO orders (customer_id, order_date) VALUES (p_customer_id, CURRENT_DATE);
+    SET p_order_id = LAST_INSERT_ID();
+
+    INSERT INTO order_items (order_id, book_id, quantity, price_at_time)
+    VALUES (p_order_id, p_book_id, p_quantity, v_price);
+
+    UPDATE accounts SET balance = balance - v_price * p_quantity
+    WHERE id = p_customer_id;
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Customer has no store credit account';
+    END IF;
+
+    COMMIT;
+END //
+DELIMITER ;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Database changed</code></pre>
+                    </div>
+                    <p>Two details worth noticing. The <code>CHECK (balance &gt;= 0)</code> constraint does the "enough credit?" test for you: a charge that would go negative fails with error 3819, the handler catches it and rolls back. And the <code>MIN()</code>s make the lookup return one row even for a missing book, as in Lesson 7.1's <code>add_book</code>.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: A good order <span class="step-time">(5 min)</span></h3>
+                    <p>Before testing, note the starting point:</p>
+                    <pre><code class="language-sql">SELECT (SELECT COUNT(*) FROM orders) AS orders,
+       (SELECT COUNT(*) FROM order_items) AS items,
+       (SELECT balance FROM accounts WHERE id = 1) AS alice_credit;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+--------+-------+--------------+
+| orders | items | alice_credit |
++--------+-------+--------------+
+|     13 |    19 |        35.00 |
++--------+-------+--------------+</code></pre>
+                    </div>
+                    <p>Alice buys one copy of <em>Animal Farm</em> (8.49):</p>
+                    <pre><code class="language-sql">CALL checkout(1, 11, 1, @order_id);
+
+SELECT o.id AS order_id, o.customer_id, b.title, oi.quantity, oi.price_at_time
+FROM orders AS o
+JOIN order_items AS oi ON oi.order_id = o.id
+JOIN books AS b ON b.id = oi.book_id
+WHERE o.id = @order_id;
+
+SELECT balance AS alice_credit FROM accounts WHERE id = 1;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+----------+-------------+-------------+----------+---------------+
+| order_id | customer_id | title       | quantity | price_at_time |
++----------+-------------+-------------+----------+---------------+
+|       14 |           1 | Animal Farm |        1 |          8.49 |
++----------+-------------+-------------+----------+---------------+
++--------------+
+| alice_credit |
++--------------+
+|        26.51 |
++--------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: Refused before any write <span class="step-time">(5 min)</span></h3>
+                    <p>Bob wants <em>The Great Gatsby</em>, which is out of stock, and then a book that does not exist:</p>
+                    <pre data-raises="ERROR 1644"><code class="language-sql">CALL checkout(2, 4, 1, @order_id);</code></pre>
+                    <div class="card card-output">
+                        <h4>Error</h4>
+                        <pre><code>ERROR 1644 (45000): Book is out of stock</code></pre>
+                    </div>
+                    <pre data-raises="ERROR 1644"><code class="language-sql">CALL checkout(2, 999, 1, @order_id);</code></pre>
+                    <div class="card card-output">
+                        <h4>Error</h4>
+                        <pre><code>ERROR 1644 (45000): No such book</code></pre>
+                    </div>
+                    <p>Both checks run before <code>START TRANSACTION</code>, so there is nothing to undo. The handler's <code>ROLLBACK</code> runs anyway and harmlessly does nothing.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: Refused halfway through <span class="step-time">(6 min)</span></h3>
+                    <p>Carol has 5.00 of credit and orders two copies of <em>Lord of the Rings</em> (31.98). The order and its item are inserted, then the charge breaks the <code>CHECK</code> constraint:</p>
+                    <pre data-raises="ERROR 3819"><code class="language-sql">CALL checkout(3, 9, 2, @order_id);</code></pre>
+                    <div class="card card-output">
+                        <h4>Error</h4>
+                        <pre><code>ERROR 3819 (HY000): Check constraint 'chk_balance' is violated.</code></pre>
+                    </div>
+                    <p>Dave (customer 4) has no store credit account at all, so his charge changes no row:</p>
+                    <pre data-raises="ERROR 1644"><code class="language-sql">CALL checkout(4, 1, 1, @order_id);</code></pre>
+                    <div class="card card-output">
+                        <h4>Error</h4>
+                        <pre><code>ERROR 1644 (45000): Customer has no store credit account</code></pre>
+                    </div>
+                    <p>Prove that both half-made orders vanished:</p>
+                    <pre><code class="language-sql">SELECT (SELECT COUNT(*) FROM orders) AS orders,
+       (SELECT COUNT(*) FROM order_items) AS items,
+       (SELECT balance FROM accounts WHERE id = 3) AS carol_credit;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+--------+-------+--------------+
+| orders | items | carol_credit |
++--------+-------+--------------+
+|     14 |    20 |         5.00 |
++--------+-------+--------------+</code></pre>
+                    </div>
+                    <p>One more order and one more item than at the start of Step 2: Alice's, and nothing else.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: An integrity audit <span class="step-time">(7 min)</span></h3>
+                    <p>A query worth keeping: orders that have no items at all. With an all-or-nothing checkout, it must always be empty.</p>
+                    <pre><code class="language-sql">SELECT o.id, o.customer_id
+FROM orders AS o
+LEFT JOIN order_items AS oi ON oi.order_id = o.id
+WHERE oi.id IS NULL;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Empty set</code></pre>
+                    </div>
+                    <p>Now place one more good order, Alice buying <em>Fahrenheit 451</em>, and look at its id:</p>
+                    <pre><code class="language-sql">CALL checkout(1, 10, 1, @order_id);
+SELECT @order_id AS new_order_id;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output (the id can differ if you repeated a step)</h4>
+                        <pre><code>+--------------+
+| new_order_id |
++--------------+
+|           17 |
++--------------+</code></pre>
+                    </div>
+                    <p>Order 14 was Alice's Animal Farm, but this one is not 15. The two rolled-back checkouts in Step 4 each took an <code>AUTO_INCREMENT</code> value, and a rollback does not give those values back. Gaps in id numbers are normal and harmless; never use ids to count orders.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 6: Save and rerun <span class="step-time">(5 min)</span></h3>
+                    <p>Save <code>checkout.sql</code> with only the <code>USE</code>, <code>DROP</code> and <code>CREATE</code> parts (keep the test calls at the prompt), and check that it runs twice in a row without an error:</p>
+                    <pre data-norun><code class="language-sql">SOURCE ~/mysql-course/checkout.sql</code></pre>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>checkout.sql</code> creates <code>checkout</code> after a <code>DROP PROCEDURE IF EXISTS</code> and runs twice cleanly</li>
+                        <li>The handler does <code>ROLLBACK</code> and then <code>RESIGNAL</code>, so callers see the real error</li>
+                        <li>A good call creates one order, one item at the current price, and reduces the store credit</li>
+                        <li>Out-of-stock, unknown-book, not-enough-credit and no-account calls all fail and leave no order behind</li>
+                        <li>The integrity audit returns <code>Empty set</code>, and you can explain the gap in the order ids</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+                <p>Each exercise continues from the project's data. Exercise 3 needs your second window again.</p>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: Rehearse a Delete</h3>
+                    <p>Inside a transaction, delete Bob's order 3. Count the order lines before and after the delete (the foreign key cascades to <code>order_items</code>), then roll back and count once more.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p><code>fk_items_order</code> is <code>ON DELETE CASCADE</code>, so deleting the order also deletes its line. Order 3 has one line.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT COUNT(*) AS items_before FROM order_items;
+
+START TRANSACTION;
+DELETE FROM orders WHERE id = 3;
+SELECT COUNT(*) AS items_inside FROM order_items;
+ROLLBACK;
+
+SELECT COUNT(*) AS items_after FROM order_items;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+--------------+
+| items_before |
++--------------+
+|           21 |
++--------------+
++--------------+
+| items_inside |
++--------------+
+|           20 |
++--------------+
++-------------+
+| items_after |
++-------------+
+|          21 |
++-------------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 2: A Sale with a Savepoint</h3>
+                    <p>In one transaction: cut every price by 10%, set a savepoint, mark every book out of stock, then change your mind about the stock (roll back to the savepoint). Show the price and stock of Dune, then roll back the whole transaction and show Dune again.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p><code>ROUND(price * 0.9, 2)</code>, <code>SAVEPOINT after_sale</code>, <code>ROLLBACK TO SAVEPOINT after_sale</code>, then a plain <code>ROLLBACK</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">START TRANSACTION;
+UPDATE books SET price = ROUND(price * 0.9, 2);
+SAVEPOINT after_sale;
+UPDATE books SET in_stock = FALSE;
+ROLLBACK TO SAVEPOINT after_sale;
+SELECT title, price, in_stock FROM books WHERE id = 1;
+
+ROLLBACK;
+SELECT title, price, in_stock FROM books WHERE id = 1;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------+-------+----------+
+| title | price | in_stock |
++-------+-------+----------+
+| Dune  | 13.49 |        1 |
++-------+-------+----------+
++-------+-------+----------+
+| title | price | in_stock |
++-------+-------+----------+
+| Dune  | 14.99 |        1 |
++-------+-------+----------+</code></pre>
+                        </div>
+                        <p>Inside the transaction Dune costs 13.49 and is still in stock; after the full rollback it is back to 14.99.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: Who Waits?</h3>
+                    <p>This time session B holds the lock. In session B, start a transaction and lock Bob's account with <code>FOR UPDATE</code>. In session A, try to add $1 to Bob's balance and watch it wait. Then commit in session B.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Any <code>UPDATE</code> of a row locked by another transaction waits, whether the lock came from an <code>UPDATE</code> or a <code>FOR UPDATE</code> read.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <p>Session B:</p>
+                        <pre data-session="other"><code class="language-sql">START TRANSACTION;
+SELECT id, balance FROM accounts WHERE id = 2 FOR UPDATE;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output (session B)</h4>
+                            <pre><code>+----+---------+
+| id | balance |
++----+---------+
+|  2 |   90.00 |
++----+---------+</code></pre>
+                        </div>
+                        <p>Session A waits, then gives up:</p>
+                        <pre data-raises="ERROR 1205"><code class="language-sql">UPDATE accounts SET balance = balance + 1 WHERE id = 2;</code></pre>
+                        <div class="card card-output">
+                            <h4>Error (session A, after the wait)</h4>
+                            <pre><code>ERROR 1205 (HY000): Lock wait timeout exceeded; try restarting transaction</code></pre>
+                        </div>
+                        <p>Session B releases the lock:</p>
+                        <pre data-session="other"><code class="language-sql">COMMIT;</code></pre>
+                        <p>If you commit in B quickly enough (within 50 seconds on a default server), A's <code>UPDATE</code> completes instead of failing.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): A Safe Delete Procedure</h3>
+                    <p>Write <code>cancel_order(IN p_order_id INT)</code>: inside a transaction it deletes the order (its items go with it by cascade), raises "No such order" with <code>SIGNAL</code> if nothing was deleted, and has a handler that rolls back and resignals. Test it on order 999, then cancel order 3.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Check <code>ROW_COUNT()</code> right after the <code>DELETE</code>; the handler turns your <code>SIGNAL</code> into a rollback too.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">DROP PROCEDURE IF EXISTS cancel_order;
+DELIMITER //
+CREATE PROCEDURE cancel_order(IN p_order_id INT)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+    DELETE FROM orders WHERE id = p_order_id;
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No such order';
+    END IF;
+    COMMIT;
+END //
+DELIMITER ;</code></pre>
+                        <pre data-raises="ERROR 1644"><code class="language-sql">CALL cancel_order(999);</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 1644 (45000): No such order</code></pre>
+                        </div>
+                        <pre><code class="language-sql">CALL cancel_order(3);
+SELECT COUNT(*) AS orders_left,
+       (SELECT COUNT(*) FROM order_items WHERE order_id = 3) AS items_of_order_3
+FROM orders;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------------+------------------+
+| orders_left | items_of_order_3 |
++-------------+------------------+
+|          14 |                0 |
++-------------+------------------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+            </section>
+
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
+                <div class="card quiz-container">
+                    <h3>🎯 Check Your Understanding</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> Which ACID property promises that an order is never saved without its items?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Atomicity: all of a transaction's changes are kept, or none of them. The order row and its item rows succeed or fail together.">
+                                A) Atomicity
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Isolation is about what other sessions see while the work is in progress, not about whether all of it happens.">
+                                B) Isolation
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Durability is about surviving a crash after COMMIT.">
+                                C) Durability
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> Session A has updated a row but not committed. Session B runs a plain <code>SELECT</code> of that row. What does B get?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="That would be a dirty read, which REPEATABLE READ never allows.">
+                                A) A's new, uncommitted value
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Writers wait for writers, but a plain read does not take a lock in InnoDB.">
+                                B) Nothing yet: B waits until A commits
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="InnoDB gives plain readers the last committed version of the row, without waiting. B sees A's change only after A commits.">
+                                C) The last committed value, immediately
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> You run <code>START TRANSACTION</code>, a good <code>UPDATE</code>, an <code>UPDATE</code> that fails with error 3819, then <code>COMMIT</code>. What is saved?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL undoes only the failed statement. Did anything undo the first one?">
+                                A) Nothing: the error rolled back the transaction
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="In MySQL a failed statement rolls back only itself and the transaction stays open, so COMMIT saves the first UPDATE. Roll back yourself, or use a handler.">
+                                B) The first <code>UPDATE</code> only
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL accepts COMMIT after an error. That is exactly the danger.">
+                                C) Nothing: MySQL refuses the COMMIT
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> Which statement, run inside an open transaction, commits it on the spot?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="A savepoint is a bookmark inside the transaction; it ends nothing.">
+                                A) <code>SAVEPOINT before_sale</code>
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="DDL such as CREATE TABLE causes an implicit commit before it runs, so a later ROLLBACK cannot undo the earlier changes.">
+                                B) <code>CREATE TABLE demo_audit (note VARCHAR(100))</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="FOR UPDATE takes locks inside the transaction; it does not end it.">
+                                C) <code>SELECT ... FOR UPDATE</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> An <code>UPDATE</code> fails with <code>ERROR 1205 (HY000): Lock wait timeout exceeded; try restarting transaction</code>. What happened?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="A deadlock is error 1213 and is detected immediately, without a timeout.">
+                                A) InnoDB found a deadlock and rolled your whole transaction back
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="A syntax problem is error 1064 and fails at once.">
+                                B) The statement has a syntax error
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Another transaction held a lock on the row, and your statement gave up after innodb_lock_wait_timeout seconds (50 by default). Only that statement failed.">
+                                C) Another transaction held the row's lock longer than the timeout
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>What happens to an open transaction if my connection drops?</summary>
+                    <p>The server rolls it back. Nothing is committed unless you said <code>COMMIT</code> (or autocommit did it for you). That is also why closing a window with an open transaction loses its work, and why an open transaction left in a forgotten window can block other sessions until it is closed.</p>
+                </details>
+                <details>
+                    <summary>How do apps use transactions?</summary>
+                    <p>Through the driver: PHP's PDO has <code>beginTransaction()</code>, <code>commit()</code> and <code>rollBack()</code>; Python's connector has <code>conn.commit()</code> and <code>conn.rollback()</code>. The pattern is the same as the handler: start, run the parameterized statements, commit, and roll back in the error branch. Note that some drivers (Python's DB-API ones, for example) switch autocommit <em>off</em> by default, so forgetting <code>commit()</code> loses the change.</p>
+                </details>
+                <details>
+                    <summary>Are transactions slow?</summary>
+                    <p>Usually the opposite for bulk work. With autocommit, each <code>INSERT</code> waits for its own commit to reach the disk; 1,000 inserts inside one transaction wait once. What hurts is a <em>long</em> transaction: it holds locks and keeps old row versions alive. Keep transactions as short as the job allows, and never wait for a person (a form, a confirmation dialog) in the middle of one.</p>
+                </details>
+                <details>
+                    <summary>Why did my AUTO_INCREMENT skip numbers?</summary>
+                    <p>Rolled-back inserts, failed inserts and deleted rows all leave gaps, as the project showed. InnoDB hands out ids without waiting for commits, so it cannot take them back. Ids identify rows; they are not a count. Use <code>COUNT(*)</code> to count.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>Make <code>transfer</code> deadlock-proof: lock <em>both</em> accounts at the start, always the lower id first, with <code>SELECT ... FROM accounts WHERE id IN (p_from, p_to) ORDER BY id FOR UPDATE;</code>. Then, in two sessions, start two opposite transfers by hand (A: lock 1, then 2; B: lock 2, then 1) without the fix and get error 1213 for real. Which session became the victim, and what did <code>SHOW ENGINE INNODB STATUS\G</code> report under "LATEST DETECTED DEADLOCK"?</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Describe the two-window experiment in your own words, as if explaining it to a friend: who changed what, who could see it, who had to wait, and why. Then name one situation from outside computing (a shared spreadsheet, a restaurant kitchen, a library hold) that works like a row lock.</p>
+                </div>
+            </section>
+
+            <section id="summary" class="lesson-section">
+                <h2>📝 Lesson Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎓 Key Takeaways</h3>
+                    <ul>
+                        <li>A <strong>transaction</strong> makes several changes all-or-nothing: <code>START TRANSACTION</code>, then <code>COMMIT</code> or <code>ROLLBACK</code></li>
+                        <li><strong>Autocommit</strong> (on by default) commits each statement by itself; DDL and account statements cause <strong>implicit commits</strong></li>
+                        <li>A failed statement undoes only itself: after an error, roll back yourself, or let a handler do it</li>
+                        <li><strong>Savepoints</strong> undo part of a transaction and keep it open</li>
+                        <li>Under <code>REPEATABLE READ</code>, plain reads see committed data from a snapshot and never wait; writers wait for row locks (1205 on timeout)</li>
+                        <li><code>SELECT ... FOR UPDATE</code> locks rows you are about to change; deadlocks (1213) roll back one victim, so retry the whole transaction</li>
+                        <li>In procedures: <code>DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;</code></li>
+                    </ul>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>You want</th><th>Write</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Start / keep / discard</td><td><code>START TRANSACTION;</code> / <code>COMMIT;</code> / <code>ROLLBACK;</code></td></tr>
+                            <tr><td>A bookmark, and going back to it</td><td><code>SAVEPOINT s;</code> / <code>ROLLBACK TO SAVEPOINT s;</code></td></tr>
+                            <tr><td>Lock rows you will change</td><td><code>SELECT ... FOR UPDATE;</code></td></tr>
+                            <tr><td>A report that cannot write</td><td><code>START TRANSACTION READ ONLY;</code></td></tr>
+                            <tr><td>Check the settings</td><td><code>SELECT @@autocommit, @@transaction_isolation;</code></td></tr>
+                            <tr><td>Roll back on any error in a procedure</td><td><code>DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;</code></td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <h3>📚 Additional Resources</h3>
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You committed, rolled back and partly rolled back real changes to the bookstore</li>
+                        <li>You ran two sessions side by side and saw snapshots, row locks and a lock timeout with your own eyes</li>
+                        <li>You met the silent traps: committing after an error, DDL inside a transaction, a MyISAM table</li>
+                        <li>You built <code>checkout</code>, a procedure that places an order completely or not at all</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>In <a href="lesson_json.html"><strong>Lesson 7.3: JSON Columns</strong></a> you will give the bookstore some flexibility: a <code>JSON</code> column for details that differ from book to book (format, series, awards), the <code>-&gt;</code> and <code>-&gt;&gt;</code> operators to read inside it, and the functions that search and update JSON safely, along with the places where MariaDB does things differently.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
                 <ul>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/commit.html" target="_blank" rel="noopener">MySQL Docs — COMMIT, ROLLBACK, and SAVEPOINT</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-model.html" target="_blank" rel="noopener">MySQL Docs — InnoDB Transaction Model</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-autocommit-commit-rollback.html" target="_blank" rel="noopener">MySQL Docs — Autocommit, Commit, and Rollback</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-deadlocks.html" target="_blank" rel="noopener">MySQL Docs — Deadlocks in InnoDB</a></li>
+                    <li>Run <code>checkout.sql</code> from a fresh session and repeat the Step 4 tests until you can predict each error</li>
+                    <li>Repeat the two-window experiment once without looking at this page</li>
+                    <li>Reload <code>bookstore.sql</code> before Lesson 7.3, so its outputs match yours</li>
                 </ul>
 
-                <h3>🚀 What's Next?</h3>
-                <p>You can now protect data integrity with transactions. But who gets to run those transactions? In <a href="lesson_19.html">Lesson 19: User Management &amp; Permissions</a>, you'll learn to create database users, control what they can access with GRANT and REVOKE, and apply the principle of least privilege to keep your database secure.</p>
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>Concurrency is where many developers' understanding of databases goes fuzzy, and you just watched it happen in two windows instead of reading about it. If the snapshot rules still feel slippery, rerun the isolation section slowly; it becomes intuitive faster than you think. Every app you build from here on will have more than one user at a time, and you now know how to keep their work from colliding.</p>
+                </div>
             </section>
 
             <nav class="lesson-nav" aria-label="Lesson Navigation">
                 <a href="lesson_17.html" class="prev-lesson">← Previous: Stored Procedures &amp; Functions</a>
                 <a href="index.html" class="home-link">🏠 Course Home</a>
-                <a href="lesson_19.html" class="next-lesson">Next: User Management &amp; Permissions →</a>
+                <a href="lesson_json.html" class="next-lesson">Next: JSON Columns →</a>
             </nav>
         </div>
     </main>
 
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>

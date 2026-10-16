@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 6</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 6: Relationships and Foreign Keys</h1>
+    <p class="sub">Answers and reasoning for every Session 6 item: the warm-up, both self-checks, the predict-then-run items, the lab reference outputs and the debug handouts, the lesson pages' own quizzes and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>6</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Warm-up</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">W1</div><div class="qt">Three numbers: predict them. (Customers 1 to 5 signed up before 25 January; Eve has no city.)</div><pre class="code"><span class="k">SELECT</span> COUNT(*), COUNT(city), COUNT(<span class="k">DISTINCT</span> city)
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> created_at &lt; <span class="s">'2026-01-25'</span>;</pre><div class="opts"><div class="opt correct">5, 4, 4: five rows, four filled-in cities (Eve's is NULL), four different cities.<pre class="out">+----------+-------------+----------------------+
+| COUNT(*) | COUNT(city) | COUNT(DISTINCT city) |
++----------+-------------+----------------------+
+|        5 |           4 |                    4 |
++----------+-------------+----------------------+</pre></div></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt"><code class="inline">price &gt; 10</code> and <code class="inline">COUNT(*) &gt; 1</code>: which goes in WHERE, and which in HAVING?</div><div class="opts"><div class="opt correct"><code class="inline">price &gt; 10</code> in WHERE (one row's column); <code class="inline">COUNT(*) &gt; 1</code> in HAVING (a group's aggregate).</div></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">Which book is it?</div><pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> pages = (<span class="k">SELECT</span> MAX(pages) <span class="k">FROM</span> books);</pre><div class="opts"><div class="opt correct">Lord of the Rings: the row behind MAX(pages).<pre class="out">+-------------------+
+| title             |
++-------------------+
+| Lord of the Rings |
++-------------------+</pre></div></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">How many customers? (Customer 7 is Grace in Chicago, 8 is Hank with no city.)</div><pre class="code"><span class="k">SELECT</span> COUNT(*)
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="k">SELECT</span> city <span class="k">FROM</span> customers <span class="k">WHERE</span> id &gt; <span class="s">6</span>);</pre><div class="opts"><div class="opt correct">0: the list is ('Chicago', NULL), and one NULL empties a NOT IN. Add <code class="inline">AND city IS NOT NULL</code> inside, or use NOT EXISTS.<pre class="out">+----------+
+| COUNT(*) |
++----------+
+|        0 |
++----------+</pre></div></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">What is wrong, and what is the error number?</div><pre class="code"><span class="k">SELECT</span> author, title, MAX(price)
+<span class="k">FROM</span> books
+<span class="k">GROUP</span> <span class="k">BY</span> author;</pre><div class="opts"><div class="opt correct">Error 1055: title is neither grouped nor aggregated (Tolkien's pile has two titles). Drop it or use <code class="inline">MIN(title)</code>.<pre class="out">ERROR 1055 (42000): Expression #2 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'bookstore.books.title' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by</pre></div></div></div>
+
+  <div class="sec"><h2>4.1 · Table Relationships: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">A customer can have many delivery addresses; each address belongs to exactly one customer. Where does the foreign key go?</div><div class="opts"><div class="opt">A) <code class="inline">customers.address_id</code></div><div class="opt correct">B) <code class="inline">addresses.customer_id</code></div><div class="opt">C) A junction table <code class="inline">customer_addresses</code></div><div class="opt">D) In both tables, one pointing at the other</div></div><div class="why"><b>Why:</b> Ask "can one customer have many addresses?" Yes: the key goes on the many side, in addresses (like books.author_id and orders.customer_id).<br><b>A</b> is wrong: A column holds one value: each customer could then have only one address (the lesson's Mistake 5).<br><b>C</b> is wrong: A junction table is for many-to-many; an address does not belong to several customers.<br><b>D</b> is wrong: Two keys pointing at each other duplicate one fact and make inserting either row first impossible.</div></div>
+  <div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">Which of these needs a junction table?</div><div class="opts"><div class="opt">A) One author writes many books</div><div class="opt">B) Each employee has at most one manager</div><div class="opt correct">C) Students and the courses they take</div><div class="opt">D) Each order belongs to one customer</div></div><div class="why"><b>Why:</b> A student takes many courses and a course has many students: two yeses make many-to-many, and that needs a third table with two foreign keys (enrollments), which can also hold facts about the link such as a grade.<br><b>A</b> is wrong: One-to-many: books.author_id.<br><b>B</b> is wrong: A self-referencing one-to-many: employees.manager_id.<br><b>D</b> is wrong: One-to-many: orders.customer_id.</div></div>
+  <div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">In the finished bookstore, what does this print?</div><pre class="code"><span class="k">SELECT</span> book_id, COUNT(*) <span class="k">AS</span> categories
+<span class="k">FROM</span> book_categories
+<span class="k">GROUP</span> <span class="k">BY</span> book_id
+<span class="k">HAVING</span> COUNT(*) = <span class="s">3</span>
+<span class="k">ORDER</span> <span class="k">BY</span> book_id;</pre><div class="opts"><div class="opt correct">Three rows: books <code class="inline">2</code>, <code class="inline">7</code> and <code class="inline">10</code>, each with <code class="inline">3</code></div></div><div class="why"><b>Why:</b> Each row of the junction table is one link. Grouping the links per book and keeping the piles of three finds 1984 (2), Brave New World (7) and Fahrenheit 451 (10): Fiction, plus Dystopian and one more.</div></div>
+  <div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">The flat books table types "J.R.R. Tolkien" in two rows. A staff member edits the spelling in one of them only. What is this called?</div><div class="opts"><div class="opt correct">A) An update anomaly: one fact stored twice now disagrees with itself</div><div class="opt">B) An insert anomaly</div><div class="opt">C) A delete anomaly</div><div class="opt">D) Error 1062, a duplicate entry</div></div><div class="why"><b>Why:</b> One fact (the author's name) is stored in several rows; changing one copy leaves the table believing in two Tolkiens, with no error. Storing the name once in authors removes the cause.<br><b>B</b> is wrong: An insert anomaly is having nowhere to store something new (an author with no books).<br><b>C</b> is wrong: A delete anomaly is losing a fact by deleting another (the last book removes the author).<br><b>D</b> is wrong: No rule is broken: that is exactly why the anomaly is dangerous.</div></div>
+  <div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">A colleague builds <code class="inline">customer_profiles</code> with <code class="inline">customer_id INT NOT NULL</code> and a foreign key, but leaves out <code class="inline">UNIQUE</code>. What has the relationship become?</div><div class="opts"><div class="opt">A) Many-to-many</div><div class="opt">B) Still one-to-one: the foreign key enforces it</div><div class="opt">C) Nothing: MySQL refuses the CREATE TABLE</div><div class="opt correct">D) One-to-many: a customer can now have several profiles</div></div><div class="why"><b>Why:</b> A one-to-one relationship in MySQL is a one-to-many whose foreign key column is also UNIQUE. Without UNIQUE, a second profile for Alice is accepted silently (the lesson's demo shows the 1062 that UNIQUE gives).<br><b>A</b> is wrong: Many-to-many needs a junction table with two foreign keys.<br><b>B</b> is wrong: A foreign key checks that the parent exists, not that it is referenced only once.<br><b>C</b> is wrong: The statement is valid; the design is what changed.</div></div>
+  <div class="q" data-sc="6" data-kind="short"><div class="qn">Q6</div><div class="qt">The bookstore's table is called books. What happens?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> kit_reviews (
+    id      <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    book_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">FOREIGN</span> <span class="k">KEY</span> (book_id) <span class="k">REFERENCES</span> book(id)
+);</pre><div class="opts"><div class="opt correct"><code class="inline">ERROR 1824 (HY000): Failed to open the referenced table 'book'</code></div></div><div class="why"><b>Why:</b> The foreign key names a table that does not exist (book). The same error appears when the name is right but the child is created before its parent: create parents first, children second (and drop in the opposite order).</div></div>
+
+  <div class="sec"><h2>4.1 · Table Relationships: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> book_categories (book_id, category_id) <span class="k">VALUES</span> (<span class="s">11</span>, <span class="s">3</span>);</pre><div class="opts"><div class="opt correct"><pre class="out">ERROR 1062 (23000): Duplicate entry '11-3' for key 'book_categories.PRIMARY'</pre></div></div><div class="why"><b>Why:</b> Animal Farm (11) is already in Classic (3): the composite primary key allows each pair once, and the message shows the pair as '11-3'.</div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> authors_without_books
+<span class="k">FROM</span> authors
+<span class="k">WHERE</span> id <span class="k">NOT</span> <span class="k">IN</span> (<span class="k">SELECT</span> author_id <span class="k">FROM</span> books);</pre><div class="opts"><div class="opt correct"><pre class="out">+-----------------------+
+| authors_without_books |
++-----------------------+
+|                     1 |
++-----------------------+</pre></div></div><div class="why"><b>Why:</b> Every book's author_id is NOT NULL, so the NOT IN list holds no NULL and the query is safe: only Isaac Asimov (10) has no book.</div></div>
+
+  <div class="sec"><h2>4.2 · Foreign Keys &amp; Referential Integrity: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">The bookstore has customers 1 to 8. What happens?</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> orders (customer_id, order_date)
+<span class="k">VALUES</span> (<span class="s">9</span>, <span class="s">'2026-07-01'</span>);</pre><div class="opts"><div class="opt">A) <code class="inline">ERROR 1451 (23000): Cannot delete or update a parent row</code></div><div class="opt correct">B) <code class="inline">ERROR 1452 (23000): Cannot add or update a child row</code></div><div class="opt">C) <code class="inline">ERROR 1062 (23000): Duplicate entry</code></div><div class="opt">D) Order 13 is created for customer 9</div></div><div class="why"><b>Why:</b> orders is the CHILD of customers; inserting a child whose parent (customer 9) does not exist is refused by fk_orders_customer: "add or update a child row", 1452. Nothing is inserted.<br><b>A</b> is wrong: 1451 is about a PARENT that still has children (a delete or a key change).<br><b>C</b> is wrong: Nothing is duplicated; the id is new.<br><b>D</b> is wrong: That is exactly what a declared foreign key prevents: an orphan order.</div></div>
+  <div class="q" data-sc="8"><div class="qn">Q8</div><div class="qt">The bookstore has 18 order lines; order 5 has two of them. What does the SELECT print?</div><pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> orders <span class="k">WHERE</span> id = <span class="s">5</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> order_items;
+<span class="k">ROLLBACK</span>;</pre><div class="opts"><div class="opt correct">A) <code class="inline">16</code></div><div class="opt">B) <code class="inline">18</code></div><div class="opt">C) <code class="inline">ERROR 1451 (23000): Cannot delete or update a parent row</code></div><div class="opt">D) <code class="inline">0</code></div></div><div class="why"><b>Why:</b> fk_items_order is ON DELETE CASCADE: deleting the order deletes its two lines too (16 left). ROLLBACK then puts all of it back.<br><b>B</b> is wrong: The lines are not left behind as orphans: CASCADE removes them.<br><b>C</b> is wrong: The delete is refused only when a RESTRICT rule protects the row; order lines cascade.<br><b>D</b> is wrong: Only order 5's lines go, not every line.</div></div>
+  <div class="q" data-sc="9" data-kind="short"><div class="qn">Q9</div><div class="qt">James Okafor (8) manages Nina Kowalski (9). What does the SELECT print?</div><pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> employees <span class="k">WHERE</span> id = <span class="s">8</span>;
+<span class="k">SELECT</span> manager_id <span class="k">FROM</span> employees <span class="k">WHERE</span> id = <span class="s">9</span>;
+<span class="k">ROLLBACK</span>;</pre><div class="opts"><div class="opt correct"><code class="inline">NULL</code> (Nina stays, with no manager)</div></div><div class="why"><b>Why:</b> fk_employees_manager is ON DELETE SET NULL: when the manager row is deleted, the reports keep their rows and their manager_id becomes NULL. The column allows NULL, which SET NULL requires (error 1830 otherwise).</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">A music app deletes a playlist. Its rows in playlist_songs (the links between the playlist and its songs) should...</div><div class="opts"><div class="opt">A) block the delete: ON DELETE RESTRICT</div><div class="opt">B) keep the links with playlist_id NULL: ON DELETE SET NULL</div><div class="opt correct">C) go with it: ON DELETE CASCADE</div><div class="opt">D) stay unchanged: leave the rule out (NO ACTION)</div></div><div class="why"><b>Why:</b> A junction row is only the link itself: without the playlist it means nothing. That is the lesson's first question: can the child exist without its parent? No, so CASCADE (like book_categories and order_items).<br><b>A</b> is wrong: Users would have to empty a playlist before deleting it: possible, but it protects nothing worth keeping.<br><b>B</b> is wrong: The playlist_id is part of the composite primary key, which cannot be NULL, and a link to nothing is meaningless.<br><b>D</b> is wrong: NO ACTION behaves like RESTRICT in MySQL: the delete would be refused.</div></div>
+  <div class="q" data-sc="11"><div class="qn">Q11</div><div class="qt">The accountant wants <code class="inline">fk_items_order</code> changed from CASCADE to RESTRICT. How do you do it in MySQL?</div><div class="opts"><div class="opt">A) <code class="inline">ALTER TABLE order_items ALTER FOREIGN KEY fk_items_order ON DELETE RESTRICT;</code></div><div class="opt">B) <code class="inline">ALTER TABLE order_items MODIFY CONSTRAINT fk_items_order ON DELETE RESTRICT;</code></div><div class="opt">C) <code class="inline">SET FOREIGN_KEY_CHECKS = 0;</code> then delete as usual</div><div class="opt correct">D) <code class="inline">DROP FOREIGN KEY fk_items_order</code>, then <code class="inline">ADD CONSTRAINT fk_items_order ... ON DELETE RESTRICT</code></div></div><div class="why"><b>Why:</b> There is no ALTER FOREIGN KEY: drop the key by name and add it again with the new rule (the index MySQL created stays and is reused). The lesson's Exercise 4 does exactly this and then restores CASCADE.<br><b>A</b> is wrong: MySQL has no such statement (syntax error 1064).<br><b>B</b> is wrong: MODIFY changes a column, not a constraint.<br><b>C</b> is wrong: That switches checking off for the session; it changes no rule and lets orphans in.</div></div>
+  <div class="q" data-sc="12" data-kind="short"><div class="qn">Q12</div><div class="qt">What does this print?</div><pre class="code"><span class="k">SELECT</span> DELETE_RULE
+<span class="k">FROM</span> information_schema.REFERENTIAL_CONSTRAINTS
+<span class="k">WHERE</span> CONSTRAINT_SCHEMA = <span class="s">'bookstore'</span>
+  <span class="k">AND</span> CONSTRAINT_NAME = <span class="s">'fk_employees_manager'</span>;</pre><div class="opts"><div class="opt correct"><code class="inline">SET NULL</code></div></div><div class="why"><b>Why:</b> information_schema.REFERENTIAL_CONSTRAINTS lists every foreign key with its rules. The employees self-reference is ON DELETE SET NULL (and, with no ON UPDATE written, UPDATE_RULE says NO ACTION).</div></div>
+
+  <div class="sec"><h2>4.2 · Foreign Keys &amp; Referential Integrity: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> categories <span class="k">WHERE</span> id = <span class="s">4</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> links <span class="k">FROM</span> book_categories;
+<span class="k">ROLLBACK</span>;</pre><div class="opts"><div class="opt correct"><pre class="out">+-------+
+| links |
++-------+
+|    23 |
++-------+</pre></div></div><div class="why"><b>Why:</b> fk_bc_category cascades: Fantasy's two links (The Hobbit, Lord of the Rings) go with it, 25 - 2 = 23. ROLLBACK restores both.</div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">2</span>;</pre><div class="opts"><div class="opt correct"><pre class="out">ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`bookstore`.`orders`, CONSTRAINT `fk_orders_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE)</pre></div></div><div class="why"><b>Why:</b> Bob has orders, and fk_orders_customer is RESTRICT: 1451, "delete or update a parent row". Nothing changes.</div></div>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Lab 4.1-A: labs/module-06/l4_1-table-relationships/publisher_split_starter.sql → publisher_split_solution.sql</div>
+<p>The solution prints (the two Notes come from <code class="inline">DROP TABLE IF EXISTS</code> on a fresh database and are harmless):</p>
+<pre class="out">+----------------------+----------------+----------+
+| publisher_name       | publisher_city | editions |
++----------------------+----------------+----------+
+| Blue Door Publishing | Portland       |        2 |
+| Harbor Lane Press    | Boston         |        1 |
+| Harbor Lane Press    | Cambridge      |        1 |
+| North Star Book      | Denver         |        1 |
+| North Star Books     | Denver         |        1 |
++----------------------+----------------+----------+
++----+----------------+-----------------+
+| id | title          | publisher_name  |
++----+----------------+-----------------+
+|  5 | Fahrenheit 451 | North Star Book |
++----+----------------+-----------------+
++----------------------------+
+| editions_without_publisher |
++----------------------------+
+|                          0 |
++----------------------------+
++---------------------+----------------------+
+| title               | publisher            |
++---------------------+----------------------+
+| Dune                | Harbor Lane Press    |
+| The Hobbit          | North Star Books     |
+| Brave New World     | Harbor Lane Press    |
+| 1984                | Blue Door Publishing |
+| Fahrenheit 451      | North Star Books     |
+| Pride and Prejudice | Blue Door Publishing |
++---------------------+----------------------+
++----------------------+----------+----------+
+| name                 | city     | editions |
++----------------------+----------+----------+
+| Harbor Lane Press    | Boston   |        2 |
+| North Star Books     | Denver   |        2 |
+| Blue Door Publishing | Portland |        2 |
++----------------------+----------+----------+</pre><p>What it teaches: the anomaly table shows both kinds of damage (Harbor Lane Press in two cities: a copy that drifted; North Star split by a typo: a copy that never matched). Step 4 is the point: the UPDATE ... JOIN leaves edition 5 unmatched, and without the IS NULL check Step 5 would fail with 1138 (or, with a nullable column, silently lose the publisher). Learners must also DECIDE Harbor Lane Press's city (the parent table holds one): the cost of an update anomaly is a judgment call during the migration.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 4.1-B: labs/module-06/l4_1-table-relationships/navigate_links_starter.sql → navigate_links_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+-----------------+-------------+------------+
+| TABLE_NAME      | COLUMN_NAME | points_to  |
++-----------------+-------------+------------+
+| book_categories | book_id     | books      |
+| book_categories | category_id | categories |
+| books           | author_id   | authors    |
+| employees       | manager_id  | employees  |
+| order_items     | book_id     | books      |
+| order_items     | order_id    | orders     |
+| orders          | customer_id | customers  |
++-----------------+-------------+------------+
++-----------------+------------+
+| title           | categories |
++-----------------+------------+
+| 1984            |          3 |
+| Brave New World |          3 |
+| Fahrenheit 451  |          3 |
+| Animal Farm     |          2 |
+| Dune            |          2 |
++-----------------+------------+
++------------+--------+
+| first_name | orders |
++------------+--------+
+| Alice      |      3 |
+| Bob        |      2 |
+| Dave       |      2 |
+| Frank      |      2 |
+| Grace      |      2 |
+| Eve        |      1 |
+| Carol      |      0 |
+| Hank       |      0 |
++------------+--------+
++------------+------------+
+| first_name | department |
++------------+------------+
+| Tom        | sales      |
+| Lena       | sales      |
+| Sofia      | inventory  |
+| Nina       | support    |
+| Ben        | sales      |
++------------+------------+
++-------------------+
+| title             |
++-------------------+
+| Lord of the Rings |
+| The Hobbit        |
++-------------------+</pre><p>Reading it: (1) seven declared keys, one self-reference (employees.manager_id); (2) the junction table counted per book; (3) the zero-or-many end of customers → orders (Carol and Hank 0); (4) NOT EXISTS on a self-reference: the five employees nobody reports to; (5) two links followed with nested IN. Every one of these becomes a join in Lesson 4.3; this lab is the "before" picture.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-06/l4_1-table-relationships/debug_relationships.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 1824 (HY000): Failed to open the referenced table 'customer'
+ERROR 1062 (23000): Duplicate entry '9-4' for key 'book_categories.PRIMARY'
+ERROR 1138 (22004): Invalid use of NULL value</pre><ol class="steps">
+  <li><b>Bug A, 1824:</b> the key names <code class="inline">customer</code>; the table is <code class="inline">customers</code>. Fix the name.</li>
+  <li><b>Bug B, 1062:</b> Lord of the Rings is already Fantasy ('9-4'): the link exists. Nothing to fix unless another pair was meant.</li>
+  <li><b>Bug C, 1138:</b> signing 2 has no author yet, so the column cannot become NOT NULL. Fill it first (look the author up), check for NULLs, then ALTER.</li>
+</ol>
+<p>Fixed (blocks in <code class="inline">blocks_S06.py</code>): the wishlist gets both keys, the existing links of book 9 are 1 and 4, and the signings table accepts NOT NULL once row 2 has an author:</p>
+<pre class="out">+----------------------+
+| CONSTRAINT_NAME      |
++----------------------+
+| fk_wishlist_book     |
+| fk_wishlist_customer |
++----------------------+
++---------+-------------+
+| book_id | category_id |
++---------+-------------+
+|       9 |           1 |
+|       9 |           4 |
++---------+-------------+
++----+-----------+---------+
+| id | author_id | city    |
++----+-----------+---------+
+|  1 |         6 | Chicago |
+|  2 |         9 | Houston |
++----+-----------+---------+</pre><p>On MariaDB, Bug A is <code class="inline">ERROR 1005 ... errno: 150</code> and Bug C is <code class="inline">ERROR 1265 Data truncated</code> (the lesson's version note).</p>
+</div>
+<div class="blk lab"><div class="h">Lab 4.2-A: labs/module-06/l4_2-foreign-keys/delete_rules_starter.sql → delete_rules_solution.sql</div>
+<p>The solution (all five TODO lines on) prints:</p>
+<pre class="out">+--------------+
+| links_before |
++--------------+
+|           25 |
++--------------+
++-------------+
+| links_after |
++-------------+
+|          22 |
++-------------+
++----+------------+------------+
+| id | first_name | manager_id |
++----+------------+------------+
+|  7 | Sofia      |       NULL |
++----+------------+------------+
++----------------+
+| customers_left |
++----------------+
+|              7 |
++----------------+
++----+-------------+------------+
+| id | customer_id | order_date |
++----+-------------+------------+
+|  6 |          70 | 2026-02-14 |
+| 11 |          70 | 2026-05-19 |
++----+-------------+------------+
++--------------+
+| items_before |
++--------------+
+|           18 |
++--------------+
++-------------+
+| items_after |
++-------------+
+|          16 |
++-------------+
++------------+-------+-----------+--------+-------+----------------+
+| categories | links | customers | orders | items | sofias_manager |
++------------+-------+-----------+--------+-------+----------------+
+|          5 |    25 |         8 |     12 |    18 |              6 |
++------------+-------+-----------+--------+-------+----------------+</pre><p>What each test shows: (1) CASCADE from a category to its links; (2) SET NULL on the self-reference; (3) RESTRICT only blocks a parent that HAS children: Hank has none; (4) ON UPDATE CASCADE: Grace's two orders follow her new id; (5) CASCADE from an order to its lines. The last row proves every ROLLBACK worked.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 4.2-B: labs/module-06/l4_2-foreign-keys/orphan_audit_starter.sql → orphan_audit_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+----+-------------+--------+
+| id | customer_id | amount |
++----+-------------+--------+
+|  3 |          12 |  50.00 |
+|  5 |          15 |  20.00 |
++----+-------------+--------+
++-------------------+-----------------------+-------------+-------------+
+| CONSTRAINT_NAME   | REFERENCED_TABLE_NAME | DELETE_RULE | UPDATE_RULE |
++-------------------+-----------------------+-------------+-------------+
+| fk_cards_customer | customers             | SET NULL    | CASCADE     |
++-------------------+-----------------------+-------------+-------------+
++----+-------------+--------+
+| id | customer_id | amount |
++----+-------------+--------+
+|  1 |           1 |  25.00 |
+|  2 |        NULL |  10.00 |
+|  3 |        NULL |  50.00 |
+|  4 |           6 |  15.00 |
+|  5 |        NULL |  20.00 |
++----+-------------+--------+
++-------+--------+----------+
+| cards | total  | assigned |
++-------+--------+----------+
+|     5 | 120.00 |        3 |
++-------+--------+----------+</pre><p>Sticking points: running the ALTER before the fix (1452 with a <code class="inline">#sql-...</code> table name, as in the lesson); filling the gap with <code class="inline">0</code> instead of NULL in TODO 2 (0 is not a customer either: the ALTER still fails); choosing CASCADE in TODO 3 (deleting a customer would destroy prepaid money). The final row (5 cards, 120.00, 3 assigned) shows the ROLLBACK gave card 2 back to Carol.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-06/l4_2-foreign-keys/debug_fk_errors.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (`bookstore`.`orders`, CONSTRAINT `fk_orders_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE)
+ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`bookstore`.`order_items`, CONSTRAINT `fk_items_book` FOREIGN KEY (`book_id`) REFERENCES `books` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE)
+ERROR 3780 (HY000): Referencing column 'book_id' and referenced column 'id' in foreign key constraint 'fk_shelf_book' are incompatible.
+ERROR 1830 (HY000): Column 'customer_id' cannot be NOT NULL: needed in a foreign key constraint 'fk_notes_customer' SET NULL
+ERROR 6125 (HY000): Failed to add the foreign key constraint. Missing unique key for constraint 'fk_events_city' in the referenced table 'customers'
++--------+-------+
+| orders | books |
++--------+-------+
+|     12 |    11 |
++--------+-------+</pre><ol class="steps">
+  <li><b>Bug A, 1452 (child insert):</b> customer 42 does not exist. Use a real customer id, or create the customer first.</li>
+  <li><b>Bug B, 1451 (parent delete):</b> 1984 has sold order lines (fk_items_book RESTRICT). Mark it <code class="inline">in_stock = FALSE</code> instead.</li>
+  <li><b>Bug C, 3780 (badly formed key):</b> <code class="inline">INT UNSIGNED</code> against <code class="inline">books.id INT</code>. Copy the parent's exact type: <code class="inline">INT</code>.</li>
+  <li><b>Bug D, 1830 (badly formed key):</b> SET NULL on a NOT NULL column. Make <code class="inline">customer_id INT</code> (nullable), or choose RESTRICT.</li>
+  <li><b>Bug E, 6125 (badly formed key):</b> customers.city is not unique, so "the parent" would be ambiguous. Point at a primary key (here a cities table would be the real design).</li>
+</ol>
+<p>The final SELECT shows 12 orders and 11 books: every refused statement changed nothing. On MariaDB, Bugs C, D and E all come back as <code class="inline">ERROR 1005 ... errno: 150 "Foreign key constraint is incorrectly formed"</code>.</p>
+</div>
+
+  <div class="sec"><h2>The Lesson Pages' Own Quick Quizzes</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Lesson 4.1 · Table Relationships</div>
+<ol class="steps" data-lesson-quiz="4.1">
+  <li><b>B</b> books.author_id: The foreign key goes on the many side. Each book holds one author_id, and any number of books can hold the same one.</li>
+  <li><b>C</b> A NULL would mean a name did not match, and dropping the text would lose that author: A NULL after the UPDATE means a name found no match in authors. Dropping the text column would then lose that book's author for good, so you check first.</li>
+  <li><b>A</b> The foreign key column is also UNIQUE: The foreign key column is also UNIQUE (or is the primary key), so no parent row can be referenced by more than one child row.</li>
+  <li><b>C</b> Error 1062: duplicate entry for the primary key: PRIMARY KEY (book_id, category_id) allows each pair once, so MySQL reports error 1062, a duplicate entry 2-1 for the primary key.</li>
+  <li><b>B</b> It records what the customer paid then, which must not change when the price does: books.price is today's price; price_at_time records what was paid on the order date. They are two different facts, so old orders keep their real amounts when prices change.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Lesson 4.2 · Foreign Keys &amp; Referential Integrity</div>
+<ol class="steps" data-lesson-quiz="4.2">
+  <li><b>C</b> INSERT INTO order_items (order_id, book_id, price_at_time) VALUES (50, 3, 11.99);: Error 1452 is about a child row: order_items.order_id = 50 points at an order that does not exist. Deleting a referenced parent is error 1451.</li>
+  <li><b>A</b> They are deleted too: fk_items_order says ON DELETE CASCADE, so the order's rows in order_items are deleted with it.</li>
+  <li><b>B</b> SET NULL cannot work on a NOT NULL column: SET NULL would write NULL into book_id, which is declared NOT NULL. MySQL reports error 1830 when the key is created.</li>
+  <li><b>A</b> It refuses, like RESTRICT: The default is NO ACTION, which InnoDB checks immediately, exactly like RESTRICT: the delete is refused with error 1451.</li>
+  <li><b>C</b> Nothing: they may contain orphans until you check with a query: Rows inserted while the checks were off were never checked, and turning them back on does not re-check. Run an orphan query per key to be sure.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>Where the key goes:</b> one-to-many: in the many side's table (books.author_id); one-to-one: a foreign key that is also UNIQUE, usually in the optional table (customer_profiles.customer_id); many-to-many: a junction table with two foreign keys and a composite primary key (book_categories).</li>
+  <li><b>1452 vs 1451:</b> 1452 = you were inserting or updating a CHILD and its parent does not exist. 1451 = you were deleting or changing the key of a PARENT that children still point at, under RESTRICT or NO ACTION.</li>
+  <li><b>order_items.book_id → books:</b> RESTRICT (the bookstore's choice): sold books stay on file for the sales history; mark them out of stock. Accept SET NULL only with a reason that the history does not need the book (and note the column is NOT NULL today); CASCADE is a red flag (it deletes sales).</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q1 A (customers.address_id).</b> Puts the key on the one side: the most common design error. The question "can one A have many Bs?" fixes it; ask it every time.</li>
+  <li><b>Q4 D (error 1062).</b> Expects the database to catch a spelling difference. It cannot: that is exactly why anomalies are dangerous.</li>
+  <li><b>Q5 B (still one-to-one).</b> Thinks the foreign key itself limits references. A key checks existence; UNIQUE limits count.</li>
+  <li><b>Q7 A (1451).</b> Mixes up parent and child. Reteach with the first words of each message.</li>
+  <li><b>Q8 B or C.</b> B: expects the lines to stay as orphans; C: expects every delete with children to be refused. Look up the rule before predicting.</li>
+  <li><b>Q10 A or B.</b> Choosing a rule without asking whether the child can exist alone. The two-question diagram is the remedy.</li>
+  <li><b>Exit ticket 3 with CASCADE.</b> "It makes deleting easy." Ask what the sales report says next year about a book that was deleted.</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 6 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

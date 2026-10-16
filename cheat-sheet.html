@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MySQL cheat sheet — quick reference for all essential SQL commands, syntax, data types, operators, and functions covered in the MySQL Foundations course.">
-    <meta name="author" content="Ray De La Paz">
+    <meta name="description" content="MySQL 9.7 cheat sheet: the commands, syntax, data types, operators and functions from the MySQL Foundations course, every example tested against the course's bookstore database.">
+    <meta name="author" content="Ray de la Paz">
     <title>MySQL Cheat Sheet - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -38,7 +38,11 @@
         <div class="container">
             <header>
                 <h1>📋 MySQL Cheat Sheet</h1>
-                <p class="lead">A quick-reference guide to every essential MySQL command and concept from this course. Bookmark this page and come back whenever you need a syntax reminder.</p>
+                <p class="lead">A quick reference for the commands and syntax you use in this course, written for MySQL 9.7 LTS. Every SQL example on this page has been run, top to bottom, against the course's <code>bookstore</code> database, so you can copy any of them and it will work.</p>
+                <div class="card card-info">
+                    <h4>💡 Follow along</h4>
+                    <p>Load the practice database first: download <a href="assets/sql/bookstore.sql" download>bookstore.sql</a> and run <code>SOURCE bookstore.sql;</code> inside the client (or <code>mysql -u root -p &lt; bookstore.sql</code> from a terminal). Running it again resets everything, so experiment freely. Examples that change data say so, and most of them undo themselves with <code>ROLLBACK</code>.</p>
+                </div>
             </header>
 
             <details class="card toc-card" open>
@@ -49,353 +53,639 @@
                 </summary>
                 <nav aria-label="Table of Contents">
                     <ol>
+                        <li><a href="#client" class="toc-link">Connecting &amp; the mysql Client</a></li>
                         <li><a href="#databases" class="toc-link">Database Commands</a></li>
                         <li><a href="#tables" class="toc-link">Table Commands</a></li>
                         <li><a href="#data-types" class="toc-link">Data Types</a></li>
-                        <li><a href="#constraints" class="toc-link">Constraints</a></li>
+                        <li><a href="#constraints" class="toc-link">Constraints &amp; Foreign Keys</a></li>
                         <li><a href="#crud" class="toc-link">CRUD Operations</a></li>
                         <li><a href="#filtering" class="toc-link">Filtering &amp; Sorting</a></li>
-                        <li><a href="#aggregates" class="toc-link">Aggregate Functions</a></li>
+                        <li><a href="#aggregates" class="toc-link">Aggregate Functions &amp; GROUP BY</a></li>
                         <li><a href="#joins" class="toc-link">Joins</a></li>
                         <li><a href="#subqueries" class="toc-link">Subqueries</a></li>
-                        <li><a href="#indexes-views" class="toc-link">Indexes &amp; Views</a></li>
+                        <li><a href="#ctes" class="toc-link">CTEs &amp; Recursive Queries</a></li>
+                        <li><a href="#windows" class="toc-link">Window Functions</a></li>
+                        <li><a href="#indexes" class="toc-link">Indexes &amp; EXPLAIN</a></li>
+                        <li><a href="#views" class="toc-link">Views</a></li>
                         <li><a href="#procedures" class="toc-link">Stored Procedures &amp; Functions</a></li>
                         <li><a href="#transactions" class="toc-link">Transactions</a></li>
-                        <li><a href="#users" class="toc-link">User Management</a></li>
+                        <li><a href="#json" class="toc-link">JSON Columns</a></li>
+                        <li><a href="#users" class="toc-link">Users, Privileges &amp; Roles</a></li>
                         <li><a href="#import-export" class="toc-link">Import &amp; Export</a></li>
-                        <li><a href="#operators" class="toc-link">Operators Quick Reference</a></li>
+                        <li><a href="#operators" class="toc-link">Operators</a></li>
                         <li><a href="#string-functions" class="toc-link">String Functions</a></li>
                         <li><a href="#date-functions" class="toc-link">Date &amp; Time Functions</a></li>
                         <li><a href="#numeric-functions" class="toc-link">Numeric Functions</a></li>
+                        <li><a href="#versions" class="toc-link">MySQL 9.7 vs 8.4 vs MariaDB</a></li>
                     </ol>
                 </nav>
             </details>
 
+            <!-- Client -->
+            <section id="client" class="lesson-section">
+                <h2>💻 Connecting &amp; the mysql Client</h2>
+                <p>Covered in <a href="lesson_03.html">Lesson 1.3: MySQL CLI &amp; phpMyAdmin</a>. Type these in a terminal, not at the <code>mysql&gt;</code> prompt.</p>
+                <pre><code class="language-bash"># Log in (you are asked for the password)
+mysql -u root -p
+
+# Log in and open a database straight away
+mysql -u root -p bookstore
+
+# Run a script file, then exit
+mysql -u root -p &lt; bookstore.sql
+
+# Docker: open the client inside your container (use your container's name)
+docker exec -it mysql97 mysql -u root -p
+
+# Which client version do I have?
+mysql --version</code></pre>
+                <p>Inside the client:</p>
+                <pre><code class="language-sql">SELECT VERSION();                 -- server version
+SELECT CURRENT_USER();            -- who am I logged in as?
+SELECT DATABASE();                -- which database is selected?
+SHOW WARNINGS;                    -- details of the last statement's warnings
+
+-- Run a script file (path relative to the folder you started mysql in)
+SOURCE bookstore.sql;</code></pre>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Client command</th><th>What it does</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>\G</code> instead of <code>;</code></td><td>Print each row vertically (great for wide rows)</td></tr>
+                            <tr><td><code>\c</code></td><td>Cancel the statement you are typing</td></tr>
+                            <tr><td><code>DELIMITER //</code></td><td>Change the statement terminator (for procedures)</td></tr>
+                            <tr><td><code>HELP SELECT</code></td><td>Built-in syntax help</td></tr>
+                            <tr><td><code>\!</code> (<code>system</code>)</td><td>Run a shell command; off by default in MySQL 9.x (start the client with <code>--system-command</code>)</td></tr>
+                            <tr><td><code>EXIT</code> or <code>QUIT</code></td><td>Leave the client</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card card-info">
+                    <h4>🐬 Version note: client commands in script files</h4>
+                    <p>In MySQL 9.x the client ignores <code>\G</code>, <code>SOURCE</code> and the other client commands when it reads a redirected file or runs <code>-e "..."</code> (<code>Unknown command '\G'</code>). End statements in scripts with <code>;</code>, or start the client with <code>--commands</code>: <code>mysql --commands -u root -p &lt; file.sql</code>. At the interactive prompt they always work. See <a href="lesson_03.html">Lesson 1.3</a>.</p>
+                </div>
+            </section>
+
             <!-- Databases -->
             <section id="databases" class="lesson-section">
-                <h2>Database Commands</h2>
-                <pre><code class="language-sql">
--- Show all databases
-SHOW DATABASES;
+                <h2>🗄️ Database Commands</h2>
+                <p>Covered in <a href="lesson_04.html">Lesson 2.1: Creating Databases &amp; Tables</a>. The examples use a throwaway database called <code>sandbox</code>, so your <code>bookstore</code> is never at risk.</p>
+                <pre><code class="language-sql">SHOW DATABASES;
 
--- Create a database
-CREATE DATABASE bookstore;
-CREATE DATABASE IF NOT EXISTS bookstore;
+-- Create (always say utf8mb4: plain "utf8" is the old 3-byte utf8mb3)
+CREATE DATABASE IF NOT EXISTS sandbox
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
 
--- Use a database
-USE bookstore;
+SHOW CREATE DATABASE sandbox;
 
--- Show which database is selected
+USE sandbox;                      -- select it
 SELECT DATABASE();
 
--- Drop a database
-DROP DATABASE bookstore;
-DROP DATABASE IF EXISTS bookstore;
-                </code></pre>
+DROP DATABASE IF EXISTS sandbox;  -- deletes it and EVERYTHING in it
+
+USE bookstore;                    -- back to the course database</code></pre>
             </section>
 
             <!-- Tables -->
             <section id="tables" class="lesson-section">
-                <h2>Table Commands</h2>
-                <pre><code class="language-sql">
--- Show all tables in the current database
-SHOW TABLES;
+                <h2>🏗️ Table Commands</h2>
+                <p>Covered in <a href="lesson_04.html">Lesson 2.1: Creating Databases &amp; Tables</a> and <a href="lesson_05.html">Lesson 2.2: Data Types &amp; Constraints</a>.</p>
+                <pre><code class="language-sql">SHOW TABLES;
+DESCRIBE books;                   -- or DESC books; or SHOW COLUMNS FROM books;
+SHOW CREATE TABLE books\G         -- the full CREATE statement, vertically
 
--- Describe a table's structure
-DESCRIBE books;
-DESC books;
-SHOW COLUMNS FROM books;
-
--- Create a table
-CREATE TABLE books (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    price DECIMAL(10, 2) DEFAULT 0.00,
-    publication_year INT,
-    author_id INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (author_id) REFERENCES authors(id)
+-- Create a table (this one is a practice table; it is dropped below)
+CREATE TABLE IF NOT EXISTS reviews (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    book_id     INT NOT NULL,
+    customer_id INT NOT NULL,
+    rating      TINYINT NOT NULL,
+    body        TEXT,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_reviews_rating CHECK (rating BETWEEN 1 AND 5),
+    CONSTRAINT fk_reviews_book FOREIGN KEY (book_id) REFERENCES books (id),
+    CONSTRAINT fk_reviews_customer FOREIGN KEY (customer_id) REFERENCES customers (id)
 );
 
--- Alter a table
-ALTER TABLE books ADD COLUMN isbn VARCHAR(13);
-ALTER TABLE books DROP COLUMN isbn;
-ALTER TABLE books MODIFY COLUMN title VARCHAR(300) NOT NULL;
-ALTER TABLE books RENAME COLUMN title TO book_title;
-ALTER TABLE books RENAME TO publications;
+-- Change its structure
+ALTER TABLE reviews ADD COLUMN headline VARCHAR(100) AFTER rating;
+ALTER TABLE reviews MODIFY COLUMN headline VARCHAR(150) NOT NULL;
+ALTER TABLE reviews RENAME COLUMN headline TO title;
+ALTER TABLE reviews DROP COLUMN title;
+ALTER TABLE reviews RENAME TO book_reviews;
 
--- Drop a table
-DROP TABLE books;
-DROP TABLE IF EXISTS books;
+-- Copy a table's structure (no rows)
+CREATE TABLE book_reviews_archive LIKE book_reviews;
 
--- Truncate (delete all rows, keep structure)
-TRUNCATE TABLE books;
-                </code></pre>
+-- Empty a table but keep it (resets AUTO_INCREMENT; fails if other tables reference it)
+TRUNCATE TABLE book_reviews_archive;
+
+-- Delete tables
+DROP TABLE IF EXISTS book_reviews_archive, book_reviews;</code></pre>
             </section>
 
             <!-- Data Types -->
             <section id="data-types" class="lesson-section">
-                <h2>Data Types</h2>
+                <h2>🧱 Data Types</h2>
+                <p>Covered in <a href="lesson_05.html">Lesson 2.2: Data Types &amp; Constraints</a> (JSON in <a href="lesson_json.html">Lesson 7.3: JSON Columns</a>).</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
                             <tr><th>Category</th><th>Type</th><th>Description</th><th>Example</th></tr>
                         </thead>
                         <tbody>
-                            <tr><td rowspan="4"><strong>Numeric</strong></td><td><code>INT</code></td><td>Whole numbers (-2B to 2B)</td><td><code>42</code></td></tr>
-                            <tr><td><code>BIGINT</code></td><td>Large whole numbers</td><td><code>9223372036854775807</code></td></tr>
-                            <tr><td><code>DECIMAL(p, s)</code></td><td>Exact decimal (use for money)</td><td><code>DECIMAL(10,2)</code> → <code>12345678.99</code></td></tr>
-                            <tr><td><code>FLOAT / DOUBLE</code></td><td>Approximate decimal</td><td><code>3.14159</code></td></tr>
-                            <tr><td rowspan="4"><strong>String</strong></td><td><code>VARCHAR(n)</code></td><td>Variable-length string up to n chars</td><td><code>VARCHAR(200)</code></td></tr>
-                            <tr><td><code>CHAR(n)</code></td><td>Fixed-length string (padded)</td><td><code>CHAR(2)</code> → state codes</td></tr>
-                            <tr><td><code>TEXT</code></td><td>Long text (up to 64 KB)</td><td>Blog posts, descriptions</td></tr>
-                            <tr><td><code>ENUM('a','b')</code></td><td>One value from a list</td><td><code>ENUM('draft','published')</code></td></tr>
-                            <tr><td rowspan="4"><strong>Date/Time</strong></td><td><code>DATE</code></td><td>Date only</td><td><code>'2026-04-16'</code></td></tr>
-                            <tr><td><code>TIME</code></td><td>Time only</td><td><code>'14:30:00'</code></td></tr>
-                            <tr><td><code>DATETIME</code></td><td>Date and time</td><td><code>'2026-04-16 14:30:00'</code></td></tr>
-                            <tr><td><code>TIMESTAMP</code></td><td>Date/time (auto UTC conversion)</td><td><code>CURRENT_TIMESTAMP</code></td></tr>
-                            <tr><td><strong>Boolean</strong></td><td><code>BOOLEAN / TINYINT(1)</code></td><td>True (1) or False (0)</td><td><code>TRUE</code>, <code>FALSE</code></td></tr>
+                            <tr><td rowspan="5"><strong>Numeric</strong></td><td><code>INT</code></td><td>Whole numbers, -2,147,483,648 to 2,147,483,647</td><td><code>pages INT</code></td></tr>
+                            <tr><td><code>TINYINT</code> / <code>SMALLINT</code> / <code>BIGINT</code></td><td>Smaller or larger whole numbers (BIGINT up to about 9.2 quintillion)</td><td><code>rating TINYINT</code></td></tr>
+                            <tr><td><code>DECIMAL(p, s)</code></td><td>Exact decimal: p digits in total, s after the point. Use it for money</td><td><code>DECIMAL(8, 2)</code>: up to <code>999999.99</code></td></tr>
+                            <tr><td><code>FLOAT</code> / <code>DOUBLE</code></td><td>Approximate (binary) decimals: never for money</td><td><code>3.14159</code></td></tr>
+                            <tr><td><code>INT UNSIGNED</code></td><td>No negatives, twice the positive range</td><td><code>stock INT UNSIGNED</code></td></tr>
+                            <tr><td rowspan="4"><strong>String</strong></td><td><code>VARCHAR(n)</code></td><td>Variable length, up to n characters</td><td><code>title VARCHAR(200)</code></td></tr>
+                            <tr><td><code>CHAR(n)</code></td><td>Fixed length, padded with spaces</td><td><code>CHAR(2)</code> for state codes</td></tr>
+                            <tr><td><code>TEXT</code></td><td>Long text, up to 65,535 bytes (<code>MEDIUMTEXT</code>: 16 MB)</td><td>Descriptions, reviews</td></tr>
+                            <tr><td><code>ENUM('a', 'b')</code></td><td>Exactly one value from a fixed list</td><td><code>ENUM('sales', 'support')</code></td></tr>
+                            <tr><td rowspan="5"><strong>Date/Time</strong></td><td><code>DATE</code></td><td>Date only, <code>'YYYY-MM-DD'</code></td><td><code>'2026-04-16'</code></td></tr>
+                            <tr><td><code>TIME</code></td><td>Time of day (or a duration)</td><td><code>'14:30:00'</code></td></tr>
+                            <tr><td><code>DATETIME</code></td><td>Date and time, stored as given (years 1000 to 9999)</td><td><code>'2026-04-16 14:30:00'</code></td></tr>
+                            <tr><td><code>TIMESTAMP</code></td><td>Date and time stored in UTC and converted to the session time zone; range ends in 2038</td><td><code>DEFAULT CURRENT_TIMESTAMP</code></td></tr>
+                            <tr><td><code>YEAR</code></td><td>A four-digit year</td><td><code>2026</code></td></tr>
+                            <tr><td><strong>Boolean</strong></td><td><code>BOOLEAN</code></td><td>A synonym for <code>TINYINT(1)</code>: <code>TRUE</code> is 1, <code>FALSE</code> is 0</td><td><code>in_stock BOOLEAN DEFAULT TRUE</code></td></tr>
+                            <tr><td><strong>Document</strong></td><td><code>JSON</code></td><td>Validated JSON document (MariaDB: an alias for <code>LONGTEXT</code> with a validity check)</td><td><code>attributes JSON</code></td></tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="card card-warning">
+                    <h4>⚠️ Skip the old display widths</h4>
+                    <p>Old tutorials write <code>INT(11)</code>. The number never limited the value, it is deprecated, and MySQL 9.7 ignores it with a warning: write plain <code>INT</code>. <code>TINYINT(1)</code> (what <code>BOOLEAN</code> becomes) is the one exception MySQL still shows.</p>
                 </div>
             </section>
 
             <!-- Constraints -->
             <section id="constraints" class="lesson-section">
-                <h2>Constraints</h2>
+                <h2>🔒 Constraints &amp; Foreign Keys</h2>
+                <p>Covered in <a href="lesson_05.html">Lesson 2.2: Data Types &amp; Constraints</a> and <a href="lesson_12.html">Lesson 4.2: Foreign Keys &amp; Referential Integrity</a>.</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
                             <tr><th>Constraint</th><th>Purpose</th><th>Example</th></tr>
                         </thead>
                         <tbody>
-                            <tr><td><code>PRIMARY KEY</code></td><td>Unique identifier for each row</td><td><code>id INT PRIMARY KEY</code></td></tr>
-                            <tr><td><code>AUTO_INCREMENT</code></td><td>Auto-generate sequential IDs</td><td><code>id INT AUTO_INCREMENT</code></td></tr>
-                            <tr><td><code>NOT NULL</code></td><td>Column cannot be empty</td><td><code>name VARCHAR(100) NOT NULL</code></td></tr>
-                            <tr><td><code>UNIQUE</code></td><td>No duplicate values</td><td><code>email VARCHAR(255) UNIQUE</code></td></tr>
-                            <tr><td><code>DEFAULT</code></td><td>Default value if none provided</td><td><code>status VARCHAR(20) DEFAULT 'active'</code></td></tr>
-                            <tr><td><code>CHECK</code></td><td>Validate values (MySQL 8.0.16+)</td><td><code>CHECK (price >= 0)</code></td></tr>
-                            <tr><td><code>FOREIGN KEY</code></td><td>Link to another table's primary key</td><td><code>FOREIGN KEY (author_id) REFERENCES authors(id)</code></td></tr>
+                            <tr><td><code>PRIMARY KEY</code></td><td>Uniquely identifies each row; never NULL</td><td><code>id INT PRIMARY KEY</code></td></tr>
+                            <tr><td><code>AUTO_INCREMENT</code></td><td>Generates the next number for each new row</td><td><code>id INT AUTO_INCREMENT PRIMARY KEY</code></td></tr>
+                            <tr><td><code>NOT NULL</code></td><td>A value is required</td><td><code>title VARCHAR(200) NOT NULL</code></td></tr>
+                            <tr><td><code>UNIQUE</code></td><td>No two rows may share the value (NULLs allowed)</td><td><code>email VARCHAR(100) UNIQUE</code></td></tr>
+                            <tr><td><code>DEFAULT</code></td><td>Value used when none is given</td><td><code>in_stock BOOLEAN DEFAULT TRUE</code></td></tr>
+                            <tr><td><code>CHECK</code></td><td>Rejects rows that fail a condition (error 3819)</td><td><code>CHECK (salary &gt; 0)</code></td></tr>
+                            <tr><td><code>FOREIGN KEY</code></td><td>Value must exist in the parent table</td><td><code>FOREIGN KEY (author_id) REFERENCES authors (id)</code></td></tr>
                         </tbody>
                     </table>
                 </div>
+                <h3>Foreign key actions</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Action</th><th>When the parent row is deleted (or its key updated)</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>RESTRICT</code> / <code>NO ACTION</code></td><td>Refuse while child rows exist (error 1451). The default when you write nothing</td></tr>
+                            <tr><td><code>CASCADE</code></td><td>Delete (or update) the child rows too</td></tr>
+                            <tr><td><code>SET NULL</code></td><td>Set the child's foreign key column to NULL (the column must allow NULL)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <pre><code class="language-sql">-- Constraints on an existing table (practice table, dropped at the end)
+CREATE TABLE wishlist (
+    customer_id INT NOT NULL,
+    book_id     INT NOT NULL,
+    added_on    DATE NOT NULL,
+    PRIMARY KEY (customer_id, book_id)            -- composite key
+);
 
-                <h3>Foreign Key Actions</h3>
-                <pre><code class="language-sql">
-FOREIGN KEY (author_id) REFERENCES authors(id)
-    ON DELETE CASCADE        -- Delete child rows when parent is deleted
-    ON DELETE SET NULL       -- Set to NULL when parent is deleted
-    ON DELETE RESTRICT       -- Prevent deletion if children exist (default)
-    ON UPDATE CASCADE        -- Update child values when parent key changes
-                </code></pre>
+ALTER TABLE wishlist
+    ADD CONSTRAINT fk_wishlist_customer FOREIGN KEY (customer_id)
+        REFERENCES customers (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    ADD CONSTRAINT fk_wishlist_book FOREIGN KEY (book_id)
+        REFERENCES books (id) ON DELETE RESTRICT;
+
+ALTER TABLE wishlist ADD CONSTRAINT chk_wishlist_date CHECK (added_on &gt;= '2026-01-01');
+ALTER TABLE wishlist DROP CONSTRAINT chk_wishlist_date;      -- any constraint by name (MariaDB too)
+ALTER TABLE wishlist DROP FOREIGN KEY fk_wishlist_book;
+
+-- List a table's constraints
+SELECT constraint_name, constraint_type
+FROM information_schema.table_constraints
+WHERE table_schema = 'bookstore' AND table_name = 'wishlist';
+
+DROP TABLE wishlist;</code></pre>
             </section>
 
             <!-- CRUD -->
             <section id="crud" class="lesson-section">
-                <h2>CRUD Operations</h2>
-                <pre><code class="language-sql">
--- INSERT (Create)
-INSERT INTO books (title, price, author_id) VALUES ('1984', 11.99, 1);
-INSERT INTO books (title, price) VALUES
-    ('Dune', 14.99),
-    ('Neuromancer', 12.99);
+                <h2>🔄 CRUD Operations</h2>
+                <p>Covered in <a href="lesson_06.html">Lesson 2.3: CRUD Operations</a>. These examples change data, so they run inside a transaction and end with <code>ROLLBACK</code>, which puts everything back.</p>
+                <pre><code class="language-sql">START TRANSACTION;                -- practice mode: ROLLBACK at the end undoes it all
+
+-- INSERT (Create): name the columns, one row or many
+INSERT INTO authors (name, birth_year) VALUES ('Ursula K. Le Guin', 1929);
+INSERT INTO books (title, author_id, price, pages, published) VALUES
+    ('The Left Hand of Darkness', LAST_INSERT_ID(), 12.99, 304, '1969-03-01'),
+    ('I, Robot', 10, 9.99, 253, '1950-12-02');
+
+-- Copy rows from a query
+INSERT INTO book_categories (book_id, category_id)
+SELECT id, 2 FROM books WHERE title IN ('The Left Hand of Darkness', 'I, Robot');
 
 -- SELECT (Read)
 SELECT * FROM books;
 SELECT title, price FROM books;
-SELECT title AS book_title, price AS cost FROM books;   -- Aliases
-SELECT DISTINCT author_id FROM books;                   -- Unique values
+SELECT title AS book_title, price AS cost FROM books;   -- column aliases
+SELECT DISTINCT author_id FROM books;                   -- unique values only
 
--- UPDATE
-UPDATE books SET price = 13.99 WHERE id = 1;
-UPDATE books SET price = price * 1.10 WHERE price < 10; -- Increase by 10%
+-- UPDATE: always with a WHERE
+UPDATE books SET price = 13.49 WHERE title = 'The Left Hand of Darkness';
+UPDATE books SET price = ROUND(price * 1.10, 2) WHERE price &lt; 9;  -- 10% raise on cheap books
 
--- DELETE
-DELETE FROM books WHERE id = 5;
-DELETE FROM books WHERE price IS NULL;
-                </code></pre>
+-- UPDATE using another table
+UPDATE books b
+JOIN authors a ON a.id = b.author_id
+SET b.in_stock = FALSE
+WHERE a.name = 'Isaac Asimov';
 
+-- DELETE: always with a WHERE
+DELETE FROM book_categories WHERE book_id IN (SELECT id FROM books WHERE author_id = 10);
+DELETE FROM books WHERE author_id = 10;
+
+-- Upsert: insert, or update the row that already has this key
+INSERT INTO categories (name, description)
+VALUES ('Fantasy', 'Magic, quests and other worlds') AS new
+ON DUPLICATE KEY UPDATE description = new.description;
+
+ROLLBACK;                         -- undo everything since START TRANSACTION</code></pre>
                 <div class="card card-warning">
-                    <h4>⚠️ Always use WHERE with UPDATE and DELETE!</h4>
-                    <p>Without WHERE, every row is affected. Run a SELECT with the same WHERE first to verify.</p>
+                    <h4>⚠️ Always use WHERE with UPDATE and DELETE</h4>
+                    <p>Without <code>WHERE</code>, every row changes. Run a <code>SELECT</code> with the same <code>WHERE</code> first to see exactly which rows you will hit.</p>
+                </div>
+                <div class="card card-info">
+                    <h4>🐬 Version note: the upsert row alias</h4>
+                    <p>The <code>AS new ... new.description</code> form works in MySQL 8.0.19 and later. The older <code>description = VALUES(description)</code> still runs but is deprecated (warning 1287). MariaDB is the other way round: it rejects the alias with ERROR 1064 and wants <code>VALUES(description)</code>.</p>
                 </div>
             </section>
 
             <!-- Filtering -->
             <section id="filtering" class="lesson-section">
-                <h2>Filtering &amp; Sorting</h2>
-                <pre><code class="language-sql">
--- WHERE clause
-SELECT * FROM books WHERE price > 10;
-SELECT * FROM books WHERE price BETWEEN 10 AND 20;
-SELECT * FROM books WHERE author_id IN (1, 3, 5);
-SELECT * FROM books WHERE title LIKE '%gatsby%';          -- Contains
-SELECT * FROM books WHERE title LIKE 'The%';              -- Starts with
-SELECT * FROM books WHERE publication_year IS NULL;
-SELECT * FROM books WHERE price > 10 AND author_id = 1;
-SELECT * FROM books WHERE price > 20 OR author_id = 2;
-SELECT * FROM books WHERE NOT author_id = 3;
+                <h2>🔍 Filtering &amp; Sorting</h2>
+                <p>Covered in <a href="lesson_07.html">Lesson 3.1: WHERE Clauses, Operators &amp; Filtering</a> and <a href="lesson_08.html">Lesson 3.2: Sorting &amp; Limiting Results</a>.</p>
+                <pre><code class="language-sql">-- WHERE
+SELECT title, price FROM books WHERE price &gt; 10;
+SELECT title, price FROM books WHERE price BETWEEN 9 AND 11;     -- inclusive
+SELECT title FROM books WHERE author_id IN (2, 6);
+SELECT title FROM books WHERE author_id NOT IN (2, 6);
+SELECT title FROM books WHERE title LIKE '%the%';               -- contains (case-insensitive here)
+SELECT title FROM books WHERE title LIKE 'The%';                -- starts with
+SELECT title FROM books WHERE title LIKE '_984';                 -- _ = exactly one character
+SELECT title FROM books WHERE price &gt; 10 AND in_stock = TRUE;
+SELECT title FROM books WHERE price &gt; 15 OR pages &gt; 400;
+SELECT title FROM books WHERE NOT in_stock;
+SELECT title FROM books WHERE published &gt;= '1950-01-01';
+
+-- NULL needs IS / IS NOT (= NULL is never true)
+SELECT first_name, last_name FROM customers WHERE city IS NULL;
+SELECT first_name, last_name FROM customers WHERE city IS NOT NULL;
 
 -- ORDER BY
-SELECT * FROM books ORDER BY price ASC;                   -- Low to high
-SELECT * FROM books ORDER BY price DESC;                  -- High to low
-SELECT * FROM books ORDER BY author_id ASC, price DESC;   -- Multi-column
+SELECT title, price FROM books ORDER BY price;                  -- ascending (ASC) is the default
+SELECT title, price FROM books ORDER BY price DESC;
+SELECT title, author_id, price FROM books ORDER BY author_id, price DESC;
 
--- LIMIT & OFFSET
-SELECT * FROM books LIMIT 10;                             -- First 10 rows
-SELECT * FROM books LIMIT 10 OFFSET 20;                   -- Rows 21–30
-                </code></pre>
+-- LIMIT and OFFSET (page 2 of 5 rows per page)
+SELECT title, price FROM books ORDER BY price DESC LIMIT 5;
+SELECT title, price FROM books ORDER BY price DESC LIMIT 5 OFFSET 5;
+
+-- How many rows in total? (for "page 2 of 3"): a separate COUNT
+SELECT COUNT(*) FROM books;</code></pre>
+                <div class="card card-info">
+                    <h4>💡 Pagination without SQL_CALC_FOUND_ROWS</h4>
+                    <p><code>SQL_CALC_FOUND_ROWS</code> and <code>FOUND_ROWS()</code> are deprecated. Count the rows with a separate <code>SELECT COUNT(*)</code> using the same <code>WHERE</code>.</p>
+                </div>
             </section>
 
             <!-- Aggregates -->
             <section id="aggregates" class="lesson-section">
-                <h2>Aggregate Functions</h2>
-                <pre><code class="language-sql">
--- Basic aggregates
-SELECT COUNT(*) FROM books;
-SELECT COUNT(DISTINCT author_id) FROM books;
-SELECT SUM(price) FROM books;
-SELECT AVG(price) FROM books;
-SELECT MIN(price), MAX(price) FROM books;
+                <h2>📈 Aggregate Functions &amp; GROUP BY</h2>
+                <p>Covered in <a href="lesson_09.html">Lesson 3.3: Aggregate Functions &amp; GROUP BY</a>.</p>
+                <pre><code class="language-sql">SELECT COUNT(*) FROM books;                       -- rows
+SELECT COUNT(city) FROM customers;                -- non-NULL values only
+SELECT COUNT(DISTINCT author_id) FROM books;      -- different values
+SELECT SUM(pages), AVG(price), MIN(price), MAX(price) FROM books;
+SELECT ROUND(AVG(price), 2) AS avg_price FROM books;
 
--- GROUP BY
-SELECT author_id, COUNT(*) AS total, AVG(price) AS avg_price
-FROM books
-GROUP BY author_id;
-
--- HAVING (filter groups — like WHERE but for aggregates)
-SELECT author_id, COUNT(*) AS total
+-- GROUP BY: one result row per group. Add ORDER BY: groups come back unsorted
+SELECT author_id, COUNT(*) AS books, AVG(price) AS avg_price
 FROM books
 GROUP BY author_id
-HAVING total >= 3;
-                </code></pre>
+ORDER BY author_id;
 
+-- HAVING filters groups (WHERE filters rows before grouping)
+SELECT author_id, COUNT(*) AS books
+FROM books
+WHERE in_stock = TRUE
+GROUP BY author_id
+HAVING COUNT(*) &gt;= 2
+ORDER BY books DESC;
+
+-- All values of a group in one string
+SELECT author_id, GROUP_CONCAT(title ORDER BY title SEPARATOR ', ') AS titles
+FROM books
+GROUP BY author_id
+ORDER BY author_id;
+
+-- Subtotals plus a grand total row (NULL in the grouped column)
+SELECT department, COUNT(*) AS staff, SUM(salary) AS payroll
+FROM employees
+GROUP BY department WITH ROLLUP;</code></pre>
                 <div class="card card-info">
-                    <h4>💡 Query Execution Order</h4>
-                    <p><code>FROM</code> → <code>WHERE</code> → <code>GROUP BY</code> → <code>HAVING</code> → <code>SELECT</code> → <code>ORDER BY</code> → <code>LIMIT</code></p>
+                    <h4>💡 The order MySQL evaluates a query in</h4>
+                    <p><code>FROM</code> / <code>JOIN</code> → <code>WHERE</code> → <code>GROUP BY</code> → <code>HAVING</code> → window functions → <code>SELECT</code> → <code>DISTINCT</code> → <code>ORDER BY</code> → <code>LIMIT</code>. That is why a column alias from <code>SELECT</code> is not available in <code>WHERE</code> (error 1054), but is in <code>ORDER BY</code>.</p>
+                </div>
+                <div class="card card-warning">
+                    <h4>⚠️ Every selected column must be grouped or aggregated</h4>
+                    <p>MySQL's default <code>ONLY_FULL_GROUP_BY</code> mode rejects <code>SELECT author_id, title, COUNT(*) ... GROUP BY author_id</code> with ERROR 1055. Never "fix" it by changing <code>sql_mode</code>; group by the column or aggregate it. MariaDB does not have this check on by default and quietly picks a value.</p>
                 </div>
             </section>
 
             <!-- Joins -->
             <section id="joins" class="lesson-section">
-                <h2>Joins</h2>
-                <pre><code class="language-sql">
--- INNER JOIN (rows that match in both tables)
+                <h2>🔀 Joins</h2>
+                <p>Covered in <a href="lesson_13.html">Lesson 4.3: Joins</a>; the relationships behind them in <a href="lesson_11.html">Lesson 4.1: Table Relationships</a>.</p>
+                <pre><code class="language-sql">-- INNER JOIN: only rows that match on both sides
+SELECT b.title, a.name AS author
+FROM books b
+JOIN authors a ON a.id = b.author_id
+ORDER BY b.title;
+
+-- LEFT JOIN: every author, with NULL where there is no book (Isaac Asimov)
+SELECT a.name, b.title
+FROM authors a
+LEFT JOIN books b ON b.author_id = a.id
+ORDER BY a.name, b.title;
+
+-- Find the rows with no match ("anti-join")
+SELECT c.first_name, c.last_name
+FROM customers c
+LEFT JOIN orders o ON o.customer_id = c.id
+WHERE o.id IS NULL;
+
+-- RIGHT JOIN: the same idea from the other side
 SELECT b.title, a.name
 FROM books b
-INNER JOIN authors a ON b.author_id = a.id;
+RIGHT JOIN authors a ON a.id = b.author_id
+ORDER BY a.name;
 
--- LEFT JOIN (all rows from left table + matches from right)
-SELECT b.title, a.name
-FROM books b
-LEFT JOIN authors a ON b.author_id = a.id;
+-- CROSS JOIN: every combination (5 categories x 5 categories = 25 rows)
+SELECT c1.name AS first_pick, c2.name AS second_pick
+FROM categories c1
+CROSS JOIN categories c2;
 
--- RIGHT JOIN (all rows from right table + matches from left)
-SELECT b.title, a.name
-FROM books b
-RIGHT JOIN authors a ON b.author_id = a.id;
-
--- CROSS JOIN (every combination — Cartesian product)
-SELECT b.title, c.name
-FROM books b
-CROSS JOIN categories c;
-
--- Self-join (table joined to itself)
-SELECT e.name AS employee, m.name AS manager
+-- Self-join: employees and their managers
+SELECT CONCAT(e.first_name, ' ', e.last_name) AS employee,
+       CONCAT(m.first_name, ' ', m.last_name) AS manager
 FROM employees e
-LEFT JOIN employees m ON e.manager_id = m.id;
+LEFT JOIN employees m ON m.id = e.manager_id
+ORDER BY e.id;
 
--- Multi-table join
-SELECT b.title, a.name AS author, p.name AS publisher
+-- Many-to-many through the junction table
+SELECT b.title, c.name AS category
 FROM books b
-JOIN authors a ON b.author_id = a.id
-JOIN publishers p ON b.publisher_id = p.id;
+JOIN book_categories bc ON bc.book_id = b.id
+JOIN categories c ON c.id = bc.category_id
+ORDER BY b.title, c.name;
 
--- Many-to-many (via junction table)
-SELECT b.title, g.name AS genre
-FROM books b
-JOIN book_genres bg ON b.id = bg.book_id
-JOIN genres g ON bg.genre_id = g.id;
-                </code></pre>
+-- Four tables: what did each order contain?
+SELECT o.id AS order_id, c.first_name, b.title, oi.quantity,
+       oi.quantity * oi.price_at_time AS line_total
+FROM orders o
+JOIN customers c   ON c.id = o.customer_id
+JOIN order_items oi ON oi.order_id = o.id
+JOIN books b       ON b.id = oi.book_id
+ORDER BY o.id, b.title;</code></pre>
+                <div class="card card-info">
+                    <h4>💡 No FULL OUTER JOIN in MySQL</h4>
+                    <p>MySQL has no <code>FULL OUTER JOIN</code>. Combine a <code>LEFT JOIN</code> and a <code>RIGHT JOIN</code> with <code>UNION</code> when you need both sides.</p>
+                </div>
             </section>
 
             <!-- Subqueries -->
             <section id="subqueries" class="lesson-section">
-                <h2>Subqueries</h2>
-                <pre><code class="language-sql">
--- Scalar subquery (returns one value)
+                <h2>🪆 Subqueries</h2>
+                <p>Covered in <a href="lesson_10.html">Lesson 3.4: Subqueries &amp; Nested Queries</a>.</p>
+                <pre><code class="language-sql">-- Scalar subquery (returns one value)
 SELECT title, price
 FROM books
-WHERE price > (SELECT AVG(price) FROM books);
+WHERE price &gt; (SELECT AVG(price) FROM books);
 
--- IN with subquery (returns a list)
+-- IN with a subquery (returns a list)
 SELECT name FROM authors
-WHERE id IN (SELECT DISTINCT author_id FROM books WHERE price > 20);
+WHERE id IN (SELECT author_id FROM books WHERE price &gt; 12);
 
--- EXISTS (true if subquery returns any rows)
-SELECT name FROM authors a
-WHERE EXISTS (SELECT 1 FROM books b WHERE b.author_id = a.id);
+-- EXISTS / NOT EXISTS: is there at least one matching row?
+SELECT first_name, last_name FROM customers c
+WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id);
 
--- Subquery in FROM (derived table)
-SELECT avg_by_author.author_id, avg_by_author.avg_price
+-- Correlated subquery: runs once per outer row
+SELECT title, price, author_id
+FROM books b
+WHERE price = (SELECT MAX(price) FROM books WHERE author_id = b.author_id)
+ORDER BY author_id;
+
+-- Derived table: a subquery in FROM needs an alias
+SELECT author_id, avg_price
 FROM (
     SELECT author_id, AVG(price) AS avg_price
-    FROM books GROUP BY author_id
-) AS avg_by_author
-WHERE avg_by_author.avg_price > 15;
-                </code></pre>
+    FROM books
+    GROUP BY author_id
+) AS author_prices
+WHERE avg_price &gt; 10
+ORDER BY avg_price DESC;</code></pre>
             </section>
 
-            <!-- Indexes & Views -->
-            <section id="indexes-views" class="lesson-section">
-                <h2>Indexes &amp; Views</h2>
-                <pre><code class="language-sql">
--- Create an index
-CREATE INDEX idx_author_id ON books(author_id);
-CREATE UNIQUE INDEX idx_email ON customers(email);
-CREATE INDEX idx_name_year ON books(author_id, publication_year);  -- Composite
+            <!-- CTEs -->
+            <section id="ctes" class="lesson-section">
+                <h2>🧩 CTEs &amp; Recursive Queries</h2>
+                <p>Covered in <a href="lesson_ctes.html">Lesson 5.1: CTEs &amp; Recursive Queries</a>. A CTE (<code>WITH</code>) names a query so the main query can use it like a table.</p>
+                <pre><code class="language-sql">-- One CTE
+WITH order_totals AS (
+    SELECT order_id, SUM(quantity * price_at_time) AS total
+    FROM order_items
+    GROUP BY order_id
+)
+SELECT order_id, total
+FROM order_totals
+WHERE total &gt; 20
+ORDER BY total DESC;
 
--- Show indexes
+-- Several CTEs: separate them with commas; later ones may use earlier ones
+WITH customer_spend AS (
+    SELECT o.customer_id, SUM(oi.quantity * oi.price_at_time) AS spent
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY o.customer_id
+),
+big_spenders AS (
+    SELECT customer_id, spent FROM customer_spend WHERE spent &gt; 30
+)
+SELECT c.first_name, c.last_name, b.spent
+FROM big_spenders b
+JOIN customers c ON c.id = b.customer_id
+ORDER BY b.spent DESC;
+
+-- Recursive CTE: walk the org chart from the top down
+WITH RECURSIVE org AS (
+    SELECT id, first_name, manager_id, 1 AS level
+    FROM employees
+    WHERE manager_id IS NULL                      -- anchor: where to start
+    UNION ALL
+    SELECT e.id, e.first_name, e.manager_id, org.level + 1
+    FROM employees e
+    JOIN org ON e.manager_id = org.id             -- recursive step
+)
+SELECT level, first_name FROM org ORDER BY level, first_name;
+
+-- Recursive CTE that generates rows: the numbers 1 to 6 (months, for example)
+WITH RECURSIVE months AS (
+    SELECT 1 AS m
+    UNION ALL
+    SELECT m + 1 FROM months WHERE m &lt; 6           -- the stop condition
+)
+SELECT m FROM months;</code></pre>
+                <div class="card card-warning">
+                    <h4>⚠️ Recursion needs a stop condition</h4>
+                    <p>A recursive CTE without a working stop condition is aborted after <code>cte_max_recursion_depth</code> iterations (1000 by default) with ERROR 3636.</p>
+                </div>
+            </section>
+
+            <!-- Window functions -->
+            <section id="windows" class="lesson-section">
+                <h2>🪟 Window Functions</h2>
+                <p>Covered in <a href="lesson_window_functions.html">Lesson 5.2: Window Functions</a>. A window function computes over a set of rows <em>related to the current row</em> without collapsing them like <code>GROUP BY</code> does.</p>
+                <pre><code class="language-sql">-- Rank books by copies sold (ties: RANK skips numbers, DENSE_RANK does not)
+WITH sales AS (
+    SELECT b.title, SUM(oi.quantity) AS copies
+    FROM books b
+    JOIN order_items oi ON oi.book_id = b.id
+    GROUP BY b.title
+)
+SELECT title, copies,
+       ROW_NUMBER() OVER (ORDER BY copies DESC, title) AS row_num,
+       RANK()       OVER (ORDER BY copies DESC)        AS rank_num,
+       DENSE_RANK() OVER (ORDER BY copies DESC)        AS dense_num
+FROM sales
+ORDER BY copies DESC, title;
+
+-- PARTITION BY: restart the calculation for each group
+SELECT department, first_name, salary,
+       AVG(salary) OVER (PARTITION BY department) AS dept_avg,
+       salary - AVG(salary) OVER (PARTITION BY department) AS vs_avg
+FROM employees
+ORDER BY department, salary DESC;
+
+-- Running total and previous value
+WITH monthly AS (
+    SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY month
+)
+SELECT month, revenue,
+       SUM(revenue) OVER (ORDER BY month) AS running_total,
+       LAG(revenue) OVER (ORDER BY month) AS previous_month
+FROM monthly
+ORDER BY month;
+
+-- A named window (WINDOW clause) reused by several functions
+SELECT title, price,
+       MIN(price) OVER w AS cheapest_by_author,
+       MAX(price) OVER w AS dearest_by_author
+FROM books
+WINDOW w AS (PARTITION BY author_id)
+ORDER BY author_id, price;</code></pre>
+                <div class="card card-warning">
+                    <h4>⚠️ "rank" is a reserved word</h4>
+                    <p>Since MySQL 8.0, <code>RANK</code>, <code>ROW_NUMBER</code>, <code>WINDOW</code>, <code>GROUPS</code> and friends are keywords, so <code>AS rank</code> is ERROR 1064. Use names like <code>rank_num</code>. Window functions cannot go in <code>WHERE</code>: filter them in an outer query or a CTE.</p>
+                </div>
+            </section>
+
+            <!-- Indexes -->
+            <section id="indexes" class="lesson-section">
+                <h2>⚡ Indexes &amp; EXPLAIN</h2>
+                <p>Covered in <a href="lesson_14.html">Lesson 6.1: Indexes &amp; Query Optimization</a>.</p>
+                <pre><code class="language-sql">-- Create indexes
+CREATE INDEX idx_books_published ON books (published);
+CREATE INDEX idx_customers_name ON customers (last_name, first_name);   -- composite: leftmost column first
+CREATE UNIQUE INDEX idx_categories_name_desc ON categories (name, description);
+
+-- See them
 SHOW INDEX FROM books;
 
--- Drop an index
-DROP INDEX idx_author_id ON books;
+-- How will MySQL run this query?
+EXPLAIN SELECT title FROM books WHERE published &gt;= '1950-01-01';
+EXPLAIN FORMAT=TREE SELECT title FROM books WHERE published &gt;= '1950-01-01';
 
--- Analyze a query's execution plan
-EXPLAIN SELECT * FROM books WHERE author_id = 3;
+-- Run it for real and show actual timings (MySQL only; MariaDB: ANALYZE SELECT ...)
+EXPLAIN ANALYZE SELECT title FROM books WHERE published &gt;= '1950-01-01';
 
--- Create a view
-CREATE VIEW cheap_books AS
-SELECT title, price FROM books WHERE price < 10;
+-- Hide an index from the optimizer without dropping it (test before you delete)
+ALTER TABLE books ALTER INDEX idx_books_published INVISIBLE;
+ALTER TABLE books ALTER INDEX idx_books_published VISIBLE;
 
--- Use the view like a table
-SELECT * FROM cheap_books;
-
--- Replace a view
-CREATE OR REPLACE VIEW cheap_books AS
-SELECT title, price, author_id FROM books WHERE price < 15;
-
--- Drop a view
-DROP VIEW IF EXISTS cheap_books;
-                </code></pre>
+-- Drop indexes
+DROP INDEX idx_books_published ON books;
+DROP INDEX idx_customers_name ON customers;
+DROP INDEX idx_categories_name_desc ON categories;</code></pre>
+                <div class="card card-info">
+                    <h4>💡 Reading EXPLAIN</h4>
+                    <p><code>type: ALL</code> means a full table scan; <code>ref</code>, <code>range</code> and <code>const</code> mean an index is used. The <code>key</code> column names the index MySQL chose, and <code>rows</code> is its estimate of rows to examine.</p>
+                </div>
             </section>
 
-            <!-- Stored Procedures -->
+            <!-- Views -->
+            <section id="views" class="lesson-section">
+                <h2>🪟 Views</h2>
+                <p>Covered in <a href="lesson_15.html">Lesson 6.2: Views</a>.</p>
+                <pre><code class="language-sql">CREATE VIEW cheap_books AS
+SELECT title, price FROM books WHERE price &lt; 10;
+
+SELECT * FROM cheap_books ORDER BY price;    -- use it like a table
+
+CREATE OR REPLACE VIEW cheap_books AS        -- change its definition
+SELECT b.title, a.name AS author, b.price
+FROM books b
+JOIN authors a ON a.id = b.author_id
+WHERE b.price &lt; 10;
+
+SHOW CREATE VIEW cheap_books\G
+SHOW FULL TABLES WHERE Table_type = 'VIEW';  -- list the views
+
+DROP VIEW IF EXISTS cheap_books;</code></pre>
+            </section>
+
+            <!-- Procedures -->
             <section id="procedures" class="lesson-section">
-                <h2>Stored Procedures &amp; Functions</h2>
-                <pre><code class="language-sql">
--- Stored procedure
+                <h2>⚙️ Stored Procedures &amp; Functions</h2>
+                <p>Covered in <a href="lesson_17.html">Lesson 7.1: Stored Procedures &amp; Functions</a>. In the <code>mysql</code> client, change the <code>DELIMITER</code> so the semicolons inside the body do not end the statement.</p>
+                <pre><code class="language-sql">-- A procedure with an IN parameter
 DELIMITER //
 CREATE PROCEDURE get_books_by_author(IN p_author_id INT)
 BEGIN
-    SELECT title, price FROM books WHERE author_id = p_author_id;
+    SELECT title, price FROM books WHERE author_id = p_author_id ORDER BY title;
 END //
 DELIMITER ;
 
--- Call a procedure
-CALL get_books_by_author(1);
+CALL get_books_by_author(2);
 
--- Procedure with OUT parameter
+-- An OUT parameter comes back in a user variable
 DELIMITER //
 CREATE PROCEDURE count_books(IN p_author_id INT, OUT p_count INT)
 BEGIN
@@ -403,250 +693,424 @@ BEGIN
 END //
 DELIMITER ;
 
-CALL count_books(1, @total);
+CALL count_books(6, @total);
 SELECT @total;
 
--- Stored function (returns a value)
+-- A stored function returns one value and is used inside queries.
+-- DETERMINISTIC (or NO SQL / READS SQL DATA) is required when binary logging is on, the default.
 DELIMITER //
-CREATE FUNCTION discount_price(original DECIMAL(10,2), pct INT)
-RETURNS DECIMAL(10,2)
+CREATE FUNCTION discount_price(p_price DECIMAL(8, 2), p_pct INT)
+RETURNS DECIMAL(8, 2)
 DETERMINISTIC
 BEGIN
-    RETURN original * (1 - pct / 100);
+    RETURN ROUND(p_price * (100 - p_pct) / 100, 2);
 END //
 DELIMITER ;
 
--- Use the function
-SELECT title, price, discount_price(price, 20) AS sale_price FROM books;
+SELECT title, price, discount_price(price, 20) AS sale_price FROM books ORDER BY id;
 
--- Drop
+-- What is defined here?
+SHOW PROCEDURE STATUS WHERE Db = 'bookstore';
+SHOW FUNCTION STATUS WHERE Db = 'bookstore';
+SHOW CREATE PROCEDURE count_books\G
+
+-- Drop them
 DROP PROCEDURE IF EXISTS get_books_by_author;
-DROP FUNCTION IF EXISTS discount_price;
-                </code></pre>
+DROP PROCEDURE IF EXISTS count_books;
+DROP FUNCTION IF EXISTS discount_price;</code></pre>
             </section>
 
             <!-- Transactions -->
             <section id="transactions" class="lesson-section">
-                <h2>Transactions</h2>
-                <pre><code class="language-sql">
--- Basic transaction
+                <h2>🔐 Transactions</h2>
+                <p>Covered in <a href="lesson_18.html">Lesson 7.2: Transactions</a>. Either every statement in the transaction takes effect (<code>COMMIT</code>) or none does (<code>ROLLBACK</code>).</p>
+                <pre><code class="language-sql">-- Place an order: the order and its line must both be saved, or neither
 START TRANSACTION;
-    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-    UPDATE accounts SET balance = balance + 100 WHERE id = 2;
-COMMIT;
+INSERT INTO orders (customer_id, order_date) VALUES (3, '2026-06-10');
+SET @order_id = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, book_id, quantity, price_at_time)
+SELECT @order_id, id, 1, price FROM books WHERE id = 9;
+COMMIT;                                   -- make it permanent
 
--- Rollback on error
+-- Change your mind: ROLLBACK undoes everything since START TRANSACTION
 START TRANSACTION;
-    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
-    -- Something goes wrong...
+DELETE FROM order_items WHERE order_id = @order_id;
 ROLLBACK;
 
--- Savepoints
+-- Savepoints: undo part of a transaction
 START TRANSACTION;
-    INSERT INTO orders (...) VALUES (...);
-    SAVEPOINT after_order;
-    INSERT INTO order_items (...) VALUES (...);
-    -- Problem with items? Roll back to savepoint
-    ROLLBACK TO after_order;
-    -- Fix and retry...
-COMMIT;
-                </code></pre>
+UPDATE books SET price = price - 1 WHERE id = 1;
+SAVEPOINT after_dune;
+UPDATE books SET price = price - 1 WHERE id = 2;
+ROLLBACK TO SAVEPOINT after_dune;         -- undoes only the second UPDATE
+ROLLBACK;                                 -- ...and now the first one too
 
+-- Lock the rows you read until you commit (SELECT ... FOR SHARE for a shared lock)
+START TRANSACTION;
+SELECT id, price FROM books WHERE id = 1 FOR UPDATE;
+COMMIT;
+
+-- Isolation level (REPEATABLE-READ is the InnoDB default)
+SELECT @@transaction_isolation;
+SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;
+SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;</code></pre>
                 <div class="card card-info">
-                    <h4>💡 ACID Properties</h4>
-                    <p><strong>A</strong>tomicity — all or nothing. <strong>C</strong>onsistency — data stays valid. <strong>I</strong>solation — transactions don't interfere. <strong>D</strong>urability — committed data survives crashes.</p>
+                    <h4>💡 ACID</h4>
+                    <p><strong>A</strong>tomicity: all or nothing. <strong>C</strong>onsistency: constraints hold before and after. <strong>I</strong>solation: concurrent transactions do not see each other's half-finished work. <strong>D</strong>urability: committed data survives a crash. <code>CREATE</code>, <code>ALTER</code> and <code>DROP</code> commit automatically and cannot be rolled back.</p>
+                </div>
+            </section>
+
+            <!-- JSON -->
+            <section id="json" class="lesson-section">
+                <h2>🧾 JSON Columns</h2>
+                <p>Covered in <a href="lesson_json.html">Lesson 7.3: JSON Columns</a>. The setup below adds the lesson's <code>attributes</code> column to <code>books</code>.</p>
+                <pre><code class="language-sql">-- Setup (as in Lesson 7.3)
+ALTER TABLE books ADD COLUMN attributes JSON;
+UPDATE books SET attributes = '{"format": "paperback", "series": "Dune Chronicles", "awards": ["Hugo", "Nebula"]}' WHERE id = 1;
+UPDATE books SET attributes = '{"format": "hardcover", "series": "Middle-earth", "illustrated": true}' WHERE id IN (6, 9);
+UPDATE books SET attributes = '{"format": "paperback", "awards": []}' WHERE attributes IS NULL;
+
+-- Read values: -&gt; returns JSON (with quotes), -&gt;&gt; returns plain text
+SELECT title,
+       attributes-&gt;'$.format'  AS format_json,
+       attributes-&gt;&gt;'$.format' AS format_text
+FROM books
+WHERE id IN (1, 6);
+
+-- The same with functions (these also work in MariaDB)
+SELECT title, JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.series')) AS series
+FROM books
+WHERE JSON_EXTRACT(attributes, '$.series') IS NOT NULL
+ORDER BY title;
+
+-- Filter: does the awards array contain "Hugo"? How long is it?
+SELECT title FROM books WHERE JSON_CONTAINS(attributes-&gt;'$.awards', '"Hugo"');
+SELECT title, JSON_LENGTH(attributes, '$.awards') AS award_count FROM books WHERE id = 1;
+
+-- Change part of a document
+UPDATE books SET attributes = JSON_SET(attributes, '$.format', 'ebook') WHERE id = 2;
+UPDATE books SET attributes = JSON_REMOVE(attributes, '$.awards') WHERE id = 2;
+
+-- Build JSON from rows
+SELECT JSON_OBJECT('id', id, 'title', title, 'price', price) AS doc FROM books WHERE id = 1;
+SELECT JSON_ARRAYAGG(name) AS category_names FROM categories;
+
+-- Turn a JSON array into rows
+SELECT b.title, jt.award
+FROM books b,
+     JSON_TABLE(b.attributes, '$.awards[*]' COLUMNS (award VARCHAR(50) PATH '$')) AS jt
+ORDER BY b.title, jt.award;
+
+-- Cleanup: remove the column again if you are not doing Lesson 7.3
+ALTER TABLE books DROP COLUMN attributes;</code></pre>
+                <div class="card card-info">
+                    <h4>🐬 Version note: MariaDB</h4>
+                    <p>MariaDB stores <code>JSON</code> as <code>LONGTEXT</code> with a <code>json_valid()</code> check and has no <code>-&gt;&gt;</code> operator (ERROR 1064). Use <code>JSON_VALUE(attributes, '$.format')</code> or <code>JSON_UNQUOTE(JSON_EXTRACT(...))</code>, which work on MySQL too.</p>
                 </div>
             </section>
 
             <!-- Users -->
             <section id="users" class="lesson-section">
-                <h2>User Management</h2>
-                <pre><code class="language-sql">
--- Create a user
-CREATE USER 'app_user'@'localhost' IDENTIFIED BY 'SecurePass123!';
+                <h2>👥 Users, Privileges &amp; Roles</h2>
+                <p>Covered in <a href="lesson_19.html">Lesson 7.4: User Management &amp; Permissions</a>. Passwords below are placeholders: choose your own.</p>
+                <pre><code class="language-sql">-- Create an account for an application (never let an app log in as root)
+CREATE USER 'bookstore_app'@'localhost' IDENTIFIED BY 'Replace-With-A-Long-Passphrase-1';
 
--- Grant privileges
-GRANT SELECT, INSERT, UPDATE ON bookstore.* TO 'app_user'@'localhost';
-GRANT ALL PRIVILEGES ON bookstore.* TO 'admin'@'localhost';
+-- Least privilege: only what the app needs, only on its database
+GRANT SELECT, INSERT, UPDATE ON bookstore.* TO 'bookstore_app'@'localhost';
+GRANT DELETE ON bookstore.order_items TO 'bookstore_app'@'localhost';   -- one table only
+SHOW GRANTS FOR 'bookstore_app'@'localhost';
 
--- View privileges
-SHOW GRANTS FOR 'app_user'@'localhost';
+REVOKE UPDATE ON bookstore.* FROM 'bookstore_app'@'localhost';
 
--- Revoke privileges
-REVOKE DELETE ON bookstore.* FROM 'app_user'@'localhost';
+-- Account maintenance
+ALTER USER 'bookstore_app'@'localhost' IDENTIFIED BY 'Another-Long-Passphrase-2';
+ALTER USER 'bookstore_app'@'localhost' ACCOUNT LOCK;
+ALTER USER 'bookstore_app'@'localhost' ACCOUNT UNLOCK;
+SELECT user, host, plugin, account_locked FROM mysql.user WHERE user = 'bookstore_app';
 
--- Change password
-ALTER USER 'app_user'@'localhost' IDENTIFIED BY 'NewPass!';
+-- Roles: named bundles of privileges
+CREATE ROLE 'bookstore_read', 'bookstore_write';
+GRANT SELECT ON bookstore.* TO 'bookstore_read';
+GRANT INSERT, UPDATE, DELETE ON bookstore.* TO 'bookstore_write';
 
--- Lock / unlock
-ALTER USER 'app_user'@'localhost' ACCOUNT LOCK;
-ALTER USER 'app_user'@'localhost' ACCOUNT UNLOCK;
+CREATE USER 'report_user'@'localhost' IDENTIFIED BY 'Replace-With-A-Long-Passphrase-3';
+GRANT 'bookstore_read' TO 'report_user'@'localhost';
+SET DEFAULT ROLE ALL TO 'report_user'@'localhost';     -- active at every login
+SHOW GRANTS FOR 'report_user'@'localhost' USING 'bookstore_read';
 
--- Delete a user
-DROP USER IF EXISTS 'app_user'@'localhost';
-
--- Roles (MySQL 8+)
-CREATE ROLE 'reader';
-GRANT SELECT ON bookstore.* TO 'reader';
-GRANT 'reader' TO 'alice'@'localhost';
-SET DEFAULT ROLE ALL TO 'alice'@'localhost';
-
--- List all users
-SELECT User, Host FROM mysql.user;
-                </code></pre>
+-- Clean up
+DROP USER IF EXISTS 'bookstore_app'@'localhost', 'report_user'@'localhost';
+DROP ROLE IF EXISTS 'bookstore_read', 'bookstore_write';</code></pre>
+                <div class="card card-danger">
+                    <h4>🛑 Do not switch accounts to mysql_native_password</h4>
+                    <p>New accounts use <code>caching_sha2_password</code>, which every current client and connector understands. <code>mysql_native_password</code> is removed in MySQL 9.x (and disabled in 8.4): <code>IDENTIFIED WITH mysql_native_password</code> fails with ERROR 1524. If an old tool cannot log in, upgrade the tool.</p>
+                </div>
             </section>
 
             <!-- Import/Export -->
             <section id="import-export" class="lesson-section">
-                <h2>Import &amp; Export</h2>
-                <pre><code class="language-bash">
-# --- TERMINAL COMMANDS (not inside mysql>) ---
+                <h2>📦 Import &amp; Export</h2>
+                <p>Covered in <a href="lesson_20.html">Lesson 8.1: Importing &amp; Exporting Data</a>. In a terminal (not inside <code>mysql&gt;</code>):</p>
+                <pre><code class="language-bash"># Back up one database (the file recreates the tables and rows)
+mysqldump -u root -p bookstore &gt; bookstore_backup.sql
 
-# Dump a database
-mysqldump -u root -p bookstore > backup.sql
+# A consistent backup of InnoDB tables, including procedures, functions and triggers
+mysqldump -u root -p --single-transaction --routines --triggers bookstore &gt; bookstore_backup.sql
 
-# Dump specific tables
-mysqldump -u root -p bookstore books authors > partial.sql
+# Only some tables / only the structure / everything on the server
+mysqldump -u root -p bookstore books authors &gt; books_only.sql
+mysqldump -u root -p --no-data bookstore &gt; bookstore_schema.sql
+mysqldump -u root -p --all-databases &gt; all_databases.sql
 
-# Dump all databases
-mysqldump -u root -p --all-databases > full_backup.sql
+# Restore into an existing database
+mysql -u root -p bookstore &lt; bookstore_backup.sql</code></pre>
+                <p>Inside <code>mysql</code>, the server reads and writes files only in the folder named by <code>secure_file_priv</code> (<code>/var/lib/mysql-files/</code> on Linux packages). A sample CSV with a header row:</p>
+                <pre><code class="language-text" data-file="new_books.csv">title,author_id,price,pages,published
+The Silmarillion,6,12.49,365,1977-09-15
+Homage to Catalonia,2,10.25,232,1938-04-25</code></pre>
+                <pre><code class="language-sql">SHOW VARIABLES LIKE 'secure_file_priv';      -- where may the server read and write files?
 
-# Schema only (no data)
-mysqldump -u root -p --no-data bookstore > schema.sql
-
-# Production-safe dump (InnoDB, no locking)
-mysqldump -u root -p --single-transaction --routines --triggers bookstore > backup.sql
-
-# Restore a dump
-mysql -u root -p bookstore < backup.sql
-
-# CLI CSV import
-mysqlimport -u root -p --local --fields-terminated-by=',' --ignore-lines=1 bookstore books.csv
-                </code></pre>
-
-                <pre><code class="language-sql">
--- --- INSIDE MYSQL ---
-
--- Export to CSV
+-- Export a query to CSV (fails if the file already exists)
 SELECT id, title, price
-INTO OUTFILE '/tmp/books.csv'
-FIELDS TERMINATED BY ',' ENCLOSED BY '"'
+INTO OUTFILE '/var/lib/mysql-files/books_export.csv'
+FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
-FROM books;
+FROM books
+ORDER BY id;
 
--- Import from CSV
-LOAD DATA INFILE '/tmp/books.csv'
-INTO TABLE books
-FIELDS TERMINATED BY ',' ENCLOSED BY '"'
+-- Import a CSV into a table (practice table, dropped at the end)
+CREATE TABLE books_import (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    title     VARCHAR(200) NOT NULL,
+    author_id INT NOT NULL,
+    price     DECIMAL(8, 2) NOT NULL,
+    pages     INT,
+    published DATE
+);
+
+LOAD DATA INFILE '/var/lib/mysql-files/new_books.csv'
+INTO TABLE books_import
+FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
-IGNORE 1 ROWS;
+IGNORE 1 LINES                                -- skip the header row
+(title, author_id, price, pages, published);
 
--- Check file path restrictions
-SHOW VARIABLES LIKE 'secure_file_priv';
-                </code></pre>
+SELECT * FROM books_import;
+
+DROP TABLE books_import;</code></pre>
+                <div class="card card-info">
+                    <h4>💡 Files on your own computer: LOCAL</h4>
+                    <p><code>LOAD DATA LOCAL INFILE 'new_books.csv' ...</code> reads the file from the client's machine instead. It needs <code>local_infile=ON</code> on the server and <code>mysql --local-infile=1</code> on the client; otherwise you get ERROR 3948 or 2068 (see <a href="common-errors.html#import-export">Common Errors</a>).</p>
+                </div>
             </section>
 
             <!-- Operators -->
             <section id="operators" class="lesson-section">
-                <h2>Operators Quick Reference</h2>
+                <h2>➗ Operators</h2>
+                <p>Covered in <a href="lesson_07.html">Lesson 3.1: WHERE Clauses, Operators &amp; Filtering</a>.</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
                             <tr><th>Category</th><th>Operator</th><th>Example</th></tr>
                         </thead>
                         <tbody>
-                            <tr><td rowspan="6"><strong>Comparison</strong></td><td><code>=</code></td><td><code>price = 10</code></td></tr>
-                            <tr><td><code>!=</code> or <code>&lt;&gt;</code></td><td><code>status != 'active'</code></td></tr>
-                            <tr><td><code>&lt;</code>, <code>&gt;</code></td><td><code>price &gt; 20</code></td></tr>
-                            <tr><td><code>&lt;=</code>, <code>&gt;=</code></td><td><code>quantity &lt;= 0</code></td></tr>
-                            <tr><td><code>BETWEEN</code></td><td><code>price BETWEEN 10 AND 20</code></td></tr>
-                            <tr><td><code>IN</code></td><td><code>id IN (1, 2, 3)</code></td></tr>
-                            <tr><td rowspan="3"><strong>Logical</strong></td><td><code>AND</code></td><td><code>price &gt; 10 AND stock &gt; 0</code></td></tr>
-                            <tr><td><code>OR</code></td><td><code>category = 'fiction' OR category = 'sci-fi'</code></td></tr>
-                            <tr><td><code>NOT</code></td><td><code>NOT status = 'deleted'</code></td></tr>
-                            <tr><td rowspan="2"><strong>Pattern</strong></td><td><code>LIKE</code></td><td><code>title LIKE '%war%'</code> (<code>%</code> = any chars, <code>_</code> = one char)</td></tr>
-                            <tr><td><code>REGEXP</code></td><td><code>title REGEXP '^The'</code></td></tr>
-                            <tr><td rowspan="2"><strong>NULL</strong></td><td><code>IS NULL</code></td><td><code>email IS NULL</code></td></tr>
-                            <tr><td><code>IS NOT NULL</code></td><td><code>email IS NOT NULL</code></td></tr>
+                            <tr><td rowspan="7"><strong>Comparison</strong></td><td><code>=</code></td><td><code>price = 9.99</code></td></tr>
+                            <tr><td><code>!=</code> or <code>&lt;&gt;</code></td><td><code>city &lt;&gt; 'Chicago'</code></td></tr>
+                            <tr><td><code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code></td><td><code>pages &gt;= 300</code></td></tr>
+                            <tr><td><code>BETWEEN ... AND ...</code></td><td><code>price BETWEEN 9 AND 11</code> (both ends included)</td></tr>
+                            <tr><td><code>IN (...)</code></td><td><code>id IN (1, 2, 3)</code></td></tr>
+                            <tr><td><code>&lt;=&gt;</code></td><td>NULL-safe equals: <code>NULL &lt;=&gt; NULL</code> is 1</td></tr>
+                            <tr><td><code>IS NULL</code> / <code>IS NOT NULL</code></td><td><code>city IS NULL</code> (never <code>= NULL</code>)</td></tr>
+                            <tr><td rowspan="3"><strong>Logical</strong></td><td><code>AND</code></td><td><code>price &gt; 10 AND in_stock</code></td></tr>
+                            <tr><td><code>OR</code></td><td><code>author_id = 2 OR author_id = 6</code></td></tr>
+                            <tr><td><code>NOT</code></td><td><code>NOT in_stock</code></td></tr>
+                            <tr><td rowspan="2"><strong>Pattern</strong></td><td><code>LIKE</code></td><td><code>title LIKE '%war%'</code> (<code>%</code> any characters, <code>_</code> exactly one)</td></tr>
+                            <tr><td><code>REGEXP</code> / <code>REGEXP_LIKE()</code></td><td><code>title REGEXP '^The'</code></td></tr>
+                            <tr><td rowspan="2"><strong>Arithmetic</strong></td><td><code>+ - * /</code></td><td><code>price * quantity</code> (<code>/</code> always gives a decimal)</td></tr>
+                            <tr><td><code>DIV</code>, <code>%</code> / <code>MOD</code></td><td><code>10 DIV 3</code> is 3, <code>10 % 3</code> is 1</td></tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="card card-info">
+                    <h4>💡 Write AND and OR, not &amp;&amp; and ||</h4>
+                    <p><code>&amp;&amp;</code> as a synonym for <code>AND</code> is deprecated, and <code>||</code> means <code>OR</code> in MySQL but string concatenation in standard SQL. Use the words, and <code>CONCAT()</code> to join strings.</p>
                 </div>
             </section>
 
             <!-- String Functions -->
             <section id="string-functions" class="lesson-section">
-                <h2>String Functions</h2>
+                <h2>🔤 String Functions</h2>
                 <div class="table-wrap">
                     <table>
                         <thead>
                             <tr><th>Function</th><th>Description</th><th>Example</th><th>Result</th></tr>
                         </thead>
                         <tbody>
-                            <tr><td><code>CONCAT()</code></td><td>Combine strings</td><td><code>CONCAT(first, ' ', last)</code></td><td><code>'John Doe'</code></td></tr>
-                            <tr><td><code>CONCAT_WS()</code></td><td>Combine with separator</td><td><code>CONCAT_WS(', ', city, state)</code></td><td><code>'Austin, TX'</code></td></tr>
-                            <tr><td><code>UPPER()</code></td><td>Uppercase</td><td><code>UPPER('hello')</code></td><td><code>'HELLO'</code></td></tr>
-                            <tr><td><code>LOWER()</code></td><td>Lowercase</td><td><code>LOWER('HELLO')</code></td><td><code>'hello'</code></td></tr>
-                            <tr><td><code>TRIM()</code></td><td>Remove whitespace</td><td><code>TRIM('  hi  ')</code></td><td><code>'hi'</code></td></tr>
-                            <tr><td><code>SUBSTRING()</code></td><td>Extract part of string</td><td><code>SUBSTRING('Hello', 1, 3)</code></td><td><code>'Hel'</code></td></tr>
-                            <tr><td><code>LENGTH()</code></td><td>String length (bytes)</td><td><code>LENGTH('Hello')</code></td><td><code>5</code></td></tr>
-                            <tr><td><code>CHAR_LENGTH()</code></td><td>String length (characters)</td><td><code>CHAR_LENGTH('Hello')</code></td><td><code>5</code></td></tr>
-                            <tr><td><code>REPLACE()</code></td><td>Replace occurrences</td><td><code>REPLACE('abc', 'b', 'x')</code></td><td><code>'axc'</code></td></tr>
-                            <tr><td><code>LEFT() / RIGHT()</code></td><td>First/last N characters</td><td><code>LEFT('Hello', 2)</code></td><td><code>'He'</code></td></tr>
-                            <tr><td><code>REVERSE()</code></td><td>Reverse a string</td><td><code>REVERSE('Hello')</code></td><td><code>'olleH'</code></td></tr>
-                            <tr><td><code>COALESCE()</code></td><td>First non-NULL value</td><td><code>COALESCE(nickname, name)</code></td><td>Returns nickname or name</td></tr>
-                            <tr><td><code>IFNULL()</code></td><td>Default if NULL</td><td><code>IFNULL(phone, 'N/A')</code></td><td>Phone or <code>'N/A'</code></td></tr>
+                            <tr><td><code>CONCAT()</code></td><td>Join strings (NULL if any part is NULL)</td><td><code>CONCAT('Alice', ' ', 'Johnson')</code></td><td><code>Alice Johnson</code></td></tr>
+                            <tr><td><code>CONCAT_WS()</code></td><td>Join with a separator, skipping NULLs</td><td><code>CONCAT_WS(', ', 'Chicago', NULL, 'IL')</code></td><td><code>Chicago, IL</code></td></tr>
+                            <tr><td><code>UPPER()</code> / <code>LOWER()</code></td><td>Change case</td><td><code>UPPER('dune')</code></td><td><code>DUNE</code></td></tr>
+                            <tr><td><code>TRIM()</code></td><td>Remove leading and trailing spaces</td><td><code>TRIM('  hi  ')</code></td><td><code>hi</code></td></tr>
+                            <tr><td><code>SUBSTRING()</code></td><td>Part of a string (positions start at 1)</td><td><code>SUBSTRING('Fahrenheit', 1, 4)</code></td><td><code>Fahr</code></td></tr>
+                            <tr><td><code>LEFT()</code> / <code>RIGHT()</code></td><td>First / last n characters</td><td><code>LEFT('Hobbit', 3)</code></td><td><code>Hob</code></td></tr>
+                            <tr><td><code>LENGTH()</code></td><td>Length in bytes</td><td><code>LENGTH('café')</code></td><td><code>5</code></td></tr>
+                            <tr><td><code>CHAR_LENGTH()</code></td><td>Length in characters</td><td><code>CHAR_LENGTH('café')</code></td><td><code>4</code></td></tr>
+                            <tr><td><code>REPLACE()</code></td><td>Replace every occurrence</td><td><code>REPLACE('1984', '9', 'x')</code></td><td><code>1x84</code></td></tr>
+                            <tr><td><code>LOCATE()</code></td><td>Position of a substring (0 if absent)</td><td><code>LOCATE('Farm', 'Animal Farm')</code></td><td><code>8</code></td></tr>
+                            <tr><td><code>LPAD()</code></td><td>Pad on the left to a length</td><td><code>LPAD('7', 3, '0')</code></td><td><code>007</code></td></tr>
+                            <tr><td><code>COALESCE()</code></td><td>First non-NULL argument</td><td><code>COALESCE(NULL, 'unknown')</code></td><td><code>unknown</code></td></tr>
+                            <tr><td><code>IFNULL()</code></td><td>A default for NULL</td><td><code>IFNULL(NULL, 'N/A')</code></td><td><code>N/A</code></td></tr>
                         </tbody>
                     </table>
+                </div>
+                <p>Try them all at once (<code>\G</code> prints the one row vertically):</p>
+                <pre><code class="language-sql">SELECT CONCAT('Alice', ' ', 'Johnson')        AS concat_,
+       CONCAT_WS(', ', 'Chicago', NULL, 'IL')  AS concat_ws_,
+       UPPER('dune')                           AS upper_,
+       TRIM('  hi  ')                          AS trim_,
+       SUBSTRING('Fahrenheit', 1, 4)           AS substring_,
+       LEFT('Hobbit', 3)                       AS left_,
+       LENGTH('café')                          AS length_,
+       CHAR_LENGTH('café')                     AS char_length_,
+       REPLACE('1984', '9', 'x')               AS replace_,
+       LOCATE('Farm', 'Animal Farm')           AS locate_,
+       LPAD('7', 3, '0')                       AS lpad_,
+       COALESCE(NULL, 'unknown')               AS coalesce_,
+       IFNULL(NULL, 'N/A')                     AS ifnull_\G</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>*************************** 1. row ***************************
+     concat_: Alice Johnson
+  concat_ws_: Chicago, IL
+      upper_: DUNE
+       trim_: hi
+  substring_: Fahr
+       left_: Hob
+     length_: 5
+char_length_: 4
+    replace_: 1x84
+     locate_: 8
+       lpad_: 007
+   coalesce_: unknown
+     ifnull_: N/A</code></pre>
                 </div>
             </section>
 
             <!-- Date Functions -->
             <section id="date-functions" class="lesson-section">
-                <h2>Date &amp; Time Functions</h2>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr><th>Function</th><th>Description</th><th>Example</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr><td><code>NOW()</code></td><td>Current date and time</td><td><code>'2026-04-16 14:30:00'</code></td></tr>
-                            <tr><td><code>CURDATE()</code></td><td>Current date</td><td><code>'2026-04-16'</code></td></tr>
-                            <tr><td><code>CURTIME()</code></td><td>Current time</td><td><code>'14:30:00'</code></td></tr>
-                            <tr><td><code>YEAR() / MONTH() / DAY()</code></td><td>Extract parts</td><td><code>YEAR('2026-04-16')</code> → <code>2026</code></td></tr>
-                            <tr><td><code>DATE_FORMAT()</code></td><td>Format a date</td><td><code>DATE_FORMAT(NOW(), '%M %d, %Y')</code></td></tr>
-                            <tr><td><code>DATE_ADD()</code></td><td>Add to a date</td><td><code>DATE_ADD(NOW(), INTERVAL 7 DAY)</code></td></tr>
-                            <tr><td><code>DATE_SUB()</code></td><td>Subtract from a date</td><td><code>DATE_SUB(NOW(), INTERVAL 1 MONTH)</code></td></tr>
-                            <tr><td><code>DATEDIFF()</code></td><td>Days between two dates</td><td><code>DATEDIFF('2026-12-31', '2026-01-01')</code> → <code>364</code></td></tr>
-                            <tr><td><code>TIMESTAMPDIFF()</code></td><td>Difference in units</td><td><code>TIMESTAMPDIFF(YEAR, birth, NOW())</code></td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Numeric Functions -->
-            <section id="numeric-functions" class="lesson-section">
-                <h2>Numeric Functions</h2>
+                <h2>📅 Date &amp; Time Functions</h2>
                 <div class="table-wrap">
                     <table>
                         <thead>
                             <tr><th>Function</th><th>Description</th><th>Example</th><th>Result</th></tr>
                         </thead>
                         <tbody>
-                            <tr><td><code>ROUND()</code></td><td>Round to N decimals</td><td><code>ROUND(3.14159, 2)</code></td><td><code>3.14</code></td></tr>
-                            <tr><td><code>CEIL()</code></td><td>Round up</td><td><code>CEIL(3.2)</code></td><td><code>4</code></td></tr>
-                            <tr><td><code>FLOOR()</code></td><td>Round down</td><td><code>FLOOR(3.9)</code></td><td><code>3</code></td></tr>
+                            <tr><td><code>NOW()</code></td><td>Current date and time</td><td><code>NOW()</code></td><td>today, e.g. <code>2026-04-16 14:30:00</code></td></tr>
+                            <tr><td><code>CURDATE()</code> / <code>CURTIME()</code></td><td>Current date / time</td><td><code>CURDATE()</code></td><td>today, e.g. <code>2026-04-16</code></td></tr>
+                            <tr><td><code>YEAR()</code> / <code>MONTH()</code> / <code>DAY()</code></td><td>Extract a part</td><td><code>YEAR('1949-06-08')</code></td><td><code>1949</code></td></tr>
+                            <tr><td><code>DAYNAME()</code></td><td>Name of the weekday</td><td><code>DAYNAME('2026-01-15')</code></td><td><code>Thursday</code></td></tr>
+                            <tr><td><code>DATE_FORMAT()</code></td><td>Format a date</td><td><code>DATE_FORMAT('2026-04-16', '%M %d, %Y')</code></td><td><code>April 16, 2026</code></td></tr>
+                            <tr><td><code>DATE_ADD()</code></td><td>Add an interval</td><td><code>DATE_ADD('2026-04-16', INTERVAL 7 DAY)</code></td><td><code>2026-04-23</code></td></tr>
+                            <tr><td><code>DATE_SUB()</code></td><td>Subtract an interval</td><td><code>DATE_SUB('2026-04-16', INTERVAL 1 MONTH)</code></td><td><code>2026-03-16</code></td></tr>
+                            <tr><td><code>LAST_DAY()</code></td><td>Last day of that month</td><td><code>LAST_DAY('2026-02-10')</code></td><td><code>2026-02-28</code></td></tr>
+                            <tr><td><code>DATEDIFF()</code></td><td>Days between two dates</td><td><code>DATEDIFF('2026-12-31', '2026-01-01')</code></td><td><code>364</code></td></tr>
+                            <tr><td><code>TIMESTAMPDIFF()</code></td><td>Difference in any unit</td><td><code>TIMESTAMPDIFF(YEAR, '1990-05-20', '2026-04-16')</code></td><td><code>35</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <pre><code class="language-sql">SELECT YEAR('1949-06-08')                             AS year_,
+       DAYNAME('2026-01-15')                          AS dayname_,
+       DATE_FORMAT('2026-04-16', '%M %d, %Y')         AS date_format_,
+       DATE_ADD('2026-04-16', INTERVAL 7 DAY)         AS date_add_,
+       DATE_SUB('2026-04-16', INTERVAL 1 MONTH)       AS date_sub_,
+       LAST_DAY('2026-02-10')                         AS last_day_,
+       DATEDIFF('2026-12-31', '2026-01-01')           AS datediff_,
+       TIMESTAMPDIFF(YEAR, '1990-05-20', '2026-04-16') AS timestampdiff_\G</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>*************************** 1. row ***************************
+         year_: 1949
+      dayname_: Thursday
+  date_format_: April 16, 2026
+     date_add_: 2026-04-23
+     date_sub_: 2026-03-16
+     last_day_: 2026-02-28
+     datediff_: 364
+timestampdiff_: 35</code></pre>
+                </div>
+                <pre><code class="language-sql">-- On real data: orders from the last 30 days of the data, newest first
+SELECT id, order_date, DATEDIFF('2026-06-07', order_date) AS days_ago
+FROM orders
+WHERE order_date &gt;= DATE_SUB('2026-06-07', INTERVAL 30 DAY)
+ORDER BY order_date DESC;</code></pre>
+            </section>
+
+            <!-- Numeric Functions -->
+            <section id="numeric-functions" class="lesson-section">
+                <h2>🔢 Numeric Functions</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Function</th><th>Description</th><th>Example</th><th>Result</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>ROUND()</code></td><td>Round to n decimals (halves round away from zero)</td><td><code>ROUND(3.14159, 2)</code>, <code>ROUND(2.5)</code></td><td><code>3.14</code>, <code>3</code></td></tr>
+                            <tr><td><code>TRUNCATE()</code></td><td>Cut off decimals, no rounding</td><td><code>TRUNCATE(3.14159, 2)</code></td><td><code>3.14</code></td></tr>
+                            <tr><td><code>CEIL()</code> / <code>FLOOR()</code></td><td>Round up / down to a whole number</td><td><code>CEIL(3.2)</code>, <code>FLOOR(3.9)</code></td><td><code>4</code>, <code>3</code></td></tr>
                             <tr><td><code>ABS()</code></td><td>Absolute value</td><td><code>ABS(-5)</code></td><td><code>5</code></td></tr>
-                            <tr><td><code>MOD()</code></td><td>Modulo (remainder)</td><td><code>MOD(10, 3)</code></td><td><code>1</code></td></tr>
-                            <tr><td><code>POWER()</code></td><td>Exponentiation</td><td><code>POWER(2, 3)</code></td><td><code>8</code></td></tr>
-                            <tr><td><code>SQRT()</code></td><td>Square root</td><td><code>SQRT(16)</code></td><td><code>4</code></td></tr>
-                            <tr><td><code>RAND()</code></td><td>Random float 0–1</td><td><code>RAND()</code></td><td><code>0.7342...</code></td></tr>
-                            <tr><td><code>TRUNCATE()</code></td><td>Truncate decimals</td><td><code>TRUNCATE(3.14159, 2)</code></td><td><code>3.14</code></td></tr>
+                            <tr><td><code>MOD()</code></td><td>Remainder</td><td><code>MOD(10, 3)</code></td><td><code>1</code></td></tr>
+                            <tr><td><code>POWER()</code> / <code>SQRT()</code></td><td>Exponent / square root</td><td><code>POWER(2, 3)</code>, <code>SQRT(16)</code></td><td><code>8</code>, <code>4</code></td></tr>
+                            <tr><td><code>RAND()</code></td><td>Random number from 0 up to (not including) 1</td><td><code>RAND()</code></td><td>different every time</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <pre><code class="language-sql">SELECT ROUND(3.14159, 2)    AS round_2,
+       ROUND(2.5)           AS round_half,
+       TRUNCATE(3.14159, 2) AS truncate_,
+       CEIL(3.2)            AS ceil_,
+       FLOOR(3.9)           AS floor_,
+       ABS(-5)              AS abs_,
+       MOD(10, 3)           AS mod_,
+       POWER(2, 3)          AS power_,
+       SQRT(16)             AS sqrt_\G</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>*************************** 1. row ***************************
+   round_2: 3.14
+round_half: 3
+ truncate_: 3.14
+     ceil_: 4
+    floor_: 3
+      abs_: 5
+      mod_: 1
+    power_: 8
+     sqrt_: 4</code></pre>
+                </div>
+            </section>
+
+            <!-- Versions -->
+            <section id="versions" class="lesson-section">
+                <h2>🐬 MySQL 9.7 vs 8.4 vs MariaDB</h2>
+                <p>This course targets MySQL 9.7 LTS (Homebrew <code>mysql@9.7</code>, Docker <code>mysql:9.7</code>; plain <code>mysql</code> / <code>mysql:latest</code> give the newest innovation release, numbered like 26.x). MySQL 8.4 LTS behaves the same for nearly everything here. MariaDB (what XAMPP and many shared hosts install) is a fork that has drifted; these are the differences you are most likely to hit.</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Topic</th><th>MySQL 9.7 and 8.4</th><th>MariaDB</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>ONLY_FULL_GROUP_BY</code></td><td>On: ungrouped columns are ERROR 1055 / 1140</td><td>Off: an arbitrary value is returned</td></tr>
+                            <tr><td>GROUP BY row order</td><td>Unsorted: add <code>ORDER BY</code></td><td>Sorted by the group key</td></tr>
+                            <tr><td>Default auth plugin</td><td><code>caching_sha2_password</code></td><td><code>mysql_native_password</code></td></tr>
+                            <tr><td><code>-&gt;&gt;</code> JSON operator</td><td>Works</td><td>ERROR 1064: use <code>JSON_VALUE()</code></td></tr>
+                            <tr><td>Upsert row alias <code>AS new</code></td><td>Works (<code>VALUES()</code> is deprecated)</td><td>ERROR 1064: use <code>VALUES()</code></td></tr>
+                            <tr><td><code>EXPLAIN ANALYZE</code></td><td>Works</td><td>Use <code>ANALYZE SELECT ...</code></td></tr>
+                            <tr><td>CHECK violation</td><td>ERROR 3819</td><td>ERROR 4025</td></tr>
+                            <tr><td>CTEs, window functions, roles, <code>JSON_TABLE</code></td><td>Work</td><td>Work</td></tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- Back to Home -->
             <nav class="lesson-nav" aria-label="Page Navigation">
                 <a href="index.html" class="home-link">🏠 Course Home</a>
             </nav>
@@ -654,7 +1118,7 @@ SHOW VARIABLES LIKE 'secure_file_priv';
     </main>
 
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>

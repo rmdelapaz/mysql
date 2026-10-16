@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Participant Workbook: Session 9</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Student workbook —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">write in it · bring it to every session</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Participant Workbook</div>
+    <h1>Session 9: Indexes and Views</h1>
+    <p class="sub">Your workbook for Session 9: a warm-up on Session 8, the key ideas of Lessons 6.1 and 6.2, worked examples, the guided labs, predict-then-run practice, a self-check for each lesson, the clinic's error table and your exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Lessons <b>6.1–6.2</b></span>
+      <span class="chip">Session <b>9</b> · 3 hours</span>
+      <span class="chip">Name: ____________________</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Session Goals</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Measure a query with EXPLAIN ANALYZE, add the index the plan points at, and measure again.</li>
+  <li>Choose the column order of a composite index, and know which indexes every table already has.</li>
+  <li>Spot and rewrite the habits that stop an index from being used.</li>
+  <li>Save queries as views, read them like tables, and know which views can be updated.</li>
+  <li>Guard an updatable view with WITH CHECK OPTION, and use a view to show an account only what it should see.</li>
+</ul>
+
+  <div class="sec"><h2>Warm-up</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Five questions on Session 8, no notes</div>
+<div class="q"><div class="qn">W1</div><div class="qt">What does this print?</div><pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> s <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="s">1</span> <span class="k">AS</span> n <span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> n + <span class="s">2</span> <span class="k">FROM</span> s <span class="k">WHERE</span> n &lt; <span class="s">7</span>
+)
+<span class="k">SELECT</span> GROUP_CONCAT(n <span class="k">ORDER</span> <span class="k">BY</span> n) <span class="k">AS</span> odd <span class="k">FROM</span> s;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Which price_level do The Catcher in the Rye and The Great Gatsby (both 8.99) get, and Animal Farm after them?</div><pre class="code"><span class="k">SELECT</span> title, price,
+       DENSE_RANK() <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">DESC</span>) <span class="k">AS</span> price_level
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &lt; <span class="s">9.50</span>
+<span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">DESC</span>, title;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">Why can't WHERE filter on ROW_NUMBER(), and what do you write instead?</div><div class="write"></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">In a recursive CTE over employees, which join walks UP the hierarchy?</div><div class="write"></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">AVG(salary) with GROUP BY department versus AVG(salary) OVER (PARTITION BY department): how many rows from the 10 employees?</div><div class="write"></div></div>
+</div>
+
+  <div class="sec"><h2>Lessons</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">6.1</span><h3>Indexes &amp; Query Optimization</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Explain what an index is, what it costs, and which indexes every bookstore table already has</li>
+  <li>Read a query plan from EXPLAIN and measure a query with EXPLAIN ANALYZE</li>
+  <li>Create single-column, composite and unique indexes, and choose the column order of a composite index</li>
+  <li>Spot and rewrite the patterns that stop an index from being used: functions on the column, leading wildcards, type mismatches</li>
+  <li>List, rename, hide and drop indexes, and fix the errors MySQL raises while you do it</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>An index</b> is a sorted B-tree copy of one or more columns: it turns a full table scan into a jump to the matching rows. It costs space and write time.</li>
+  <li><b>Automatic indexes:</b> every primary key (the clustered index: the table itself), every UNIQUE, every foreign key.</li>
+  <li><b>EXPLAIN</b> shows the plan (read the most indented line first); <b>EXPLAIN ANALYZE</b> runs the query and adds real times and row counts. End with <code class="inline">\G</code>.</li>
+  <li><b>Plan words:</b> Rows fetched before execution · Single-row lookup · Index lookup · Index range scan · Covering · Index scan · Table scan · Sort.</li>
+  <li><b>Composite index:</b> serves its leftmost prefix. Equality columns first, the range or sort column last.</li>
+  <li><b>Index killers:</b> a function or arithmetic around the column, a leading % in LIKE, a text column compared with a number.</li>
+  <li><b>Manage:</b> SHOW INDEX, RENAME INDEX, INVISIBLE before DROP; 1061 duplicate name, 1091 no such index, 1553 needed by a foreign key.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: the indexes you have, and a plan in table form</div>
+<p>Every table already has indexes you never created by name. The employees table has three: the primary key, the UNIQUE email, and the index InnoDB made for the manager_id foreign key:</p>
+<pre class="code"><span class="k">SELECT</span> INDEX_NAME, COLUMN_NAME, NON_UNIQUE
+<span class="k">FROM</span> information_schema.STATISTICS
+<span class="k">WHERE</span> TABLE_SCHEMA = <span class="s">'bookstore'</span> <span class="k">AND</span> TABLE_NAME = <span class="s">'employees'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> INDEX_NAME;</pre>
+<pre class="out">+----------------------+-------------+------------+
+| INDEX_NAME           | COLUMN_NAME | NON_UNIQUE |
++----------------------+-------------+------------+
+| email                | email       |          0 |
+| fk_employees_manager | manager_id  |          1 |
+| PRIMARY              | id          |          0 |
++----------------------+-------------+------------+</pre><p>The traditional plan format, one row per table, for the self-join of Lesson 4.3. Read <code class="inline">type</code> and <code class="inline">key</code>: the employees <code class="inline">e</code> are scanned (10 rows, <code class="inline">ALL</code>), and each manager <code class="inline">m</code> is one row found through the primary key (<code class="inline">eq_ref</code>, <code class="inline">PRIMARY</code>):</p>
+<pre class="code"><span class="k">EXPLAIN</span> <span class="k">FORMAT</span>=TRADITIONAL
+<span class="k">SELECT</span> e.first_name, m.first_name <span class="k">AS</span> manager
+<span class="k">FROM</span> employees <span class="k">AS</span> e
+<span class="k">JOIN</span> employees <span class="k">AS</span> m <span class="k">ON</span> m.id = e.manager_id
+<span class="k">WHERE</span> e.department = <span class="s">'support'</span>;</pre>
+<pre class="out">+----+-------------+-------+------------+--------+----------------------+---------+---------+------------------------+------+----------+-------------+
+| id | select_type | table | partitions | type   | possible_keys        | key     | key_len | ref                    | rows | filtered | Extra       |
++----+-------------+-------+------------+--------+----------------------+---------+---------+------------------------+------+----------+-------------+
+|  1 | SIMPLE      | e     | NULL       | ALL    | fk_employees_manager | NULL    | NULL    | NULL                   |   10 |    25.00 | Using where |
+|  1 | SIMPLE      | m     | NULL       | eq_ref | PRIMARY              | PRIMARY | 4       | bookstore.e.manager_id |    1 |   100.00 | NULL        |
++----+-------------+-------+------------+--------+----------------------+---------+---------+------------------------+------+----------+-------------+</pre><p>On ten rows the scan is the right plan. On a million employees you would index department, the column the WHERE filters.</p>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>SOURCE <code class="inline">labs/module-09/l6_1-indexes/plan_reading_starter.sql</code>: about a second to build 100,000 visits; every plan says Table scan.</li>
+  <li>TODO 1: predict the new plan, then turn the CREATE INDEX on.</li>
+  <li>TODO 2: the composite index for "customer 3 in June". Which column first?</li>
+  <li>TODO 3: a UNIQUE index on ticket. Finished early? <code class="inline">index_killers_starter.sql</code>.</li>
+</ul>
+<table class="timing">
+<thead><tr><th>Query</th><th>Plan before (shape)</th><th>Plan after (shape)</th></tr></thead>
+<tbody>
+<tr><td>visits on June 1</td><td></td><td></td></tr>
+<tr><td>customer 3 in June</td><td></td><td></td></tr>
+<tr><td>ticket = '004242'</td><td></td><td></td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>In a freshly loaded bookstore. The 6.2 items create a view, use it and drop it again; P3 changes a price inside a transaction and rolls it back. Write your prediction first.</p>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it. (categories.name is UNIQUE.)</div><pre class="code"><span class="k">SELECT</span> INDEX_NAME, COLUMN_NAME
+<span class="k">FROM</span> information_schema.STATISTICS
+<span class="k">WHERE</span> TABLE_SCHEMA = <span class="s">'bookstore'</span> <span class="k">AND</span> TABLE_NAME = <span class="s">'categories'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> INDEX_NAME;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it. (email is UNIQUE in employees.)</div><pre class="code"><span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> employees <span class="k">WHERE</span> email = <span class="s">'nina.kowalski@bookstore.example'</span>\G</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>Tune the Sales Reports</b> (lesson page, "Project"), <code class="inline">tune_sales.sql</code>. In class: Steps 1 to 3. At home: Steps 4 to 6.</p>
+<ul class="tick">
+  <li>☐ Step 1: report A measured; why it needs no new index, as a comment</li>
+  <li>☐ Steps 2 and 3: report B's table scan, then its range rewrite (Index range scan)</li>
+  <li>☐ Step 4: report C with a three-column index: no Filter or Sort line left</li>
+  <li>☐ Step 5: keep both composite indexes? (reviewed with EXPLAIN)</li>
+  <li>☐ Step 6: the final index list</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Which index does every InnoDB table have, even though you never created one by name?</div><div class="opts"><div class="opt">A) One index per column</div><div class="opt">B) The primary key: the rows themselves are stored in its order (the clustered index)</div><div class="opt">C) An index on every VARCHAR column</div><div class="opt">D) None: MySQL scans every table until you add indexes</div></div></div>
+<div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt"><code class="inline">sales_log</code> has an index on <code class="inline">(customer_id, sold_on)</code> and no other index. Which query can NOT seek with it?</div><div class="opts"><div class="opt">A) <code class="inline">WHERE customer_id = 3</code></div><div class="opt">B) <code class="inline">WHERE customer_id = 3 AND sold_on &gt;= '2025-03-01'</code></div><div class="opt">C) <code class="inline">WHERE sold_on &gt;= '2025-03-01' AND customer_id = 3</code></div><div class="opt">D) <code class="inline">WHERE sold_on BETWEEN '2025-03-01' AND '2025-03-31'</code></div></div></div>
+<div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt"><code class="inline">sold_on</code> has an index. Rewrite <code class="inline">WHERE YEAR(sold_on) = 2024</code> so MySQL can use it.</div><div class="write"></div></div>
+<div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt"><code class="inline">receipt_no</code> is <code class="inline">CHAR(7)</code> with a unique index, yet <code class="inline">WHERE receipt_no = 4242</code> shows <code class="inline">Table scan</code>. Why?</div><div class="opts"><div class="opt">A) The text column is converted to a number on every row, so the index order no longer helps</div><div class="opt">B) Unique indexes cannot be used for equality</div><div class="opt">C) The table needs ANALYZE TABLE first</div><div class="opt">D) 4242 is too small: receipt numbers start at 1000000</div></div></div>
+<div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">An index <code class="inline">idx_sales_customer_date (customer_id, sold_on)</code> exists. You run <code class="inline">CREATE INDEX idx_sales_customer ON sales_log (customer_id);</code>. What happens?</div><div class="opts"><div class="opt">A) <code class="inline">ERROR 1061: Duplicate key name</code></div><div class="opt">B) MySQL refuses: the column is already indexed</div><div class="opt">C) It succeeds without an error or a warning, and the new index is pure overhead</div><div class="opt">D) It replaces the composite index</div></div></div>
+<div class="q" data-sc="6" data-kind="short"><div class="qn">Q6</div><div class="qt"><code class="inline">DROP INDEX fk_orders_customer ON orders;</code> fails. Which error number, and why does MySQL refuse?</div><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Think of a physical index you use (a contact list, a library catalog, a recipe book). What is it sorted by? Which questions does it answer instantly, and which force you to scan every page? Map one of each to a SQL query and the index that would or would not help.</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">6.2</span><h3>Views</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Explain what a view stores (a query, not data) and read the definition MySQL saves</li>
+  <li>Create, query, replace and drop views, including views over joins and aggregates</li>
+  <li>Predict whether a view is updatable, and protect it with WITH CHECK OPTION</li>
+  <li>Use a view to hide sensitive columns, and grant access to the view alone</li>
+  <li>Recognize and fix the errors views raise (1050, 1288, 1356, 1369, 1393)</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>A view</b> is a saved SELECT: it stores the query, never the rows, and is recomputed every time you read it.</li>
+  <li><b>Read it like a table;</b> put ORDER BY in the query that reads it, not in the view.</li>
+  <li><b>CREATE OR REPLACE VIEW</b> makes scripts rerunnable; DROP VIEW removes only the definition.</li>
+  <li><b>Updatable</b> when each view row is one base row: no GROUP BY, aggregates, DISTINCT, UNION or window functions. A join view may change one table per statement.</li>
+  <li><b>WITH CHECK OPTION</b> refuses writes that would push a row out of the view (1369).</li>
+  <li><b>SQL SECURITY DEFINER:</b> an account with SELECT on the view alone sees the view's columns and rows, and nothing else of the table.</li>
+  <li><b>Frozen and fragile:</b> SELECT * is expanded at creation; renamed or dropped columns break a view (1356).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: a view that filters a window</div>
+<p>A view can hold a window function. Since a view is read like a table, the query that reads it can filter on the window's result: the CTE pattern of Session 8, saved under a name:</p>
+<pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_price_rank <span class="k">AS</span>
+<span class="k">SELECT</span> title, price,
+       ROW_NUMBER() <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">DESC</span>, title) <span class="k">AS</span> pos
+<span class="k">FROM</span> books;
+<span class="k">SELECT</span> pos, title, price <span class="k">FROM</span> v_price_rank <span class="k">WHERE</span> pos &lt;= <span class="s">3</span> <span class="k">ORDER</span> <span class="k">BY</span> pos;</pre>
+<pre class="out">+-----+-----------------------+-------+
+| pos | title                 | price |
++-----+-----------------------+-------+
+|   1 | Lord of the Rings     | 15.99 |
+|   2 | Dune                  | 14.99 |
+|   3 | To Kill a Mockingbird | 11.99 |
++-----+-----------------------+-------+</pre><p>Is it updatable? A window function makes each view row depend on other rows, so MySQL says no:</p>
+<pre class="code"><span class="k">SELECT</span> TABLE_NAME, IS_UPDATABLE
+<span class="k">FROM</span> information_schema.VIEWS
+<span class="k">WHERE</span> TABLE_SCHEMA = <span class="s">'bookstore'</span> <span class="k">AND</span> TABLE_NAME = <span class="s">'v_price_rank'</span>;
+<span class="k">DROP</span> <span class="k">VIEW</span> v_price_rank;</pre>
+<pre class="out">+--------------+--------------+
+| TABLE_NAME   | IS_UPDATABLE |
++--------------+--------------+
+| v_price_rank | NO           |
++--------------+--------------+</pre></div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>SOURCE <code class="inline">labs/module-09/l6_2-views/report_views_starter.sql</code>: seven authors, and an empty "sold nothing" list.</li>
+  <li>TODO 1: LEFT JOINs and COALESCE. Predict first: how many authors now?</li>
+  <li>TODO 2: create <code class="inline">v_city_orders</code> (no GROUP BY inside the view). TODO 3: replace v_author_sales with one more column.</li>
+  <li>Finished early? <code class="inline">guarded_views_starter.sql</code>.</li>
+</ul>
+<div class="write"></div>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>In a freshly loaded bookstore. The 6.2 items create a view, use it and drop it again; P3 changes a price inside a transaction and rolls it back. Write your prediction first.</p>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it. (A view is recomputed every time.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_pricey <span class="k">AS</span> <span class="k">SELECT</span> title <span class="k">FROM</span> books <span class="k">WHERE</span> price &gt; <span class="s">12</span>;
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> books <span class="k">SET</span> price = <span class="s">9.00</span> <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SELECT</span> title <span class="k">FROM</span> v_pricey <span class="k">ORDER</span> <span class="k">BY</span> title;
+<span class="k">ROLLBACK</span>;
+<span class="k">DROP</span> <span class="k">VIEW</span> v_pricey;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it. (DISTINCT in a view.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_cities <span class="k">AS</span> <span class="k">SELECT</span> <span class="k">DISTINCT</span> city <span class="k">FROM</span> customers;
+<span class="k">SELECT</span> TABLE_NAME, IS_UPDATABLE
+<span class="k">FROM</span> information_schema.VIEWS
+<span class="k">WHERE</span> TABLE_SCHEMA = <span class="s">'bookstore'</span> <span class="k">AND</span> TABLE_NAME = <span class="s">'v_cities'</span>;
+<span class="k">DROP</span> <span class="k">VIEW</span> v_cities;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>A Reporting Layer</b> (lesson page, "Project"), <code class="inline">reporting_views.sql</code>. In class: Steps 1 to 3. At home: Steps 4 to 6.</p>
+<ul class="tick">
+  <li>☐ Steps 1 to 3: v_book_catalog, v_order_totals, v_book_sales (Gatsby and Catcher at 0 copies)</li>
+  <li>☐ Step 4: v_best_customers on v_customer_summary</li>
+  <li>☐ Step 5: the IS_UPDATABLE list (all NO)</li>
+  <li>☐ Step 6: the script runs twice without an error</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">What does MySQL store when you create a view?</div><div class="opts"><div class="opt">A) Only the query: the rows are computed every time the view is read</div><div class="opt">B) A copy of the rows, refreshed every night</div><div class="opt">C) A copy of the rows, refreshed on every INSERT</div><div class="opt">D) An index on the base tables</div></div></div>
+<div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">What happens when the second statement runs?</div><pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_ny <span class="k">AS</span>
+<span class="k">SELECT</span> id, first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'New York'</span>
+<span class="k">WITH</span> <span class="k">CHECK</span> <span class="k">OPTION</span>;
+<span class="k">UPDATE</span> v_ny <span class="k">SET</span> city = <span class="s">'Boston'</span> <span class="k">WHERE</span> id = <span class="s">1</span>;</pre><div class="write"></div></div>
+<div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">Which of these views accepts an UPDATE that passes through to its base table?</div><div class="opts"><div class="opt">A) <code class="inline">SELECT author_id, COUNT(*) AS books FROM books GROUP BY author_id</code></div><div class="opt">B) <code class="inline">SELECT DISTINCT city FROM customers</code></div><div class="opt">C) <code class="inline">SELECT id, title, price FROM books WHERE price &lt; 10</code></div><div class="opt">D) <code class="inline">SELECT title FROM books UNION SELECT name FROM authors</code></div></div></div>
+<div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt"><code class="inline">v_all</code> was created as <code class="inline">SELECT * FROM products</code>. Then a column <code class="inline">color</code> is added to products. What does <code class="inline">SELECT * FROM v_all</code> return?</div><div class="opts"><div class="opt">A) <code class="inline">ERROR 1356</code></div><div class="opt">B) All columns, including color</div><div class="opt">C) An empty result until the view is refreshed</div><div class="opt">D) The old columns only, without color</div></div></div>
+<div class="q" data-sc="11" data-kind="short"><div class="qn">Q11</div><div class="qt">Why does the course put ORDER BY in the query that reads a view, and not inside the view?</div><div class="write"></div></div>
+<div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">An account has <code class="inline">SELECT</code> on <code class="inline">v_staff_directory</code> only. The view uses the default <code class="inline">SQL SECURITY DEFINER</code>. What can the account do?</div><div class="opts"><div class="opt">A) Read every column of employees, salaries included</div><div class="opt">B) Read the directory through the view, but not the employees table itself</div><div class="opt">C) Nothing: it has no privilege on employees</div><div class="opt">D) Update salaries through the view</div></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Think of a spreadsheet or report several people share. Who should see which columns and rows? Sketch two or three views with names, and note which one (if any) should allow edits and what its check option would protect.</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Clinic</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Eight errors, one fix each</div>
+<p>SOURCE <code class="inline">labs/module-09/l6_1-indexes/debug_indexes.sql</code> and <code class="inline">labs/module-09/l6_2-views/debug_views.sql</code>.</p>
+<table class="timing">
+<thead><tr><th>Section</th><th>Error number</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>6.1 A</td><td></td><td></td><td></td></tr>
+<tr><td>6.1 B</td><td></td><td></td><td></td></tr>
+<tr><td>6.1 C</td><td></td><td></td><td></td></tr>
+<tr><td>6.1 D</td><td></td><td></td><td></td></tr>
+<tr><td>6.2 A</td><td></td><td></td><td></td></tr>
+<tr><td>6.2 B</td><td></td><td></td><td></td></tr>
+<tr><td>6.2 C</td><td></td><td></td><td></td></tr>
+<tr><td>6.2 D</td><td></td><td></td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<p>Three questions, no notes.</p>
+<div class="q"><div class="qn">E1</div><div class="qt">A query filters <code class="inline">WHERE customer_id = 5 AND book_id = 9 ORDER BY sold_on</code>. Write the one index that serves the filter and the sort.</div><div class="write"></div></div>
+<div class="q"><div class="qn">E2</div><div class="qt">Name two habits that stop MySQL from using an index on a column.</div><div class="write"></div></div>
+<div class="q"><div class="qn">E3</div><div class="qt">Give one reason to create a view, and one thing a view does NOT do for you.</div><div class="write"></div></div>
+
+  <div class="sec"><h2>Notes</h2><span class="rule"></span></div>
+<div class="notes-lines"></div>
+
+  <div class="sec"><h2>Homework Checklist</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ Finish <code class="inline">tune_sales.sql</code> (Steps 4 to 6) and <code class="inline">reporting_views.sql</code> (Steps 4 to 6)</li>
+  <li>☐ Lesson 6.1 Hands-on Exercises 1 to 3 (Exercise 4 is a stretch)</li>
+  <li>☐ Lesson 6.2 Hands-on Exercises 1 to 3 (Exercise 4 is a stretch)</li>
+  <li>☐ Both Quick Quizzes and both journal entries</li>
+  <li>☐ Labs not finished in class: <code class="inline">index_killers_starter.sql</code>, <code class="inline">guarded_views_starter.sql</code></li>
+  <li>☐ Find a spreadsheet value that repeats on many rows (for Lesson 6.3)</li>
+  <li>☐ Bring to Session 10: a working bookstore, my spreadsheet example, the course folder with <code class="inline">labs/</code>, both project files, this workbook</li>
+</ul>
+
+  <div class="sec"><h2>Glossary</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>index</td><td>A sorted B-tree copy of one or more columns with pointers to the rows</td></tr>
+<tr><td>full table scan</td><td>Reading every row to answer a query (Table scan / type ALL)</td></tr>
+<tr><td>clustered index</td><td>InnoDB's primary key: the rows themselves, stored in key order</td></tr>
+<tr><td>secondary index</td><td>Any other index; it stores the column values plus the primary key</td></tr>
+<tr><td>composite index</td><td>An index on several columns, sorted by the first, then the second ...</td></tr>
+<tr><td>leftmost prefix</td><td>The first column(s) of a composite index, which it can seek on</td></tr>
+<tr><td>covering index</td><td>An index that holds every column a query needs, so the table is never read</td></tr>
+<tr><td><code class="inline">EXPLAIN</code> / <code class="inline">EXPLAIN ANALYZE</code></td><td>Show the plan / run the query and add real times and rows</td></tr>
+<tr><td>invisible index</td><td>Maintained on writes but ignored by the optimizer (test a drop safely)</td></tr>
+<tr><td>view</td><td>A named, saved SELECT; holds no rows</td></tr>
+<tr><td>base table</td><td>A real table a view reads from</td></tr>
+<tr><td>updatable view</td><td>A view whose rows map one-to-one to base rows, so writes pass through</td></tr>
+<tr><td><code class="inline">WITH CHECK OPTION</code></td><td>Rejects writes through a view that would produce rows it cannot show</td></tr>
+<tr><td><code class="inline">SQL SECURITY DEFINER</code></td><td>The view reads its tables with its creator's privileges</td></tr>
+</tbody>
+</table>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 9 · Participant Workbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

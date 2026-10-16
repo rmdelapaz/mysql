@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 8</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 8: CTEs and Window Functions</h1>
+    <p class="sub">How to teach the first session of Part 2. Check that every machine has the full course database, refresh Part 1's joins and grouping in five questions, then turn inside-out queries into named steps, follow the bookstore's chain of managers with recursive CTEs, and put every row next to a total, a rank or its neighbor with window functions.</p>
+    <div class="meta-row">
+      <span class="chip"><b>2</b> lessons</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lessons <b>5.1–5.2</b></span>
+      <span class="chip">Session <b>8</b> of 14 · Part 2</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Same rhythm as Part 1: frame (one mental model) → live demo (you type, they type along) → guided lab (a kit lab, new practice) → start the lesson's own project. Exercises, quizzes, journals and the rest of each project go home.</li>
+  <li>Every SQL block below was run to produce the output printed under it, on a freshly loaded bookstore on MySQL 9.7 with the default settings. Ask for a prediction before every statement that prints something; read error numbers aloud.</li>
+  <li>Keep <code class="inline">lesson_ctes.html</code> and <code class="inline">lesson_window_functions.html</code> open for the round-by-round diagrams and the version notes. Labs live in <code class="inline">labs/module-08/</code>: <code class="inline">_starter.sql</code> files are handouts, <code class="inline">_solution.sql</code> files are yours.</li>
+  <li>Session 8 opens Part 2. The warm-up is 20 minutes instead of 10: an environment check that requires the full bookstore, a five-question Part 1 refresher, and the map of Part 2. Both lessons start from a freshly loaded <code class="inline">bookstore.sql</code> and only read, so nobody needs to reload between the two lessons.</li>
+  <li>Teal blocks are hands-on, amber blocks are watch-outs. Lesson codes (5.1, 5.2) match the course site.</li>
+</ul>
+<div class="note warn"><div class="t">Starting with Part 2? (programs that skip Part 1)</div>
+<p>Part 2 can be sold and run on its own for learners who already write SQL. It assumes everything Part 1 teaches: a working MySQL 9.7 (or 8.4) and the <code class="inline">mysql</code> client, SOURCE, CREATE TABLE with keys and constraints, CRUD, WHERE/ORDER BY/LIMIT, GROUP BY with HAVING, subqueries and derived tables, foreign keys, and all four joins including self-joins. <b>Before:</b> send Part 1's setup guide (Lesson 1.2's install section for their platform), the course download <code class="inline">bookstore.sql</code>, and two files from this session: <code class="inline">labs/module-08/l5_0-part2-start/check_environment.sh</code> (or <code class="inline">.ps1</code>) and <code class="inline">labs/module-08/l5_0-part2-start/refresher_starter.sql</code>. Ask for the check's verdict and the refresher's four answers by email. <b>In the room:</b> the warm-up below runs unchanged; learners who struggled with the refresher sit with someone who did not. <b>Gaps to expect:</b> self-joins and LEFT JOIN counting (W2 to W4); give those learners Lesson 4.3 as reading before Session 9. The Session 1 environment check is not needed: this session's version checks the same things and also requires the bookstore.</p>
+<p>For a cohort coming straight from Part 1 (Session 7), the note does not apply: they ran the Part 1 assessment last time, and the refresher doubles as a quick look at what stuck.</p>
+</div>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Files to hand out:</b> <code class="inline">labs/module-08/</code> without the <code class="inline">*_solution.sql</code> files; the workbook. Learners keep <code class="inline">labs/</code> in their course folder, next to <code class="inline">bookstore.sql</code>, and open their terminal there.</li>
+  <li>☐ <b>Run the kit check once:</b> <code class="inline">python3 labs/check_labs.py module-08</code> from this kit's folder (13 files, a few seconds, all PASS). Run the environment check on the projector machine so you can show READY for Part 2.</li>
+  <li>☐ <b>Projector machine:</b> MySQL 9.7 with a freshly loaded bookstore (<code class="inline">SOURCE bookstore.sql</code>), the <code class="inline">mysql&gt;</code> client at 18 pt or larger, and the course folder as the current folder. Browser tabs: <code class="inline">lesson_ctes.html</code>, <code class="inline">lesson_window_functions.html</code>.</li>
+  <li>☐ <b>Board, before learners arrive:</b> the Part 2 map (Sessions 8 to 14: queries → design → programs → operations → final project); a three-box "recipe" (customer_totals → average → keep above); and two columns headed "GROUP BY: one row per group" and "OVER: every row, plus the group's number".</li>
+  <li>☐ <b>Print or share:</b> the workbook (its Start Here page has the Part 2 check and the refresher), sticky notes for the exit ticket.</li>
+</ul>
+<div class="blk warn"><div class="h">Known traps today</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><code class="inline">ERROR 1146 ... Table 'bookstore.org' doesn't exist</code></td><td>WITH without RECURSIVE (or a CTE used in the next statement)</td><td>WITH RECURSIVE; repeat the WITH in each statement that needs it.</td></tr>
+<tr><td><code class="inline">ERROR 3636 ... Recursive query aborted after 1001 iterations</code></td><td>No stop condition, or one that never becomes false</td><td>Add or fix the WHERE in the recursive member. Do not raise the limit to "fix" it.</td></tr>
+<tr><td><code class="inline">ERROR 1406 ... Data too long for column 'path'</code></td><td>The anchor fixed a narrow column (a literal like <code class="inline">'Maria'</code>)</td><td>Widen it in the anchor: <code class="inline">CAST(... AS CHAR(200))</code>.</td></tr>
+<tr><td><code class="inline">ERROR 3593 ... cannot use the window function</code></td><td>A window function in WHERE, HAVING or GROUP BY</td><td>Compute it in a CTE, filter in the outer query.</td></tr>
+<tr><td><code class="inline">ERROR 1064 ... near 'rank</code></td><td><code class="inline">rank</code>, <code class="inline">row_number</code>, <code class="inline">groups</code>, <code class="inline">window</code> are reserved words</td><td>Name columns <code class="inline">rank_num</code>, <code class="inline">pos</code>; or use backticks.</td></tr>
+<tr><td>A learner on MariaDB sees no error for a runaway recursion</td><td>MariaDB stops at <code class="inline">max_recursive_iterations</code> with a warning, not an error</td><td><code class="inline">SHOW WARNINGS;</code> and always write the stop condition. <code class="inline">LAG(x, 2, 0)</code> is a 1064 there: wrap in COALESCE.</td></tr>
+<tr><td>The check says <code class="inline">NOT READY ... bookstore has 9 tables</code></td><td>A leftover table from Part 1 work (or a lesson in progress)</td><td><code class="inline">SOURCE bookstore.sql</code> rebuilds the database from scratch.</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 8 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">20</td><td>Welcome to Part 2: environment check and Part 1 refresher</td><td>Everyone reloads <code class="inline">bookstore.sql</code> and runs <code class="inline">check_environment</code> (READY for Part 2); five retrieval questions on joins and Part 1; the map of Part 2.</td></tr>
+      <tr><td class="t">0:20</td><td class="t">10</td><td><b>5.1</b> Frame and mental model</td><td>One question, three steps; a step with a name; recursion in rounds.</td></tr>
+      <tr><td class="t">0:30</td><td class="t">20</td><td><b>5.1</b> Live demo</td><td>Inside-out nested query → WITH; two CTEs; a CTE joined to itself; recursion: a series, a calendar, the org chart, a chain of command; two errors on purpose.</td></tr>
+      <tr><td class="t">0:50</td><td class="t">15</td><td><b>5.1</b> Guided lab</td><td><code class="inline">labs/module-08/l5_1-ctes/staff_tree_starter.sql</code> in pairs: twelve months, then a division for every employee.</td></tr>
+      <tr><td class="t">1:05</td><td class="t">10</td><td><b>5.1</b> Start the lesson project</td><td><code class="inline">org_report.sql</code>: Steps 1 and 3 (org chart, chain of command); Steps 2, 4 and 5 go home.</td></tr>
+      <tr><td class="t">1:15</td><td class="t">10</td><td>Break</td><td>Leave the GROUP BY versus OVER picture on the board.</td></tr>
+      <tr><td class="t">1:25</td><td class="t">10</td><td><b>5.2</b> Frame and mental model</td><td>GROUP BY squashes, OVER keeps every row; the three parts of OVER; where windows run in the clause order.</td></tr>
+      <tr><td class="t">1:35</td><td class="t">25</td><td><b>5.2</b> Live demo</td><td>OVER (), PARTITION BY, three ranking functions, running total and moving average, LAG and LEAD, top N per group, three mistakes.</td></tr>
+      <tr><td class="t">2:00</td><td class="t">20</td><td><b>5.2</b> Guided lab</td><td><code class="inline">labs/module-08/l5_2-window-functions/leaderboards_starter.sql</code>: ties, top 2 per category, share of department payroll.</td></tr>
+      <tr><td class="t">2:20</td><td class="t">15</td><td><b>5.2</b> Start the lesson project</td><td><code class="inline">sales_dashboard.sql</code>: Steps 1 and 2 (revenue so far, month over month); Steps 3 to 5 go home.</td></tr>
+      <tr><td class="t">2:35</td><td class="t">15</td><td>Debug clinic: both lessons</td><td><code class="inline">debug_ctes.sql</code> and <code class="inline">debug_windows.sql</code> in pairs: six errors, one fix each, then the CTE rewrite.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up</td><td>Exit ticket (3 questions), homework, bring list for Session 9.</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> The lesson pages estimate 100 + 100 = 200 minutes for a solo learner; after the 20-minute Part 2 opening, the break, the debug clinic and the wrap-up, the room has 135. Lesson 5.1 gets 55 minutes and 5.2 gets 70: window functions have more moving parts (partition, order, frame), and recursion is easier to finish at home once the rounds are clear.</p>
+<p><b>Goes home (about 2 to 3 hours).</b> <code class="inline">org_report.sql</code> Steps 2, 4 and 5; <code class="inline">sales_dashboard.sql</code> Steps 3 to 5; each lesson's Exercises 1 to 3 (4 is a stretch); both Quick Quizzes; both journal entries; the lab files not finished in class (<code class="inline">category_steps_starter.sql</code>, <code class="inline">order_trends_starter.sql</code>).</p>
+<p><b>Protect, in this order:</b> the environment check (Part 2 needs the full bookstore every session); 5.1 demo steps 6 to 8 (recursion in rounds: the idea people cannot get from reading alone); the 5.2 ranking step with a prediction; top N per group with the CTE pattern; the staff-tree lab through TODO 2. <b>Cut first:</b> the debug clinic (hand out both debug files as homework), then the 5.1 project start (send Steps 1 to 5 home), then 5.2 demo step 9 (the RANGE trap is in the self-check).</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Welcome to Part 2: Environment Check and Part 1 Refresher</h3><span class="dur">20 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">5m</td><td>Reload <code class="inline">bookstore.sql</code>; run the Part 2 environment check on every machine</td></tr>
+<tr><td class="t">12m</td><td>Part 1 refresher: five retrieval questions (W1 to W5), answered from memory, then shown</td></tr>
+<tr><td class="t">3m</td><td>The map of Part 2 and today's two lessons</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Sequence and talking points</div>
+<ul class="tick">
+  <li><b>Environment check (5m).</b> Say: "Part 2 starts from the full course database, every session." On the projector, then theirs: <code class="inline">SOURCE bookstore.sql</code> (it prints the eight row counts), then <code class="inline">SOURCE labs/module-08/l5_0-part2-start/check_environment.sql</code>. Done = <code class="inline">READY for Part 2</code> (<code class="inline">READY WITH NOTES</code> on 8.4 or MariaDB). The check fails on purpose when bookstore is missing or has a ninth table left from Part 1 work: reload and rerun. Machines that are not ready pair up; you fix them during the 5.1 lab, not now. The <code class="inline">.sh</code> / <code class="inline">.ps1</code> helpers in the same folder also check the client version.</li>
+  <li><b>Refresher (12m).</b> Say: "Five questions from Part 1, no notes. Today's lessons stand on joins, grouping and derived tables." Learners write answers to W1 to W5 on the workbook's Start Here page (5 minutes), then you take them one by one: a volunteer answers, you show the query or the fix. Tally misses on a sticky note: W3 and W4 (counting after joins) predict trouble with today's CTEs that total orders.</li>
+  <li><b>Part 2 map (3m).</b> Point at the board: "Sessions 8 to 14: better queries today (CTEs and window functions), then design for speed and safety (indexes, views, normalization), programs inside the database (procedures, transactions, JSON), operations (users, backups), and your own database as the final project." Today: "5.1 names the steps of a long query and follows chains of rows; 5.2 puts each row next to a total, a rank or its neighbor."</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Refresher answers (W1 to W5)</div>
+<ol class="steps">
+  <li><b>W1</b> Which customers have never placed an order? Say the query shape, then the names. <b>Answer:</b> A LEFT JOIN from customers to orders, keeping the customers whose orders side is NULL (or HAVING COUNT(o.id) = 0): Carol and Hank. Lesson 4.3, the anti-join.</li>
+  <li><b>W2</b> employees has a manager_id. How do you show each employee next to their manager's name? Who is Sofia's manager? <b>Answer:</b> A self-join: the table twice with two aliases, ON m.id = e.manager_id. Sofia (id 7) reports to Marcus.</li>
+  <li><b>W3</b> SELECT a.name, COUNT(*) FROM authors a LEFT JOIN books b ON b.author_id = a.id GROUP BY a.id, a.name: what does it say for Isaac Asimov, who has no books, and how do you fix it? <b>Answer:</b> 1, because COUNT(*) counts the NULL-padded row the LEFT JOIN made. Count a column of the right table, COUNT(b.id), which skips NULL: 0. (Lesson 4.3, Common Mistake 4.)</li>
+  <li><b>W4</b> Books per author and copies sold in one query: Orwell shows 5 books, but he wrote 2. What happened? <b>Answer:</b> Fan-out: joining order_items repeats each book once per order line. COUNT(DISTINCT b.id) fixes it. Ask what one row of the join stands for. (Lesson 4.3, Common Mistake 5.)</li>
+  <li><b>W5</b> A subquery in FROM (a derived table) fails with error 1248. What is missing? <b>Answer:</b> An alias: every derived table needs its own name, ( ... ) AS t (Lesson 3.4). Today's CTEs give such steps a name up front, and read top to bottom.</li>
+</ol>
+<p>The key shows W1 and W2's real output. <code class="inline">labs/module-08/l5_0-part2-start/refresher_starter.sql</code> practices the same four moves (an inner join, LEFT JOIN with COUNT, a derived table, a self-join): hand it to anyone who missed two or more.</p>
+</div>
+<div class="blk warn"><div class="h">Watch-outs</div>
+<ul class="tick">
+  <li><b>Do not reteach Part 1.</b> Five minutes of answers, not a lecture: Lesson 4.3 and the refresher lab are the place for gaps.</li>
+  <li><b>A machine with no bookstore.</b> <code class="inline">SOURCE</code> needs the path to <code class="inline">bookstore.sql</code>; <code class="inline">Failed to open file</code> means the client was started in another folder (exit, <code class="inline">cd</code>, log in again), or give the full path with forward slashes on Windows.</li>
+  <li><b>New learners in a Part 2-only program.</b> Pair them with each other only if both passed the refresher; otherwise with someone from the strongest pile.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plans</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">5.1</span><h3>CTEs &amp; Recursive Queries</h3><span class="dur">55 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Rewrite a nested subquery as a WITH query and name each step</li>
+  <li>Chain several CTEs in one statement, letting later steps read earlier ones</li>
+  <li>Choose between a CTE, a derived table and a view for a given job</li>
+  <li>Write a recursive CTE with an anchor, a recursive member and a stop condition, and generate number and month series with it</li>
+  <li>Walk the employee hierarchy down (an org chart) and up (a chain of command)</li>
+  <li>Read and fix errors 1146, 3636 and 1406 from broken CTEs</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: one question, three steps; WITH names a step; recursion in rounds</td></tr>
+<tr><td class="t">20m</td><td>Live demo: nested query → CTE; two CTEs; self-joined CTE; series, calendar, org chart, chain of command; 1146 and 3636</td></tr>
+<tr><td class="t">15m</td><td>Guided lab: <code class="inline">staff_tree_starter.sql</code> in pairs</td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: <code class="inline">org_report.sql</code> Steps 1 and 3</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Point at the three boxes on the board: "A real question takes steps. Total each customer's orders. Average those totals. Keep the customers above it. Until now you nested the steps inside each other and read them inside out. A <b>CTE</b> writes each step once, gives it a name, and lists the steps top to bottom, like a recipe. The name lives for one statement."</p>
+<p>Then recursion, with the number series drawn as rounds: "A <b>recursive CTE</b> has an <b>anchor</b> that runs once and makes the starting rows, and a <b>recursive member</b> that runs again and again, each time reading only the rows the last round made. When a round makes no rows, it stops: that is the <b>stop condition</b>. It is how you follow a chain whose length you do not know: managers above managers, months until July."</p>
+<p>The two directions of a hierarchy, as two arrows on the board: down = <code class="inline">e.manager_id = cte.id</code> ("whose manager is this?"), up = <code class="inline">e.id = cte.manager_id</code> ("who is this person's manager?").</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>The lesson's own examples, typed live on the freshly loaded bookstore. Learners type along on their own machines; the long queries can be pasted from the lesson page by anyone who falls behind.</p>
+<ol class="steps">
+  <li><b>The question, inside out (2m).</b> "Which customers spent more than the average customer? Three steps: total each customer, average the totals, keep the ones above. With Lesson 3.4's derived tables it looks like this." Scroll it slowly; ask where to start reading (the middle) and point at the total-per-customer step written twice.
+<pre class="code"><span class="k">SELECT</span> t.customer, t.total
+<span class="k">FROM</span> (
+    <span class="k">SELECT</span> c.first_name <span class="k">AS</span> customer,
+           SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> total
+    <span class="k">FROM</span> customers c
+    <span class="k">JOIN</span> orders o       <span class="k">ON</span> o.customer_id = c.id
+    <span class="k">JOIN</span> order_items oi <span class="k">ON</span> oi.order_id = o.id
+    <span class="k">GROUP</span> <span class="k">BY</span> c.id, c.first_name
+) <span class="k">AS</span> t
+<span class="k">WHERE</span> t.total &gt; (
+    <span class="k">SELECT</span> AVG(t2.total)
+    <span class="k">FROM</span> (
+        <span class="k">SELECT</span> SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> total
+        <span class="k">FROM</span> orders o
+        <span class="k">JOIN</span> order_items oi <span class="k">ON</span> oi.order_id = o.id
+        <span class="k">GROUP</span> <span class="k">BY</span> o.customer_id
+    ) <span class="k">AS</span> t2
+)
+<span class="k">ORDER</span> <span class="k">BY</span> t.total <span class="k">DESC</span>;</pre>
+<pre class="out">+----------+-------+
+| customer | total |
++----------+-------+
+| Alice    | 58.95 |
+| Dave     | 45.96 |
+| Frank    | 41.96 |
++----------+-------+</pre></li>
+  <li><b>The same question, top to bottom (3m).</b> "Name the step once, up front, with WITH. Now it reads like a recipe: here is customer_totals; show the ones above its average." Same three rows: Alice, Dave, Frank.
+<pre class="code"><span class="k">WITH</span> customer_totals <span class="k">AS</span> (
+    <span class="k">SELECT</span> c.first_name <span class="k">AS</span> customer,
+           SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> total
+    <span class="k">FROM</span> customers c
+    <span class="k">JOIN</span> orders o       <span class="k">ON</span> o.customer_id = c.id
+    <span class="k">JOIN</span> order_items oi <span class="k">ON</span> oi.order_id = o.id
+    <span class="k">GROUP</span> <span class="k">BY</span> c.id, c.first_name
+)
+<span class="k">SELECT</span> customer, total
+<span class="k">FROM</span> customer_totals
+<span class="k">WHERE</span> total &gt; (<span class="k">SELECT</span> AVG(total) <span class="k">FROM</span> customer_totals)
+<span class="k">ORDER</span> <span class="k">BY</span> total <span class="k">DESC</span>;</pre>
+<pre class="out">+----------+-------+
+| customer | total |
++----------+-------+
+| Alice    | 58.95 |
+| Dave     | 45.96 |
+| Frank    | 41.96 |
++----------+-------+</pre>
+Average of the six customers who ordered: about 39.55 (Carol and Hank never ordered, so the inner joins leave them out).</li>
+  <li><b>Two steps, one WITH (2m).</b> "One WITH, several CTEs, separated by commas. The second reads the first. average has one row, so CROSS JOIN attaches it to every customer."
+<pre class="code"><span class="k">WITH</span> customer_totals <span class="k">AS</span> (
+    <span class="k">SELECT</span> o.customer_id,
+           SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> total
+    <span class="k">FROM</span> orders o
+    <span class="k">JOIN</span> order_items oi <span class="k">ON</span> oi.order_id = o.id
+    <span class="k">GROUP</span> <span class="k">BY</span> o.customer_id
+),
+average <span class="k">AS</span> (
+    <span class="k">SELECT</span> AVG(total) <span class="k">AS</span> avg_total
+    <span class="k">FROM</span> customer_totals
+)
+<span class="k">SELECT</span> c.first_name, c.last_name, t.total,
+       ROUND(t.total - a.avg_total, <span class="s">2</span>) <span class="k">AS</span> above_average
+<span class="k">FROM</span> customer_totals t
+<span class="k">JOIN</span> customers c <span class="k">ON</span> c.id = t.customer_id
+<span class="k">CROSS</span> <span class="k">JOIN</span> average a
+<span class="k">WHERE</span> t.total &gt; a.avg_total
+<span class="k">ORDER</span> <span class="k">BY</span> t.total <span class="k">DESC</span>;</pre>
+<pre class="out">+------------+-----------+-------+---------------+
+| first_name | last_name | total | above_average |
++------------+-----------+-------+---------------+
+| Alice      | Johnson   | 58.95 |         19.40 |
+| Dave       | Brown     | 45.96 |          6.41 |
+| Frank      | Miller    | 41.96 |          2.41 |
++------------+-----------+-------+---------------+</pre></li>
+  <li><b>A CTE joined to itself (2m).</b> "A CTE is read like a table, so it can be read twice, under two aliases: this month next to last month." Point at January's NULLs: the LEFT JOIN keeps a month with no previous month. Say: "after the break, LAG does this in one line".
+<pre class="code"><span class="k">WITH</span> monthly <span class="k">AS</span> (
+    <span class="k">SELECT</span> MONTH(o.order_date)                 <span class="k">AS</span> month_num,
+           SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> revenue
+    <span class="k">FROM</span> orders o
+    <span class="k">JOIN</span> order_items oi <span class="k">ON</span> oi.order_id = o.id
+    <span class="k">GROUP</span> <span class="k">BY</span> MONTH(o.order_date)
+)
+<span class="k">SELECT</span> cur.month_num,
+       cur.revenue,
+       prev.revenue                <span class="k">AS</span> previous_month,
+       cur.revenue - prev.revenue  <span class="k">AS</span> change_amount
+<span class="k">FROM</span> monthly cur
+<span class="k">LEFT</span> <span class="k">JOIN</span> monthly prev <span class="k">ON</span> prev.month_num = cur.month_num - <span class="s">1</span>
+<span class="k">ORDER</span> <span class="k">BY</span> cur.month_num;</pre>
+<pre class="out">+-----------+---------+----------------+---------------+
+| month_num | revenue | previous_month | change_amount |
++-----------+---------+----------------+---------------+
+|         1 |   61.95 |           NULL |          NULL |
+|         2 |   51.95 |          61.95 |        -10.00 |
+|         3 |   33.47 |          51.95 |        -18.48 |
+|         4 |   38.97 |          33.47 |          5.50 |
+|         5 |   31.97 |          38.97 |         -7.00 |
+|         6 |   18.98 |          31.97 |        -12.99 |
++-----------+---------+----------------+---------------+</pre></li>
+  <li><b>Gone after the semicolon (1m).</b> "The CTE belongs to its statement. The next statement cannot see it."
+<pre class="code"><span class="k">WITH</span> monthly <span class="k">AS</span> (
+    <span class="k">SELECT</span> MONTH(order_date) <span class="k">AS</span> month_num, COUNT(*) <span class="k">AS</span> orders
+    <span class="k">FROM</span> orders
+    <span class="k">GROUP</span> <span class="k">BY</span> MONTH(order_date)
+)
+<span class="k">SELECT</span> MAX(orders) <span class="k">AS</span> busiest <span class="k">FROM</span> monthly;
+<span class="k">SELECT</span> * <span class="k">FROM</span> monthly;</pre>
+<pre class="out">+---------+
+| busiest |
++---------+
+|       3 |
++---------+
+ERROR 1146 (42S02): Table 'bookstore.monthly' doesn't exist</pre>
+Fix: repeat the WITH, or, if many scripts need it, make it a view (Session 9).</li>
+  <li><b>Recursion in rounds (3m).</b> Draw the rounds on the board as you type: anchor 1; round 1 reads 1, makes 2; ... round 5 reads 5, the stop condition fails, nothing comes out, done. "Each round sees only the rows the previous round made."
+<pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> numbers <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="s">1</span> <span class="k">AS</span> n            <span class="c">-- anchor: the first row</span>
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> n + <span class="s">1</span>             <span class="c">-- recursive member: next row from the last one</span>
+    <span class="k">FROM</span> numbers
+    <span class="k">WHERE</span> n &lt; <span class="s">5</span>              <span class="c">-- stop condition</span>
+)
+<span class="k">SELECT</span> n <span class="k">FROM</span> numbers;</pre>
+<pre class="out">+------+
+| n    |
++------+
+|    1 |
+|    2 |
+|    3 |
+|    4 |
+|    5 |
++------+</pre></li>
+  <li><b>A calendar that fills the gaps (2m).</b> "Nobody ordered in July, so GROUP BY over orders cannot show July. Generate the months first, then hang the orders on them with a LEFT JOIN."
+<pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> months <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="k">DATE</span>(<span class="s">'2026-01-01'</span>) <span class="k">AS</span> month_start
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> month_start + <span class="k">INTERVAL</span> <span class="s">1</span> MONTH
+    <span class="k">FROM</span> months
+    <span class="k">WHERE</span> month_start &lt; <span class="s">'2026-07-01'</span>
+)
+<span class="k">SELECT</span> DATE_FORMAT(m.month_start, <span class="s">'%Y-%m'</span>) <span class="k">AS</span> month,
+       COUNT(o.id)                         <span class="k">AS</span> orders
+<span class="k">FROM</span> months m
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders o
+       <span class="k">ON</span> o.order_date &gt;= m.month_start
+      <span class="k">AND</span> o.order_date &lt;  m.month_start + <span class="k">INTERVAL</span> <span class="s">1</span> MONTH
+<span class="k">GROUP</span> <span class="k">BY</span> m.month_start
+<span class="k">ORDER</span> <span class="k">BY</span> m.month_start;</pre>
+<pre class="out">+---------+--------+
+| month   | orders |
++---------+--------+
+| 2026-01 |      2 |
+| 2026-02 |      3 |
+| 2026-03 |      2 |
+| 2026-04 |      2 |
+| 2026-05 |      2 |
+| 2026-06 |      1 |
+| 2026-07 |      0 |
++---------+--------+</pre>
+COUNT(o.id) counts matched orders only, so July is 0. The date range in ON is the safe way to say "in this month".</li>
+  <li><b>The org chart, top down (3m).</b> "Anchor: the person with no manager. Each round: the people whose manager is someone from the round before. The data itself is the stop condition." Point at the CAST in the anchor: the anchor fixes every column's width.
+<pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> org <span class="k">AS</span> (
+    <span class="k">SELECT</span> id, first_name, last_name, department, <span class="s">1</span> <span class="k">AS</span> level,
+           CAST(first_name <span class="k">AS</span> <span class="k">CHAR</span>(<span class="s">200</span>)) <span class="k">AS</span> path
+    <span class="k">FROM</span> employees
+    <span class="k">WHERE</span> manager_id <span class="k">IS</span> <span class="k">NULL</span>
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> e.id, e.first_name, e.last_name, e.department, o.level + <span class="s">1</span>,
+           CONCAT(o.path, <span class="s">' &gt; '</span>, e.first_name)
+    <span class="k">FROM</span> employees e
+    <span class="k">JOIN</span> org o <span class="k">ON</span> e.manager_id = o.id
+)
+<span class="k">SELECT</span> CONCAT(<span class="k">REPEAT</span>(<span class="s">'    '</span>, level - <span class="s">1</span>), first_name, <span class="s">' '</span>, last_name) <span class="k">AS</span> org_chart,
+       department
+<span class="k">FROM</span> org
+<span class="k">ORDER</span> <span class="k">BY</span> path;</pre>
+<pre class="out">+---------------------------+------------+
+| org_chart                 | department |
++---------------------------+------------+
+| Maria Santos              | management |
+|     Daniel Reyes          | management |
+|         Marcus Hill       | inventory  |
+|             Sofia Alvarez | inventory  |
+|         Priya Nair        | sales      |
+|             Ben Carter    | sales      |
+|             Lena Park     | sales      |
+|             Tom Becker    | sales      |
+|     James Okafor          | support    |
+|         Nina Kowalski     | support    |
++---------------------------+------------+</pre></li>
+  <li><b>A chain of command, bottom up (1m).</b> "Swap the join and it climbs: who is this person's manager?"
+<pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> chain <span class="k">AS</span> (
+    <span class="k">SELECT</span> id, first_name, last_name, manager_id, <span class="s">0</span> <span class="k">AS</span> steps_up
+    <span class="k">FROM</span> employees
+    <span class="k">WHERE</span> id = <span class="s">7</span>
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> e.id, e.first_name, e.last_name, e.manager_id, c.steps_up + <span class="s">1</span>
+    <span class="k">FROM</span> employees e
+    <span class="k">JOIN</span> chain c <span class="k">ON</span> e.id = c.manager_id
+)
+<span class="k">SELECT</span> steps_up, CONCAT(first_name, <span class="s">' '</span>, last_name) <span class="k">AS</span> person
+<span class="k">FROM</span> chain
+<span class="k">ORDER</span> <span class="k">BY</span> steps_up;</pre>
+<pre class="out">+----------+---------------+
+| steps_up | person        |
++----------+---------------+
+|        0 | Sofia Alvarez |
+|        1 | Marcus Hill   |
+|        2 | Daniel Reyes  |
+|        3 | Maria Santos  |
++----------+---------------+</pre></li>
+  <li><b>Two errors on purpose (1m).</b> "First I forget RECURSIVE, then I forget the stop condition." Read both numbers aloud.
+<pre class="code"><span class="k">WITH</span> org <span class="k">AS</span> (
+    <span class="k">SELECT</span> id, <span class="s">1</span> <span class="k">AS</span> level <span class="k">FROM</span> employees <span class="k">WHERE</span> manager_id <span class="k">IS</span> <span class="k">NULL</span>
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> e.id, o.level + <span class="s">1</span> <span class="k">FROM</span> employees e <span class="k">JOIN</span> org o <span class="k">ON</span> e.manager_id = o.id
+)
+<span class="k">SELECT</span> * <span class="k">FROM</span> org;
+<span class="k">WITH</span> <span class="k">RECURSIVE</span> numbers <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="s">1</span> <span class="k">AS</span> n
+    <span class="k">UNION</span> <span class="k">ALL</span>
+    <span class="k">SELECT</span> n + <span class="s">1</span> <span class="k">FROM</span> numbers
+)
+<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> numbers;</pre>
+<pre class="out">ERROR 1146 (42S02): Table 'bookstore.org' doesn't exist
+ERROR 3636 (HY000): Recursive query aborted after 1001 iterations. Try increasing @@cte_max_recursion_depth to a larger value.</pre>
+Raising <code class="inline">cte_max_recursion_depth</code> is the fix only for a series that really needs more than 1000 rounds; here the fix is a WHERE in the recursive member.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Expecting a CTE to persist.</b> "I made monthly and now it is gone." Coach: "Which statement was it written in? A CTE is part of one statement; for something everyone reuses, that is a view (Session 9)."</li>
+  <li><b>Reading the stop condition as a row filter.</b> Learners expect <code class="inline">WHERE n &lt; 5</code> to stop before 5. Coach with the rounds on the board: "Which row does the round read? 4 passes and makes 5; 5 fails and makes nothing." (Self-check Q2.)</li>
+  <li><b>An anchor that starts everywhere.</b> No WHERE in the anchor: 30 rows for 10 employees, no error. Coach: "How many starting points did you give it? Compare COUNT(*) with COUNT(DISTINCT id)." (Self-check Q5, the lesson's Common Mistake 5.)</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> learners open <code class="inline">labs/module-08/l5_1-ctes/staff_tree_starter.sql</code>; your reference is <code class="inline">labs/module-08/l5_1-ctes/staff_tree_solution.sql</code>. Recursion on new questions: the twelve months of the year with zero months, then every employee's division (the level-2 manager they work under), carried down the tree.</p>
+<ul class="tick">
+  <li><b>SOURCE it as shipped (2m):</b> <code class="inline">SOURCE labs/module-08/l5_1-ctes/staff_tree_starter.sql</code>. Everyone should see one month, a tree where every division says <code class="inline">(owner)</code>, and a TODO line.</li>
+  <li><b>TODO 1 together (3m):</b> the stop condition. Ask "which round makes month 12, and which round stops?" before anyone edits.</li>
+  <li><b>TODO 2 in pairs (7m):</b> each round copies the division from the manager's row, but the owner has none, so nobody ever gets one. The fix is <code class="inline">COALESCE(o.division, e.first_name)</code>: level-2 people start a division, everyone below inherits it. Circulate for edits to the anchor instead of the recursive member.</li>
+  <li><b>Expected:</b> TODO 1 twelve rows, 5, 5, 3, 3, 3, 2, then six zeros; TODO 2 Daniel's division of 7 (Daniel, Marcus, Priya, Ben, Lena, Sofia, Tom) and James's of 2; TODO 3 (home or fast finishers) Daniel 7 people 310500.00, James 2 people 88500.00.</li>
+  <li><b>Debrief (1m):</b> "The anchor decided where to start and how wide the division column is; the recursive member decided how to get from one round to the next. Nothing in the query says how deep the company is."</li>
+  <li><b>Fast finishers:</b> TODO 3, then <code class="inline">labs/module-08/l5_1-ctes/category_steps_starter.sql</code> (non-recursive: two CTEs, and one CTE read three times).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>The Staff and Sales Briefing</b>, <code class="inline">org_report.sql</code>: four commented queries in one script. In the room: Steps 1 and 3 (10 minutes), the two you just saw in the demo.</p>
+<ul class="tick">
+  <li>Step 1: create <code class="inline">org_report.sql</code> in the course folder with <code class="inline">USE bookstore;</code> and the indented org chart, with the level as a number.</li>
+  <li>Step 3: the chain of command for Nina (id 9); change the id to 7 and see Sofia's chain from the demo.</li>
+  <li><b>Done in the room</b> = the file runs with SOURCE and prints the chart (10 people, 4 levels) and one chain.</li>
+  <li><b>Goes home:</b> Step 2 (team size and payroll for every manager: an anchor that starts everywhere, on purpose), Step 4 (the sales calendar: a recursive CTE plus two ordinary ones), Step 5 (run the whole file).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li>Can the main statement read a CTE twice? <b>Answer:</b> yes: the demo's average step reads customer_totals, and the month comparison joins monthly to itself.</li>
+  <li>Which part of a recursive CTE runs exactly once? <b>Answer:</b> the anchor.</li>
+  <li>What stops the org chart's recursion? <b>Answer:</b> the data: in the last round nobody has Tom, Lena, Ben or Sofia as a manager, the join finds nothing, no rows come out.</li>
+  <li>When would you raise <code class="inline">cte_max_recursion_depth</code>? <b>Answer:</b> only for a series that really needs more than 1000 rounds, for your session only, and back to DEFAULT afterward; never to silence a missing stop condition.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">B) Only while that one statement runs</span>; <b>Q2</b> <span data-sc="2"><code class="inline">2,4,8,16,32</code> (one row, column <code class="inline">series</code>)</span>; <b>Q3</b> <span data-sc="3">A) <code class="inline">ERROR 1146 (42S02): Table 'bookstore.org' doesn't exist</code></span>; <b>Q4</b> <span data-sc="4">C) <code class="inline">JOIN chain c ON e.id = c.manager_id</code></span>; <b>Q5</b> <span data-sc="5">D) The anchor has no WHERE, so every employee starts a walk of their own</span>; <b>Q6</b> <span data-sc="6">GROUP BY over orders can only show months that have orders; the recursive calendar has every month, and the LEFT JOIN keeps the empty ones (July shows 0)</span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> draw each round as a row on paper before running anything; for the lab, TODO 1 only, then read the solution's TODO 2 line by line with a partner. For learners shaky on joins (W2 to W4 missed), the refresher lab first.</p>
+<p><b>Stretch:</b> the lesson's Exercise 4 (the shape of the company) and the Bonus Challenge (a cycle on purpose inside a transaction, then a FIND_IN_SET guard). Ask them what MariaDB would do with the same runaway query.</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">5.2</span><h3>Window Functions</h3><span class="dur">70 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Explain how OVER() differs from GROUP BY, and split a window with PARTITION BY</li>
+  <li>Number and rank rows with ROW_NUMBER, RANK and DENSE_RANK, and pick the right one when there are ties</li>
+  <li>Build running totals and moving averages, and control them with a frame (ROWS BETWEEN ...)</li>
+  <li>Compare each row with the one before or after it using LAG and LEAD</li>
+  <li>Return the top N rows per group by filtering a window result in a CTE, and explain why WHERE cannot do it (error 3593)</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: GROUP BY squashes, OVER keeps; partition, order, frame; windows run late</td></tr>
+<tr><td class="t">25m</td><td>Live demo: OVER (), PARTITION BY, three ranks, running total and frame, LAG/LEAD, top N per group, 3593, 1064, the RANGE trap</td></tr>
+<tr><td class="t">20m</td><td>Guided lab: <code class="inline">leaderboards_starter.sql</code></td></tr>
+<tr><td class="t">15m</td><td>Start the lesson project: <code class="inline">sales_dashboard.sql</code> Steps 1 and 2</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>The two columns on the board: "GROUP BY answers 'what is the total?' by squashing each group into one row. A <b>window function</b> computes the same kind of number across a set of rows, the <b>window</b>, and hands it back to <b>every</b> row. Eleven books in, eleven books out, each next to the average."</p>
+<p>Then the three parts of OVER, written one under the other: <b>PARTITION BY</b> (one window per group), <b>ORDER BY</b> (an order inside each window: needed for ranks, running totals, LAG), the <b>frame</b> (which neighbors count: ROWS BETWEEN 2 PRECEDING AND CURRENT ROW).</p>
+<p>Last, the clause order as a vertical list: FROM/JOIN → WHERE → GROUP BY/HAVING → <b>window functions</b> → SELECT list → ORDER BY/LIMIT. "Windows are computed late. That is why WHERE cannot filter on them, and why the fix is one more step: a CTE."</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>The lesson's own examples on the freshly loaded bookstore. Predictions first on steps 3 and 9.</p>
+<ol class="steps">
+  <li><b>One number, or every row (2m).</b> "AVG gives one number and the eleven books are gone. Add OVER (), and it hands the same average back to every row."
+<pre class="code"><span class="k">SELECT</span> ROUND(AVG(price), <span class="s">2</span>) <span class="k">AS</span> avg_price <span class="k">FROM</span> books;
+<span class="k">SELECT</span> title,
+       price,
+       ROUND(AVG(price) <span class="k">OVER</span> (), <span class="s">2</span>)         <span class="k">AS</span> avg_price,
+       ROUND(price - AVG(price) <span class="k">OVER</span> (), <span class="s">2</span>) <span class="k">AS</span> vs_average
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">DESC</span>, title;</pre>
+<pre class="out">+-----------+
+| avg_price |
++-----------+
+|     10.76 |
++-----------+
++------------------------+-------+-----------+------------+
+| title                  | price | avg_price | vs_average |
++------------------------+-------+-----------+------------+
+| Lord of the Rings      | 15.99 |     10.76 |       5.23 |
+| Dune                   | 14.99 |     10.76 |       4.23 |
+| To Kill a Mockingbird  | 11.99 |     10.76 |       1.23 |
+| The Hobbit             | 10.99 |     10.76 |       0.23 |
+| Fahrenheit 451         | 10.49 |     10.76 |      -0.27 |
+| 1984                   |  9.99 |     10.76 |      -0.77 |
+| Brave New World        |  9.49 |     10.76 |      -1.27 |
+| The Catcher in the Rye |  8.99 |     10.76 |      -1.77 |
+| The Great Gatsby       |  8.99 |     10.76 |      -1.77 |
+| Animal Farm            |  8.49 |     10.76 |      -2.27 |
+| Pride and Prejudice    |  7.99 |     10.76 |      -2.77 |
++------------------------+-------+-----------+------------+</pre></li>
+  <li><b>A window per department (3m).</b> "PARTITION BY splits like GROUP BY, without collapsing. Every sales row sees the sales average." Ask why sales comes first: department is an ENUM, sorted in declared order.
+<pre class="code"><span class="k">SELECT</span> first_name,
+       department,
+       salary,
+       ROUND(AVG(salary) <span class="k">OVER</span> (<span class="k">PARTITION</span> <span class="k">BY</span> department), <span class="s">2</span>) <span class="k">AS</span> dept_avg,
+       COUNT(*) <span class="k">OVER</span> (<span class="k">PARTITION</span> <span class="k">BY</span> department)              <span class="k">AS</span> dept_size
+<span class="k">FROM</span> employees
+<span class="k">ORDER</span> <span class="k">BY</span> department, salary <span class="k">DESC</span>;</pre>
+<pre class="out">+------------+------------+----------+----------+-----------+
+| first_name | department | salary   | dept_avg | dept_size |
++------------+------------+----------+----------+-----------+
+| Priya      | sales      | 46000.00 | 39625.00 |         4 |
+| Lena       | sales      | 39500.00 | 39625.00 |         4 |
+| Tom        | sales      | 38000.00 | 39625.00 |         4 |
+| Ben        | sales      | 35000.00 | 39625.00 |         4 |
+| Marcus     | inventory  | 47000.00 | 42000.00 |         2 |
+| Sofia      | inventory  | 37000.00 | 42000.00 |         2 |
+| Maria      | management | 92000.00 | 80000.00 |         2 |
+| Daniel     | management | 68000.00 | 80000.00 |         2 |
+| James      | support    | 52000.00 | 44250.00 |         2 |
+| Nina       | support    | 36500.00 | 44250.00 |         2 |
++------------+------------+----------+----------+-----------+</pre></li>
+  <li><b>Three ways to number (4m).</b> Predict first: "Dune and The Hobbit both sold 3. What does each function give them, and the next book?" Then run. Write 1, 2, 3, 4 / 1, 2, 2, 4 / 1, 2, 2, 3 on the board.
+<pre class="code"><span class="k">WITH</span> copies <span class="k">AS</span> (
+    <span class="k">SELECT</span> b.title, SUM(oi.quantity) <span class="k">AS</span> sold
+    <span class="k">FROM</span> books b
+    <span class="k">JOIN</span> order_items oi <span class="k">ON</span> oi.book_id = b.id
+    <span class="k">GROUP</span> <span class="k">BY</span> b.id, b.title
+)
+<span class="k">SELECT</span> title,
+       sold,
+       ROW_NUMBER() <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> sold <span class="k">DESC</span>, title) <span class="k">AS</span> row_num,
+       RANK()       <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> sold <span class="k">DESC</span>)        <span class="k">AS</span> rank_num,
+       DENSE_RANK() <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> sold <span class="k">DESC</span>)        <span class="k">AS</span> dense_num
+<span class="k">FROM</span> copies
+<span class="k">ORDER</span> <span class="k">BY</span> sold <span class="k">DESC</span>, title;</pre>
+<pre class="out">+-----------------------+------+---------+----------+-----------+
+| title                 | sold | row_num | rank_num | dense_num |
++-----------------------+------+---------+----------+-----------+
+| 1984                  |    4 |       1 |        1 |         1 |
+| Dune                  |    3 |       2 |        2 |         2 |
+| The Hobbit            |    3 |       3 |        2 |         2 |
+| Animal Farm           |    2 |       4 |        4 |         3 |
+| Fahrenheit 451        |    2 |       5 |        4 |         3 |
+| Lord of the Rings     |    2 |       6 |        4 |         3 |
+| Pride and Prejudice   |    2 |       7 |        4 |         3 |
+| To Kill a Mockingbird |    2 |       8 |        4 |         3 |
+| Brave New World       |    1 |       9 |        9 |         4 |
++-----------------------+------+---------+----------+-----------+</pre>
+The aliases end in <code class="inline">_num</code> because <code class="inline">rank</code> is a reserved word (step 9).</li>
+  <li><b>Running total and moving average (4m).</b> "ORDER BY inside OVER turns SUM into a running total. A frame, ROWS BETWEEN 2 PRECEDING AND CURRENT ROW, makes a three-month moving average." January's average is January alone.
+<pre class="code"><span class="k">WITH</span> monthly <span class="k">AS</span> (
+    <span class="k">SELECT</span> MONTH(o.order_date)                 <span class="k">AS</span> month_num,
+           SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> revenue
+    <span class="k">FROM</span> orders o
+    <span class="k">JOIN</span> order_items oi <span class="k">ON</span> oi.order_id = o.id
+    <span class="k">GROUP</span> <span class="k">BY</span> MONTH(o.order_date)
+)
+<span class="k">SELECT</span> month_num,
+       revenue,
+       SUM(revenue) <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> month_num) <span class="k">AS</span> running_total,
+       ROUND(AVG(revenue) <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> month_num
+                                <span class="k">ROWS</span> <span class="k">BETWEEN</span> <span class="s">2</span> <span class="k">PRECEDING</span> <span class="k">AND</span> CURRENT <span class="k">ROW</span>), <span class="s">2</span>) <span class="k">AS</span> moving_avg_3
+<span class="k">FROM</span> monthly
+<span class="k">ORDER</span> <span class="k">BY</span> month_num;</pre>
+<pre class="out">+-----------+---------+---------------+--------------+
+| month_num | revenue | running_total | moving_avg_3 |
++-----------+---------+---------------+--------------+
+|         1 |   61.95 |         61.95 |        61.95 |
+|         2 |   51.95 |        113.90 |        56.95 |
+|         3 |   33.47 |        147.37 |        49.12 |
+|         4 |   38.97 |        186.34 |        41.46 |
+|         5 |   31.97 |        218.31 |        34.80 |
+|         6 |   18.98 |        237.29 |        29.97 |
++-----------+---------+---------------+--------------+</pre></li>
+  <li><b>LAG and LEAD (3m).</b> "Before the break this took a self-join. LAG reads the previous row, LEAD the next." Compare the change column with the demo's step 4: identical.
+<pre class="code"><span class="k">WITH</span> monthly <span class="k">AS</span> (
+    <span class="k">SELECT</span> MONTH(o.order_date)                 <span class="k">AS</span> month_num,
+           SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> revenue
+    <span class="k">FROM</span> orders o
+    <span class="k">JOIN</span> order_items oi <span class="k">ON</span> oi.order_id = o.id
+    <span class="k">GROUP</span> <span class="k">BY</span> MONTH(o.order_date)
+)
+<span class="k">SELECT</span> month_num,
+       revenue,
+       LAG(revenue)  <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> month_num)           <span class="k">AS</span> prev_month,
+       revenue - LAG(revenue) <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> month_num)  <span class="k">AS</span> change_amount,
+       LEAD(revenue) <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> month_num)           <span class="k">AS</span> next_month
+<span class="k">FROM</span> monthly
+<span class="k">ORDER</span> <span class="k">BY</span> month_num;</pre>
+<pre class="out">+-----------+---------+------------+---------------+------------+
+| month_num | revenue | prev_month | change_amount | next_month |
++-----------+---------+------------+---------------+------------+
+|         1 |   61.95 |       NULL |          NULL |      51.95 |
+|         2 |   51.95 |      61.95 |        -10.00 |      33.47 |
+|         3 |   33.47 |      51.95 |        -18.48 |      38.97 |
+|         4 |   38.97 |      33.47 |          5.50 |      31.97 |
+|         5 |   31.97 |      38.97 |         -7.00 |      18.98 |
+|         6 |   18.98 |      31.97 |        -12.99 |       NULL |
++-----------+---------+------------+---------------+------------+</pre></li>
+  <li><b>Top 1 per department (3m).</b> "Number the rows inside each department in a CTE, keep number 1 outside."
+<pre class="code"><span class="k">WITH</span> ranked <span class="k">AS</span> (
+    <span class="k">SELECT</span> first_name,
+           last_name,
+           department,
+           salary,
+           ROW_NUMBER() <span class="k">OVER</span> (<span class="k">PARTITION</span> <span class="k">BY</span> department <span class="k">ORDER</span> <span class="k">BY</span> salary <span class="k">DESC</span>) <span class="k">AS</span> pos
+    <span class="k">FROM</span> employees
+)
+<span class="k">SELECT</span> department, first_name, last_name, salary
+<span class="k">FROM</span> ranked
+<span class="k">WHERE</span> pos = <span class="s">1</span>
+<span class="k">ORDER</span> <span class="k">BY</span> salary <span class="k">DESC</span>;</pre>
+<pre class="out">+------------+------------+-----------+----------+
+| department | first_name | last_name | salary   |
++------------+------------+-----------+----------+
+| management | Maria      | Santos    | 92000.00 |
+| support    | James      | Okafor    | 52000.00 |
+| inventory  | Marcus     | Hill      | 47000.00 |
+| sales      | Priya      | Nair      | 46000.00 |
++------------+------------+-----------+----------+</pre></li>
+  <li><b>Why not WHERE? (2m).</b> "Windows are computed after WHERE, GROUP BY and HAVING. WHERE cannot see them." Point at the stray quote at the end of the message: MySQL's typo, not ours.
+<pre class="code"><span class="k">SELECT</span> first_name, department, salary
+<span class="k">FROM</span> employees
+<span class="k">WHERE</span> ROW_NUMBER() <span class="k">OVER</span> (<span class="k">PARTITION</span> <span class="k">BY</span> department <span class="k">ORDER</span> <span class="k">BY</span> salary <span class="k">DESC</span>) = <span class="s">1</span>;</pre>
+<pre class="out">ERROR 3593 (HY000): You cannot use the window function 'row_number' in this context.'</pre></li>
+  <li><b>A reserved word (1m).</b> "Old tutorials name the column rank."
+<pre class="code"><span class="k">SELECT</span> title, price,
+       RANK() <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">DESC</span>) <span class="k">AS</span> rank
+<span class="k">FROM</span> books;</pre>
+<pre class="out">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'rank
+FROM books' at line 2</pre>
+Fix: <code class="inline">rank_num</code>, or backticks. MariaDB still accepts <code class="inline">AS rank</code>, which is why the habit spreads.</li>
+  <li><b>A running total that jumps (silent) (3m).</b> "No error, but look at the two 8.99 books: same running total. The default frame is RANGE, which adds tied rows in one step. Say ROWS and make the order unique."
+<pre class="code"><span class="k">SELECT</span> title, price,
+       SUM(price) <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> price) <span class="k">AS</span> running_total
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price, title
+<span class="k">LIMIT</span> <span class="s">5</span>;
+<span class="k">SELECT</span> title, price,
+       SUM(price) <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> price, title
+                        <span class="k">ROWS</span> <span class="k">BETWEEN</span> <span class="k">UNBOUNDED</span> <span class="k">PRECEDING</span> <span class="k">AND</span> CURRENT <span class="k">ROW</span>) <span class="k">AS</span> running_total
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price, title
+<span class="k">LIMIT</span> <span class="s">5</span>;</pre>
+<pre class="out">+------------------------+-------+---------------+
+| title                  | price | running_total |
++------------------------+-------+---------------+
+| Pride and Prejudice    |  7.99 |          7.99 |
+| Animal Farm            |  8.49 |         16.48 |
+| The Catcher in the Rye |  8.99 |         34.46 |
+| The Great Gatsby       |  8.99 |         34.46 |
+| Brave New World        |  9.49 |         43.95 |
++------------------------+-------+---------------+
++------------------------+-------+---------------+
+| title                  | price | running_total |
++------------------------+-------+---------------+
+| Pride and Prejudice    |  7.99 |          7.99 |
+| Animal Farm            |  8.49 |         16.48 |
+| The Catcher in the Rye |  8.99 |         25.47 |
+| The Great Gatsby       |  8.99 |         34.46 |
+| Brave New World        |  9.49 |         43.95 |
++------------------------+-------+---------------+</pre></li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Filtering a window in WHERE (3593, or 1054 with the alias).</b> Coach with the clause list on the board: "Where in this list does WHERE run? Where do windows run?" Then the two-step CTE pattern.</li>
+  <li><b>Forgetting PARTITION BY.</b> "Top 2 per category" returns two books in total. Coach: "Where does the numbering restart? Nowhere: tell it to restart per category." (The lab's TODO 2 is built on this.)</li>
+  <li><b>Trusting a running total with ties.</b> No error, two rows with the same total. Coach: "Which frame did you get by default? RANGE. Say ROWS, and make the order unique."</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-08/l5_2-window-functions/leaderboards_starter.sql</code>; reference <code class="inline">labs/module-08/l5_2-window-functions/leaderboards_solution.sql</code>. New leaderboards on the bookstore: customers by copies bought (the data has ties), the two cheapest books per category, and each salary's share of its department's payroll.</p>
+<ul class="tick">
+  <li><b>TODO 1 with a prediction (6m):</b> before adding RANK and DENSE_RANK, every pair writes what Dave and Frank (both 4 copies) and Bob and Grace (both 3) will get from each function.</li>
+  <li><b>Expected TODO 1:</b> Dave 4 2 2 2 and Frank 4 3 2 2 (copies, row, rank, dense); Eve last with rank 6 and dense rank 4.</li>
+  <li><b>TODO 2 (7m):</b> without PARTITION BY only two books come back in total; with it, two per category (ten rows). Ask why Pride and Prejudice appears twice (it is in Classic and Fiction).</li>
+  <li><b>TODO 3 (5m):</b> <code class="inline">OVER ()</code> gives the company payroll on every row; <code class="inline">PARTITION BY department</code> gives sales 158500.00 and inventory 84000.00, then the percentage.</li>
+  <li><b>Debrief (2m):</b> "One query, three kinds of window: an order (ranks), a partition plus an order (top N per group), a partition alone (a group total on every row)."</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-08/l5_2-window-functions/order_trends_starter.sql</code> (a running total over orders, LAG per customer, every customer's first order).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>The Sales Dashboard</b>, <code class="inline">sales_dashboard.sql</code>. In the room: Steps 1 and 2 (15 minutes).</p>
+<ul class="tick">
+  <li>Step 1: revenue so far: the monthly CTE, a running total with an explicit ROWS frame, and <code class="inline">pct_done</code> (running total over <code class="inline">SUM(revenue) OVER ()</code>).</li>
+  <li>Step 2: month over month: <code class="inline">LAG</code> and a three-month moving average sharing one named window (<code class="inline">WINDOW w AS (ORDER BY month_num)</code>, then <code class="inline">OVER (w ROWS BETWEEN ...)</code>).</li>
+  <li><b>Done in the room</b> = both queries print, the running total ends at 237.29 and <code class="inline">pct_done</code> at 100.0.</li>
+  <li><b>Goes home:</b> Step 3 (best-seller leaderboard with DENSE_RANK), Step 4 (top customer per city with ROW_NUMBER), Step 5 (run the whole file).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li>Does the ORDER BY inside OVER sort the result? <b>Answer:</b> no, it orders the rows for the function; always end with the query's own ORDER BY.</li>
+  <li>Why does January's three-month average equal January? <b>Answer:</b> there are no earlier rows in its frame.</li>
+  <li>Which function do you want for "every book at the top two sales levels"? <b>Answer:</b> DENSE_RANK (ties included, no gaps).</li>
+  <li>A WHERE that filters a plain column, like <code class="inline">WHERE is_active</code>: does it break a window? <b>Answer:</b> no: it runs first and decides which rows enter the windows (the lesson's Exercise 1).</li>
+</ul>
+<p>Workbook self-check, items Q7 to Q12.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">C) 10</span>; <b>Q8</b> <span data-sc="8"><code class="inline">RANK</code> 4, <code class="inline">DENSE_RANK</code> 3</span>; <b>Q9</b> <span data-sc="9">B) Compute the rank in a CTE, then filter on it in the outer query</span>; <b>Q10</b> <span data-sc="10">D) The default frame is RANGE: rows with the same ORDER BY value are added in one step</span>; <b>Q11</b> <span data-sc="11">Two rows: order 3, 2026-03-10, next_order 2026-03-28; order 7, 2026-03-28, next_order <code class="inline">NULL</code></span>; <b>Q12</b> <span data-sc="12">A) <code class="inline">ROW_NUMBER()</code> with a tie-breaker, e.g. <code class="inline">ORDER BY salary DESC, id</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> keep the three-function table (1, 2, 3, 4 / 1, 2, 2, 4 / 1, 2, 2, 3) on the board. For the project, Step 1 only, typed from the lesson page, then change one thing (the frame) and watch what moves.</p>
+<p><b>Stretch:</b> the lesson's Exercise 4 (cheapest book per author with two windows) and the NTILE bonus challenge; ask them to rewrite the 5.1 self-join with LAG and compare the plans with EXPLAIN (a preview of Session 9).</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Debug Clinic</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2:35</span><h3>Debug Clinic: Both Lessons</h3><span class="dur">15 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">How it runs</div>
+<ul class="tick">
+  <li><b>Pairs (8m):</b> SOURCE <code class="inline">labs/module-08/l5_1-ctes/debug_ctes.sql</code> and <code class="inline">labs/module-08/l5_2-window-functions/debug_windows.sql</code>. For each ERROR line: the number, the cause in one sentence, the fix in one line, written in the workbook.</li>
+  <li><b>Whole room (5m):</b> one volunteer per error reads the line and the fix. Then everyone rewrites <code class="inline">debug_windows.sql</code> query A with the CTE pattern.</li>
+  <li><b>Close (2m):</b> "Six errors, three rules: RECURSIVE when a CTE names itself; a stop condition that becomes false; windows are filtered one step later."</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">What the handouts print, and the fixes</div>
+<pre class="out">ERROR 1146 (42S02): Table 'bookstore.countdown' doesn't exist
+ERROR 3636 (HY000): Recursive query aborted after 1001 iterations. Try increasing @@cte_max_recursion_depth to a larger value.
+ERROR 1406 (22001): Data too long for column 'path' at row 1</pre><pre class="out">ERROR 3593 (HY000): You cannot use the window function 'row_number' in this context.'
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'rank
+FROM books
+ORDER BY price DESC
+LIMIT 3' at line 1
+ERROR 6037 (HY000): 'QUALIFY clause' can be used only if the hypergraph optimizer is enabled.</pre><ul class="tick">
+  <li><b>A, 1146:</b> <code class="inline">WITH countdown</code> refers to itself: add RECURSIVE.</li>
+  <li><b>B, 3636:</b> no stop condition: <code class="inline">WHERE d &lt; '2026-12-31'</code> in the recursive member (365 rows).</li>
+  <li><b>C, 1406:</b> the anchor's <code class="inline">'Maria'</code> made a five-character column: <code class="inline">CAST('Maria' AS CHAR(200))</code> (or <code class="inline">CAST(first_name AS CHAR(200))</code>).</li>
+  <li><b>3593:</b> a window in WHERE: number the rows in a CTE, keep <code class="inline">pos &lt;= 3</code> outside.</li>
+  <li><b>1064:</b> <code class="inline">rank</code> is reserved: <code class="inline">AS rank_num</code>.</li>
+  <li><b>6037:</b> QUALIFY needs the hypergraph optimizer on MySQL 9.7; use the CTE pattern (it works on every server).</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 4 minutes)</div>
+<p>Learners answer in the workbook's Exit Ticket box or on a sticky note. Sort into "got it" and "not yet" before Session 9: question 3's pile tells you whether to open Session 9's warm-up with the CTE-filter pattern.</p>
+<ol class="steps">
+  <li>Write the skeleton of a recursive CTE that counts from 1 to 10, and label the anchor, the recursive member and the stop condition. <b>Answer:</b> <code class="inline">WITH RECURSIVE s AS (SELECT 1 AS n /* anchor */ UNION ALL SELECT n + 1 FROM s /* recursive member */ WHERE n &lt; 10 /* stop */) SELECT n FROM s;</code></li>
+  <li><code class="inline">GROUP BY department</code> versus <code class="inline">PARTITION BY department</code>: what is the difference in the rows you get back? <b>Answer:</b> GROUP BY returns one row per department; PARTITION BY keeps every employee row and adds the department's figure to each.</li>
+  <li>Why can't WHERE filter on <code class="inline">ROW_NUMBER()</code>, and what do you do instead? <b>Answer:</b> window functions are computed after WHERE (error 3593); compute the number in a CTE and filter it in the outer query.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours)</div>
+<ul class="tick">
+  <li><b>Finish both lesson projects.</b> <code class="inline">org_report.sql</code> Steps 2, 4 and 5; <code class="inline">sales_dashboard.sql</code> Steps 3 to 5. Each ends with SOURCE running the whole file without an error.</li>
+  <li><b>Lesson exercises.</b> 5.1: Exercises 1 to 3 (above-average sellers, a price ladder, Daniel's team level by level); 4 is a stretch. 5.2: Exercises 1 to 3 (pay rank by department, each order's share, who comes back and when); 4 is a stretch.</li>
+  <li><b>Both Quick Quizzes</b> on the lesson pages (answers in the Answer Key).</li>
+  <li><b>Journal:</b> both entries (a chain in your own life as a recursive CTE; a ranking you know and its tie rule).</li>
+  <li><b>Labs not finished in class:</b> <code class="inline">labs/module-08/l5_1-ctes/category_steps_starter.sql</code>, <code class="inline">labs/module-08/l5_2-window-functions/order_trends_starter.sql</code>, and the debug handouts if the clinic was cut.</li>
+  <li><b>Before the Next Lesson (from 5.2):</b> run <code class="inline">sales_dashboard.sql</code> from a fresh session; rewrite one query with a named WINDOW.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Bring list for Session 9</div>
+<ul class="tick">
+  <li>A laptop that printed <code class="inline">READY for Part 2</code>, and <code class="inline">bookstore.sql</code> in the course folder: Lesson 6.1 reloads it and then generates a 100,000-row table (a few seconds; nothing to download).</li>
+  <li>The course folder with <code class="inline">labs/</code> (Session 9's starters are in <code class="inline">labs/module-09/</code>), <code class="inline">org_report.sql</code> and <code class="inline">sales_dashboard.sql</code>.</li>
+  <li>The workbook and the journal.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> the environment check; 5.1 demo steps 6 to 8; the 5.2 ranking prediction and top N per group; the staff-tree lab through TODO 2; the leaderboards lab through TODO 2.</li>
+  <li><b>Cut first (saves 15m):</b> the debug clinic: hand out both debug files with the README's expected errors as homework.</li>
+  <li><b>Cut second (saves 10m):</b> the 5.1 project start: read Step 1's goal aloud and send all five steps home.</li>
+  <li><b>Cut third (saves 3m):</b> 5.2 demo step 9 (the RANGE trap): self-check Q10 and the lesson's Common Mistake 4 cover it.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>The lesson 5.1 Bonus Challenge live: inside a transaction, make Maria report to Nina, run the org chart anchored on id 1 (error 3636), then ROLLBACK.</li>
+  <li>Rewrite the 5.1 month comparison with LAG and put both versions side by side.</li>
+  <li>The NTILE bonus: three price tiers, and which tier gets the extra books.</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 8 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

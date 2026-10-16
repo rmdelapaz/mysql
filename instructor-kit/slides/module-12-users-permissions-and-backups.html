@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides: Session 12</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--ink2:#9fb2cd;--accent:#93c5fd;--accent2:#2563eb;--py:#f6a53b;--lab:#34d3bd;--warn:#fbbf24;--line:#22314c;--code:#0a1526;color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100%;width:100%;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:6vh 8vw;gap:20px}
+  .slide.on{display:flex}
+  h1,h2,h3{font-family:"Archivo",sans-serif;line-height:1.1;text-wrap:balance}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .slide h1{font-size:clamp(2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+  .slide h2{font-size:clamp(1.5rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+  .slide p.lead{font-size:clamp(1.05rem,2.4vw,1.5rem);color:var(--ink2);max-width:34ch}
+  ul,ol.num{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  ul li{position:relative;padding-left:34px;font-size:clamp(1.05rem,2.3vw,1.6rem)}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+  ul.lab li::before{background:var(--lab)}
+  ol.num{counter-reset:n}
+  ol.num li{position:relative;padding-left:46px;font-size:clamp(1rem,2.1vw,1.45rem)}
+  ol.num li::before{counter-increment:n;content:counter(n);position:absolute;left:0;top:.05em;width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#fff;font-family:"JetBrains Mono",monospace;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+  code.k{font-family:"JetBrains Mono",monospace;font-variant-ligatures:none;color:#bfdbfe;font-size:.92em}
+  pre{white-space:pre;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px 24px;font-family:"JetBrains Mono",monospace;font-size:clamp(.8rem,1.7vw,1.15rem);line-height:1.5;overflow:auto;max-width:100%;font-variant-ligatures:none}
+  pre .k{color:#7dd3fc} pre .s{color:#86efac} pre .c{color:#7183a3;font-style:italic}
+  table.ag{border-collapse:collapse;font-size:clamp(.9rem,1.9vw,1.25rem);width:100%;max-width:60rem}
+  table.ag td{padding:7px 12px;border-bottom:1px solid var(--line)}
+  table.ag td.t{font-family:"JetBrains Mono",monospace;color:var(--ink2);white-space:nowrap}
+  table.ag tr.brk td{color:var(--py)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);color:var(--ink2)}
+  .tag .pill{background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;letter-spacing:.06em}
+  .tag .pill.lab{background:var(--lab);color:#062b26} .tag .pill.warn{background:var(--warn);color:#3a2a05}
+  .section{background:linear-gradient(135deg,#0f2a5c,#0b1220)}
+  .section .big{font-size:clamp(3rem,12vw,8rem);font-family:"Archivo";font-weight:800;color:#3b82f6;line-height:.9}
+  .section .big.py{color:var(--py)}
+  .two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:30px;align-items:start}
+  .two pre{font-size:clamp(.72rem,1.35vw,1rem);padding:16px 18px}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .bar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--py));width:0;transition:width .25s;z-index:5}
+  .count{position:fixed;right:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--ink2);z-index:5}
+  .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+  .nav button{pointer-events:auto;background:transparent;border:none;color:transparent;width:22vw;height:100vh;cursor:pointer}
+  .foot{position:fixed;left:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#5d7391;z-index:5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <section class="slide on section">
+    <div class="eyebrow">MySQL Foundations · Part 2 · Session 12 of 14 · 3 hours</div>
+    <h1>Session 12<br>Users, Permissions and Backups</h1>
+    <p class="lead">An account for every job, a backup you have restored, and the final project's brief.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Today</div>
+    <h2>Three hours, two lessons and a brief</h2>
+    <table class="ag">
+      <tr><td class="t">0:00</td><td>Warm-up; Checkpoint 2 back</td></tr>
+      <tr><td class="t">0:10</td><td>7.4 Users and permissions: model, demo, lab, project</td></tr>
+      <tr class="brk"><td class="t">1:15</td><td>Break (10 min)</td></tr>
+      <tr><td class="t">1:25</td><td>8.1 Importing and exporting: model, demo, lab, project</td></tr>
+      <tr><td class="t">2:30</td><td>The final project: Maple Street Tool Library</td></tr>
+      <tr><td class="t">2:50</td><td>Exit ticket, homework, what to bring next time</td></tr>
+    </table>
+    <div class="tag"><span class="pill warn">RULE</span> <span>Lab files are in <code class="k">labs/module-12</code>. Only kit_ demo accounts; never root.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Warm-up · 6 minutes</div>
+    <h2>Five questions from Lessons 7.2 and 7.3</h2>
+    <ol class="num">
+      <li>START TRANSACTION, UPDATE, ALTER TABLE, ROLLBACK: is the UPDATE undone?</li>
+      <li><code class="k">1205</code> or <code class="k">1213</code>: which rolled the whole transaction back?</li>
+      <li><code class="k">-&gt;</code> or <code class="k">-&gt;&gt;</code> in a WHERE that compares with text?</li>
+      <li>What does JSON_TABLE do, in one sentence?</li>
+      <li>Predict: a JSON_SET inside a transaction, then ROLLBACK</li>
+    </ol>
+  </section>
+
+  <section class="slide section"><div class="big">7.4</div><h2>User Management &amp; Permissions</h2><p class="lead">Every person and program gets only what its job needs.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Mental model</div>
+    <h2>Why not root?</h2>
+    <ul>
+      <li>A clerk's DELETE without WHERE: every customer gone</li>
+      <li>An attacker in the search box: reads everything, drops databases</li>
+      <li>A dashboard password in a shared config file</li>
+      <li><b>Least privilege</b>: the minimum for the job, nothing more</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Mental model</div>
+    <h2>GRANT what ON where TO whom</h2>
+    <ul>
+      <li>An account is <code class="k">'user'@'host'</code>: another host is another account</li>
+      <li>Levels: <code class="k">*.*</code> · <code class="k">bookstore.*</code> · <code class="k">bookstore.books</code> · <code class="k">SELECT (id, email)</code></li>
+      <li>A new account has only <code class="k">USAGE</code>: it may connect</li>
+      <li>Grant the narrowest level that works; test it as the account</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Code</div>
+    <h2>An account, and what it may do</h2>
+    <pre class="code"><span class="k">GRANT</span> <span class="k">SELECT</span> <span class="k">ON</span> bookstore.* <span class="k">TO</span> <span class="s">'shop_reports'</span>@<span class="s">'localhost'</span>;
+<span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'shop_reports'</span>@<span class="s">'localhost'</span>;</pre>
+    <pre class="code">+-------------------------------------------------------------+
+| Grants for shop_reports@localhost                           |
++-------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `shop_reports`@`localhost`            |
+| GRANT SELECT ON `bookstore`.* TO `shop_reports`@`localhost` |
++-------------------------------------------------------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>No FLUSH PRIVILEGES: grants take effect at once.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Code</div>
+    <h2>The website, table by table</h2>
+    <pre class="code"><span class="k">GRANT</span> <span class="k">INSERT</span>, <span class="k">UPDATE</span> <span class="k">ON</span> bookstore.customers   <span class="k">TO</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;
+<span class="k">GRANT</span> <span class="k">INSERT</span>         <span class="k">ON</span> bookstore.orders      <span class="k">TO</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;
+<span class="k">GRANT</span> <span class="k">INSERT</span>         <span class="k">ON</span> bookstore.order_items <span class="k">TO</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;
+<span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;</pre>
+    <pre class="code">+---------------------------------------------------------------------------+
+| Grants for shop_app@localhost                                             |
++---------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `shop_app`@`localhost`                              |
+| GRANT SELECT ON `bookstore`.* TO `shop_app`@`localhost`                   |
+| GRANT INSERT, UPDATE ON `bookstore`.`customers` TO `shop_app`@`localhost` |
+| GRANT INSERT ON `bookstore`.`order_items` TO `shop_app`@`localhost`       |
+| GRANT INSERT ON `bookstore`.`orders` TO `shop_app`@`localhost`            |
++---------------------------------------------------------------------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>It can read the catalog and add orders. Nothing else.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Second window</div>
+    <h2>Test as the account</h2>
+    <pre class="code">mysql -u shop_reports -p bookstore</pre>
+    <pre class="code"><span class="k">SELECT</span> CURRENT_USER();
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> books <span class="k">FROM</span> books;
+<span class="k">DELETE</span> <span class="k">FROM</span> books <span class="k">WHERE</span> id = <span class="s">11</span>;</pre>
+    <ul>
+      <li>CURRENT_USER(): <code class="k">shop_reports@localhost</code> · books: <code class="k">11</code></li>
+      <li><code class="k">ERROR 1142 (42000): DELETE command denied to user 'shop_re...</code></li>
+      <li>One thing it must do, one it must not: test both</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Second window</div>
+    <h2>Columns, then tables</h2>
+    <pre class="code"><span class="k">SELECT</span> first_name, email <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SELECT</span> first_name, city <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> orders;</pre>
+    <ul>
+      <li>First query: Alice, alice@example.com</li>
+      <li><code class="k">ERROR 1143 (42000): SELECT command denied to user ...</code> for column 'city'</li>
+      <li><code class="k">ERROR 1142 (42000): SELECT command denied to user ...</code> for table 'orders'</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">1143</code> names the column; <code class="k">1142</code> the table.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Error ladder</div>
+    <h2>Which refusal is which?</h2>
+    <ul>
+      <li><code class="k">1045</code> wrong password · <code class="k">1044</code> no access to that database</li>
+      <li><code class="k">1142</code> table denied · <code class="k">1143</code> column denied</li>
+      <li><code class="k">3118</code> the account is locked</li>
+      <li><code class="k">1524</code> mysql_native_password: update the driver</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Code</div>
+    <h2>REVOKE at the level you granted</h2>
+    <pre class="code"><span class="k">REVOKE</span> <span class="k">UPDATE</span> <span class="k">ON</span> bookstore.customers <span class="k">FROM</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;
+<span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'shop_app'</span>@<span class="s">'localhost'</span>;</pre>
+    <pre class="code">+---------------------------------------------------------------------+
+| Grants for shop_app@localhost                                       |
++---------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `shop_app`@`localhost`                        |
+| GRANT SELECT ON `bookstore`.* TO `shop_app`@`localhost`             |
+| GRANT INSERT ON `bookstore`.`customers` TO `shop_app`@`localhost`   |
+| GRANT INSERT ON `bookstore`.`order_items` TO `shop_app`@`localhost` |
+| GRANT INSERT ON `bookstore`.`orders` TO `shop_app`@`localhost`      |
++---------------------------------------------------------------------+</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Roles</div>
+    <h2>Grant to a role once</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">ROLE</span> <span class="s">'bookstore_reader'</span>, <span class="s">'bookstore_sales'</span>;
+<span class="k">GRANT</span> <span class="k">SELECT</span> <span class="k">ON</span> bookstore.* <span class="k">TO</span> <span class="s">'bookstore_reader'</span>;
+<span class="k">GRANT</span> <span class="k">INSERT</span>, <span class="k">UPDATE</span> <span class="k">ON</span> bookstore.orders      <span class="k">TO</span> <span class="s">'bookstore_sales'</span>;
+<span class="k">GRANT</span> <span class="k">INSERT</span>, <span class="k">UPDATE</span> <span class="k">ON</span> bookstore.order_items <span class="k">TO</span> <span class="s">'bookstore_sales'</span>;</pre>
+    <ul>
+      <li>Then grant the role to Tom and Lena</li>
+      <li>Change the role, and everyone with it follows</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · The step everybody forgets</div>
+    <h2>Granted is not active</h2>
+    <pre class="code"><span class="k">SELECT</span> CURRENT_ROLE();
+<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> bookstore.books;</pre>
+    <pre class="code">+----------------+
+| CURRENT_ROLE() |
++----------------+
+| NONE           |
++----------------+
+ERROR 1142 (42000): SELECT command denied to user 'tom'@'localhost' for table 'books'
+ERROR 1044 (42000): Access denied for user 'tom'@'localhost' to database 'bookstore'</pre>
+    <div class="tag"><span class="pill warn">FIX</span> <span>Fix: <code class="k">SET DEFAULT ROLE ALL TO 'tom'@'localhost';</code></span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Second window</div>
+    <h2>Tom, after SET DEFAULT ROLE</h2>
+    <pre class="code"><span class="k">SELECT</span> CURRENT_ROLE();
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> books <span class="k">FROM</span> books;</pre>
+    <pre class="code">+----------------------------------------------+
+| CURRENT_ROLE()                               |
++----------------------------------------------+
+| `bookstore_reader`@`%`,`bookstore_sales`@`%` |
++----------------------------------------------+
++-------+
+| books |
++-------+
+|    11 |
++-------+</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Lock and refuse</div>
+    <h2>Disable, do not delete</h2>
+    <pre class="code"><span class="k">ALTER</span> <span class="k">USER</span> <span class="s">'shop_reports'</span>@<span class="s">'localhost'</span> ACCOUNT <span class="k">LOCK</span>;</pre>
+    <pre class="code">ERROR 3118 (HY000): Access denied for user 'shop_reports'@'localhost'. Account is locked.</pre>
+    <ul>
+      <li>The account keeps its grants; UNLOCK opens it again</li>
+      <li>Never practice on root or <code class="k">CURRENT_USER()</code></li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Predict, then run</div>
+    <h2>How many lines?</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">USER</span> <span class="s">'kit_quiz'</span>@<span class="s">'localhost'</span> <span class="k">IDENTIFIED</span> <span class="k">BY</span> <span class="s">'CHANGE-ME-quiz-1'</span>;
+<span class="k">GRANT</span> <span class="k">SELECT</span> <span class="k">ON</span> bookstore.* <span class="k">TO</span> <span class="s">'kit_quiz'</span>@<span class="s">'localhost'</span>;
+<span class="k">GRANT</span> <span class="k">INSERT</span> <span class="k">ON</span> bookstore.orders <span class="k">TO</span> <span class="s">'kit_quiz'</span>@<span class="s">'localhost'</span>;
+<span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'kit_quiz'</span>@<span class="s">'localhost'</span>;</pre>
+    <ul>
+      <li>Database level and table level: one line or two?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Guided lab · 15 minutes</div>
+    <h2>Two programs, two accounts</h2>
+    <ul class="lab">
+      <li><code class="k">warehouse_accounts_starter.sql</code> in <code class="k">labs/module-12/l7_4-...</code></li>
+      <li>Warehouse: read books and authors, change only in_stock</li>
+      <li>Accounting: orders, and three customer columns</li>
+      <li>An audit in information_schema; REVOKE; ACCOUNT LOCK</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">staff_roles_starter.sql</code>, then <code class="k">debug_grants.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.4 · Project</div>
+    <h2>Accounts for the bookstore team</h2>
+    <ul class="lab">
+      <li>Step 1: DROP ... IF EXISTS, so the script reruns</li>
+      <li>Step 2: three roles · Step 3: the website account</li>
+      <li>Step 4: people, with default roles</li>
+      <li>Steps 5 and 6: the inventory; test as team_sofia</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>In class: Steps 1 to 3. At home: Steps 4 to 6.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big py">10</div><h2>Break</h2><p class="lead">Back at 1:25. Reload bookstore.sql and open a plain terminal too.</p></section>
+
+  <section class="slide section"><div class="big">8.1</div><h2>Importing &amp; Exporting Data</h2><p class="lead">A backup you have restored, and data in and out of spreadsheets.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Mental model</div>
+    <h2>Two kinds of moving data</h2>
+    <ul>
+      <li><b>Whole databases</b>: <code class="k">mysqldump</code> at the terminal, restored with <code class="k">mysql</code></li>
+      <li><b>Rows</b>: <code class="k">SELECT ... INTO OUTFILE</code> and <code class="k">LOAD DATA</code> at mysql></li>
+      <li>Server-side files: one folder, <code class="k">secure_file_priv</code></li>
+      <li>A backup you have never restored is a hope</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Terminal</div>
+    <h2>A backup on 9.7</h2>
+    <pre class="code">mysqldump -u root -p --single-transaction --routines --events \
+    --set-gtid-purged=OFF bookstore &gt; bookstore_backup.sql</pre>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">--routines</code> and <code class="k">--events</code> are off by default. <code class="k">--set-gtid-purged=OFF</code>: next slides.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Terminal</div>
+    <h2>Restore, then compare</h2>
+    <pre class="code">mysql -u root -p -t -e "SELECT
+    (SELECT COUNT(*) FROM bookstore.order_items) AS items_original,
+    (SELECT COUNT(*) FROM bookstore_test.order_items) AS items_copy"</pre>
+    <pre class="code">+----------------+------------+
+| items_original | items_copy |
++----------------+------------+
+|             18 |         18 |
++----------------+------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>First <code class="k">CREATE DATABASE bookstore_test</code>, then <code class="k">mysql ... bookstore_test &lt; bookstore_backup.sql</code>. Same counts: now it is a backup.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · The 9.7 trap</div>
+    <h2>A plain dump will not restore here</h2>
+    <pre class="code">mysqldump -u root -p --single-transaction bookstore &gt; plain_dump.sql</pre>
+    <ul>
+      <li><code class="k">Warning: A partial dump from a server that has GTIDs will by...</code></li>
+      <li>Restoring it into another database on the same server:</li>
+      <li><code class="k">ERROR 3546 (HY000): @@GLOBAL.GTID_PURGED cannot be changed: th...</code></li>
+      <li>No tables created. Dump again with --set-gtid-purged=OFF</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Wrong prompt</div>
+    <h2>mysqldump is not SQL</h2>
+    <pre class="code">mysqldump -u root -p bookstore &gt; bookstore_backup.sql;</pre>
+    <pre class="code">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that correspo...</pre>
+    <div class="tag"><span class="pill warn">FIX</span> <span>Type exit, then run it at $ or PS>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Files</div>
+    <h2>Where the server may read and write</h2>
+    <ul>
+      <li><code class="k">SHOW VARIABLES LIKE 'secure_file_priv';</code></li>
+      <li>Linux packages and Docker: <code class="k">/var/lib/mysql-files/</code></li>
+      <li>Empty = anywhere (unsafe) · NULL = nowhere</li>
+      <li>Anywhere else: <code class="k">ERROR 1290</code> · an existing file: <code class="k">ERROR 1086</code></li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Code</div>
+    <h2>Export a CSV</h2>
+    <pre class="code"><span class="k">SELECT</span> b.id, b.title, a.name <span class="k">AS</span> author, b.price, b.published
+<span class="k">FROM</span> books <span class="k">AS</span> b
+<span class="k">JOIN</span> authors <span class="k">AS</span> a <span class="k">ON</span> a.id = b.author_id
+<span class="k">ORDER</span> <span class="k">BY</span> b.id
+<span class="k">INTO</span> <span class="k">OUTFILE</span> <span class="s">'/var/lib/mysql-files/books_export.csv'</span>
+    FIELDS <span class="k">TERMINATED</span> <span class="k">BY</span> <span class="s">','</span> OPTIONALLY ENCLOSED <span class="k">BY</span> <span class="s">'"'</span>
+    <span class="k">LINES</span> <span class="k">TERMINATED</span> <span class="k">BY</span> <span class="s">'\n'</span>;</pre>
+    <pre class="code">Query OK, 11 rows affected
+1,"Dune","Frank Herbert",14.99,"1965-08-01"
+2,"1984","George Orwell",9.99,"1949-06-08"</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Text and dates in quotes, numbers bare. NULL is written as \N.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Import</div>
+    <h2>A messy file: look before you load</h2>
+    <ul>
+      <li>A header line: IGNORE 1 LINES</li>
+      <li>A comma inside <code class="k">"I, Robot"</code>: OPTIONALLY ENCLOSED BY</li>
+      <li>US dates: <code class="k">STR_TO_DATE(@d, '%m/%d/%Y')</code></li>
+      <li>An empty page count: <code class="k">NULLIF(@pages, '')</code></li>
+      <li>An author the store does not know yet</li>
+    </ul>
+    <div class="tag"><span class="pill warn">RULE</span> <span>Never load a stranger's file straight into a real table.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Code</div>
+    <h2>Into a staging table</h2>
+    <pre class="code"><span class="k">LOAD</span> DATA <span class="k">INFILE</span> <span class="s">'/var/lib/mysql-files/new_books.csv'</span>
+<span class="k">INTO</span> <span class="k">TABLE</span> import_books
+    FIELDS <span class="k">TERMINATED</span> <span class="k">BY</span> <span class="s">','</span> OPTIONALLY ENCLOSED <span class="k">BY</span> <span class="s">'"'</span>
+    <span class="k">LINES</span> <span class="k">TERMINATED</span> <span class="k">BY</span> <span class="s">'\n'</span>
+    <span class="k">IGNORE</span> <span class="s">1</span> <span class="k">LINES</span>
+    (title, author, price, @pages, @published)
+<span class="k">SET</span> pages     = NULLIF(@pages, <span class="s">''</span>),
+    published = STR_TO_DATE(@published, <span class="s">'%m/%d/%Y'</span>);</pre>
+    <pre class="code">Query OK, 4 rows affected
+Records: 4  Deleted: 0  Skipped: 0  Warnings: 0</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Code</div>
+    <h2>What arrived</h2>
+    <pre class="code"><span class="k">SELECT</span> * <span class="k">FROM</span> import_books;</pre>
+    <pre class="code">+------------------+----------------+-------+-------+------------+
+| title            | author         | price | pages | published  |
++------------------+----------------+-------+-------+------------+
+| I, Robot         | Isaac Asimov   |  8.99 |   253 | 1950-12-02 |
+| Emma             | Jane Austen    |  8.49 |   474 | 1815-12-23 |
+| Frankenstein     | Mary Shelley   |  7.49 |  NULL | 1818-01-01 |
+| The Silmarillion | J.R.R. Tolkien | 12.99 |   365 | 1977-09-15 |
++------------------+----------------+-------+-------+------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Real dates, a real NULL, the comma kept inside the title.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Code</div>
+    <h2>Who is missing?</h2>
+    <pre class="code"><span class="k">SELECT</span> i.title, i.author
+<span class="k">FROM</span> import_books <span class="k">AS</span> i
+<span class="k">LEFT</span> <span class="k">JOIN</span> authors <span class="k">AS</span> a <span class="k">ON</span> a.name = i.author
+<span class="k">WHERE</span> a.id <span class="k">IS</span> <span class="k">NULL</span>;</pre>
+    <pre class="code">+--------------+--------------+
+| title        | author       |
++--------------+--------------+
+| Frankenstein | Mary Shelley |
++--------------+--------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Add Mary Shelley, then copy the rows in one transaction.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Silent</div>
+    <h2>LOCAL turns errors into warnings</h2>
+    <ul>
+      <li>LOAD DATA LOCAL of a two-line file: <code class="k">Records: 2  Deleted: 0  Skipped: 0  Warnings: 1</code></li>
+      <li>SHOW WARNINGS: <code class="k">1366 Incorrect decimal value: 'N/A' for column 'price'</code></li>
+    </ul>
+    <pre class="code">+-------+-------+
+| title | price |
++-------+-------+
+| Dune  | 15.49 |
+| Emma  |  0.00 |
++-------+-------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Emma is free. Read Warnings: and run SHOW WARNINGS at once.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Guided lab · 15 minutes</div>
+    <h2>A supplier's file, safely</h2>
+    <ul class="lab">
+      <li><code class="k">new_titles_import_starter.sql</code> in <code class="k">labs/module-12/l8_1-...</code></li>
+      <li>Semicolons, day.month.year, N/A, an empty page count</li>
+      <li>Convert, check against books and authors, copy in one transaction</li>
+      <li>Read the warnings first: which rows would have been wrong?</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">backup_check_starter.sql</code>, then <code class="k">debug_import.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.1 · Project</div>
+    <h2>The bookstore backup kit</h2>
+    <ul class="lab">
+      <li>Step 1: a backup account that cannot write</li>
+      <li>Step 2: a dated dump made with it</li>
+      <li>Step 3: a test restore, logged</li>
+      <li>Steps 4 to 6: a sales CSV, a repeatable import, a scheduled backup</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>In class: Steps 1 and 2. At home: Steps 3 to 6.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big">8.2</div><h2>The Final Project</h2><p class="lead">The Maple Street Tool Library: your database, from an empty server.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">Final project · The brief</div>
+    <h2>Rosa's tool library</h2>
+    <ul>
+      <li>Members, tools, categories, safety courses, loans</li>
+      <li>One open loan per tool; nothing out while in repair</li>
+      <li>Suspended members cannot borrow; at most three tools each</li>
+      <li>No course, no chainsaw</li>
+      <li>Every Saturday: on the shelf, overdue, popular, busy months</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Final project · How it runs</div>
+    <h2>Eight milestones, two studios</h2>
+    <ol class="num">
+      <li>Design · 2 Schema · 3 Test data · 4 Saturday queries</li>
+      <li>Logic: a view and two procedures · 6 Security · 7 Backup</li>
+      <li>Self-review and a one-page README</li>
+      <li>Sessions 13 and 14: studios; you build, I circulate</li>
+    </ol>
+    <div class="tag"><span class="pill lab">NEXT</span> <span>Homework: read the whole brief and bring a Milestone 1 draft.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Wrap-up · 4 minutes</div>
+    <h2>Exit ticket</h2>
+    <ol class="num">
+      <li>Why no UPDATE or DELETE for the website's account?</li>
+      <li>Two steps that make a dump a trustworthy backup</li>
+      <li>The final project's client, and two of her rules</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>No notes. Workbook Exit Ticket box or a sticky note on the way out.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Before Session 13</div>
+    <h2>Homework and bring list</h2>
+    <ul class="lab">
+      <li>Finish team_access.sql and the backup kit</li>
+      <li>Exercises 1 to 3 of both lessons; both quizzes; both journals</li>
+      <li>Final project: the brief, and your Milestone 1 draft on paper</li>
+      <li>Bring: laptop and root password, your draft, your scripts</li>
+    </ul>
+    <div class="tag"><span class="pill">NEXT</span> <span>Session 13: Final Project Kickoff and Studio I.</span></div>
+  </section>
+
+
+</div>
+
+<div class="foot">© 2026 Ray de la Paz · MySQL Foundations</div>
+<div class="count" id="count">1 / 1</div>
+<div class="nav"><button id="prev" aria-label="Previous slide"></button><button id="next" aria-label="Next slide"></button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'), count=document.getElementById('count');
+  let i=0;
+  function show(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%'; count.textContent=(i+1)+' / '+slides.length; }
+  document.getElementById('next').onclick=()=>show(i+1);
+  document.getElementById('prev').onclick=()=>show(i-1);
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0); else if(e.key==='End')show(slides.length-1);
+  });
+  show(0);
+</script>
+</body>
+</html>

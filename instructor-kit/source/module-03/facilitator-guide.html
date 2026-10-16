@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 3</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 3: Data Types, Constraints and CRUD</h1>
+    <p class="sub">How to teach the third session of MySQL Foundations. Learners see why every column has a type and why rules belong in the database (MySQL refusing bad numbers, money, text, dates and duplicates, each with its own error number), then fill the bookstore with data and change it safely: INSERT, SELECT, UPDATE and DELETE with the preview habit, upserts, safe-updates mode, and a reload script for the data Module 3 queries.</p>
+    <div class="meta-row">
+      <span class="chip"><b>2</b> lessons</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lessons <b>2.2–2.3</b></span>
+      <span class="chip">Session <b>3</b> of 14 · Part 1</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Same rhythm for both lessons: frame → live demo (you type, they follow) → guided lab (a kit lab, new practice) → the lesson's own project. The lesson exercises, quiz and journal are homework.</li>
+  <li>Every SQL block below was run to produce the output under it, on MySQL 9.7.2, inside <code class="inline">bookstore</code> as Lesson 2.1's build script leaves it. Ask for a prediction before every statement, especially the ones that fail: predicting the error number is the skill of the day.</li>
+  <li>Keep <code class="inline">lesson_05.html</code> and <code class="inline">lesson_06.html</code> open for the type tables and the DELETE/TRUNCATE/DROP table. Labs live in <code class="inline">labs/module-03/</code> and run inside <code class="inline">bookstore</code> (learners <code class="inline">USE bookstore;</code> once).</li>
+  <li>This session has many error numbers. Do not ask learners to memorize them: put the lesson's error table on the board at the start and point at it each time.</li>
+  <li>Session 4 rebuilds <code class="inline">bookstore</code> with Lesson 3.1's setup script, so nothing here can leave a learner stuck; the lesson projects (employees.sql, load_bookstore_data.sql) are still worth finishing.</li>
+</ul>
+<div class="note warn"><div class="t">The #1 risk of Session 3: a learner's bookstore is not what the lessons expect</div>
+<p>Everything today assumes <code class="inline">bookstore</code> with exactly three empty tables. Learners who did not finish <code class="inline">create_bookstore.sql</code>, or who left demo tables behind, get different outputs from the first statement on. <b>The warm-up checks it on every laptop</b> (<code class="inline">USE bookstore; SHOW TABLES;</code>), and the fix takes ten seconds: rerun <code class="inline">create_bookstore.sql</code>, or <code class="inline">SOURCE labs/_states/schema.sql</code> (the same three empty tables). The second risk is the 2.2 demo's length: twelve small steps; keep each to its minutes and cut Step 5 (text) first.</p>
+</div>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Sort the Session 2 exit tickets.</b> Question 3's "not yet" pile (the MODIFY trap) gets W4 in today's warm-up.</li>
+  <li>☐ <b>Files to hand out:</b> the <code class="inline">labs/module-03/</code> starters and the two debug files (no <code class="inline">*_solution.sql</code>). Remind learners to bring <code class="inline">create_bookstore.sql</code>.</li>
+  <li>☐ <b>Run the kit check once:</b> <code class="inline">python3 labs/check_labs.py module-03</code>. Every line should say PASS (10 files).</li>
+  <li>☐ <b>Projector machine:</b> <code class="inline">SOURCE labs/_states/schema.sql</code> (bookstore with three empty tables, exactly what learners have), then <code class="inline">USE bookstore;</code>. A terminal at 18 pt or larger; browser tabs <code class="inline">lesson_05.html</code>, <code class="inline">lesson_06.html</code>.</li>
+  <li>☐ <b>Board, before learners arrive:</b> the error table (1048 NULL given · 1364 left out · 1062 duplicate · 1264 out of range · 1265 not on the list / rounded · 1292 bad date · 1406 too long · 3819 CHECK); and, for 2.3, "SELECT first, same WHERE, read Rows matched".</li>
+  <li>☐ <b>Print or share:</b> the workbook (warm-up, guided labs, self-checks, exit ticket).</li>
+</ul>
+<div class="blk warn"><div class="h">Known environment traps</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><code class="inline">ERROR 1046 No database selected</code> in a lab</td><td>The learner did not <code class="inline">USE bookstore;</code> first</td><td><code class="inline">USE bookstore;</code> once per session; the labs never say USE themselves.</td></tr>
+<tr><td><code class="inline">ERROR 1146 Table 'bookstore.books' doesn't exist</code></td><td>bookstore was dropped and not rebuilt</td><td>Rerun <code class="inline">create_bookstore.sql</code> or <code class="inline">SOURCE labs/_states/schema.sql</code>.</td></tr>
+<tr><td>Bad values are stored with only a warning</td><td>Strict mode is off (some hosts, old XAMPP configs)</td><td><code class="inline">SELECT @@sql_mode;</code> should list STRICT_TRANS_TABLES; for the session: the lesson's <code class="inline">SET SESSION sql_mode = CONCAT(...)</code> line.</td></tr>
+<tr><td><code class="inline">AS new</code> gives ERROR 1064</td><td>MariaDB (XAMPP)</td><td><code class="inline">ON DUPLICATE KEY UPDATE description = VALUES(description)</code> (the lesson's version note).</td></tr>
+<tr><td>CHECK errors read <code class="inline">ERROR 4025 ... CONSTRAINT ... failed</code></td><td>MariaDB</td><td>Same rule, different number: say so and move on.</td></tr>
+<tr><td>An UPDATE in the 2.3 demo is refused with 1175</td><td>The learner started the client with <code class="inline">--safe-updates</code> (homework from Lesson 2.3) or forgot <code class="inline">SET SQL_SAFE_UPDATES = 0;</code></td><td><code class="inline">SET SQL_SAFE_UPDATES = 0;</code> for the session.</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 3 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">10</td><td>Warm-up</td><td>Five retrieval questions on Session 2; every laptop shows bookstore with three empty tables; homework check.</td></tr>
+      <tr><td class="t">0:10</td><td class="t">10</td><td><b>2.2</b> Frame and mental model</td><td>A type is a promise, a constraint is a rule; strict mode refuses instead of guessing.</td></tr>
+      <tr><td class="t">0:20</td><td class="t">25</td><td><b>2.2</b> Live demo</td><td>Numbers, money, text, dates and ENUM refusing bad values; the coupons table and its four errors; the BOOLEAN trap.</td></tr>
+      <tr><td class="t">0:45</td><td class="t">20</td><td><b>2.2</b> Guided lab</td><td><code class="inline">labs/module-03/l2_2-data-types-constraints/types_matter_starter.sql</code> in pairs: wrong types, wrong answers, no errors.</td></tr>
+      <tr><td class="t">1:05</td><td class="t">15</td><td><b>2.2</b> Start the lesson project</td><td>employees.sql, Steps 1 to 4, then Step 6's cleanup; Step 5 goes home.</td></tr>
+      <tr><td class="t">1:20</td><td class="t">10</td><td>Break</td><td>Leave the error table (1048, 1062, 1264, 1265, 1292, 1364, 1406, 3819) on the board.</td></tr>
+      <tr><td class="t">1:30</td><td class="t">10</td><td><b>2.3</b> Frame and mental model</td><td>CRUD, and WHERE picks the rows; the preview habit.</td></tr>
+      <tr><td class="t">1:40</td><td class="t">25</td><td><b>2.3</b> Live demo</td><td>Fill books, read with aliases and DISTINCT, update and delete with previews, an upsert, safe-updates, the AND trap.</td></tr>
+      <tr><td class="t">2:05</td><td class="t">20</td><td><b>2.3</b> Guided lab</td><td><code class="inline">labs/module-03/l2_3-crud-operations/new_arrivals_starter.sql</code>: insert, preview, change, count.</td></tr>
+      <tr><td class="t">2:25</td><td class="t">25</td><td><b>2.3</b> Build the lesson project</td><td>load_bookstore_data.sql, all five steps, run twice: the data Module 3 queries.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up</td><td>Exit ticket (3 questions), homework, bring list for Session 4.</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> The lesson pages estimate 100 + 105 = 205 minutes for a solo learner; the room has 150. Lesson 2.2 gets 70 minutes: its long reference tables are read at home, the room demos one example of each refusal. Lesson 2.3 gets 80, including its whole project.</p>
+<p><b>Goes home (about 2 to 3 hours).</b> employees.sql Step 5 and a rerun from a fresh session; each lesson's Hands-on Exercises; both Quick Quizzes; both journal entries; 2.3's "Before the Next Lesson" list (run load_bookstore_data.sql once more; try --safe-updates for a week).</p>
+<p><b>Protect, in this order:</b> the warm-up's bookstore check; 2.2 demo Steps 4 (money) and 8 to 9 (constraints); 2.3 demo Steps 8, 9 and 13 (preview, then the AND trap); the types lab through TODO 2; the load_bookstore_data project. <b>Cut first:</b> 2.2 demo Step 5 (text), then 2.3 demo Step 11 (the upsert: the fast finishers' lab covers it), then the 2.2 project start (all six steps go home).</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Warm-Up: Session 2 Retrieval</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">4m</td><td>Five questions W1 to W5 in the workbook, no notes, then fingers up</td></tr>
+<tr><td class="t">3m</td><td>Every laptop: <code class="inline">USE bookstore; SHOW TABLES;</code> lists books, categories, customers. Anyone else reruns create_bookstore.sql (or <code class="inline">SOURCE labs/_states/schema.sql</code>) now</td></tr>
+<tr><td class="t">3m</td><td>Homework check: hands up for explore.sql run from the shell; one learner reads a 2.1 journal sketch (it comes back in the 2.2 journal)</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Warm-up answers</div>
+<p>Answers: <b>W1</b> B) <code class="inline">;</code> and Enter; <b>W2</b> C) Which database you are in: the message says mysql, not bookstore; <b>W3</b> A) <code class="inline">DESCRIBE books;</code>; <b>W4</b> B) <code class="inline">YES</code>: MODIFY replaced the whole definition; <b>W5</b> D) No database selected (1046): USE one, or write database.table.</p>
+<ul class="tick">
+  <li><b>W1 and W3</b> are the prompt and the SQL-versus-client split from 1.3: quick, and nearly everyone gets them.</li>
+  <li><b>W2</b> is reading an error message: the database it names. If it is missed, point at the message and ask "where did MySQL look?"</li>
+  <li><b>W4</b> is the MODIFY trap, and it is today's theme in miniature: the database keeps exactly the rules you write.</li>
+  <li><b>W5</b> (1046) catches the cabinet picture: the session is not inside any drawer.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plans</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2.2</span><h3>Data Types &amp; Constraints</h3><span class="dur">70 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Pick an integer type and decide when UNSIGNED makes sense; explain why money is DECIMAL, never FLOAT</li>
+  <li>Choose between CHAR, VARCHAR and TEXT, and between DATE, DATETIME and TIMESTAMP</li>
+  <li>Use BOOLEAN and ENUM correctly, knowing what MySQL really stores</li>
+  <li>Apply PRIMARY KEY, AUTO_INCREMENT, NOT NULL, UNIQUE, DEFAULT and named CHECK constraints</li>
+  <li>Read the errors strict mode raises for bad values (1048, 1062, 1264, 1265, 1292, 1364, 1406, 3819)</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: a type is a promise, a constraint a rule; strict mode refuses instead of guessing</td></tr>
+<tr><td class="t">25m</td><td>Live demo: numbers, money, text, dates, ENUM; the coupons table; the BOOLEAN trap</td></tr>
+<tr><td class="t">20m</td><td>Guided lab: <code class="inline">types_matter_starter.sql</code> in pairs</td></tr>
+<tr><td class="t">15m</td><td>Start the lesson project: employees.sql Steps 1 to 4, then Step 6's cleanup</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Draw the lesson's flowchart: a value arrives → does it fit the column's type? → does it pass the constraints? → stored, or the row is rejected with a number. "Every program and every person that writes to this table goes through this door. That is far safer than hoping each one checks."</p>
+<p>Then strict mode in one breath: "MySQL 9.7 starts in strict mode: a value that does not fit is an error. Without it MySQL would quietly cut, round or clamp and only warn. Old tutorials show that; some hosts still do it. Keep it on."</p>
+<p>Then the rule of thumb on the board: <b>choose the type that says what the value is, then the smallest size that comfortably fits the biggest value you can imagine, then NOT NULL on every column a row cannot do without.</b> Money is DECIMAL; phone numbers and ZIP codes are text.</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>Inside <code class="inline">bookstore</code> (<code class="inline">USE bookstore;</code>). The demo creates six small demo tables next to the three real ones and drops them in the last step. Ask for the error number before every refused statement.</p>
+<ol class="steps">
+  <li><b>One column of each kind of number (3m).</b> "A type is a promise about the values; MySQL keeps it for you." Read the four types aloud.
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> number_demo (
+    stars     <span class="k">TINYINT</span>,
+    copies    <span class="k">SMALLINT</span> <span class="k">UNSIGNED</span>,
+    price     <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>),
+    weight_kg <span class="k">FLOAT</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> number_demo (stars, copies, price, weight_kg)
+<span class="k">VALUES</span> (<span class="s">5</span>, <span class="s">120</span>, <span class="s">14.99</span>, <span class="s">0.1</span>);
+<span class="k">SELECT</span> * <span class="k">FROM</span> number_demo;</pre>
+<pre class="out">+-------+--------+-------+-----------+
+| stars | copies | price | weight_kg |
++-------+--------+-------+-----------+
+|     5 |    120 | 14.99 |       0.1 |
++-------+--------+-------+-----------+</pre></li>
+  <li><b>A number that does not fit (1m).</b> "A TINYINT stops at 127. Predict: what happens to 200?"
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> number_demo (stars) <span class="k">VALUES</span> (<span class="s">200</span>);</pre>
+<pre class="out">ERROR 1264 (22003): Out of range value for column 'stars' at row 1</pre>
+Strict mode (the default) refuses instead of quietly storing 127.</li>
+  <li><b>Too many decimals is different (2m).</b> "Three decimals into a two-decimal column."
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> number_demo (price) <span class="k">VALUES</span> (<span class="s">12.345</span>);
+<span class="k">SHOW</span> <span class="k">WARNINGS</span>;
+<span class="k">SELECT</span> price <span class="k">FROM</span> number_demo <span class="k">WHERE</span> stars <span class="k">IS</span> <span class="k">NULL</span>;</pre>
+<pre class="out">+-------+------+--------------------------------------------+
+| Level | Code | Message                                    |
++-------+------+--------------------------------------------+
+| Note  | 1265 | Data truncated for column 'price' at row 1 |
++-------+------+--------------------------------------------+
++-------+
+| price |
++-------+
+| 12.35 |
++-------+</pre>
+Rounded, with a Note. Rounding to the column's precision is not an error.</li>
+  <li><b>Why money is never FLOAT (3m).</b> "Multiply both by 3. And is the stored 0.1 even equal to 0.1?"
+<pre class="code"><span class="k">SELECT</span>
+    price * <span class="s">3</span>        <span class="k">AS</span> decimal_times_3,
+    weight_kg * <span class="s">3</span>    <span class="k">AS</span> float_times_3,
+    weight_kg = <span class="s">0.1</span>  <span class="k">AS</span> float_equals_0_1
+<span class="k">FROM</span> number_demo
+<span class="k">WHERE</span> stars = <span class="s">5</span>;</pre>
+<pre class="out">+-----------------+---------------------+------------------+
+| decimal_times_3 | float_times_3       | float_equals_0_1 |
++-----------------+---------------------+------------------+
+|           44.97 | 0.30000000447034836 |                0 |
++-----------------+---------------------+------------------+</pre>
+The DECIMAL result is exact; FLOAT stores binary fractions. Over thousands of orders the crumbs become real money.</li>
+  <li><b>Text that is too long (1m).</b> "Fourteen characters into VARCHAR(5)."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> text_demo (
+    code  <span class="k">CHAR</span>(<span class="s">5</span>),
+    label <span class="k">VARCHAR</span>(<span class="s">5</span>)
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> text_demo (label) <span class="k">VALUES</span> (<span class="s">'Fahrenheit 451'</span>);</pre>
+<pre class="out">ERROR 1406 (22001): Data too long for column 'label' at row 1</pre>
+Strict mode refuses instead of storing Fahre.</li>
+  <li><b>Dates are checked (2m).</b> "February 30th. Then the date the way an American writes it."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> date_demo (d <span class="k">DATE</span>, dt <span class="k">DATETIME</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> date_demo (d) <span class="k">VALUES</span> (<span class="s">'2026-02-30'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> date_demo (d) <span class="k">VALUES</span> (<span class="s">'03/10/2026'</span>);</pre>
+<pre class="out">ERROR 1292 (22007): Incorrect date value: '2026-02-30' for column 'd' at row 1
+ERROR 1292 (22007): Incorrect date value: '03/10/2026' for column 'd' at row 1</pre>
+Dates are year first: '2026-03-10'. Spreadsheet dates go in with STR_TO_DATE (the lab uses it).</li>
+  <li><b>ENUM: one value from a list (2m).</b> "A default, and a value that is not on the list."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> format_demo (
+    title  <span class="k">VARCHAR</span>(<span class="s">50</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    format <span class="k">ENUM</span>(<span class="s">'paperback'</span>, <span class="s">'hardcover'</span>, <span class="s">'ebook'</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">DEFAULT</span> <span class="s">'paperback'</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> format_demo (title, format) <span class="k">VALUES</span> (<span class="s">'Dune'</span>, <span class="s">'hardcover'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> format_demo (title) <span class="k">VALUES</span> (<span class="s">'Emma'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> format_demo (title, format) <span class="k">VALUES</span> (<span class="s">'1984'</span>, <span class="s">'audiobook'</span>);
+<span class="k">SELECT</span> title, format <span class="k">FROM</span> format_demo;</pre>
+<pre class="out">ERROR 1265 (01000): Data truncated for column 'format' at row 1
++-------+-----------+
+| title | format    |
++-------+-----------+
+| Dune  | hardcover |
+| Emma  | paperback |
++-------+-----------+</pre>
+1265 "Data truncated" is how MySQL says the value is not one of the options.</li>
+  <li><b>A table with every kind of rule (3m).</b> Read the CREATE line by line: "required, never repeated, a default, and a named CHECK."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> coupons (
+    id           <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    code         <span class="k">VARCHAR</span>(<span class="s">20</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">UNIQUE</span>,
+    percent_off  <span class="k">TINYINT</span> <span class="k">UNSIGNED</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    min_order    <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">DEFAULT</span> <span class="s">0.00</span>,
+    expires      <span class="k">DATE</span>,
+    <span class="k">CONSTRAINT</span> chk_coupon_percent <span class="k">CHECK</span> (percent_off <span class="k">BETWEEN</span> <span class="s">5</span> <span class="k">AND</span> <span class="s">50</span>)
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> coupons (code, percent_off, expires) <span class="k">VALUES</span> (<span class="s">'WELCOME10'</span>, <span class="s">10</span>, <span class="s">'2026-12-31'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> coupons (code, percent_off, min_order) <span class="k">VALUES</span> (<span class="s">'BIGBASKET'</span>, <span class="s">20</span>, <span class="s">50.00</span>);
+<span class="k">SELECT</span> * <span class="k">FROM</span> coupons;</pre>
+<pre class="out">+----+-----------+-------------+-----------+------------+
+| id | code      | percent_off | min_order | expires    |
++----+-----------+-------------+-----------+------------+
+|  1 | WELCOME10 |          10 |      0.00 | 2026-12-31 |
+|  2 | BIGBASKET |          20 |     50.00 | NULL       |
++----+-----------+-------------+-----------+------------+</pre></li>
+  <li><b>Break every rule (3m).</b> Ask for the four error numbers BEFORE you run it; write predictions on the board.
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> coupons (code, percent_off) <span class="k">VALUES</span> (<span class="k">NULL</span>, <span class="s">15</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> coupons (code) <span class="k">VALUES</span> (<span class="s">'SPRING15'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> coupons (code, percent_off) <span class="k">VALUES</span> (<span class="s">'WELCOME10'</span>, <span class="s">15</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> coupons (code, percent_off) <span class="k">VALUES</span> (<span class="s">'HALFPRICE'</span>, <span class="s">75</span>);</pre>
+<pre class="out">ERROR 1048 (23000): Column 'code' cannot be null
+ERROR 1364 (HY000): Field 'percent_off' doesn't have a default value
+ERROR 1062 (23000): Duplicate entry 'WELCOME10' for key 'coupons.code'
+ERROR 3819 (HY000): Check constraint 'chk_coupon_percent' is violated.</pre>
+Explicit NULL 1048, left out 1364, duplicate 1062, CHECK 3819 (named, so you know which rule).</li>
+  <li><b>The id after failed inserts (2m).</b> "Which id does SUMMER25 get?"
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> coupons (code, percent_off) <span class="k">VALUES</span> (<span class="s">'SUMMER25'</span>, <span class="s">25</span>);
+<span class="k">SELECT</span> LAST_INSERT_ID();
+<span class="k">SELECT</span> id, code <span class="k">FROM</span> coupons <span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+<pre class="out">+------------------+
+| LAST_INSERT_ID() |
++------------------+
+|                4 |
++------------------+
++----+-----------+
+| id | code      |
++----+-----------+
+|  1 | WELCOME10 |
+|  2 | BIGBASKET |
+|  4 | SUMMER25  |
++----+-----------+</pre>
+4, not 3: a failed insert used up an id. Gaps are normal; an id is a label, not a count.</li>
+  <li><b>The silent BOOLEAN trap (2m).</b> "BOOLEAN is a TINYINT, so 5 goes in. Which books are in stock?"
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> flag_demo (title <span class="k">VARCHAR</span>(<span class="s">50</span>), in_stock <span class="k">BOOLEAN</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> flag_demo <span class="k">VALUES</span> (<span class="s">'Dune'</span>, <span class="k">TRUE</span>), (<span class="s">'Emma'</span>, <span class="k">FALSE</span>), (<span class="s">'1984'</span>, <span class="s">5</span>);
+<span class="k">SELECT</span> title, in_stock <span class="k">FROM</span> flag_demo <span class="k">WHERE</span> in_stock = <span class="k">TRUE</span>;
+<span class="k">SELECT</span> title, in_stock <span class="k">FROM</span> flag_demo <span class="k">WHERE</span> in_stock;</pre>
+<pre class="out">+-------+----------+
+| title | in_stock |
++-------+----------+
+| Dune  |        1 |
++-------+----------+
++-------+----------+
+| title | in_stock |
++-------+----------+
+| Dune  |        1 |
+| 1984  |        5 |
++-------+----------+</pre>
+<code class="inline">= TRUE</code> means <code class="inline">= 1</code>; 1984 disappears. Test truth with <code class="inline">WHERE in_stock</code>.</li>
+  <li><b>Clean up (1m).</b> "Back to the three tables Lesson 2.3 expects."
+<pre class="code"><span class="k">DROP</span> <span class="k">TABLE</span> <span class="k">IF</span> <span class="k">EXISTS</span> number_demo, text_demo, date_demo, format_demo, coupons, flag_demo;
+<span class="k">SHOW</span> <span class="k">TABLES</span>;</pre>
+<pre class="out">+---------------------+
+| Tables_in_bookstore |
++---------------------+
+| books               |
+| categories          |
+| customers           |
++---------------------+</pre></li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Numbers that are really identifiers stored as numbers.</b> A ZIP code or phone as INT loses leading zeros. Coach: "Will you ever add two of these together? No? Then it is text."</li>
+  <li><b>Constraints forgotten for the obvious columns.</b> Learners write <code class="inline">email VARCHAR(100)</code> and stop. Coach with the question: "Does a row make sense without this value? Can two rows share it?"</li>
+  <li><b>Reading 1265 as a rounding message only.</b> It also means "not on the ENUM list". Coach: "Read the column name in the message: price (rounded) or format (not an option)?"</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-03/l2_2-data-types-constraints/types_matter_starter.sql</code>; reference <code class="inline">labs/module-03/l2_2-data-types-constraints/types_matter_solution.sql</code>. A delivery list pasted from a spreadsheet with copies as text, cost as FLOAT and dates as MM/DD/YYYY text. As shipped, three of its four answers are wrong and MySQL never complains.</p>
+<ul class="tick">
+  <li><b>Run it as shipped first (3m)</b> and ask pairs which answers are wrong and why: copies sort 9, 15, 120 (text order); the total is 556.9499866962433; the dates sort by month text; the "last" delivery is 12/01/2026.</li>
+  <li><b>TODOs 1 to 3 in pairs (12m):</b> INT UNSIGNED, DECIMAL(6, 2), DATE, and the dates converted with <code class="inline">STR_TO_DATE('03/10/2026', '%m/%d/%Y')</code> (or retyped). A DATE column refuses the US format with 1292: let them hit it once.</li>
+  <li><b>Expected:</b> Dune 120, Emma 15, 1984 9; total exactly 556.95; 2026-03-10, 2026-12-01, 2027-01-15; last delivery 2027-01-15.</li>
+  <li><b>Debrief (3m):</b> "Nothing in the first run was an error. Wrong types give wrong answers silently; the right types make MySQL do the right thing."</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-03/l2_2-data-types-constraints/membership_rules_starter.sql</code> (five written rules become constraints), then <code class="inline">labs/module-03/l2_2-data-types-constraints/debug_bad_rows.sql</code> (six sign-ups refused with 1048, 1062, 1265, 1292, 1364 and 3819).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>The Staff Table</b>: <code class="inline">employees.sql</code>, designed on paper, then proven by trying to break every rule. In the room: Steps 1 to 4 (13 minutes), then Step 6's DROP TABLE (2 minutes).</p>
+<ul class="tick">
+  <li>Step 1 on paper in pairs (3m): a type and the rules for each requirement. Compare with Step 2 before typing.</li>
+  <li>Steps 2 and 3: the table and the three staff members; nobody types id or is_active.</li>
+  <li>Step 4: the four INSERTs that must fail; predict each error number first (3819, 1062, 1265, 1364).</li>
+  <li><b>Before the break:</b> Step 6's <code class="inline">DROP TABLE IF EXISTS employees, ...;</code> so bookstore is back to three tables for Lesson 2.3. <code class="inline">employees.sql</code> is saved, so nothing is lost.</li>
+  <li><b>Goes home:</b> Step 5 (COUNT and SHOW CREATE TABLE) and a rerun of the whole file from a fresh session (then Step 6 again).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li>Why is a phone number VARCHAR and not INT? <b>Answer:</b> it can start with 0 or +, has dashes, can be longer than INT allows, and nobody adds phone numbers.</li>
+  <li>1048 or 1364: which one is an explicit NULL? <b>Answer:</b> 1048; 1364 is a required column left out.</li>
+  <li>Why name a CHECK constraint? <b>Answer:</b> the error then says which rule failed (<code class="inline">chk_salary</code>), instead of <code class="inline">employees_chk_1</code>.</li>
+  <li><code class="inline">WHERE in_stock = TRUE</code> misses a row holding 5. What should you write? <b>Answer:</b> <code class="inline">WHERE in_stock</code> (any non-zero), and a CHECK if only 0/1 is allowed.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">A) <code class="inline">TINYINT UNSIGNED</code></span>; <b>Q2</b> <span data-sc="2"><code class="inline">7.01</code></span>; <b>Q3</b> <span data-sc="3">C) <code class="inline">ERROR 1292 (22007): Incorrect date value: '2026-04-31' for column 'due' at row 1</code></span>; <b>Q4</b> <span data-sc="4">D) <code class="inline">DATETIME</code></span>; <b>Q5</b> <span data-sc="5">B) <code class="inline">ERROR 1048</code>: Column 'email' cannot be null</span>; <b>Q6</b> <span data-sc="6"><code class="inline">small</code>, <code class="inline">medium</code>, <code class="inline">large</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> the lesson's "Choosing the Right Type" table printed as a card; learners pick from it instead of from memory.</p>
+<p><b>Stretch:</b> <code class="inline">membership_rules_starter.sql</code> and <code class="inline">debug_bad_rows.sql</code>; the lesson's Exercise 4 (created/updated timestamps) and the Bonus Challenge (a CHECK comparing two columns).</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2.3</span><h3>CRUD Operations</h3><span class="dur">80 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Create rows with INSERT: one row, many rows, with defaults, and read back the new id</li>
+  <li>Read rows with SELECT: chosen columns, aliases, calculated columns and DISTINCT</li>
+  <li>Update and delete exactly the rows you mean, using the "SELECT first" habit and safe-updates mode</li>
+  <li>Write an upsert with INSERT ... AS new ON DUPLICATE KEY UPDATE, and explain how it differs from REPLACE and INSERT IGNORE</li>
+  <li>Read and fix errors 1054, 1062, 1136 and 1175</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: CRUD; WHERE picks the rows; the preview habit</td></tr>
+<tr><td class="t">25m</td><td>Live demo: INSERT, SELECT, UPDATE and DELETE with previews, an upsert, safe-updates, the AND trap</td></tr>
+<tr><td class="t">20m</td><td>Guided lab: <code class="inline">new_arrivals_starter.sql</code></td></tr>
+<tr><td class="t">25m</td><td>Build the lesson project: load_bookstore_data.sql, Steps 1 to 5, run twice</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Write CRUD on the board with its four statements. Then the lesson's key sentence: "INSERT only ever adds. UPDATE and DELETE act on <b>every row their WHERE matches</b>, and on every row in the table if there is no WHERE at all. There is no undo."</p>
+<p>Then the habit, as a three-step recipe: <b>1 SELECT with the WHERE you mean · 2 the UPDATE or DELETE with exactly the same WHERE · 3 compare the counts</b> (the preview's rows and Rows matched). "Safe-updates mode is the seat belt; the preview is looking before you pull out."</p>
+<p>And the upsert in one line: "Insert it, or update it if it is already there": the nightly-import problem every shop has.</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>Inside <code class="inline">bookstore</code> with three empty tables. These blocks keep MySQL's <code class="inline">Query OK</code> and <code class="inline">Rows matched</code> lines on purpose: read them aloud every time. The demo empties books and categories at the end, so the project starts clean.</p>
+<ol class="steps">
+  <li><b>Create: one row (2m).</b> "List the columns, then the values in the same order. id and in_stock are left out on purpose."
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> books (title, author, price, pages, published)
+<span class="k">VALUES</span> (<span class="s">'Dune'</span>, <span class="s">'Frank Herbert'</span>, <span class="s">12.99</span>, <span class="s">412</span>, <span class="s">'1965-08-01'</span>);</pre>
+<pre class="out">Query OK, 1 row affected</pre></li>
+  <li><b>Read it back, and the new id (1m).</b> "LAST_INSERT_ID: what a program uses to show the new book's page."
+<pre class="code"><span class="k">SELECT</span> * <span class="k">FROM</span> books;
+<span class="k">SELECT</span> LAST_INSERT_ID();</pre>
+<pre class="out">+----+-------+---------------+-------+-------+------------+----------+
+| id | title | author        | price | pages | published  | in_stock |
++----+-------+---------------+-------+-------+------------+----------+
+|  1 | Dune  | Frank Herbert | 12.99 |   412 | 1965-08-01 |        1 |
++----+-------+---------------+-------+-------+------------+----------+
++------------------+
+| LAST_INSERT_ID() |
++------------------+
+|                1 |
++------------------+</pre></li>
+  <li><b>Many rows in one statement (2m).</b> "Commas between the value lists. Read the Records line."
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> books (title, author, price, pages, published, in_stock) <span class="k">VALUES</span>
+    (<span class="s">'1984'</span>, <span class="s">'George Orwell'</span>, <span class="s">9.99</span>, <span class="s">328</span>, <span class="s">'1949-06-08'</span>, <span class="k">TRUE</span>),
+    (<span class="s">'To Kill a Mockingbird'</span>, <span class="s">'Harper Lee'</span>, <span class="s">11.99</span>, <span class="s">281</span>, <span class="s">'1960-07-11'</span>, <span class="k">TRUE</span>),
+    (<span class="s">'The Great Gatsby'</span>, <span class="s">'F. Scott Fitzgerald'</span>, <span class="s">8.99</span>, <span class="s">180</span>, <span class="s">'1925-04-10'</span>, <span class="k">TRUE</span>),
+    (<span class="s">'Pride and Prejudice'</span>, <span class="s">'Jane Austen'</span>, <span class="s">7.99</span>, <span class="s">432</span>, <span class="s">'1813-01-28'</span>, <span class="k">TRUE</span>),
+    (<span class="s">'The Hobbit'</span>, <span class="s">'J.R.R. Tolkien'</span>, <span class="s">10.99</span>, <span class="s">310</span>, <span class="s">'1937-09-21'</span>, <span class="k">TRUE</span>),
+    (<span class="s">'Brave New World'</span>, <span class="s">'Aldous Huxley'</span>, <span class="s">9.49</span>, <span class="s">311</span>, <span class="s">'1932-01-01'</span>, <span class="k">TRUE</span>),
+    (<span class="s">'The Catcher in the Rye'</span>, <span class="s">'J.D. Salinger'</span>, <span class="s">8.99</span>, <span class="s">234</span>, <span class="s">'1951-07-16'</span>, <span class="k">FALSE</span>),
+    (<span class="s">'Lord of the Rings'</span>, <span class="s">'J.R.R. Tolkien'</span>, <span class="s">15.99</span>, <span class="s">1178</span>, <span class="s">'1954-07-29'</span>, <span class="k">TRUE</span>),
+    (<span class="s">'Fahrenheit 451'</span>, <span class="s">'Ray Bradbury'</span>, <span class="s">10.49</span>, <span class="s">158</span>, <span class="s">'1953-10-19'</span>, <span class="k">TRUE</span>);</pre>
+<pre class="out">Query OK, 9 rows affected
+Records: 9  Duplicates: 0  Warnings: 0</pre></li>
+  <li><b>Aliases and a calculated column (2m).</b> "A calculation never changes the table."
+<pre class="code"><span class="k">SELECT</span>
+    title,
+    price,
+    ROUND(price * <span class="s">1.08</span>, <span class="s">2</span>) <span class="k">AS</span> price_with_tax
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &gt; <span class="s">11</span>;</pre>
+<pre class="out">+-----------------------+-------+----------------+
+| title                 | price | price_with_tax |
++-----------------------+-------+----------------+
+| Dune                  | 12.99 |          14.03 |
+| To Kill a Mockingbird | 11.99 |          12.95 |
+| Lord of the Rings     | 15.99 |          17.27 |
++-----------------------+-------+----------------+</pre></li>
+  <li><b>DISTINCT (1m).</b> "Ten books, how many authors?"
+<pre class="code"><span class="k">SELECT</span> <span class="k">DISTINCT</span> author
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> author;</pre>
+<pre class="out">+---------------------+
+| author              |
++---------------------+
+| Aldous Huxley       |
+| F. Scott Fitzgerald |
+| Frank Herbert       |
+| George Orwell       |
+| Harper Lee          |
+| J.D. Salinger       |
+| J.R.R. Tolkien      |
+| Jane Austen         |
+| Ray Bradbury        |
++---------------------+</pre></li>
+  <li><b>Update one row by its id (2m).</b> "Read the second line every time: matched, then changed."
+<pre class="code"><span class="k">UPDATE</span> books
+<span class="k">SET</span> price = <span class="s">14.99</span>
+<span class="k">WHERE</span> id = <span class="s">1</span>;</pre>
+<pre class="out">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0</pre></li>
+  <li><b>The same update again (1m).</b> "Predict both numbers."
+<pre class="code"><span class="k">UPDATE</span> books
+<span class="k">SET</span> price = <span class="s">14.99</span>
+<span class="k">WHERE</span> id = <span class="s">1</span>;</pre>
+<pre class="out">Query OK, 0 rows affected
+Rows matched: 1  Changed: 0  Warnings: 0</pre>
+Matched 1, changed 0: the price was already 14.99. Matched 0 would mean a typo in the WHERE.</li>
+  <li><b>Preview first (2m).</b> "A sale on everything over $10. Before changing anything: which rows?"
+<pre class="code"><span class="k">SELECT</span> id, title, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &gt; <span class="s">10</span>
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+<pre class="out">+----+-----------------------+-------+
+| id | title                 | price |
++----+-----------------------+-------+
+|  1 | Dune                  | 14.99 |
+|  3 | To Kill a Mockingbird | 11.99 |
+|  6 | The Hobbit            | 10.99 |
+|  9 | Lord of the Rings     | 15.99 |
+| 10 | Fahrenheit 451        | 10.49 |
++----+-----------------------+-------+</pre></li>
+  <li><b>Then the same WHERE (1m).</b> "Five previewed, five matched: that is the habit."
+<pre class="code"><span class="k">UPDATE</span> books
+<span class="k">SET</span> price = ROUND(price * <span class="s">0.90</span>, <span class="s">2</span>)
+<span class="k">WHERE</span> price &gt; <span class="s">10</span>;</pre>
+<pre class="out">Query OK, 5 rows affected
+Rows matched: 5  Changed: 5  Warnings: 0</pre></li>
+  <li><b>Delete, and the id is not reused (2m).</b> "Fahrenheit 451 goes and comes back. Which id?"
+<pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> books <span class="k">WHERE</span> id = <span class="s">10</span>;
+<span class="k">INSERT</span> <span class="k">INTO</span> books (title, author, price, pages, published)
+<span class="k">VALUES</span> (<span class="s">'Fahrenheit 451'</span>, <span class="s">'Ray Bradbury'</span>, <span class="s">10.49</span>, <span class="s">158</span>, <span class="s">'1953-10-19'</span>);
+<span class="k">SELECT</span> id, title <span class="k">FROM</span> books <span class="k">WHERE</span> title = <span class="s">'Fahrenheit 451'</span>;</pre>
+<pre class="out">+----+----------------+
+| id | title          |
++----+----------------+
+| 11 | Fahrenheit 451 |
++----+----------------+</pre>
+11, never 10 again: another table, an email or a receipt may still mention old id 10.</li>
+  <li><b>Categories, then an upsert (3m).</b> Insert the five categories, then: "Fiction exists. Insert it, or update it if it is there."
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> categories (name, description) <span class="k">VALUES</span>
+    (<span class="s">'Fiction'</span>, <span class="s">'Novels, short stories, and other imaginative works'</span>),
+    (<span class="s">'Science Fiction'</span>, <span class="s">'Stories exploring futuristic or scientific concepts'</span>),
+    (<span class="s">'Classic'</span>, <span class="s">'Timeless literary works recognized across generations'</span>),
+    (<span class="s">'Fantasy'</span>, <span class="s">'Stories set in imaginary worlds with magical elements'</span>),
+    (<span class="s">'Dystopian'</span>, <span class="s">'Stories about oppressive societies and dark futures'</span>);
+
+<span class="k">INSERT</span> <span class="k">INTO</span> categories (name, description)
+<span class="k">VALUES</span> (<span class="s">'Fiction'</span>, <span class="s">'Imaginative prose of every kind'</span>) <span class="k">AS</span> new
+<span class="k">ON</span> <span class="k">DUPLICATE</span> <span class="k">KEY</span> <span class="k">UPDATE</span> description = new.description;</pre>
+<pre class="out">Query OK, 2 rows affected</pre>
+2 rows affected = the update branch ran (1 = inserted, 0 = unchanged). MariaDB has no <code class="inline">AS new</code>: <code class="inline">VALUES(description)</code> there.</li>
+  <li><b>The safety switch (2m).</b> "The classic slip, with safe-updates on."
+<pre class="code"><span class="k">SET</span> SQL_SAFE_UPDATES = <span class="s">1</span>;
+<span class="k">UPDATE</span> books <span class="k">SET</span> price = <span class="s">0</span>;</pre>
+<pre class="out">ERROR 1175 (HY000): You are using safe update mode and you tried to update a table without a WHERE that uses a KEY column.</pre>
+Then <code class="inline">SET SQL_SAFE_UPDATES = 0;</code> again for the rest of the demo (its WHEREs use non-key columns).</li>
+  <li><b>AND instead of a comma (2m).</b> "Dune: 15.99 and out of stock. Predict."
+<pre class="code"><span class="k">UPDATE</span> books
+<span class="k">SET</span> price = <span class="s">15.99</span> <span class="k">AND</span> in_stock = <span class="k">FALSE</span>
+<span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SELECT</span> title, price, in_stock <span class="k">FROM</span> books <span class="k">WHERE</span> id = <span class="s">1</span>;</pre>
+<pre class="out">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
++-------+-------+----------+
+| title | price | in_stock |
++-------+-------+----------+
+| Dune  |  0.00 |        1 |
++-------+-------+----------+</pre>
+No error, one row changed, price 0.00 and still in stock: <code class="inline">price = (15.99 AND (in_stock = FALSE))</code>. With TEXT values the same slip is refused (1292), as the debug handout shows.</li>
+  <li><b>Empty the tables (1m).</b> "The project loads the official data from nothing."
+<pre class="code"><span class="k">TRUNCATE</span> <span class="k">TABLE</span> books;
+<span class="k">TRUNCATE</span> <span class="k">TABLE</span> categories;</pre></li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Text without quotes</b> (<code class="inline">VALUES (Emma, ...)</code> → 1054 Unknown column 'Emma'). Coach: "Without quotes MySQL thinks Emma is a column." A quote inside text is doubled: <code class="inline">'Charlotte''s Web'</code>.</li>
+  <li><b>Not reading the second line.</b> Learners see Query OK and move on. Coach: "How many rows did the WHERE match? Is that the number your preview showed?"</li>
+  <li><b>AND in SET.</b> No error with numbers (price becomes 0.00), ERROR 1292 with text. Coach: "Assignments are separated by commas." Then look at the changed row.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-03/l2_3-crud-operations/new_arrivals_starter.sql</code>; reference <code class="inline">labs/module-03/l2_3-crud-operations/new_arrivals_solution.sql</code>. Six new books arrive; then a price rise, a sold-out book, a clear-out and one more arrival, each change previewed and counted with <code class="inline">ROW_COUNT()</code>. The file empties books at the end (TRUNCATE), so it can run any number of times.</p>
+<ul class="tick">
+  <li><b>Steps 1 and 2 run as shipped:</b> predict <code class="inline">LAST_INSERT_ID()</code> after a six-row INSERT first (it is 1: the first row of the batch, not 6).</li>
+  <li><b>TODOs 3 to 6 (15m):</b> each turned-off statement has one gap. TODO 4's gap is the comma between two assignments: the AND trap in disguise.</li>
+  <li><b>Expected:</b> preview Moby Dick 12.40 and Little Women 10.20; rows_changed 2; Frankenstein 6.99, in_stock 0; Emma and Frankenstein previewed, rows_deleted 2; Middlemarch gets id 7; final prices 13.02 and 10.71.</li>
+  <li><b>Circulate for:</b> TODO 3's WHERE different from the preview's (the counts disagree: good, ask why); TODO 5 run before its preview; learners running the lab after their project (its TRUNCATE empties books: rerun load_bookstore_data.sql).</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-03/l2_3-crud-operations/category_feed_starter.sql</code> (a multi-row upsert with ROW_COUNT 3, INSERT IGNORE, REPLACE), then <code class="inline">labs/module-03/l2_3-crud-operations/debug_crud_slips.sql</code> (1136, 1054, 1062, 1175, 1292).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Build the lesson project</div>
+<p>The lesson project is <b>Stock the Bookstore</b>: <code class="inline">load_bookstore_data.sql</code>, which empties the three tables and loads the official 10 books, 8 customers and 5 categories. All five steps in the room (25 minutes).</p>
+<ul class="tick">
+  <li>Step 1: header, <code class="inline">USE bookstore;</code>, three TRUNCATEs.</li>
+  <li>Steps 2 and 3: the three INSERTs from the lesson page (typing them is fine practice; copying is acceptable if time is short, then check each row).</li>
+  <li>Step 4: the check queries. <b>Done</b> = books ends with id 10 Fahrenheit 451, Gatsby and Catcher show in_stock 0, 8 customers, 5 categories.</li>
+  <li>Step 5: SOURCE it twice; the same result both times. Walk the room and look at every screen.</li>
+  <li>Session 4 starts with Lesson 3.1's setup script, which rebuilds the same data from nothing: a learner who does not finish here is not stuck, but the habit of a reload script is the point.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li><code class="inline">UPDATE books SET price = 0;</code>: what happens in a normal session? <b>Answer:</b> every price becomes 0.00, no undo.</li>
+  <li>You deleted id 10 and inserted a book. Which id? <b>Answer:</b> 11: AUTO_INCREMENT never reuses a number.</li>
+  <li>The upsert says 2 rows affected. Which branch ran? <b>Answer:</b> the update (1 = inserted, 0 = unchanged).</li>
+  <li>Why avoid REPLACE on a row other tables point to? <b>Answer:</b> it deletes and re-inserts: a new id, and the unlisted columns get their defaults.</li>
+</ul>
+<p>Workbook self-check, items Q7 to Q12.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">D) It depends on the table's exact column order: an added column breaks it (1136) or shifts values silently</span>; <b>Q8</b> <span data-sc="8"><code class="inline">2</code></span>; <b>Q9</b> <span data-sc="9">A) The WHERE found no rows: often a typo in the value or the wrong column</span>; <b>Q10</b> <span data-sc="10">C) <code class="inline">UPDATE books SET price = 9.99 WHERE id = 2;</code></span>; <b>Q11</b> <span data-sc="11">B) <code class="inline">INSERT ... AS new ON DUPLICATE KEY UPDATE description = new.description;</code></span>; <b>Q12</b> <span data-sc="12"><code class="inline">3</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> the three-step recipe (preview, same WHERE, compare counts) on a card next to the keyboard.</p>
+<p><b>Stretch:</b> <code class="inline">category_feed_starter.sql</code> and <code class="inline">debug_crud_slips.sql</code>; the lesson's Exercise 5 (an idempotent upsert) and the Bonus Challenge (an upsert that adds to a count; note the Answer Key's warning about qualifying the column).</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 4 minutes)</div>
+<p>Put the three questions on the slide; learners answer in the workbook or on a sticky note. Question 3's answers tell you whether the preview habit stuck.</p>
+<ol class="steps">
+  <li>Why is money stored as DECIMAL and never as FLOAT? One sentence and one example. <b>Answer:</b> DECIMAL is exact; FLOAT stores binary fractions, so most decimal values are slightly off and the crumbs add up: 0.1 stored as FLOAT times 3 printed 0.30000000447034836 in the demo, and the lab's FLOAT total was 556.9499866962433 instead of 556.95.</li>
+  <li>An UPDATE says <code class="inline">Rows matched: 3  Changed: 2</code>. What happened to the third row? <b>Answer:</b> The WHERE found it, but it already had the new value, so nothing changed in it. (Matched 0 would mean the WHERE found nothing.)</li>
+  <li>What do you run before every UPDATE or DELETE that touches more than one row, and why? <b>Answer:</b> A SELECT with exactly the same WHERE: it shows which rows will be touched, and its row count must match the UPDATE's Rows matched. Safe-updates mode (<code class="inline">SET SQL_SAFE_UPDATES = 1;</code> or <code class="inline">mysql --safe-updates</code>) is the second net.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours)</div>
+<ul class="tick">
+  <li><b>Finish employees.sql</b> (Lesson 2.2 project Step 5, then rerun the whole file and Step 6's cleanup so bookstore is back to three tables).</li>
+  <li><b>load_bookstore_data.sql:</b> if it was not finished in class, finish it; everyone runs it once more (2.3's "Before the Next Lesson").</li>
+  <li><b>Lesson exercises.</b> 2.2: Exercises 1 to 3 (pick the type, prove DECIMAL rounds, fix the bad table); Exercise 4 is a stretch. 2.3: Exercises 1 to 4 (add, read, update and remove, each putting the data back); Exercise 5 is a stretch.</li>
+  <li><b>Both Quick Quizzes</b> on the lesson pages (answers in the Answer Key).</li>
+  <li><b>Journal:</b> both entries; the 2.2 prompt revises the 2.1 sketch.</li>
+  <li><b>Try</b> starting the client with <code class="inline">--safe-updates</code> for a week.</li>
+  <li><b>Optional:</b> <code class="inline">labs/module-03/l2_2-data-types-constraints/membership_rules_starter.sql</code>, <code class="inline">labs/module-03/l2_3-crud-operations/category_feed_starter.sql</code> and the two debug handouts.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Bring list for Session 4</div>
+<ul class="tick">
+  <li>A laptop with bookstore loaded (10 books, 8 customers, 5 categories), the root password.</li>
+  <li><code class="inline">create_bookstore.sql</code> and <code class="inline">load_bookstore_data.sql</code> in the mysql-course folder.</li>
+  <li>The course folder with <code class="inline">labs/</code> (Session 4's starters are in <code class="inline">labs/module-04/</code>), the workbook and the journal.</li>
+  <li>Your notes from Sessions 1 to 3: Session 4 ends with <b>Checkpoint 1</b> on Modules 1 and 2 (30 minutes, open notes).</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> the warm-up's bookstore check; 2.2 demo Steps 4, 8 and 9; 2.3 demo Steps 8, 9 and 14; the load_bookstore_data project.</li>
+  <li><b>Cut first (saves 1m):</b> 2.2 demo Step 5 (text too long): the lesson page shows it.</li>
+  <li><b>Cut second (saves 3m):</b> 2.3 demo Step 11 (the upsert): "the lesson's upsert section, and the fast finishers' lab".</li>
+  <li><b>Cut third (saves 15m):</b> the 2.2 project start: all six steps of employees.sql go home.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>Run <code class="inline">debug_bad_rows.sql</code> for everyone: match each error to one of the club's rules R1 to R5.</li>
+  <li>Lesson 2.2 Exercise 3 live: the coworker's Orders table with almost every column wrong.</li>
+  <li>Lesson 2.3 Exercise 5 live: run the Horror upsert three times and read the three counts.</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 3 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

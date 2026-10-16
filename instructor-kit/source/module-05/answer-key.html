@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 5</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 5: Aggregates and Subqueries</h1>
+    <p class="sub">Answers and reasoning for every Session 5 item: the warm-up, both self-checks, the predict-then-run items, the lab reference outputs and the fixed debug handouts, the lesson pages' own quizzes and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>5</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Warm-up</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">W1</div><div class="qt">Who comes back, and why?</div><pre class="code"><span class="k">SELECT</span> first_name, city, id
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'Chicago'</span> <span class="k">OR</span> city = <span class="s">'Houston'</span> <span class="k">AND</span> id &gt; <span class="s">5</span>
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre><div class="opts"><div class="opt correct">Bob and Grace. AND binds before OR: <code class="inline">city = 'Chicago' OR (city = 'Houston' AND id &gt; 5)</code>, and Dave (Houston) has id 4.<pre class="out">+------------+---------+----+
+| first_name | city    | id |
++------------+---------+----+
+| Bob        | Chicago |  2 |
+| Grace      | Chicago |  7 |
++------------+---------+----+</pre></div></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Two customers have no city. Why does this find nobody? What would you write instead?</div><pre class="code"><span class="k">SELECT</span> first_name <span class="k">FROM</span> customers <span class="k">WHERE</span> city = <span class="k">NULL</span>;</pre><div class="opts"><div class="opt correct">Nobody: nothing equals NULL, not even NULL. Write <code class="inline">WHERE city IS NULL</code> (Eve and Hank).<pre class="out">Empty set</pre></div></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">In which order must you write <code class="inline">WHERE</code>, <code class="inline">ORDER BY</code> and <code class="inline">LIMIT</code>?</div><div class="opts"><div class="opt correct">WHERE, then ORDER BY, then LIMIT. Lesson 3.3 adds GROUP BY and HAVING between WHERE and ORDER BY.</div></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">Which three books does this show?</div><pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">DESC</span>, title
+<span class="k">LIMIT</span> <span class="s">3</span> <span class="k">OFFSET</span> <span class="s">2</span>;</pre><div class="opts"><div class="opt correct">The 3rd, 4th and 5th most expensive: OFFSET 2 skips Lord of the Rings and Dune.<pre class="out">+-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| To Kill a Mockingbird | 11.99 |
+| The Hobbit            | 10.99 |
+| Fahrenheit 451        | 10.49 |
++-----------------------+-------+</pre></div></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">Predict: how many customers live outside Chicago, according to this query?</div><pre class="code"><span class="k">SELECT</span> first_name
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="s">'Chicago'</span>, <span class="k">NULL</span>);</pre><div class="opts"><div class="opt correct">None: <code class="inline">city != 'Chicago' AND city != NULL</code> is unknown for every row. A NULL inside a NOT IN list empties the result (Lesson 3.1), and it comes back inside subqueries in Lesson 3.4.<pre class="out">Empty set</pre></div></div></div>
+
+  <div class="sec"><h2>3.3 · Aggregate Functions &amp; GROUP BY: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Grace (Chicago) and Hank (no city) are the only customers who signed up in February. What does this print?</div><pre class="code"><span class="k">SELECT</span> COUNT(*), COUNT(city)
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> created_at &gt;= <span class="s">'2026-02-01'</span>;</pre><div class="opts"><div class="opt">A) <code class="inline">2</code> and <code class="inline">2</code></div><div class="opt correct">B) <code class="inline">2</code> and <code class="inline">1</code></div><div class="opt">C) <code class="inline">1</code> and <code class="inline">1</code></div><div class="opt">D) <code class="inline">8</code> and <code class="inline">6</code></div></div><div class="why"><b>Why:</b> WHERE keeps the two February rows first. <code class="inline">COUNT(*)</code> counts both rows; <code class="inline">COUNT(city)</code> counts only the filled-in cities, and Hank's is NULL.<br><b>A</b> is wrong: <code class="inline">COUNT(column)</code> skips NULL; only <code class="inline">COUNT(*)</code> counts every row.<br><b>C</b> is wrong: Hank's row is still a row: COUNT(*) counts rows, not values.<br><b>D</b> is wrong: Those are the counts for the whole table; the WHERE line runs before the counting.</div></div>
+  <div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">You want only the authors whose books average more than $10. Where does that condition go?</div><div class="opts"><div class="opt">A) In <code class="inline">WHERE</code>, before <code class="inline">GROUP BY</code></div><div class="opt">B) In <code class="inline">ORDER BY</code></div><div class="opt correct">C) In <code class="inline">HAVING</code>, after <code class="inline">GROUP BY</code></div><div class="opt">D) In the <code class="inline">SELECT</code> list, as <code class="inline">AVG(price) &gt; 10</code></div></div><div class="why"><b>Why:</b> The average belongs to a whole group (an author's pile), so it can only be tested after the piles exist: HAVING. A condition on single rows (price > 10) goes in WHERE.<br><b>A</b> is wrong: WHERE runs before the piles exist; an aggregate there is error 1111.<br><b>B</b> is wrong: ORDER BY sorts; it never removes rows.<br><b>D</b> is wrong: That adds a 0/1 column; every author still appears.</div></div>
+  <div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">The flat bookstore has no books by Isaac Asimov. What does this print?</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> n, MAX(price) <span class="k">AS</span> top
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> author = <span class="s">'Isaac Asimov'</span>;</pre><div class="opts"><div class="opt correct">One row: <code class="inline">n</code> = 0 and <code class="inline">top</code> = NULL</div></div><div class="why"><b>Why:</b> An aggregate over no rows still returns one row. COUNT answers 0; every other aggregate has no values to work with and returns NULL (use COALESCE(MAX(price), 0) when a report needs 0).</div></div>
+  <div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">What happens when this runs on MySQL 9.7?</div><pre class="code"><span class="k">SELECT</span> city, first_name
+<span class="k">FROM</span> customers
+<span class="k">GROUP</span> <span class="k">BY</span> city;</pre><div class="opts"><div class="opt correct">A) <code class="inline">ERROR 1055 (42000)</code>: first_name is not in GROUP BY and not aggregated</div><div class="opt">B) One row per city, each with one customer's first name</div><div class="opt">C) <code class="inline">ERROR 1140</code>: an aggregated query without GROUP BY</div><div class="opt">D) One row per customer, sorted by city</div></div><div class="why"><b>Why:</b> Chicago's pile holds Bob and Grace: which first name belongs in Chicago's one row? MySQL's default ONLY_FULL_GROUP_BY mode refuses to guess (error 1055). Fix: aggregate it (MIN(first_name)), group by it, or drop it.<br><b>B</b> is wrong: That is what MariaDB (no ONLY_FULL_GROUP_BY) does silently: an arbitrary name per city.<br><b>C</b> is wrong: 1140 is for an aggregate with no GROUP BY at all; this query has one.<br><b>D</b> is wrong: GROUP BY makes one row per group, never one per input row.</div></div>
+  <div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">A colleague says: "I don't need <code class="inline">ORDER BY</code> after <code class="inline">GROUP BY city</code>: the cities always come out sorted." On MySQL 9.7, is that right?</div><div class="opts"><div class="opt">A) Yes: GROUP BY sorts the groups by the grouped column</div><div class="opt">B) Yes, but only when the column has an index</div><div class="opt">C) Only on Windows servers</div><div class="opt correct">D) No: since MySQL 8.0 the order of groups is not guaranteed; add ORDER BY</div></div><div class="why"><b>Why:</b> MySQL 8.0 and later return groups in whatever order is convenient (the lesson's Common Mistake 5 shows them in first-seen order). MariaDB still sorts, so the same query can come back in a different order on another server. A report always says ORDER BY.<br><b>A</b> is wrong: That was true of MySQL 5.7 and is still true of MariaDB, not of MySQL 9.7.<br><b>B</b> is wrong: An index may make a sorted order likely, never guaranteed.<br><b>C</b> is wrong: The operating system has nothing to do with it.</div></div>
+  <div class="q" data-sc="6" data-kind="short"><div class="qn">Q6</div><div class="qt">What does this print? (Under $10: three books in stock and two out of stock.)</div><pre class="code"><span class="k">SELECT</span> in_stock, COUNT(*) <span class="k">AS</span> books
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &lt; <span class="s">10</span>
+<span class="k">GROUP</span> <span class="k">BY</span> in_stock
+<span class="k">ORDER</span> <span class="k">BY</span> in_stock;</pre><div class="opts"><div class="opt correct">Two rows: <code class="inline">0 | 2</code> and <code class="inline">1 | 3</code></div></div><div class="why"><b>Why:</b> WHERE keeps the five books under $10; GROUP BY makes one pile per in_stock value (0 = out of stock, 1 = in stock); ORDER BY in_stock puts 0 first.</div></div>
+
+  <div class="sec"><h2>3.3 · Aggregate Functions &amp; GROUP BY: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> COUNT(*), COUNT(city), COUNT(<span class="k">DISTINCT</span> city)
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> id &gt; <span class="s">4</span>;</pre><div class="opts"><div class="opt correct"><pre class="out">+----------+-------------+----------------------+
+| COUNT(*) | COUNT(city) | COUNT(DISTINCT city) |
++----------+-------------+----------------------+
+|        4 |           2 |                    2 |
++----------+-------------+----------------------+</pre></div></div><div class="why"><b>Why:</b> Customers 5 to 8 are Eve (NULL), Frank (New York), Grace (Chicago) and Hank (NULL): four rows, two filled-in cities, two different cities.</div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> in_stock, MAX(pages) <span class="k">AS</span> longest
+<span class="k">FROM</span> books
+<span class="k">GROUP</span> <span class="k">BY</span> in_stock
+<span class="k">HAVING</span> MAX(pages) &gt; <span class="s">300</span>
+<span class="k">ORDER</span> <span class="k">BY</span> in_stock;</pre><div class="opts"><div class="opt correct"><pre class="out">+----------+---------+
+| in_stock | longest |
++----------+---------+
+|        1 |    1178 |
++----------+---------+</pre></div></div><div class="why"><b>Why:</b> Two piles: in stock (longest 1178, Lord of the Rings) and out of stock (longest 234). HAVING drops the out-of-stock pile; one row remains.</div></div>
+
+  <div class="sec"><h2>3.4 · Subqueries &amp; Nested Queries: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">The average price is 10.99. What does this print?</div><pre class="code"><span class="k">SELECT</span> COUNT(*)
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &lt; (<span class="k">SELECT</span> AVG(price) <span class="k">FROM</span> books);</pre><div class="opts"><div class="opt">A) <code class="inline">4</code></div><div class="opt correct">B) <code class="inline">6</code></div><div class="opt">C) <code class="inline">7</code></div><div class="opt">D) <code class="inline">10</code></div></div><div class="why"><b>Why:</b> The subquery returns 10.99; six books cost less (7.99 to 10.49). The Hobbit costs exactly 10.99 and is not less than itself.<br><b>A</b> is wrong: Four books cost MORE than or equal to the average (three above, The Hobbit equal).<br><b>C</b> is wrong: Seven would include The Hobbit, which costs exactly 10.99.<br><b>D</b> is wrong: Ten is every book: the subquery is a real filter, not a decoration.</div></div>
+  <div class="q" data-sc="8"><div class="qn">Q8</div><div class="qt">What happens when this runs?</div><pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price = (<span class="k">SELECT</span> price <span class="k">FROM</span> books
+               <span class="k">WHERE</span> author = <span class="s">'J.R.R. Tolkien'</span>);</pre><div class="opts"><div class="opt correct">A) <code class="inline">ERROR 1242 (21000): Subquery returns more than 1 row</code></div><div class="opt">B) It returns Lord of the Rings</div><div class="opt">C) <code class="inline">ERROR 1241 (21000): Operand should contain 1 column(s)</code></div><div class="opt">D) <code class="inline">ERROR 1248 (42000): Every derived table must have its own alias</code></div></div><div class="why"><b>Why:</b> Tolkien has two books, so the subquery returns two prices, and <code class="inline">=</code> needs one value. Fix: <code class="inline">IN</code> (any of his prices) or an aggregate such as MAX(price). The query would have worked while he had one book: the lesson's warning about queries that break when the data grows.<br><b>B</b> is wrong: MySQL does not pick one of the values for you.<br><b>C</b> is wrong: 1241 is too many COLUMNS; here there is one column and too many rows.<br><b>D</b> is wrong: 1248 is for a subquery in FROM without a name; this one is in WHERE.</div></div>
+  <div class="q" data-sc="9" data-kind="short"><div class="qn">Q9</div><div class="qt">Customer 5 (Eve) has no city; customer 6 (Frank) lives in New York. What does this print?</div><pre class="code"><span class="k">SELECT</span> COUNT(*)
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="k">SELECT</span> city <span class="k">FROM</span> customers <span class="k">WHERE</span> id <span class="k">IN</span> (<span class="s">5</span>, <span class="s">6</span>));</pre><div class="opts"><div class="opt correct"><code class="inline">0</code> (no customer passes the test)</div></div><div class="why"><b>Why:</b> The list is (NULL, 'New York'). <code class="inline">city NOT IN (...)</code> means city != NULL AND city != 'New York', and anything compared with NULL is unknown, so no row is ever kept. Add <code class="inline">AND city IS NOT NULL</code> inside the subquery, or use NOT EXISTS.</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">You need the customers whom no other customer shares a city with, and city can be NULL. Which approach gives a predictable answer with no NULL trap?</div><div class="opts"><div class="opt">A) <code class="inline">city NOT IN (SELECT city FROM customers ...)</code></div><div class="opt">B) <code class="inline">city != ALL (SELECT city ...)</code></div><div class="opt correct">C) <code class="inline">NOT EXISTS (SELECT 1 FROM customers AS other WHERE other.city = c.city AND other.id != c.id)</code></div><div class="opt">D) <code class="inline">city NOT LIKE (SELECT city ...)</code></div></div><div class="why"><b>Why:</b> NOT EXISTS asks "is there a matching row?": a NULL city never matches, so it cannot empty the result, and the customers with no city are kept (nobody is known to share their city). That is why many developers write NOT EXISTS by default.<br><b>A</b> is wrong: One NULL in the list empties a NOT IN.<br><b>B</b> is wrong: != ALL is the same as NOT IN, with the same trap.<br><b>D</b> is wrong: LIKE compares with one pattern; with several rows it fails with error 1242.</div></div>
+  <div class="q" data-sc="11" data-kind="short"><div class="qn">Q11</div><div class="qt">What does this print? (Two customers have no city.)</div><pre class="code"><span class="k">SELECT</span> MAX(n) <span class="k">AS</span> biggest_group
+<span class="k">FROM</span> (
+    <span class="k">SELECT</span> city, COUNT(*) <span class="k">AS</span> n
+    <span class="k">FROM</span> customers
+    <span class="k">GROUP</span> <span class="k">BY</span> city
+) <span class="k">AS</span> per_city;</pre><div class="opts"><div class="opt correct"><code class="inline">2</code></div></div><div class="why"><b>Why:</b> The derived table holds one row per city, NULL included: NULL 2, Chicago 2, New York 2, Houston 1, Los Angeles 1. The outer MAX reads that small table: 2. The alias per_city is required (error 1248 without it).</div></div>
+  <div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">This was meant to list the books priced above THEIR OWN author's average. Why does it return three books instead of one?</div><pre class="code"><span class="k">SELECT</span> title, author, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &gt; (
+    <span class="k">SELECT</span> AVG(price)
+    <span class="k">FROM</span> books
+    <span class="k">WHERE</span> author = author
+)
+<span class="k">ORDER</span> <span class="k">BY</span> price;</pre><div class="opts"><div class="opt">A) The subquery runs once per author, but AVG ignores the out-of-stock books</div><div class="opt">B) MySQL treats the second author as a string literal</div><div class="opt">C) HAVING is missing from the subquery</div><div class="opt correct">D) Both author names refer to the inner table, so author = author is always true and the subquery returns the store average</div></div><div class="why"><b>Why:</b> Inside the subquery the nearest table wins: both sides of author = author are the inner books row. The subquery is not correlated at all and returns 10.99, so you get "above the store average" by accident. Fix: alias both copies (FROM books AS b ... FROM books AS b2 WHERE b2.author = b.author).<br><b>A</b> is wrong: AVG uses every book; in_stock plays no part here.<br><b>B</b> is wrong: An unquoted name is a column, not a string.<br><b>C</b> is wrong: HAVING filters groups; there are no groups in this subquery.</div></div>
+
+  <div class="sec"><h2>3.4 · Subqueries &amp; Nested Queries: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> long_books
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> pages &gt; (<span class="k">SELECT</span> AVG(pages) <span class="k">FROM</span> books);</pre><div class="opts"><div class="opt correct"><pre class="out">+------------+
+| long_books |
++------------+
+|          3 |
++------------+</pre></div></div><div class="why"><b>Why:</b> The inner query returns 382.4; only Lord of the Rings (1178), Pride and Prejudice (432) and Dune (412) are longer.</div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> first_name
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="k">SELECT</span> city <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">5</span>);</pre><div class="opts"><div class="opt correct"><pre class="out">Empty set</pre></div></div><div class="why"><b>Why:</b> The list is just (NULL): Eve's city. <code class="inline">city NOT IN (NULL)</code> is unknown for every row, so nobody comes back, not even the customers with a city.</div></div>
+
+  <div class="sec"><h2>Workbook Worked Examples (outputs for reference)</h2><span class="rule"></span></div>
+<p>The worked examples print exactly what the workbook shows; they are new examples, not the lessons' own. 3.3: Tolkien 1937-09-21 to 1954-07-29; WHERE leaves one pile (in stock, 5 books over $10); HAVING drops the out-of-stock pile (2 books). 3.4: the latest signup per city is Grace (Chicago), Dave (Houston), Carol (Los Angeles), Frank (New York).</p>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Lab 3.3-A: labs/module-05/l3_3-aggregate-functions/customer_summary_starter.sql → customer_summary_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+-----------+-----------+--------------+--------+---------------------+---------------------+
+| customers | with_city | missing_city | cities | first_signup        | latest_signup       |
++-----------+-----------+--------------+--------+---------------------+---------------------+
+|         8 |         6 |            2 |      4 | 2026-01-04 10:15:00 | 2026-02-10 19:12:00 |
++-----------+-----------+--------------+--------+---------------------+---------------------+
++---------+---------+
+| month   | signups |
++---------+---------+
+| 2026-01 |       6 |
+| 2026-02 |       2 |
++---------+---------+
++----------+-----------+---------------------+
+| city     | customers | first_joined        |
++----------+-----------+---------------------+
+| New York |         2 | 2026-01-04 10:15:00 |
+| Chicago  |         2 | 2026-01-06 14:02:00 |
++----------+-----------+---------------------+
++-------------+-----------------+
+| city        | january_signups |
++-------------+-----------------+
+| New York    |               2 |
+| (no city)   |               1 |
+| Chicago     |               1 |
+| Houston     |               1 |
+| Los Angeles |               1 |
++-------------+-----------------+</pre><p>What each TODO teaches: (1) the three COUNTs and the NULL rule in one row (8 rows, 6 filled-in cities, 2 missing, 4 different cities); (2) grouping by an expression label (<code class="inline">DATE_FORMAT</code>), which sorts correctly as text; (3) HAVING on a pile size, plus MIN as "when did the pile start"; (4) WHERE and HAVING-free grouping with COALESCE: the NULL cities form one pile, labeled <code class="inline">(no city)</code>. Sticking points: COALESCE in SELECT but <code class="inline">GROUP BY city</code> (works, but the label and the pile differ in the learner's head: ask them to group by the same expression), and TODO 3's HAVING typed before GROUP BY (1064).</p>
+</div>
+<div class="blk lab"><div class="h">Lab 3.3-B: labs/module-05/l3_3-aggregate-functions/page_report_starter.sql → page_report_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+---------------------+-------+-----------+
+| length_band         | books | avg_price |
++---------------------+-------+-----------+
+| Short (under 250)   |     3 |      9.49 |
+| Medium (250 to 399) |     4 |     10.62 |
+| Long (400 and up)   |     3 |     12.99 |
++---------------------+-------+-----------+
++----------------+-------+-------------+
+| author         | books | total_pages |
++----------------+-------+-------------+
+| J.R.R. Tolkien |     2 |        1488 |
+| Jane Austen    |     1 |         432 |
+| Frank Herbert  |     1 |         412 |
+| George Orwell  |     1 |         328 |
+| Aldous Huxley  |     1 |         311 |
++----------------+-------+-------------+
++---------+-------+------------+
+| century | books | earliest   |
++---------+-------+------------+
+|      19 |     1 | 1813-01-28 |
+|      20 |     9 | 1925-04-10 |
++---------+-------+------------+
++----------------+----------------+
+| author         | pages_in_stock |
++----------------+----------------+
+| J.R.R. Tolkien |           1488 |
+| Jane Austen    |            432 |
+| Frank Herbert  |            412 |
+| George Orwell  |            328 |
+| Aldous Huxley  |            311 |
+| Harper Lee     |            281 |
++----------------+----------------+</pre><p>Reading it: the length bands are sorted by <code class="inline">MIN(pages)</code>, not by name (alphabetical would put Long first); the century formula <code class="inline">FLOOR((YEAR(published) - 1) / 100) + 1</code> puts 1813 in the 19th century and 1925 in the 20th; in TODO 4, removing the WHERE line lets J.D. Salinger in (his out-of-stock book has 234 pages), which is the WHERE-before-piles idea in one row.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-05/l3_3-aggregate-functions/debug_group_by.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 1140 (42000): In aggregated query without GROUP BY, expression #1 of SELECT list contains nonaggregated column 'bookstore.customers.first_name'; this is incompatible with sql_mode=only_full_group_by
+ERROR 1055 (42000): Expression #2 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'bookstore.customers.last_name' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+ERROR 1111 (HY000): Invalid use of group function
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY city' at line 4</pre><ol class="steps">
+  <li><b>Bug A, 1140:</b> a whole-table COUNT next to a plain column. Fix: drop first_name (<code class="inline">SELECT COUNT(*) AS customers FROM customers;</code>).</li>
+  <li><b>Bug B, 1055:</b> last_name is neither grouped nor aggregated. Fix: <code class="inline">MIN(last_name) AS a_last_name</code> (or drop it) and add ORDER BY.</li>
+  <li><b>Bug C, 1111:</b> an aggregate in WHERE. Fix: <code class="inline">HAVING COUNT(*) &gt; 1</code> after GROUP BY.</li>
+  <li><b>Bug D, 1064:</b> HAVING written before GROUP BY. Fix: GROUP BY city, then HAVING.</li>
+</ol>
+<p>Fixed (blocks in <code class="inline">blocks_S05.py</code>), the four queries print, in order:</p>
+<pre class="out">+-----------+
+| customers |
++-----------+
+|         8 |
++-----------+
++-------------+-------------+-----------+
+| city        | a_last_name | customers |
++-------------+-------------+-----------+
+| NULL        | Davis       |         2 |
+| Chicago     | Smith       |         2 |
+| Houston     | Brown       |         1 |
+| Los Angeles | Williams    |         1 |
+| New York    | Johnson     |         2 |
++-------------+-------------+-----------+
++----------------+-------+
+| author         | books |
++----------------+-------+
+| J.R.R. Tolkien |     2 |
++----------------+-------+
++----------+-----------+
+| city     | customers |
++----------+-----------+
+| NULL     |         2 |
+| Chicago  |         2 |
+| New York |         2 |
++----------+-----------+</pre><p>Bug D's fixed result includes the NULL group (Eve and Hank): add <code class="inline">WHERE city IS NOT NULL</code> if the question is about real cities. Learners on MariaDB see no error for Bug B (it silently picks a last name): a good moment to show why the MySQL check exists.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 3.4-A: labs/module-05/l3_4-subqueries/page_checks_starter.sql → page_checks_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+---------------------+-------------+------------+
+| title               | author      | published  |
++---------------------+-------------+------------+
+| Pride and Prejudice | Jane Austen | 1813-01-28 |
++---------------------+-------------+------------+
++------------------------+-------+-------+
+| title                  | pages | price |
++------------------------+-------+-------+
+| Fahrenheit 451         |   158 | 10.49 |
+| The Great Gatsby       |   180 |  8.99 |
+| The Catcher in the Rye |   234 |  8.99 |
+| Brave New World        |   311 |  9.49 |
+| 1984                   |   328 |  9.99 |
++------------------------+-------+-------+
++------------------------+---------------------+----------+
+| title                  | author              | in_stock |
++------------------------+---------------------+----------+
+| The Great Gatsby       | F. Scott Fitzgerald |        0 |
+| The Catcher in the Rye | J.D. Salinger       |        0 |
++------------------------+---------------------+----------+
++-----------------------+------------+
+| title                 | published  |
++-----------------------+------------+
+| Fahrenheit 451        | 1953-10-19 |
+| Lord of the Rings     | 1954-07-29 |
+| To Kill a Mockingbird | 1960-07-11 |
+| Dune                  | 1965-08-01 |
++-----------------------+------------+
++---------------+
+| same_with_max |
++---------------+
+|             4 |
++---------------+</pre><p>Reading it: (1) the row behind MIN(published); (2) two scalar subqueries in one WHERE (382.4 pages and 10.99 dollars); (3) an IN list of two authors, whose only books are the out-of-stock ones; (4) <code class="inline">&gt; ALL</code> equals <code class="inline">&gt; (SELECT MAX(...))</code> here (4 rows each). If a learner asks: with an EMPTY list, <code class="inline">&gt; ALL</code> is true for every row while <code class="inline">&gt; MAX(...)</code> keeps nothing (the lesson's edge case).</p>
+</div>
+<div class="blk lab"><div class="h">Lab 3.4-B: labs/module-05/l3_4-subqueries/city_neighbors_starter.sql → city_neighbors_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+------------+-------------+-----------+
+| first_name | city        | neighbors |
++------------+-------------+-----------+
+| Alice      | New York    |         1 |
+| Bob        | Chicago     |         1 |
+| Carol      | Los Angeles |         0 |
+| Dave       | Houston     |         0 |
+| Eve        | NULL        |         0 |
+| Frank      | New York    |         1 |
+| Grace      | Chicago     |         1 |
+| Hank       | NULL        |         0 |
++------------+-------------+-----------+
++------------+-------------+---------------------+
+| first_name | city        | created_at          |
++------------+-------------+---------------------+
+| Alice      | New York    | 2026-01-04 10:15:00 |
+| Bob        | Chicago     | 2026-01-06 14:02:00 |
+| Carol      | Los Angeles | 2026-01-09 09:40:00 |
+| Dave       | Houston     | 2026-01-12 16:25:00 |
++------------+-------------+---------------------+
++------------------+---------------+
+| authors_over_300 | longest_total |
++------------------+---------------+
+|                5 |          1488 |
++------------------+---------------+
++------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Carol      | Los Angeles |
+| Dave       | Houston     |
++------------+-------------+
++------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Carol      | Los Angeles |
+| Dave       | Houston     |
++------------+-------------+</pre><p>What each TODO teaches: (1) a correlated subquery in the SELECT list; Eve and Hank get 0 because NULL matches nothing; (2) a correlated subquery in WHERE (the row behind each city's MIN); (3) a derived table filtered by its own column (5 authors over 300 pages; Tolkien's 1488 the largest); (4) the NOT IN trap: as shipped 4a prints nothing because the later customers include Eve and Hank (NULL); with <code class="inline">IS NOT NULL</code> it returns Carol and Dave, and NOT EXISTS agrees.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-05/l3_4-subqueries/debug_subqueries.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 1242 (21000): Subquery returns more than 1 row
+ERROR 1241 (21000): Operand should contain 1 column(s)
+ERROR 1248 (42000): Every derived table must have its own alias
+ERROR 1235 (42000): This version of MySQL doesn't yet support 'LIMIT &amp; IN/ALL/ANY/SOME subquery'</pre><ol class="steps">
+  <li><b>Bug A, 1242:</b> two February customers, so two dates for <code class="inline">=</code>. Fix: <code class="inline">IN</code>.</li>
+  <li><b>Bug B, 1241:</b> the IN list has two columns. Fix: select only <code class="inline">author</code>; <code class="inline">SUM(pages)</code> stays in HAVING.</li>
+  <li><b>Bug C, 1248:</b> the derived table has no name. Fix: <code class="inline">AS city_counts</code>.</li>
+  <li><b>Bug D, 1235:</b> LIMIT inside an IN subquery. Fix: wrap the LIMIT query in a derived table and select from it.</li>
+</ol>
+<p>Fixed, the four queries print, in order:</p>
+<pre class="out">+------------+---------------------+
+| first_name | created_at          |
++------------+---------------------+
+| Grace      | 2026-02-02 08:55:00 |
+| Hank       | 2026-02-10 19:12:00 |
++------------+---------------------+
++---------------------+----------------+
+| title               | author         |
++---------------------+----------------+
+| Dune                | Frank Herbert  |
+| Lord of the Rings   | J.R.R. Tolkien |
+| The Hobbit          | J.R.R. Tolkien |
+| Pride and Prejudice | Jane Austen    |
++---------------------+----------------+
++--------+
+| AVG(n) |
++--------+
+| 1.5000 |
++--------+
++---------------------+-------+
+| title               | pages |
++---------------------+-------+
+| Lord of the Rings   |  1178 |
+| Pride and Prejudice |   432 |
++---------------------+-------+</pre><p>On MariaDB Bug C is a 1064 syntax error near <code class="inline">''</code> instead of 1248 (the lesson's version note).</p>
+</div>
+
+  <div class="sec"><h2>The Lesson Pages' Own Quick Quizzes</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Lesson 3.3 · Aggregate Functions &amp; GROUP BY</div>
+<ol class="steps" data-lesson-quiz="3.3">
+  <li><b>B</b> 6: COUNT(column) counts only the values that are not NULL: 8 rows minus the 2 missing cities is 6. COUNT(*) would return 8.</li>
+  <li><b>C</b> In a HAVING clause after GROUP BY: HAVING runs after GROUP BY, when each author's pile has been counted, so it can keep or drop whole groups by their aggregate.</li>
+  <li><b>A</b> 4: AVG skips the NULL completely, so it divides 5 + 3 + 4 = 12 by 3 values, not by 4 rows.</li>
+  <li><b>B</b> title is neither in GROUP BY nor inside an aggregate: With ONLY_FULL_GROUP_BY on, every selected column must be grouped or aggregated. An author with two books has two titles, so title is ambiguous.</li>
+  <li><b>A</b> Add an ORDER BY clause: Since MySQL 8.0, GROUP BY makes no promise about order (MariaDB still sorts). ORDER BY is the only way to get the same order everywhere.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Lesson 3.4 · Subqueries &amp; Nested Queries</div>
+<ol class="steps" data-lesson-quiz="3.4">
+  <li><b>C</b> 3: Only To Kill a Mockingbird, Dune and Lord of the Rings cost more than 10.99. The Hobbit equals the average, and greater-than does not include equal.</li>
+  <li><b>B</b> Use IN instead of =, or make the subquery return a single value: The subquery sits next to = or another single-value operator but returned a list. Use IN for a list, or reduce the subquery to one value with MIN, MAX or a unique condition.</li>
+  <li><b>A</b> No rows at all: NOT IN means not equal to every item. Not equal to NULL is unknown for every row, so no row can pass. Filter NULLs out of the subquery or use NOT EXISTS.</li>
+  <li><b>C</b> It refers to a column of the outer query's current row: A correlated subquery uses a column of the outer query's current row, such as b2.author = b.author, so its answer can differ for every outer row.</li>
+  <li><b>B</b> Adding an alias such as AS author_counts after the closing parenthesis: Every derived table must have its own alias. Adding AS author_counts after the closing parenthesis makes the query run.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>WHERE and HAVING:</b> any single-row condition in WHERE (<code class="inline">in_stock = TRUE</code>, <code class="inline">price &gt; 10</code>, <code class="inline">published &lt; '1950-01-01'</code>) and any aggregate condition in HAVING (<code class="inline">COUNT(*) &gt; 1</code>, <code class="inline">AVG(price) &gt; 10</code>, <code class="inline">SUM(pages) &gt; 400</code>). A learner who puts <code class="inline">price &gt; 10</code> in HAVING has the clauses as interchangeable filters: reteach the run order.</li>
+  <li><b>NOT IN with NULL:</b> no rows. Fixes: <code class="inline">AND city IS NOT NULL</code> inside the subquery, or NOT EXISTS (which also keeps the NULL-city customers, a different but predictable answer).</li>
+  <li><b>Correlated:</b> it refers to the outer query's current row, so it is evaluated again for every outer row. With one table used twice, aliases (b for the outer row, b2 for the inner scan) are how you say which copy a column belongs to; without them <code class="inline">author = author</code> compares a row with itself.</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q1 A (2 and 2).</b> Thinks COUNT(column) counts rows. Show <code class="inline">COUNT(*)</code> and <code class="inline">COUNT(city)</code> side by side again in the Session 6 warm-up.</li>
+  <li><b>Q2 A (WHERE).</b> Treats WHERE and HAVING as the same filter. The run-order diagram is the cure; ask "when does WHERE run?"</li>
+  <li><b>Q4 B (one name per city).</b> Has used MariaDB or old MySQL, or imagines MySQL picks "the first". The 1055 check exists so answers are honest.</li>
+  <li><b>Q7 C (7).</b> Counted The Hobbit (exactly 10.99): <code class="inline">&lt;</code> and <code class="inline">&lt;=</code> are different questions. Worth ten seconds.</li>
+  <li><b>Q9 any number other than 0.</b> Has not met the NOT IN trap yet: run the lesson's two queries side by side.</li>
+  <li><b>Q12 A or C.</b> Looks for a missing clause instead of reading what <code class="inline">author</code> refers to. Ask them to run the subquery alone: it returns one number, the store average.</li>
+  <li><b>Exit ticket 3 with "it is inside another query".</b> That is any subquery; correlated means it uses the OUTER row. Ask: "can you run it on its own?"</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 5 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Participant Workbook: Session 11</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Student workbook —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">write in it · bring it to every session</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Participant Workbook</div>
+    <h1>Session 11: Transactions and JSON</h1>
+    <p class="sub">Your workbook for Session 11: the warm-up, Checkpoint 2, the key ideas of Lessons 7.2 and 7.3, worked examples, the guided labs, predict-then-run practice, a self-check for each lesson, and your exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Lessons <b>7.2–7.3</b></span>
+      <span class="chip">Session <b>11</b> · 3 hours</span>
+      <span class="chip">Name: ____________________</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Session Goals</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Show what you can do with Modules 5 and 6 in Checkpoint 2: CTEs, window functions, indexes, views and normalization.</li>
+  <li>Group changes into all-or-nothing transactions with COMMIT, ROLLBACK and savepoints, and know which statements commit by themselves.</li>
+  <li>Predict what a second connection sees and when it has to wait, and read lock errors 1205 and 1213.</li>
+  <li>Write a procedure whose handler rolls back and passes the error on.</li>
+  <li>Store, read, change, build and index JSON, and decide when a column or a table is the better choice.</li>
+</ul>
+
+  <div class="sec"><h2>Warm-up: Normalization and Stored Programs</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Five questions (Lessons 6.3 and 7.1)</div>
+<div class="q"><div class="qn">W1</div><div class="qt">A book-club sheet has a cell that reads <code class="inline">Dune, 1984</code>. Which normal form does that break, and what is the fix?</div><div class="write"></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">"The key, the whole key, and nothing but the key." Which part of the phrase is 2NF, and which is 3NF?</div><div class="write"></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">Which program reads the line <code class="inline">DELIMITER //</code>: the server, the client or the procedure?</div><div class="write"></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">You want <code class="inline">SELECT title, sale_price(price) FROM books</code> to work. Do you write a stored procedure or a stored function?</div><div class="write"></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">Predict the on_sale column, then run it (it creates a small function in bookstore).</div><pre class="code"><span class="k">DROP</span> <span class="k">FUNCTION</span> <span class="k">IF</span> <span class="k">EXISTS</span> sale_price;
+<span class="k">CREATE</span> <span class="k">FUNCTION</span> sale_price(p_price <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>))
+<span class="k">RETURNS</span> <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>) <span class="k">DETERMINISTIC</span>
+<span class="k">RETURN</span> ROUND(p_price * <span class="s">0.8</span>, <span class="s">2</span>);
+<span class="k">SELECT</span> title, price, sale_price(price) <span class="k">AS</span> on_sale
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> id <span class="k">IN</span> (<span class="s">1</span>, <span class="s">2</span>)
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre><div class="write"></div></div>
+</div>
+
+  <div class="sec"><h2>Checkpoint 2: Modules 5 and 6 (30 minutes)</h2><span class="rule"></span></div>
+<p>Alone, open notes: lesson pages and your own project files are allowed, a neighbor is not. Parts 1 to 4 go in <code class="inline">labs/module-11/checkpoint-2/checkpoint2_starter.sql</code>: replace each TODO line with your query and SOURCE the file again. Part 5 is on paper, here. About five minutes per part; a part you cannot finish, describe in a comment what you would do.</p>
+<table class="timing">
+<thead><tr><th>Part</th><th>Lessons</th><th>Task</th></tr></thead>
+<tbody>
+<tr><td>Part 1</td><td>5.1, 5.2</td><td>The best seller(s) of each category by copies sold (SUM of order_items.quantity), ties sharing first place: a CTE for the copies and a window function to rank. Columns category, title, copies, sorted by category.</td></tr>
+<tr><td>Part 2</td><td>5.1</td><td>Everyone who reports to Daniel Reyes (employee 2), directly or through someone else, with a level column (1 = reports to Daniel directly), sorted by level and id: a recursive CTE.</td></tr>
+<tr><td>Part 3</td><td>6.2</td><td>The view v_customer_revenue (customer_id, customer, orders, revenue) for customers who have ordered, then a query on the view: customers with revenue above 30, highest first.</td></tr>
+<tr><td>Part 4</td><td>6.1</td><td>The plan of SELECT id, first_name FROM customers WHERE city = 'Chicago' before and after an index that helps it: the first line of each plan.</td></tr>
+<tr><td>Part 5</td><td>6.3</td><td>On paper: the table class_signups below. Name its key, the dependencies that break 2NF and 3NF, and the tables (with keys) you would split it into.</td></tr>
+</tbody>
+</table>
+<div class="blk"><div class="h">Your key numbers (copy them from your output)</div>
+<table class="timing">
+<thead><tr><th>Part</th><th>What to write down</th><th>My answer</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>One row per category: the title(s) and copies</td><td></td></tr>
+<tr><td>2</td><td>How many people, and who is at level 2</td><td></td></tr>
+<tr><td>3</td><td>The customers above 30 and Alice's orders and revenue</td><td></td></tr>
+<tr><td>4</td><td>The first line of the plan before and after your index</td><td></td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk lab"><div class="h">Part 5: normalize class_signups</div>
+<p>An art school keeps its sign-ups in one sheet. Each row is one student in one class.</p>
+<table class="timing">
+<thead><tr><th>student_email</th><th>student_name</th><th>class_code</th><th>class_title</th><th>room</th><th>teacher</th><th>teacher_phone</th></tr></thead>
+<tbody>
+<tr><td>ana@example.com</td><td>Ana Ruiz</td><td>POT1</td><td>Pottery Basics</td><td>R12</td><td>Lee Wong</td><td>555-0101</td></tr>
+<tr><td>ana@example.com</td><td>Ana Ruiz</td><td>WAT2</td><td>Watercolor II</td><td>R7</td><td>Mia Ford</td><td>555-0102</td></tr>
+<tr><td>ben@example.com</td><td>Ben Ito</td><td>POT1</td><td>Pottery Basics</td><td>R12</td><td>Lee Wong</td><td>555-0101</td></tr>
+<tr><td>cy@example.com</td><td>Cy Park</td><td>GLS1</td><td>Glass Fusing</td><td>R12</td><td>Lee Wong</td><td>555-0101</td></tr>
+</tbody>
+</table>
+<ol class="steps">
+  <li>The key of this table (which column or columns identify a row):</li>
+  <li>A dependency that breaks 2NF, and why:</li>
+  <li>A dependency that breaks 3NF, and why:</li>
+  <li>The tables you would build instead, with their keys and foreign keys:</li>
+</ol>
+<div class="write tall"></div>
+</div>
+<p><b>What is assessed</b> (five criteria, one per part): the CTE and window function; the recursive CTE; the view; the index and reading EXPLAIN; normalization to 3NF. Your instructor returns the page in Session 12 with one sentence of advice.</p>
+
+  <div class="sec"><h2>Lessons</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">7.2</span><h3>Transactions</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Group changes with START TRANSACTION, COMMIT and ROLLBACK, and explain autocommit and implicit commits</li>
+  <li>Undo part of a transaction with SAVEPOINT and ROLLBACK TO SAVEPOINT</li>
+  <li>Predict what a second connection sees and when it has to wait, under MySQL's default REPEATABLE READ isolation</li>
+  <li>Lock rows on purpose with SELECT ... FOR UPDATE, and read lock errors 1205 and 1213</li>
+  <li>Write a stored procedure whose error handler rolls back the whole transaction and passes the error on</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>A transaction is all or nothing:</b> <code class="inline">START TRANSACTION</code>, your statements, then <code class="inline">COMMIT</code> (keep) or <code class="inline">ROLLBACK</code> (discard).</li>
+  <li><b>Autocommit</b> (on by default) commits every statement by itself. START TRANSACTION suspends it until COMMIT or ROLLBACK.</li>
+  <li><b>Implicit commits:</b> CREATE, ALTER, DROP, TRUNCATE and account statements commit the open transaction before they run.</li>
+  <li><b>A failed statement undoes only itself:</b> after an error inside a transaction, ROLLBACK (or let a handler do it).</li>
+  <li><b>Savepoints</b> undo part of a transaction and keep it open: <code class="inline">SAVEPOINT s;</code> ... <code class="inline">ROLLBACK TO SAVEPOINT s;</code></li>
+  <li><b>Isolation (REPEATABLE READ):</b> plain reads see committed data from a snapshot and never wait; writers wait for row locks (1205 after the timeout).</li>
+  <li><b>FOR UPDATE</b> locks the rows you are about to change; a <b>deadlock</b> (1213) rolls one transaction back: retry it whole.</li>
+  <li><b>In procedures:</b> <code class="inline">DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;</code></li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: a gift card pays for a book</div>
+<p>A gift card pays for a book: read the balance with a lock, charge the card, create the order and its line, all in one transaction. The lock (FOR UPDATE) keeps a second cashier from spending the same balance between the check and the charge.</p>
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> gift_cards (
+    code    <span class="k">VARCHAR</span>(<span class="s">10</span>) <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    balance <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">CHECK</span> (balance &gt;= <span class="s">0</span>)
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> gift_cards <span class="k">VALUES</span> (<span class="s">'GC-100'</span>, <span class="s">25.00</span>);</pre><pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">SELECT</span> balance <span class="k">FROM</span> gift_cards <span class="k">WHERE</span> code = <span class="s">'GC-100'</span> <span class="k">FOR</span> <span class="k">UPDATE</span>;
+<span class="k">UPDATE</span> gift_cards <span class="k">SET</span> balance = balance - <span class="s">14.99</span> <span class="k">WHERE</span> code = <span class="s">'GC-100'</span>;
+<span class="k">INSERT</span> <span class="k">INTO</span> orders (customer_id, order_date) <span class="k">VALUES</span> (<span class="s">3</span>, <span class="s">'2026-06-30'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> order_items (order_id, book_id, quantity, price_at_time)
+<span class="k">VALUES</span> (LAST_INSERT_ID(), <span class="s">1</span>, <span class="s">1</span>, <span class="s">14.99</span>);
+<span class="k">COMMIT</span>;</pre>
+<pre class="out">+---------+
+| balance |
++---------+
+|   25.00 |
++---------+</pre><p>Both the charge and the order are there, or neither would be:</p>
+<pre class="code"><span class="k">SELECT</span> (<span class="k">SELECT</span> balance <span class="k">FROM</span> gift_cards <span class="k">WHERE</span> code = <span class="s">'GC-100'</span>) <span class="k">AS</span> card_left,
+       (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> orders <span class="k">WHERE</span> customer_id = <span class="s">3</span>)         <span class="k">AS</span> carol_orders;</pre>
+<pre class="out">+-----------+--------------+
+| card_left | carol_orders |
++-----------+--------------+
+|     10.01 |            1 |
++-----------+--------------+</pre><p>In an app, the error branch would ROLLBACK; in a procedure, a handler does it (Lesson 7.2's transfer).</p>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>SOURCE <code class="inline">labs/module-11/l7_2-transactions/loyalty_points_starter.sql</code> (log in with <code class="inline">mysql -u root -p bookstore</code>).</li>
+  <li>TODO 1 together, TODOs 2 to 4 in pairs. Each is a small edit, then SOURCE again. Predict before each run.</li>
+  <li>TODO 4: write in one sentence why the ROLLBACK did nothing as shipped.</li>
+</ul>
+<div class="write"></div>
+<ul class="tick">
+  <li>Done when your results match the "Expected when done" comment at the end of the file.</li>
+  <li>Finished early? <code class="inline">return_item_starter.sql</code>, then <code class="inline">debug_lost_points.sql</code> in the same folder.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction on the line first, then run the code in a practice database (<code class="inline">CREATE DATABASE scratch; USE scratch;</code>, and <code class="inline">DROP DATABASE scratch;</code> when you are done).</p>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it. (autocommit switched off, then ROLLBACK.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> counter (n <span class="k">INT</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> counter <span class="k">VALUES</span> (<span class="s">1</span>);
+<span class="k">SET</span> autocommit = <span class="s">0</span>;
+<span class="k">UPDATE</span> counter <span class="k">SET</span> n = n + <span class="s">10</span>;
+<span class="k">ROLLBACK</span>;
+<span class="k">SET</span> autocommit = <span class="s">1</span>;
+<span class="k">SELECT</span> n <span class="k">FROM</span> counter;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it. (Two seats and a savepoint.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> seats (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, taken <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> seats <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">0</span>), (<span class="s">2</span>, <span class="s">0</span>);
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> seats <span class="k">SET</span> taken = <span class="s">1</span> <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SAVEPOINT</span> one_seat;
+<span class="k">UPDATE</span> seats <span class="k">SET</span> taken = <span class="s">1</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">ROLLBACK</span> <span class="k">TO</span> <span class="k">SAVEPOINT</span> one_seat;
+<span class="k">COMMIT</span>;
+<span class="k">SELECT</span> SUM(taken) <span class="k">AS</span> seats_taken <span class="k">FROM</span> seats;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>An All-or-Nothing Checkout</b> (lesson page, "Project"). In class: the setup and Step 1. At home: Steps 2 to 6.</p>
+<ul class="tick">
+  <li>☐ Setup: the accounts table (the lesson's Setup block)</li>
+  <li>☐ Step 1: checkout.sql creates the procedure; <code class="inline">CALL checkout(1, 11, 1, @order_id);</code> works</li>
+  <li>☐ Steps 2 to 4: a good order; four calls that must fail and leave no order behind</li>
+  <li>☐ Step 5: the integrity audit is an Empty set; I can explain the gap in the order ids</li>
+  <li>☐ Step 6: the file runs twice in a row without an error</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">You type <code class="inline">START TRANSACTION;</code> and an UPDATE that succeeds, then close the terminal window without COMMIT. What happens to the change?</div><div class="opts"><div class="opt">A) It is kept: the UPDATE succeeded</div><div class="opt">B) The server rolls it back when the connection ends</div><div class="opt">C) It waits, and is committed the next time you log in</div><div class="opt">D) It is kept, but only your account can see it</div></div></div>
+<div class="q" data-sc="2" data-kind="short"><div class="qn">Q2</div><div class="qt">What does the last statement print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> stock (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, qty <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> stock <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">5</span>), (<span class="s">2</span>, <span class="s">5</span>);
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> stock <span class="k">SET</span> qty = qty - <span class="s">1</span> <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SAVEPOINT</span> s1;
+<span class="k">UPDATE</span> stock <span class="k">SET</span> qty = qty - <span class="s">1</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">ROLLBACK</span> <span class="k">TO</span> <span class="k">SAVEPOINT</span> s1;
+<span class="k">UPDATE</span> stock <span class="k">SET</span> qty = qty + <span class="s">3</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">COMMIT</span>;
+<span class="k">SELECT</span> id, qty <span class="k">FROM</span> stock <span class="k">ORDER</span> <span class="k">BY</span> id;</pre><div class="write"></div></div>
+<div class="q" data-sc="3"><div class="qn">Q3</div><div class="qt">Which statement, typed inside an open transaction, commits that transaction on the spot?</div><div class="opts"><div class="opt">A) <code class="inline">SAVEPOINT before_change;</code></div><div class="opt">B) <code class="inline">SELECT price FROM books WHERE id = 1 FOR UPDATE;</code></div><div class="opt">C) <code class="inline">ALTER TABLE books ADD COLUMN rating INT;</code></div><div class="opt">D) <code class="inline">ROLLBACK TO SAVEPOINT before_change;</code></div></div></div>
+<div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">Window A runs <code class="inline">START TRANSACTION;</code> and <code class="inline">UPDATE accounts SET balance = 0 WHERE id = 1;</code> and does not commit. Window B then runs <code class="inline">SELECT balance FROM accounts WHERE id = 1 FOR UPDATE;</code>. What does B get?</div><div class="opts"><div class="opt">A) 0, A's new value</div><div class="opt">B) The last committed balance, at once</div><div class="opt">C) ERROR 1213 at once: a deadlock</div><div class="opt">D) Nothing yet: B waits for A's row lock, and fails with ERROR 1205 if A holds it past the timeout</div></div></div>
+<div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">In the transfer procedure's handler, why does RESIGNAL come right after ROLLBACK?</div><div class="opts"><div class="opt">A) So the caller still receives the original error after the half-done changes are undone</div><div class="opt">B) RESIGNAL commits whatever the handler did not roll back</div><div class="opt">C) Without it, the handler would run again and again</div><div class="opt">D) Every handler must end with RESIGNAL or the procedure does not compile</div></div></div>
+<div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt">An app's checkout fails with <code class="inline">ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction</code>. What should the app do?</div><div class="opts"><div class="opt">A) Nothing: the statements before the deadlock were saved</div><div class="opt">B) Run only the statement that failed again</div><div class="opt">C) Raise innodb_lock_wait_timeout so it never happens again</div><div class="opt">D) Run the whole transaction again from the start</div></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Describe the two-window experiment in your own words, as if explaining it to a friend: who changed what, who could see it, who had to wait, and why. Then name one situation outside computing that works like a row lock.</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">7.3</span><h3>JSON Columns</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Add a JSON column and explain how MySQL validates and stores what you put in it</li>
+  <li>Read values with -&gt;, -&gt;&gt; and JSON_EXTRACT, and filter rows on them</li>
+  <li>Change parts of a document with JSON_SET, JSON_INSERT, JSON_REMOVE and JSON_ARRAY_APPEND</li>
+  <li>Turn rows into JSON with JSON_OBJECT and JSON_ARRAYAGG, and JSON back into rows with JSON_TABLE</li>
+  <li>Index a JSON path through a generated column, and decide when data belongs in real columns instead</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>A JSON column</b> holds one validated document per row (error 3140 for invalid JSON), stored in a binary form with sorted keys.</li>
+  <li><b>Paths</b> start at <code class="inline">$</code>: <code class="inline">$.format</code>, <code class="inline">$.awards[0]</code>, <code class="inline">$.awards[last]</code>, <code class="inline">$.awards[*]</code>.</li>
+  <li><b><code class="inline">-&gt;</code></b> (= JSON_EXTRACT) returns JSON, with quotes; <b><code class="inline">-&gt;&gt;</code></b> returns plain text for display, comparison and sorting.</li>
+  <li><b>A missing key is NULL, not an error,</b> so a misspelled key fails silently.</li>
+  <li><b>JSON_SET / INSERT / REPLACE / REMOVE / ARRAY_APPEND</b> return a changed copy; UPDATE stores it.</li>
+  <li><b>JSON_OBJECT and JSON_ARRAYAGG</b> build JSON from rows; <b>JSON_TABLE</b> turns JSON back into rows.</li>
+  <li><b>Index a path</b> through a generated column; protect important keys with a CHECK.</li>
+  <li><b>Core data stays in columns and tables:</b> what every row has, what you join on or calculate with.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: a JSON message becomes rows</div>
+<p>A review widget sends one JSON message with several reviews. JSON_TABLE turns it into rows that join and group like any table.</p>
+<pre class="code"><span class="k">SET</span> @reviews = <span class="s">'{"source": "web", "reviews": [
+    {"book_id": 1, "stars": 5}, {"book_id": 1, "stars": 4},
+    {"book_id": 6, "stars": 5}, {"book_id": 2, "stars": 3}]}'</span>;</pre><pre class="code"><span class="k">SELECT</span> b.title, COUNT(*) <span class="k">AS</span> reviews, AVG(r.stars) <span class="k">AS</span> avg_stars
+<span class="k">FROM</span> JSON_TABLE(@reviews, <span class="s">'$.reviews[*]'</span>
+         <span class="k">COLUMNS</span> (book_id <span class="k">INT</span> PATH <span class="s">'$.book_id'</span>, stars <span class="k">INT</span> PATH <span class="s">'$.stars'</span>)) <span class="k">AS</span> r
+<span class="k">JOIN</span> books <span class="k">AS</span> b <span class="k">ON</span> b.id = r.book_id
+<span class="k">GROUP</span> <span class="k">BY</span> b.id, b.title
+<span class="k">ORDER</span> <span class="k">BY</span> avg_stars <span class="k">DESC</span>, b.title;</pre>
+<pre class="out">+------------+---------+-----------+
+| title      | reviews | avg_stars |
++------------+---------+-----------+
+| The Hobbit |       1 |    5.0000 |
+| Dune       |       2 |    4.5000 |
+| 1984       |       1 |    3.0000 |
++------------+---------+-----------+</pre><p>The stars come from the message, but the titles come from books: never trust names or prices sent by a browser.</p>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>SOURCE <code class="inline">labs/module-11/l7_3-json-columns/reader_prefs_starter.sql</code>.</li>
+  <li>TODOs 1 and 2 together, 3 to 6 in pairs. The file adds the prefs column and removes it at the end, so SOURCE it after every edit.</li>
+  <li>TODO 4: why is has_genres 0 for Dave but NULL for Carol?</li>
+</ul>
+<div class="write"></div>
+<ul class="tick">
+  <li>If a run stopped halfway (<code class="inline">ERROR 1060</code> next time): <code class="inline">SOURCE labs/_states/bookstore.sql</code>, then run the lab again.</li>
+  <li>Finished early? <code class="inline">order_documents_starter.sql</code>, then <code class="inline">debug_bad_json.sql</code>.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction on the line first, then run the code in a practice database (<code class="inline">CREATE DATABASE scratch; USE scratch;</code>, and <code class="inline">DROP DATABASE scratch;</code> when you are done).</p>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it. (Valid or not, and what kind?)</div><pre class="code"><span class="k">SELECT</span> JSON_VALID(<span class="s">'{"a": 1}'</span>) <span class="k">AS</span> ok,
+       JSON_VALID(<span class="s">"{'a': 1}"</span>)  <span class="k">AS</span> single_quotes,
+       JSON_TYPE(<span class="s">'[1, 2]'</span>)     <span class="k">AS</span> kind;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it. (INSERT and REPLACE on keys that are and are not there.)</div><pre class="code"><span class="k">SET</span> @doc = <span class="s">'{"format": "paperback"}'</span>;
+<span class="k">SELECT</span> JSON_INSERT(@doc, <span class="s">'$.format'</span>, <span class="s">'ebook'</span>)  <span class="k">AS</span> ins,
+       JSON_REPLACE(@doc, <span class="s">'$.pages'</span>, <span class="s">300</span>)      <span class="k">AS</span> rep;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>The Catalog Feed</b> (lesson page, "Project"). In class: the setup and Step 1. At home: Steps 2 to 6.</p>
+<ul class="tick">
+  <li>☐ Setup: the attributes column and its UPDATEs, the format column, the chk_books_format CHECK</li>
+  <li>☐ Step 1: two ebooks with a file_mb key</li>
+  <li>☐ Steps 2 and 3: titles per format; four award rows</li>
+  <li>☐ Steps 4 and 5: the feed (four documents); the series index</li>
+  <li>☐ Step 6: catalog_feed.sql reloads the database and runs twice</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">On the web page, <code class="inline">CONCAT(title, ': ', attributes-&gt;'$.series')</code> prints <code class="inline">Dune: "Dune Chronicles"</code>. Which change removes the quotes?</div><div class="opts"><div class="opt">A) Wrap the whole CONCAT in <code class="inline">TRIM()</code></div><div class="opt">B) Use <code class="inline">JSON_EXTRACT</code> instead of <code class="inline">-&gt;</code></div><div class="opt">C) Use <code class="inline">-&gt;&gt;</code> instead of <code class="inline">-&gt;</code></div><div class="opt">D) Store the series without quotes in the document</div></div></div>
+<div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">What does the SELECT print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> shelf (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, info <span class="k">JSON</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> shelf <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'{"tags": ["new", "signed", "gift"], "copies": 2}'</span>);
+<span class="k">SELECT</span> info-&gt;&gt;<span class="s">'$.tags[last]'</span> <span class="k">AS</span> last_tag, JSON_LENGTH(info-&gt;<span class="s">'$.tags'</span>) <span class="k">AS</span> tag_count
+<span class="k">FROM</span> shelf;</pre><div class="write"></div></div>
+<div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">A document already has a <code class="inline">format</code> key. What does <code class="inline">JSON_INSERT(doc, '$.format', 'ebook')</code> return?</div><div class="opts"><div class="opt">A) The document unchanged</div><div class="opt">B) The document with format replaced by ebook</div><div class="opt">C) The document with a second format key</div><div class="opt">D) An error: the key already exists</div></div></div>
+<div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt"><code class="inline">WHERE attributes-&gt;&gt;'$.format' = 'hardcover'</code> is slow on a table of a million books. What is MySQL's fix?</div><div class="opts"><div class="opt">A) <code class="inline">CREATE INDEX idx_attr ON books (attributes);</code></div><div class="opt">B) A generated column for $.format, with an index on that column</div><div class="opt">C) Change the column type from JSON to TEXT</div><div class="opt">D) Write <code class="inline">JSON_EXTRACT</code> instead of <code class="inline">-&gt;&gt;</code></div></div></div>
+<div class="q" data-sc="11" data-kind="short"><div class="qn">Q11</div><div class="qt">What does this print?</div><pre class="code"><span class="k">SELECT</span> JSON_OBJECT(<span class="s">'title'</span>, <span class="s">'Dune'</span>, <span class="s">'id'</span>, <span class="s">1</span>, <span class="s">'price'</span>, <span class="s">14.99</span>) <span class="k">AS</span> doc;</pre><div class="write"></div></div>
+<div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">The store wants to record four things. Which ONE belongs in a JSON column rather than a regular column or table?</div><div class="opts"><div class="opt">A) The customer an order belongs to</div><div class="opt">B) A book's price</div><div class="opt">C) The line items of an order</div><div class="opt">D) An optional gift-wrap note some orders have, with a color and a message</div></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Think of an app you use. List five pieces of data it stores, and decide for each: regular column, separate table, or JSON? One sentence of reasoning each, using the lesson's "when not to use JSON" table.</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<p>Three questions, no notes.</p>
+<div class="q"><div class="qn">E1</div><div class="qt">Inside a transaction, an UPDATE fails with error 3819 and you then type COMMIT. What is saved?</div><div class="write"></div></div>
+<div class="q"><div class="qn">E2</div><div class="qt">Write the handler that makes a procedure undo its transaction on any error and still report the error.</div><div class="write"></div></div>
+<div class="q"><div class="qn">E3</div><div class="qt">Name one bookstore fact that belongs in JSON and one that must stay a column, with a reason each.</div><div class="write"></div></div>
+
+  <div class="sec"><h2>Notes</h2><span class="rule"></span></div>
+<div class="notes-lines"></div>
+
+  <div class="sec"><h2>Homework Checklist</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ Finish checkout.sql (Steps 2 to 6) and catalog_feed.sql (Steps 2 to 6)</li>
+  <li>☐ Lesson 7.2 Hands-on Exercises 1 to 3 (Exercise 3 needs two windows; Exercise 4 is a stretch)</li>
+  <li>☐ Lesson 7.3 Hands-on Exercises 1 to 3 (Exercise 4 is a stretch)</li>
+  <li>☐ Both Quick Quizzes on the lesson pages</li>
+  <li>☐ Both journal entries</li>
+  <li>☐ Labs not reached: <code class="inline">return_item_starter.sql</code>, <code class="inline">debug_lost_points.sql</code>, <code class="inline">order_documents_starter.sql</code>, <code class="inline">debug_bad_json.sql</code></li>
+  <li>☐ Checkpoint 2: finish any part I did not finish, and bring it</li>
+  <li>☐ Reload <code class="inline">bookstore.sql</code> before Session 12</li>
+  <li>☐ Bring to Session 12: laptop and root password, two terminal windows, my finished project files, this workbook and my journal</li>
+</ul>
+
+  <div class="sec"><h2>Glossary</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>transaction</td><td>Several statements treated as one unit: all of them are kept (COMMIT) or none (ROLLBACK)</td></tr>
+<tr><td>ACID</td><td>Atomicity, consistency, isolation, durability: the guarantees a transaction gives</td></tr>
+<tr><td>autocommit</td><td>The default mode: each statement is its own transaction, committed at once</td></tr>
+<tr><td>implicit commit</td><td>A commit MySQL does by itself before DDL and account statements</td></tr>
+<tr><td>savepoint</td><td>A named bookmark inside a transaction; ROLLBACK TO it undoes only the later part</td></tr>
+<tr><td>isolation level</td><td>What a transaction sees of others' work; MySQL's default is REPEATABLE READ</td></tr>
+<tr><td>row lock</td><td>A writer's claim on a row; other writers wait (1205 after innodb_lock_wait_timeout)</td></tr>
+<tr><td>deadlock</td><td>Two transactions waiting for each other; InnoDB rolls one back with 1213</td></tr>
+<tr><td>EXIT HANDLER</td><td>Code that runs when a statement in a routine fails, then leaves the routine</td></tr>
+<tr><td>JSON</td><td>A text format of objects, arrays, strings, numbers, true, false and null</td></tr>
+<tr><td>path</td><td>Where a value sits in a document: $, $.key, $.list[0], $.list[*]</td></tr>
+<tr><td>-&gt; / -&gt;&gt;</td><td>Extract a value as JSON (with quotes) / as plain text</td></tr>
+<tr><td>JSON_TABLE</td><td>Turns a JSON array into rows with typed columns</td></tr>
+<tr><td>generated column</td><td>A column computed from other columns of the row; can be indexed</td></tr>
+</tbody>
+</table>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 11 · Participant Workbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

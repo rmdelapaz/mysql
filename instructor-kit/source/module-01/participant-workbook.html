@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Participant Workbook: Session 1</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Student workbook —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">write in it · bring it to every session</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Participant Workbook</div>
+    <h1>Session 1: What Databases Are and Installing MySQL</h1>
+    <p class="sub">Your workbook for Session 1: the environment check, a diagnostic, the key ideas of Lessons 1.1 and 1.2, worked examples, the guided labs, predict-then-run practice, a self-check for each lesson, and your exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Lessons <b>1.1–1.2</b></span>
+      <span class="chip">Session <b>1</b> · 3 hours</span>
+      <span class="chip">Name: ____________________</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Session Goals</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Find out whether your computer is ready: the environment check ends with READY, and you know what to do if it does not.</li>
+  <li>Explain what a database, a DBMS and SQL are, and why a database beats a spreadsheet once data grows.</li>
+  <li>Read a table: its columns, rows, primary key and foreign keys, and how keys connect tables.</li>
+  <li>Run your first SQL: create, read, update and delete rows, and read the numbered errors when MySQL refuses bad data.</li>
+  <li>Have MySQL 9.7 running on your laptop, log in, check which server answered, and keep a health check you can rerun.</li>
+</ul>
+
+  <div class="sec"><h2>Start Here: Is Your Computer Ready?</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Environment check</div>
+<ul class="tick">
+  <li>☐ I can open a terminal in my course folder (the one with <code class="inline">labs/</code> in it)</li>
+  <li>☐ macOS/Linux: <code class="inline">bash labs/module-01/l1_0-orientation/check_environment.sh</code> · Windows: <code class="inline">powershell -ExecutionPolicy Bypass -File labs\module-01\l1_0-orientation\check_environment.ps1</code></li>
+  <li>☐ The last table says <code class="inline">READY for MySQL Foundations</code> (or <code class="inline">READY WITH NOTES</code>). My server version is: ______________</li>
+  <li>☐ If it said NOT READY, I wrote my plan here (from the install clinic) and will finish it before Session 2:</li>
+</ul>
+<div class="write"></div>
+<p>Three error numbers to know by heart: <b>command not found</b> = the client is not on your PATH · <b>1045</b> = the server answered and refused your user name or password · <b>2002 / 2003</b> = nothing answered: the server is stopped, or you are knocking at the wrong address.</p>
+</div>
+<div class="blk"><div class="h">Diagnostic: predict, then check</div>
+<p>Six questions on the spreadsheet and computer skills SQL builds on. Circle your answer before the class reveals it. Nobody collects this. Questions D1 to D5 are about this small sheet of orders:</p>
+<table class="timing">
+<thead><tr><th>order_no</th><th>customer</th><th>city</th><th>item</th><th>qty</th><th>price</th></tr></thead>
+<tbody>
+<tr><td>1001</td><td>Alice Johnson</td><td>New York</td><td>Dune</td><td>1</td><td>14.99</td></tr>
+<tr><td>1002</td><td>Bob Smith</td><td>Chicago</td><td>1984</td><td>2</td><td>9.99</td></tr>
+<tr><td>1003</td><td>Grace Wilson</td><td>Chicago</td><td>The Hobbit</td><td>1</td><td>10.99</td></tr>
+<tr><td>1004</td><td>Dave Brown</td><td>Houston</td><td>Dune</td><td>3</td><td>14.99</td></tr>
+<tr><td>1005</td><td>Frank Miller</td><td>New York</td><td>Fahrenheit 451</td><td>2</td><td>10.49</td></tr>
+<tr><td>1006</td><td>Eve Davis</td><td>(empty)</td><td>Pride and Prejudice</td><td>1</td><td>7.99</td></tr>
+</tbody>
+</table>
+<p>Missed one? The skill and where it comes back: <b>D1</b> filtering rows (WHERE in Lesson 3.1 (and the lesson's first SELECT)) · <b>D2</b> sorting (ORDER BY in Lesson 3.2) · <b>D3</b> AND versus OR (WHERE with AND/OR in Lesson 3.1) · <b>D4</b> a formula column (expressions in SELECT (Lesson 1.1's taste, then 3.3)) · <b>D5</b> empty cells (NULL in Lessons 2.2 and 3.3) · <b>D6</b> files and folders (the Setup Guide and Lesson 1.3 (running .sql files)). For practice at home: <code class="inline">labs/module-01/l1_0-orientation/diagnostic_starter.sql</code> does D1 to D5 in SQL, one small gap each.</p>
+<div class="q"><div class="qn">D1</div><div class="qt">You filter the city column to show only Chicago. How many rows are left?</div><div class="opts"><div class="opt">A) 1</div><div class="opt">B) 2</div><div class="opt">C) 3</div><div class="opt">D) 6</div></div></div><div class="q"><div class="qn">D2</div><div class="qt">You sort by price, largest first. Which item is on the top row?</div><div class="opts"><div class="opt">A) Pride and Prejudice</div><div class="opt">B) The Hobbit</div><div class="opt">C) Dune</div><div class="opt">D) 1984</div></div></div><div class="q"><div class="qn">D3</div><div class="qt">How many rows have the city New York AND a qty of 2 or more?</div><div class="opts"><div class="opt">A) 1</div><div class="opt">B) 2</div><div class="opt">C) 4</div><div class="opt">D) 5</div></div></div><div class="q"><div class="qn">D4</div><div class="qt">You add a column total = qty × price. What is the total for order 1004?</div><div class="opts"><div class="opt">A) 14.99</div><div class="opt">B) 17.99</div><div class="opt">C) 29.98</div><div class="opt">D) 44.97</div></div></div><div class="q"><div class="qn">D5</div><div class="qt">=COUNTA(city) counts the filled-in cells of the city column. What does it give?</div><div class="opts"><div class="opt">A) 4</div><div class="opt">B) 5</div><div class="opt">C) 6</div><div class="opt">D) 0</div></div></div><div class="q"><div class="qn">D6</div><div class="qt">You saved bookstore.sql in your Downloads folder. Your terminal is open in your home folder. Which path names the file?</div><div class="opts"><div class="opt">A) <code class="inline">bookstore.sql</code></div><div class="opt">B) <code class="inline">Downloads/bookstore.sql</code></div><div class="opt">C) <code class="inline">/bookstore.sql</code></div><div class="opt">D) <code class="inline">home/Downloads.sql</code></div></div></div></div>
+
+  <div class="sec"><h2>Lessons</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">1.1</span><h3>What Is a Database?</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Explain what a database and a database management system (DBMS) are, and name three problems a database solves that a spreadsheet does not</li>
+  <li>Tell relational databases apart from the main non-relational kinds, and pick a sensible type for a simple scenario</li>
+  <li>Point to the table, columns, rows, primary key and foreign key in a small example</li>
+  <li>Describe what SQL is and match the four CRUD operations to INSERT, SELECT, UPDATE and DELETE</li>
+  <li>Sketch the tables of a small online bookstore on paper, with keys and relationships</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>A database is organized data; a DBMS is the server that guards it.</b> MySQL is a DBMS. Your application never touches the data files: it sends SQL to the server.</li>
+  <li><b>Why not a spreadsheet?</b> Copies of the same fact drift apart, nothing enforces types, searches get slow, two editors overwrite each other, and everyone sees every column.</li>
+  <li><b>Relational databases</b> keep data in tables with fixed columns, linked by keys. NoSQL databases use other shapes: documents, key-value pairs, graphs, wide columns.</li>
+  <li><b>Table, column, row.</b> A table holds one kind of thing; a column is one named, typed piece of information; a row is one thing.</li>
+  <li><b>Primary key:</b> unique, never empty, identifies each row (usually an id MySQL hands out). <b>Foreign key:</b> another table's primary key, stored to say "this row belongs to that one".</li>
+  <li><b>Store each fact once and point to it with a key.</b> A list in a cell or a many-to-many relationship needs its own table.</li>
+  <li><b>SQL is declarative:</b> you say what you want, not how to find it. CRUD = INSERT, SELECT, UPDATE, DELETE.</li>
+  <li><b>The database says no</b>, with a number: 1062 duplicate key, 1366 wrong type, 1364 missing required value. That is a feature.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: following a key by hand</div>
+<p>Keys in action, on two tiny tables: authors and their books. The book does not repeat the author's name; it stores the author's id.</p>
+<pre class="code"><span class="k">CREATE</span> <span class="k">DATABASE</span> kit_shelf;
+<span class="k">USE</span> kit_shelf;
+<span class="k">CREATE</span> <span class="k">TABLE</span> authors (
+    id   <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    name <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">CREATE</span> <span class="k">TABLE</span> books (
+    id        <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    title     <span class="k">VARCHAR</span>(<span class="s">200</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    author_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>            <span class="c">-- which author: a copy of authors.id</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> authors (name) <span class="k">VALUES</span> (<span class="s">'Frank Herbert'</span>), (<span class="s">'George Orwell'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> books (title, author_id) <span class="k">VALUES</span>
+    (<span class="s">'Dune'</span>, <span class="s">1</span>), (<span class="s">'1984'</span>, <span class="s">2</span>), (<span class="s">'Animal Farm'</span>, <span class="s">2</span>);</pre>
+<pre class="out">Database changed</pre><p>Which books did author 2 write, and who is author 2? Follow the key by hand, one table at a time (Lesson 4.3 teaches the JOIN that does it in one query):</p>
+<pre class="code"><span class="k">SELECT</span> id, title, author_id <span class="k">FROM</span> books <span class="k">WHERE</span> author_id = <span class="s">2</span>;
+<span class="k">SELECT</span> id, name <span class="k">FROM</span> authors <span class="k">WHERE</span> id = <span class="s">2</span>;</pre>
+<pre class="out">+----+-------------+-----------+
+| id | title       | author_id |
++----+-------------+-----------+
+|  2 | 1984        |         2 |
+|  3 | Animal Farm |         2 |
++----+-------------+-----------+
++----+---------------+
+| id | name          |
++----+---------------+
+|  2 | George Orwell |
++----+---------------+</pre><p>Now correct the author's name. One row changes, and every book that points at id 2 is up to date at once:</p>
+<pre class="code"><span class="k">UPDATE</span> authors <span class="k">SET</span> name = <span class="s">'George Orwell (Eric Blair)'</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">SELECT</span> id, name <span class="k">FROM</span> authors <span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+<pre class="out">+----+----------------------------+
+| id | name                       |
++----+----------------------------+
+|  1 | Frank Herbert              |
+|  2 | George Orwell (Eric Blair) |
++----+----------------------------+</pre><p>In a single sheet with the author's name typed next to every book, the same correction would mean finding and fixing every copy. Last, clean up:</p>
+<pre class="code"><span class="k">DROP</span> <span class="k">DATABASE</span> kit_shelf;</pre></div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>Open <code class="inline">labs/module-01/l1_1-what-is-a-database/order_sheet_starter.sql</code> in a text editor. In the mysql client (started in your course folder) run <code class="inline">SOURCE labs/module-01/l1_1-what-is-a-database/order_sheet_starter.sql</code>. You see the sheet and empty answers.</li>
+  <li>TODO 1 together, TODOs 2 to 4 in pairs: each changes one value. Save the file, SOURCE it again, read the new result.</li>
+  <li>For each TODO write one sentence: what is the problem, and how would separate tables with keys prevent it?</li>
+</ul>
+<div class="write tall"></div>
+<ul class="tick">
+  <li>Done when your results match the "Expected when done" comment at the end of the file.</li>
+  <li>Finished early? <code class="inline">crud_tour_starter.sql</code>, then <code class="inline">debug_rules.sql</code> in the same folder.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction on the line first, then run the code (in a practice database: <code class="inline">CREATE DATABASE scratch; USE scratch;</code>, and <code class="inline">DROP DATABASE scratch;</code> when you are done). A wrong prediction you can explain afterward is worth more than a right guess.</p>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it. (Three notes, one DELETE.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> notes (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, title <span class="k">VARCHAR</span>(<span class="s">30</span>) <span class="k">NOT</span> <span class="k">NULL</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> notes <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Buy milk'</span>), (<span class="s">2</span>, <span class="s">'Call Bob'</span>), (<span class="s">3</span>, <span class="s">'Pay rent'</span>);
+<span class="k">DELETE</span> <span class="k">FROM</span> notes <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> notes;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it. (email is UNIQUE.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> members (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, email <span class="k">VARCHAR</span>(<span class="s">50</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">UNIQUE</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> members <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'ana@example.com'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> members <span class="k">VALUES</span> (<span class="s">2</span>, <span class="s">'ana@example.com'</span>);</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>Sketch the Bookstore</b> (lesson page, "Project: Sketch the Bookstore"). Paper or a text file. In class: Steps 1 and 2. At home: Steps 3 to 5.</p>
+<ul class="tick">
+  <li>☐ Step 1: about five tables from the store's description</li>
+  <li>☐ Step 2: four to six columns per table, each with a type</li>
+  <li>☐ Step 3: a primary key for every table (and why a title or an email is a poor one)</li>
+  <li>☐ Step 4: foreign keys on the "many" side, and two linking tables</li>
+  <li>☐ Step 5: compared with the course design; one difference I can defend</li>
+</ul>
+<div class="write tall"></div>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Which sentence describes MySQL correctly?</div><div class="opts"><div class="opt">A) MySQL is a database: the file that holds your tables</div><div class="opt">B) MySQL is a database management system: server software that stores databases, enforces their rules and answers SQL</div><div class="opt">C) MySQL is a query language, a dialect of SQL</div><div class="opt">D) MySQL is a spreadsheet program that understands SQL</div></div></div>
+<div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">A <code class="inline">books</code> table has the columns <code class="inline">id</code>, <code class="inline">title</code>, <code class="inline">author_id</code>, <code class="inline">price</code>. Which column is most likely a foreign key?</div><div class="opts"><div class="opt">A) <code class="inline">id</code></div><div class="opt">B) <code class="inline">title</code></div><div class="opt">C) <code class="inline">author_id</code></div><div class="opt">D) <code class="inline">price</code></div></div></div>
+<div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">What does the last statement print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> pets (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">20</span>), kind <span class="k">VARCHAR</span>(<span class="s">10</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> pets <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Rex'</span>, <span class="s">'dog'</span>), (<span class="s">2</span>, <span class="s">'Tom'</span>, <span class="s">'cat'</span>), (<span class="s">3</span>, <span class="s">'Fido'</span>, <span class="s">'dog'</span>);
+<span class="k">UPDATE</span> pets <span class="k">SET</span> kind = <span class="s">'cat'</span> <span class="k">WHERE</span> id = <span class="s">3</span>;
+<span class="k">SELECT</span> name <span class="k">FROM</span> pets <span class="k">WHERE</span> kind = <span class="s">'cat'</span> <span class="k">ORDER</span> <span class="k">BY</span> id;</pre><div class="write"></div></div>
+<div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">The pets table from Q3 is still there. What happens when this runs?</div><pre class="code"><span class="c">-- pets now holds ids 1, 2 and 3</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> pets <span class="k">VALUES</span> (<span class="s">2</span>, <span class="s">'Kit'</span>, <span class="s">'cat'</span>);</pre><div class="opts"><div class="opt">A) <code class="inline">ERROR 1062 (23000): Duplicate entry '2' for key 'pets.PRIMARY'</code></div><div class="opt">B) A new row is added: Kit gets id 4 automatically</div><div class="opt">C) <code class="inline">ERROR 1366 (HY000): Incorrect integer value</code></div><div class="opt">D) Tom's row is replaced by Kit's</div></div></div>
+<div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">A music app must remember, for millions of logged-in users, which song each is playing right now, and look it up in under a millisecond. Which kind of database fits best?</div><div class="opts"><div class="opt">A) A relational database with a table per song</div><div class="opt">B) A graph database</div><div class="opt">C) A document store</div><div class="opt">D) A key-value store such as Redis</div></div></div>
+<div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt">Carol closes her account. Which statement removes her row but keeps the table and every other customer?</div><div class="opts"><div class="opt">A) <code class="inline">DROP TABLE customers;</code></div><div class="opt">B) <code class="inline">DELETE FROM customers WHERE id = 3;</code></div><div class="opt">C) <code class="inline">UPDATE customers SET email = NULL WHERE id = 3;</code></div><div class="opt">D) <code class="inline">DELETE FROM customers;</code></div></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Think of a list you keep today in a spreadsheet, a notes app or on paper. Which of the spreadsheet problems have you actually run into with it? What would its tables and primary keys be?</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">1.2</span><h3>Installing MySQL</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Choose the right MySQL release (9.7 LTS) and installation method for your computer, and recognize when a package gives you something else (an older MySQL, or MariaDB)</li>
+  <li>Install MySQL 9.7 LTS with the Windows MSI, the macOS package or Homebrew, the MySQL APT repository, or the official Docker image</li>
+  <li>Start and stop the server, and set a strong root password</li>
+  <li>Connect with mysql -u root -p and verify the version, user and character set with SQL</li>
+  <li>Diagnose the four classic first-day errors: command not found, 1045, 2002 and 2003</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>Two programs:</b> the server (<code class="inline">mysqld</code>, listening on port 3306) and a client (the <code class="inline">mysql</code> command) that sends your SQL to it.</li>
+  <li><b>Install 9.7 LTS on purpose.</b> "Latest" is an innovation release (26.x); Ubuntu's own package is 8.0 or 8.4; XAMPP and Debian give you MariaDB.</li>
+  <li><b>One path per laptop:</b> Windows MSI + MySQL Configurator; macOS <code class="inline">brew install mysql@9.7</code> or the DMG; Linux MySQL's APT/Yum repository; anywhere <code class="inline">docker run ... mysql:9.7</code>.</li>
+  <li><b>root gets a strong password</b> and the default <code class="inline">caching_sha2_password</code> login. <code class="inline">mysql_native_password</code> is gone in 9.x (error 1524).</li>
+  <li><b>Log in with <code class="inline">mysql -u root -p</code>;</b> a Docker container with <code class="inline">docker exec -it mysql97 mysql -u root -p</code>, or <code class="inline">-h 127.0.0.1 -P &lt;port&gt;</code>.</li>
+  <li><b>Ask the server, not the client:</b> <code class="inline">SELECT VERSION();</code> describes the server; <code class="inline">mysql --version</code> only the program on your laptop.</li>
+  <li><b>Error triage:</b> command not found = PATH; 1045 = credentials; 2002/2003 = server stopped or wrong address.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: three questions for any server</div>
+<p>Three questions you can ask any server in a second. A comparison prints 1 for true and 0 for false.</p>
+<pre class="code"><span class="k">SELECT</span> VERSION() <span class="k">LIKE</span> <span class="s">'9.7.%'</span>     <span class="k">AS</span> is_mysql_97,
+       VERSION() <span class="k">LIKE</span> <span class="s">'%MariaDB%'</span> <span class="k">AS</span> is_mariadb;</pre>
+<pre class="out">+-------------+------------+
+| is_mysql_97 | is_mariadb |
++-------------+------------+
+|           1 |          0 |
++-------------+------------+</pre><p><code class="inline">SHOW VARIABLES LIKE</code> is another way to read a setting, with its name next to its value:</p>
+<pre class="code"><span class="k">SHOW</span> VARIABLES <span class="k">LIKE</span> <span class="s">'character_set_server'</span>;</pre>
+<pre class="out">+----------------------+---------+
+| Variable_name        | Value   |
++----------------------+---------+
+| character_set_server | utf8mb4 |
++----------------------+---------+</pre><p>And is the server in the strict mode that refuses bad data (the mode the lesson's errors rely on)?</p>
+<pre class="code"><span class="k">SELECT</span> @@sql_mode <span class="k">LIKE</span> <span class="s">'%STRICT_TRANS_TABLES%'</span> <span class="k">AS</span> strict_mode;</pre>
+<pre class="out">+-------------+
+| strict_mode |
++-------------+
+|           1 |
++-------------+</pre><p>On MariaDB the first query prints 0 and 1; on a server someone has reconfigured the last one may print 0, and then some of the course's errors become silent warnings.</p>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>SOURCE <code class="inline">labs/module-01/l1_2-installing-mysql/server_facts_starter.sql</code>. Questions 1 and 2 answer right away.</li>
+  <li>TODOs 3 to 6: replace each placeholder SELECT with a real one. TODO 3 gives you the statement; for TODOs 4 and 5 write it from the setting names.</li>
+  <li>Copy the answers onto your health-check page (below).</li>
+  <li>Finished early? <code class="inline">accounts_check_starter.sql</code>, then <code class="inline">debug_old_advice.sql</code>.</li>
+</ul>
+<table class="timing">
+<thead><tr><th>Setting</th><th>My server</th></tr></thead>
+<tbody>
+<tr><td>Version and edition</td><td></td></tr>
+<tr><td>MySQL or MariaDB?</td><td></td></tr>
+<tr><td>Character set / collation</td><td></td></tr>
+<tr><td>Storage engine / lower_case_table_names</td><td></td></tr>
+<tr><td>max_connections</td><td></td></tr>
+<tr><td>root's login plugin</td><td></td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction on the line first, then run the code (in a practice database: <code class="inline">CREATE DATABASE scratch; USE scratch;</code>, and <code class="inline">DROP DATABASE scratch;</code> when you are done). A wrong prediction you can explain afterward is worth more than a right guess.</p>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it. (Who did MySQL match you to?)</div><pre class="code"><span class="k">SELECT</span> CURRENT_USER();</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it. (On the course's MySQL 9.7 server.)</div><pre class="code"><span class="k">SELECT</span> VERSION() <span class="k">LIKE</span> <span class="s">'%MariaDB%'</span> <span class="k">AS</span> on_mariadb,
+       @@character_set_server   <span class="k">AS</span> charset;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>Installation Health Check</b> (lesson page, "Project: Installation Health Check"). Steps 1 and 2 were the setup and the clinic. In class: Steps 3 and 4. At home: Step 5.</p>
+<ul class="tick">
+  <li>☐ Step 3: version, edition and port; logged-in user, charset and collation</li>
+  <li>☐ Step 4: root's host and plugin (no <code class="inline">mysql_native_password</code>)</li>
+  <li>☐ Step 5: stopped the server, saw error 2002 or 2003, started it again</li>
+  <li>☐ My start command: ______________________  My stop command: ______________________</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt"><code class="inline">mysql --version</code> in a terminal prints 9.7.2. What does that prove?</div><div class="opts"><div class="opt">A) The MySQL server is running</div><div class="opt">B) Your password is correct</div><div class="opt">C) The mysql client program is installed and on your PATH</div><div class="opt">D) Your server is MySQL 9.7, not MariaDB</div></div></div>
+<div class="q" data-sc="8"><div class="qn">Q8</div><div class="qt"><code class="inline">mysql -u root -p</code> answers <code class="inline">ERROR 1045 (28000): Access denied for user ...</code>. What do you fix first?</div><div class="opts"><div class="opt">A) The user name or the password</div><div class="opt">B) Start the server</div><div class="opt">C) Add mysql to your PATH</div><div class="opt">D) Reinstall MySQL with the native password plugin</div></div></div>
+<div class="q" data-sc="9" data-kind="short"><div class="qn">Q9</div><div class="qt">On the course's MySQL 9.7 server, what does this print?</div><pre class="code"><span class="k">SELECT</span> VERSION() <span class="k">LIKE</span> <span class="s">'9.7.%'</span> <span class="k">AS</span> on_97;</pre><div class="write"></div></div>
+<div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">You use Homebrew on a Mac. Which command installs the version this course uses?</div><div class="opts"><div class="opt">A) <code class="inline">brew install mysql</code></div><div class="opt">B) <code class="inline">brew install mariadb</code></div><div class="opt">C) <code class="inline">brew install mysql-client</code></div><div class="opt">D) <code class="inline">brew install mysql@9.7</code></div></div></div>
+<div class="q" data-sc="11"><div class="qn">Q11</div><div class="qt">Your MySQL container was started with <code class="inline">-p 3307:3306</code>. Which command connects to it from a mysql client installed on your laptop?</div><div class="opts"><div class="opt">A) <code class="inline">mysql -u root -p</code></div><div class="opt">B) <code class="inline">mysql -h localhost -P 3306 -u root -p</code></div><div class="opt">C) <code class="inline">mysql -h 127.0.0.1 -P 3307 -u root -p</code></div><div class="opt">D) <code class="inline">mysql -h 127.0.0.1 -P 3306 -u root -p</code></div></div></div>
+<div class="q" data-sc="12" data-kind="short"><div class="qn">Q12</div><div class="qt">On a fresh MySQL 9.7 install (not Docker), what does this print?</div><pre class="code"><span class="k">SELECT</span> plugin
+<span class="k">FROM</span> mysql.user
+<span class="k">WHERE</span> user = <span class="s">'root'</span> <span class="k">AND</span> host = <span class="s">'localhost'</span>;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Write your installation story: which path you chose and why, what went wrong (something usually does), the exact error message you saw, and what fixed it. Next time you install a database, this note will save you an hour.</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<p>Three questions, no notes. Write your answers, hand them in or keep them: they tell you and your instructor what to revisit.</p>
+<div class="q"><div class="qn">E1</div><div class="qt">In one sentence each: what is the MySQL server, what is a client, and what is a database?</div><div class="write"></div></div>
+<div class="q"><div class="qn">E2</div><div class="qt">You type <code class="inline">mysql -u root -p</code> and get <code class="inline">ERROR 2002</code>. What do you check first? And if it were <code class="inline">ERROR 1045</code>?</div><div class="write"></div></div>
+<div class="q"><div class="qn">E3</div><div class="qt"><code class="inline">orders(id, customer_id, order_date)</code>: name the primary key and the foreign key. Why not store the customer's name in orders?</div><div class="write"></div></div>
+
+  <div class="sec"><h2>Notes</h2><span class="rule"></span></div>
+<div class="notes-lines"></div>
+
+  <div class="sec"><h2>Homework Checklist</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ Finish the bookstore sketch (Steps 3 to 5) and the health check (Step 5)</li>
+  <li>☐ Lesson 1.1 Hands-on Exercises 1 to 3 (Exercise 4 is a stretch)</li>
+  <li>☐ Lesson 1.2 Hands-on Exercises 1 to 3 (Exercise 4 is a stretch)</li>
+  <li>☐ Both Quick Quizzes on the lesson pages</li>
+  <li>☐ Both journal entries</li>
+  <li>☐ 1.2 "Before the Next Lesson": log in from a fresh terminal; install a code editor for .sql files; optional phpMyAdmin</li>
+  <li>☐ If my check was not READY: follow my plan and run the check again</li>
+  <li>☐ Optional: <code class="inline">diagnostic_starter.sql</code>, <code class="inline">crud_tour_starter.sql</code>, <code class="inline">accounts_check_starter.sql</code></li>
+  <li>☐ Bring to Session 2: a READY laptop and my root password, the course folder with <code class="inline">labs/</code>, my bookstore sketch, this workbook and my journal</li>
+</ul>
+
+  <div class="sec"><h2>Glossary</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>database</td><td>An organized collection of data; in MySQL, a named set of tables inside the server</td></tr>
+<tr><td>DBMS</td><td>The software that stores databases, enforces their rules and answers queries (MySQL, MariaDB, PostgreSQL)</td></tr>
+<tr><td>server (<code class="inline">mysqld</code>)</td><td>The MySQL program that runs in the background, owns the data and listens on port 3306</td></tr>
+<tr><td>client</td><td>A program you type SQL into, which sends it to the server (<code class="inline">mysql</code>, phpMyAdmin, Workbench)</td></tr>
+<tr><td>SQL</td><td>The declarative language of relational databases</td></tr>
+<tr><td>CRUD</td><td>Create, Read, Update, Delete: INSERT, SELECT, UPDATE, DELETE</td></tr>
+<tr><td>table / row / column</td><td>All the rows about one kind of thing / one thing / one named, typed piece of information</td></tr>
+<tr><td>primary key</td><td>A unique, never-empty identifier of each row</td></tr>
+<tr><td>foreign key</td><td>A copy of another table's primary key that links two rows</td></tr>
+<tr><td>schema</td><td>The blueprint of tables, columns, types and rules (in MySQL also another word for a database)</td></tr>
+<tr><td>LTS release</td><td>A long-term support version (9.7) that keeps its features for years</td></tr>
+<tr><td>port</td><td>The number a server listens on (3306 for MySQL); a client must knock on the right one</td></tr>
+<tr><td>root</td><td>MySQL's all-powerful administrator account; strong password, administration only</td></tr>
+<tr><td>caching_sha2_password</td><td>MySQL's default, secure login method (mysql_native_password is gone in 9.x)</td></tr>
+</tbody>
+</table>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 1 · Participant Workbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

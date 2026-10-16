@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Review everything you've learned in MySQL Foundations, explore best practices for production databases, and discover your next steps — PHP, Python, Node.js connectors, ORMs, and beyond.">
-    <meta name="author" content="Ray De La Paz">
+    <meta name="description" content="Close the course with the MySQL habits that matter most, a database health-check script, safe parameterized queries from PHP, Python, JavaScript and C#, and a map of what to learn next. MySQL Foundations Lesson 8.3.">
+    <meta name="author" content="Ray de la Paz">
     <title>Next Steps &amp; Best Practices - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -42,29 +42,35 @@
     <nav class="breadcrumb" aria-label="Breadcrumb">
         <ul>
             <li><a href="index.html">Home</a></li>
-            <li><a href="index.html#modules">Module 7: Real-World Skills</a></li>
-            <li aria-current="page">Lesson 21: Next Steps &amp; Best Practices</li>
+            <li><a href="index.html#modules">Module 8: Real-World Skills</a></li>
+            <li aria-current="page">Lesson 8.3: Next Steps &amp; Best Practices</li>
         </ul>
     </nav>
 
     <main id="main-content">
         <div class="container">
             <header>
-                <h1>🚀 Lesson 21: Next Steps &amp; Best Practices</h1>
-                <p class="lead">You've come a long way — from "What is a database?" to designing normalized schemas, writing multi-table joins, building stored procedures, managing users, and backing up your data. This final lesson pulls it all together: a quick review of everything you've learned, a collection of best practices you'll use every day, and a roadmap for where to go next with your MySQL skills.</p>
+                <h1>🚀 Lesson 8.3: Next Steps &amp; Best Practices</h1>
+                <p class="lead">You have gone from "what is a database?" to designing, building, securing and backing up one of your own. This last lesson turns that experience into habits: the practices worth keeping on every project, a script that checks a database for the most common design problems, the safe way for application code to talk to MySQL, and an honest map of where to go next.</p>
 
                 <div class="card card-info">
                     <h2>🎯 Learning Objectives</h2>
                     <p>By the end of this lesson, you will be able to:</p>
                     <ul>
-                        <li>Recall the key concepts from each module of this course</li>
-                        <li>Apply essential MySQL best practices in real projects</li>
-                        <li>Identify your next learning path (PHP, Python, Node.js, or ORMs)</li>
-                        <li>Recognize topics for deeper study (replication, performance tuning, cloud databases)</li>
+                        <li>Summarize what each module of the course taught and where to look things up again</li>
+                        <li>Apply a short list of design, query, security and operations practices to any MySQL project</li>
+                        <li>Audit a database with <code>information_schema</code> queries for missing keys, risky types and old character sets</li>
+                        <li>Explain SQL injection and write parameterized queries, in SQL and in an application language</li>
+                        <li>Choose a next learning step that fits your goal</li>
                     </ul>
-                    <p><strong>Estimated Time:</strong> 30 minutes</p>
-                    <p><strong>Prerequisites:</strong> All previous lessons</p>
                 </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 80 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_final_project.html">Lesson 8.2: Final Project: Design and Build a Database</a></li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>health_check.sql</code>, a reusable audit for any database, and a written learning plan</li>
+                    <li><span class="meta-label">🗄️ Database</span> <code>bookstore</code> freshly loaded from <a href="assets/sql/bookstore.sql" download>bookstore.sql</a></li>
+                </ul>
             </header>
 
             <details class="card toc-card" open>
@@ -75,586 +81,758 @@
                 </summary>
                 <nav aria-label="Table of Contents">
                     <ol>
-                        <li><a href="#course-review" class="toc-link">Course Review: What You've Learned</a></li>
-                        <li><a href="#best-practices" class="toc-link">MySQL Best Practices</a></li>
-                        <li><a href="#connecting-languages" class="toc-link">Connecting MySQL to Programming Languages</a></li>
-                        <li><a href="#orms" class="toc-link">ORMs: The Next Abstraction</a></li>
-                        <li><a href="#advanced-topics" class="toc-link">Advanced Topics to Explore</a></li>
-                        <li><a href="#practice-projects" class="toc-link">Practice Project Ideas</a></li>
-                        <li><a href="#resources" class="toc-link">Resources &amp; Community</a></li>
-                        <li><a href="#summary" class="toc-link">Final Summary</a></li>
+                        <li><a href="#review" class="toc-link">The Course in One Page</a></li>
+                        <li><a href="#best-practices" class="toc-link">Best Practices Worth Keeping</a></li>
+                        <li><a href="#health-check" class="toc-link">Checking a Database with information_schema</a></li>
+                        <li><a href="#apps" class="toc-link">Connecting from Application Code</a></li>
+                        <li><a href="#next-topics" class="toc-link">What to Learn Next</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: Health Check and Learning Plan</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
                     </ol>
                 </nav>
             </details>
 
-            <!-- Section 1: Course Review -->
-            <section id="course-review" class="lesson-section">
-                <h2>Course Review: What You've Learned</h2>
-                <p>Let's walk through each module and the skills you've built:</p>
-
+            <section id="review" class="lesson-section">
+                <h2>🗺️ The Course in One Page</h2>
                 <div class="mermaid">
-                    graph LR
-                        M1["Module 1<br/>Getting Started"]
-                        M2["Module 2<br/>Tables &amp; Data Types"]
-                        M3["Module 3<br/>Querying Data"]
-                        M4["Module 4<br/>Relationships &amp; Joins"]
-                        M5["Module 5<br/>Database Design"]
-                        M6["Module 6<br/>Advanced Features"]
-                        M7["Module 7<br/>Real-World Skills"]
-                        M1 --> M2 --> M3 --> M4 --> M5 --> M6 --> M7
+graph TD
+    M1["1. Getting Started"] --> M2["2. Tables and Data Types"]
+    M2 --> M3["3. Querying Data"]
+    M3 --> M4["4. Relationships and Joins"]
+    M4 --> M5["5. Modern Queries"]
+    M5 --> M6["6. Database Design"]
+    M6 --> M7["7. Advanced Features"]
+    M7 --> M8["8. Real-World Skills"]
                 </div>
-
-                <h3>Module 1: Getting Started</h3>
-                <p>You learned what relational databases are, installed MySQL via the LAMP stack on Ubuntu, and got comfortable with the MySQL CLI and phpMyAdmin. You ran your first queries and understood the client-server architecture.</p>
-
-                <h3>Module 2: Tables &amp; Data Types</h3>
-                <p>You created databases and tables with <code>CREATE DATABASE</code> and <code>CREATE TABLE</code>, chose appropriate data types (<code>INT</code>, <code>VARCHAR</code>, <code>DECIMAL</code>, <code>DATE</code>, etc.), applied constraints (<code>PRIMARY KEY</code>, <code>NOT NULL</code>, <code>UNIQUE</code>, <code>DEFAULT</code>, <code>AUTO_INCREMENT</code>), and performed basic CRUD operations — the four fundamental actions of any database application.</p>
-
-                <h3>Module 3: Querying Data</h3>
-                <p>You filtered data with <code>WHERE</code> clauses and operators (<code>AND</code>, <code>OR</code>, <code>IN</code>, <code>BETWEEN</code>, <code>LIKE</code>, <code>IS NULL</code>), sorted and paginated results with <code>ORDER BY</code>, <code>LIMIT</code>, and <code>OFFSET</code>, summarized data with aggregate functions (<code>COUNT</code>, <code>SUM</code>, <code>AVG</code>, <code>MIN</code>, <code>MAX</code>) and <code>GROUP BY</code>/<code>HAVING</code>, and wrote subqueries for complex multi-step logic.</p>
-
-                <h3>Module 4: Relationships &amp; Joins</h3>
-                <p>You modeled real-world relationships (one-to-one, one-to-many, many-to-many with junction tables), enforced data integrity with foreign keys and referential actions (<code>CASCADE</code>, <code>SET NULL</code>, <code>RESTRICT</code>), and combined data from multiple tables using joins — <code>INNER</code>, <code>LEFT</code>, <code>RIGHT</code>, <code>CROSS</code>, and self-joins.</p>
-
-                <h3>Module 5: Database Design</h3>
-                <p>You optimized query performance with indexes and <code>EXPLAIN</code>, simplified complex queries with views, and designed clean, normalized schemas (1NF, 2NF, 3NF) that minimize redundancy and protect data integrity.</p>
-
-                <h3>Module 6: Advanced Features</h3>
-                <p>You encapsulated reusable logic in stored procedures and functions, protected multi-step operations with transactions (<code>BEGIN</code>, <code>COMMIT</code>, <code>ROLLBACK</code>) and the ACID properties, and secured your databases with user accounts, granular privileges, and the principle of least privilege.</p>
-
-                <h3>Module 7: Real-World Skills</h3>
-                <p>You backed up databases with <code>mysqldump</code>, restored from dump files, imported and exported CSV data with <code>LOAD DATA INFILE</code> and <code>INTO OUTFILE</code>, and designed automated backup strategies.</p>
-
-                <div class="card card-success">
-                    <h4>✅ That's a Lot of SQL!</h4>
-                    <p>From zero to writing multi-table joins, designing normalized schemas, building stored procedures, managing users, and automating backups — you now have a solid, practical foundation in MySQL. These skills transfer directly to any project that stores data.</p>
-                </div>
-            </section>
-
-            <!-- Section 2: Best Practices -->
-            <section id="best-practices" class="lesson-section">
-                <h2>MySQL Best Practices</h2>
-                <p>These guidelines will serve you well in every MySQL project, from personal side projects to production applications.</p>
-
-                <h3>Naming Conventions</h3>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Rule</th>
-                                <th>Good Example</th>
-                                <th>Avoid</th>
-                            </tr>
+                            <tr><th>Module</th><th>You can now...</th><th>Look it up again in</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Use <code>snake_case</code> for tables and columns</td>
-                                <td><code>order_items</code>, <code>first_name</code></td>
-                                <td><code>OrderItems</code>, <code>firstName</code></td>
-                            </tr>
-                            <tr>
-                                <td>Use plural nouns for table names</td>
-                                <td><code>books</code>, <code>customers</code></td>
-                                <td><code>book</code>, <code>customer</code></td>
-                            </tr>
-                            <tr>
-                                <td>Name foreign keys as <code>referenced_table_id</code></td>
-                                <td><code>author_id</code>, <code>customer_id</code></td>
-                                <td><code>author</code>, <code>cust</code></td>
-                            </tr>
-                            <tr>
-                                <td>Avoid reserved words as names</td>
-                                <td><code>order_date</code></td>
-                                <td><code>order</code>, <code>date</code>, <code>select</code></td>
-                            </tr>
-                            <tr>
-                                <td>Be descriptive, not cryptic</td>
-                                <td><code>publication_year</code></td>
-                                <td><code>py</code>, <code>yr</code>, <code>x</code></td>
-                            </tr>
+                            <tr><td>1. Getting Started</td><td>Explain what a relational database is, install MySQL 9.7, and work in the mysql client and phpMyAdmin</td><td><a href="lesson_02.html">1.2</a>, <a href="lesson_03.html">1.3</a></td></tr>
+                            <tr><td>2. Tables and Data Types</td><td>Create databases and tables, choose types and constraints, and insert, update and delete rows</td><td><a href="lesson_05.html">2.2</a>, <a href="lesson_06.html">2.3</a></td></tr>
+                            <tr><td>3. Querying Data</td><td>Filter, sort, page, aggregate with GROUP BY and HAVING, and nest subqueries</td><td><a href="lesson_09.html">3.3</a>, <a href="lesson_10.html">3.4</a></td></tr>
+                            <tr><td>4. Relationships and Joins</td><td>Model one-to-many and many-to-many, enforce them with foreign keys, and join tables every way</td><td><a href="lesson_12.html">4.2</a>, <a href="lesson_13.html">4.3</a></td></tr>
+                            <tr><td>5. Modern Queries</td><td>Write CTEs (including recursive ones) and window functions for rankings and running totals</td><td><a href="lesson_ctes.html">5.1</a>, <a href="lesson_window_functions.html">5.2</a></td></tr>
+                            <tr><td>6. Database Design</td><td>Index and read EXPLAIN, build views, and normalize a schema to 3NF</td><td><a href="lesson_14.html">6.1</a>, <a href="lesson_16.html">6.3</a></td></tr>
+                            <tr><td>7. Advanced Features</td><td>Write procedures and functions, use transactions, store and query JSON, and manage users and roles</td><td><a href="lesson_18.html">7.2</a>, <a href="lesson_19.html">7.4</a></td></tr>
+                            <tr><td>8. Real-World Skills</td><td>Back up and restore, import and export CSV, and design and deliver a complete database</td><td><a href="lesson_20.html">8.1</a>, <a href="lesson_final_project.html">8.2</a></td></tr>
                         </tbody>
                     </table>
                 </div>
+                <p>The course's reference pages stay useful long after the lessons: the <a href="cheat-sheet.html">cheat sheet</a>, the <a href="glossary.html">glossary</a>, the <a href="common-errors.html">common errors</a> page and the <a href="troubleshooting.html">troubleshooting guide</a>.</p>
+                <div class="card card-info">
+                    <h4>💡 Follow along</h4>
+                    <p>The SQL in this lesson reads the course database. Reload it first so your results match: <code>SOURCE ~/mysql-course/bookstore.sql</code> (or wherever you saved it).</p>
+                </div>
+            </section>
 
-                <h3>Schema Design</h3>
+            <section id="best-practices" class="lesson-section">
+                <h2>✅ Best Practices Worth Keeping</h2>
+                <p>Not rules for their own sake: each of these prevents a problem you met somewhere in this course.</p>
+
+                <h3>Design</h3>
                 <ul>
-                    <li><strong>Always use a primary key.</strong> Every table should have a clear primary key — usually an <code>AUTO_INCREMENT INT</code> called <code>id</code>.</li>
-                    <li><strong>Normalize to 3NF first, then denormalize only if needed.</strong> Start with a clean design. Only denormalize when you have measured performance data showing it's necessary.</li>
-                    <li><strong>Use appropriate data types.</strong> Don't store dates in <code>VARCHAR</code> columns. Don't use <code>TEXT</code> when <code>VARCHAR(100)</code> is enough. Use <code>DECIMAL</code> for money, not <code>FLOAT</code>.</li>
-                    <li><strong>Define foreign keys.</strong> Even if your application layer handles relationships, foreign keys catch bugs that code misses. They're your safety net.</li>
-                    <li><strong>Add constraints early.</strong> <code>NOT NULL</code>, <code>UNIQUE</code>, <code>DEFAULT</code>, and <code>CHECK</code> constraints are easier to add when designing than to retrofit later.</li>
+                    <li><strong>Every table gets a primary key.</strong> InnoDB stores rows in primary-key order; without one it invents a hidden key, and replication and many tools work badly.</li>
+                    <li><strong>Normalize first (3NF), denormalize only with a measured reason.</strong> Store each fact once and derive the rest (Lesson 6.3, and "available" in the final project).</li>
+                    <li><strong>Pick exact types:</strong> <code>DECIMAL</code> for money, <code>DATE</code>/<code>DATETIME</code> for time, <code>utf8mb4</code> for text. Never <code>FLOAT</code> for money (see Common Mistakes).</li>
+                    <li><strong>Let the database enforce what it can:</strong> <code>NOT NULL</code>, <code>UNIQUE</code>, <code>CHECK</code>, foreign keys. Application code changes and has bugs; constraints catch them.</li>
+                    <li><strong>Name things consistently:</strong> <code>snake_case</code>, plural table names, <code>&lt;table&gt;_id</code> for foreign keys, named constraints (<code>fk_books_author</code>), and no reserved words.</li>
                 </ul>
 
-                <h3>Querying</h3>
+                <h3>Queries</h3>
                 <ul>
-                    <li><strong>Never use <code>SELECT *</code> in production code.</strong> Always list the columns you need. <code>SELECT *</code> wastes bandwidth, breaks when columns change, and prevents index-only scans.</li>
-                    <li><strong>Always use <code>WHERE</code> with <code>UPDATE</code> and <code>DELETE</code>.</strong> Forgetting <code>WHERE</code> on a <code>DELETE</code> or <code>UPDATE</code> affects every row. Run a <code>SELECT</code> with the same <code>WHERE</code> first to verify which rows will be affected.</li>
-                    <li><strong>Use parameterized queries / prepared statements.</strong> Never build SQL strings by concatenating user input — that's how SQL injection happens. Your programming language's MySQL connector provides prepared statements for this.</li>
-                    <li><strong>Use <code>EXPLAIN</code> on slow queries.</strong> If a query is slow, run <code>EXPLAIN</code> to see the query plan. Look for full table scans and missing indexes.</li>
-                    <li><strong>Paginate large result sets.</strong> Use <code>LIMIT</code> and <code>OFFSET</code> instead of fetching thousands of rows at once.</li>
+                    <li><strong>List the columns you need</strong> in application code rather than <code>SELECT *</code>: the query keeps working when someone adds a column, and an index can sometimes answer it alone.</li>
+                    <li><strong>Always <code>ORDER BY</code></strong> when order matters, because nothing else guarantees it.</li>
+                    <li><strong>Preview with SELECT</strong> before an <code>UPDATE</code> or <code>DELETE</code>, using the same <code>WHERE</code>; wrap risky changes in a transaction.</li>
+                    <li><strong>Never turn off <code>ONLY_FULL_GROUP_BY</code></strong> or strict mode to make an error go away; fix the query.</li>
+                    <li><strong>Measure before tuning:</strong> <code>EXPLAIN</code> (or <code>EXPLAIN ANALYZE</code>) first, an index second, and only for queries that are actually slow. For deep pagination, "the next 20 after id 5000" (<code>WHERE id &gt; 5000 ORDER BY id LIMIT 20</code>) beats a large <code>OFFSET</code>.</li>
                 </ul>
 
                 <h3>Security</h3>
                 <ul>
-                    <li><strong>Never use root for applications.</strong> Create dedicated users with minimal privileges.</li>
-                    <li><strong>Use strong, unique passwords.</strong> And store them in config files or environment variables — never in source code.</li>
-                    <li><strong>Protect against SQL injection.</strong> This is the #1 database security threat. Always use prepared statements / parameterized queries.</li>
-                    <li><strong>Keep MySQL updated.</strong> Security patches fix known vulnerabilities. Stay current.</li>
+                    <li><strong>Parameterized queries, always</strong>: never build SQL by gluing user input into a string.</li>
+                    <li><strong>One account per application, with least privilege</strong>; <code>root</code> only for administration, and never over the network.</li>
+                    <li><strong>Secrets outside the code</strong>: environment variables, a secrets manager, or an option file only your user can read. Never commit passwords.</li>
+                    <li><strong>Modern authentication</strong>: <code>caching_sha2_password</code> is the default and modern drivers support it. Advice to switch accounts to <code>mysql_native_password</code> is outdated; MySQL 9.x no longer has that plugin.</li>
+                    <li><strong>Stay on a supported release</strong> and apply updates.</li>
                 </ul>
 
                 <h3>Operations</h3>
                 <ul>
-                    <li><strong>Back up regularly and test your restores.</strong> An untested backup is not a backup.</li>
-                    <li><strong>Use transactions for multi-step operations.</strong> If steps 1–3 succeed but step 4 fails, you want to roll back everything.</li>
-                    <li><strong>Monitor slow queries.</strong> Enable the slow query log to find and fix performance bottlenecks.</li>
-                    <li><strong>Use <code>utf8mb4</code>, not <code>utf8</code>.</strong> MySQL's <code>utf8</code> only supports 3-byte characters. <code>utf8mb4</code> is true UTF-8 and handles emojis and all Unicode characters.</li>
+                    <li><strong>Back up automatically and test the restore on a schedule</strong> (Lesson 8.1). Keep a copy off the machine.</li>
+                    <li><strong>Keep the schema in version-controlled scripts</strong>, as in the final project, so any database can be rebuilt from files. Teams use migration tools (Flyway, Liquibase, or the one built into their framework) for this.</li>
+                    <li><strong>Watch the slow query log</strong> (<code>slow_query_log</code>, <code>long_query_time</code>) to find the queries worth tuning.</li>
+                    <li><strong>Plan upgrades around LTS releases.</strong> MySQL has Long-Term Support releases (8.4, 9.7) that receive fixes for years, and Innovation releases in between that add features quickly but are supported only until the next one. Production systems usually stay on an LTS. After 9.7, Innovation releases use calendar-style version numbers (26.x), so "the latest" from <code>brew install mysql</code> or the Docker tag <code>mysql:latest</code> is an Innovation release, not 9.7: ask for the LTS by name (<code>mysql@9.7</code>, <code>mysql:9.7</code>) as Lesson 1.2 did. MySQL 8.0 has reached its end of life.</li>
                 </ul>
-
-                <div class="card card-warning">
-                    <h4>⚠️ The #1 Mistake: SQL Injection</h4>
-                    <p>SQL injection is when user input is inserted directly into a SQL query, allowing attackers to manipulate the query. It has been the cause of massive data breaches for decades.</p>
-                    <pre><code class="language-python">
-# ❌ NEVER do this — vulnerable to SQL injection
-query = f"SELECT * FROM users WHERE name = '{user_input}'"
-
-# ✅ ALWAYS do this — parameterized query (safe)
-query = "SELECT * FROM users WHERE name = %s"
-cursor.execute(query, (user_input,))
-                    </code></pre>
-                    <p>Every language connector provides a safe way to pass parameters. <strong>Use it. Always.</strong></p>
-                </div>
             </section>
 
-            <!-- Section 3: Connecting to Languages -->
-            <section id="connecting-languages" class="lesson-section">
-                <h2>Connecting MySQL to Programming Languages</h2>
-                <p>MySQL is the database — but your <strong>application</strong> is what users interact with. You need a connector (also called a driver) to bridge the gap between your programming language and MySQL.</p>
+            <section id="health-check" class="lesson-section">
+                <h2>🩺 Checking a Database with information_schema</h2>
+                <p>Every MySQL server describes itself in the read-only <code>information_schema</code> database: one row per table in <code>TABLES</code>, one per column in <code>COLUMNS</code>, one per constraint in <code>TABLE_CONSTRAINTS</code>, and so on. Because it is just tables, you can query it to check a design automatically instead of by eye.</p>
+                <p>To see the checks find something, create a deliberately flawed table, the kind that turns up in old projects:</p>
+                <pre><code class="language-sql">CREATE TABLE hc_demo_payments (
+    paid_on DATE,
+    amount  FLOAT,
+    note    VARCHAR(100) CHARACTER SET latin1
+);</code></pre>
 
-                <div class="mermaid">
-                    graph LR
-                        APP["Your Application<br/>(PHP / Python / Node.js / C#)"]
-                        CONN["Connector / Driver<br/>(PDO / mysql2 / etc.)"]
-                        MYSQL["MySQL Server"]
-                        APP --> CONN --> MYSQL
+                <h3>Check 1: tables without a primary key</h3>
+                <pre><code class="language-sql">SELECT t.TABLE_NAME AS table_without_pk
+FROM information_schema.TABLES AS t
+LEFT JOIN information_schema.TABLE_CONSTRAINTS AS c
+       ON c.TABLE_SCHEMA = t.TABLE_SCHEMA
+      AND c.TABLE_NAME = t.TABLE_NAME
+      AND c.CONSTRAINT_TYPE = 'PRIMARY KEY'
+WHERE t.TABLE_SCHEMA = 'bookstore'
+  AND t.TABLE_TYPE = 'BASE TABLE'
+  AND c.CONSTRAINT_NAME IS NULL
+ORDER BY t.TABLE_NAME;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------+
+| table_without_pk |
++------------------+
+| hc_demo_payments |
++------------------+</code></pre>
                 </div>
+                <p>The pattern is the "find what is missing" <code>LEFT JOIN ... IS NULL</code> from Lesson 4.3, pointed at the catalog. The condition on <code>CONSTRAINT_TYPE</code> sits in <code>ON</code>, not <code>WHERE</code>, for the reason you saw in the final project's Common Mistakes.</p>
 
-                <h3>PHP (PDO)</h3>
-                <p>PHP Data Objects (PDO) is the modern, secure way to connect PHP to MySQL. It supports prepared statements out of the box.</p>
+                <h3>Check 2: risky column types and old character sets</h3>
+                <pre><code class="language-sql">SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, CHARACTER_SET_NAME
+FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = 'bookstore'
+  AND (DATA_TYPE IN ('float', 'double')
+       OR CHARACTER_SET_NAME NOT IN ('utf8mb4', 'binary'))
+ORDER BY TABLE_NAME, ORDINAL_POSITION;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------+-------------+--------------+--------------------+
+| TABLE_NAME       | COLUMN_NAME | COLUMN_TYPE  | CHARACTER_SET_NAME |
++------------------+-------------+--------------+--------------------+
+| hc_demo_payments | amount      | float        | NULL               |
+| hc_demo_payments | note        | varchar(100) | latin1             |
++------------------+-------------+--------------+--------------------+</code></pre>
+                </div>
+                <p>Only the demo table is flagged: every text column in the bookstore is <code>utf8mb4</code> and all money is <code>DECIMAL</code>. (Number and date columns have no character set, so <code>CHARACTER_SET_NAME</code> is <code>NULL</code> for them and the <code>NOT IN</code> test is not true for them.)</p>
 
-                <pre><code class="language-php">
-&lt;?php
-// Connect to MySQL
+                <h3>Check 3: foreign keys and what they do on delete</h3>
+                <pre><code class="language-sql">SELECT TABLE_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME, DELETE_RULE
+FROM information_schema.REFERENTIAL_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = 'bookstore'
+ORDER BY TABLE_NAME, CONSTRAINT_NAME;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------+----------------------+-----------------------+-------------+
+| TABLE_NAME      | CONSTRAINT_NAME      | REFERENCED_TABLE_NAME | DELETE_RULE |
++-----------------+----------------------+-----------------------+-------------+
+| book_categories | fk_bc_book           | books                 | CASCADE     |
+| book_categories | fk_bc_category       | categories            | CASCADE     |
+| books           | fk_books_author      | authors               | RESTRICT    |
+| employees       | fk_employees_manager | employees             | SET NULL    |
+| order_items     | fk_items_book        | books                 | RESTRICT    |
+| order_items     | fk_items_order       | orders                | CASCADE     |
+| orders          | fk_orders_customer   | customers             | RESTRICT    |
++-----------------+----------------------+-----------------------+-------------+</code></pre>
+                </div>
+                <p>One glance shows every relationship and its delete rule. Deleting an order removes its items (<code>CASCADE</code>), deleting a customer with orders is refused (<code>RESTRICT</code>), and deleting a manager leaves the staff without one (<code>SET NULL</code>). If any line surprises you, that is a design discussion to have now rather than after a bad delete.</p>
+                <pre><code class="language-sql">DROP TABLE hc_demo_payments;</code></pre>
+            </section>
+
+            <section id="apps" class="lesson-section">
+                <h2>🔌 Connecting from Application Code</h2>
+                <p>Real users never see a <code>mysql&gt;</code> prompt. A web or desktop application connects through a <strong>driver</strong> (also called a connector) for its language, and sends SQL with the user's input as <strong>parameters</strong>, separate from the SQL text. The pattern is the same everywhere:</p>
+                <div class="mermaid">
+graph TD
+    A["connect with an app account"] --> B["SQL with placeholders"]
+    B --> C["execute with the values"]
+    C --> D["read the rows"]
+    D --> E["close or return to the pool"]
+                </div>
+                <p>Each example below reads the password from an environment variable and asks for the books under a price the user chose. The account is a least-privilege one like those from Lesson 7.4, never <code>root</code>.</p>
+
+                <h4>PHP (PDO)</h4>
+                <pre><code class="language-php">&lt;?php
 $pdo = new PDO(
     'mysql:host=localhost;dbname=bookstore;charset=utf8mb4',
-    'app_user',
-    'SecurePass123!'
-);
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    'bookstore_app',
+    getenv('DB_PASSWORD'),
+    [PDO::ATTR_EMULATE_PREPARES =&gt; false]
+);   // since PHP 8, PDO throws exceptions on errors by default
 
-// Prepared statement (safe from SQL injection)
-$stmt = $pdo->prepare("SELECT title, price FROM books WHERE price < :max_price");
-$stmt->execute(['max_price' => 15.00]);
+$stmt = $pdo-&gt;prepare('SELECT title, price FROM books WHERE price &lt; :max_price ORDER BY price');
+$stmt-&gt;execute(['max_price' =&gt; $_GET['max_price'] ?? 10]);
 
-while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    echo $row['title'] . ' - $' . $row['price'] . "\n";
-}
-?&gt;
-                </code></pre>
+foreach ($stmt as $row) {
+    echo $row['title'], ' - $', $row['price'], "\n";
+}</code></pre>
 
-                <div class="card card-info">
-                    <h4>💡 Learning Path</h4>
-                    <p>This course is designed as the first step in a learning path: <strong>MySQL Foundations → PHP Foundations → PHP &amp; WordPress</strong>. The PHP Foundations course picks up right where this one leaves off — connecting to the MySQL databases you've built here.</p>
-                </div>
-
-                <h3>Python (mysql-connector-python)</h3>
-                <p>Python's official MySQL connector provides a clean, Pythonic API:</p>
-
-                <pre><code class="language-python">
+                <h4>Python (mysql-connector-python)</h4>
+                <pre><code class="language-python">import os
 import mysql.connector
 
-# Connect to MySQL
 conn = mysql.connector.connect(
-    host='localhost',
-    database='bookstore',
-    user='app_user',
-    password='SecurePass123!'
+    host="localhost", database="bookstore",
+    user="bookstore_app", password=os.environ["DB_PASSWORD"],
 )
-cursor = conn.cursor(dictionary=True)
+with conn.cursor(dictionary=True) as cur:
+    cur.execute(
+        "SELECT title, price FROM books WHERE price &lt; %s ORDER BY price",
+        (max_price,),
+    )
+    for row in cur:
+        print(f"{row['title']} - ${row['price']}")
+conn.close()</code></pre>
 
-# Prepared statement
-cursor.execute(
-    "SELECT title, price FROM books WHERE price < %s",
-    (15.00,)
-)
+                <h4>JavaScript / Node.js (mysql2)</h4>
+                <pre><code class="language-javascript">import mysql from 'mysql2/promise';
 
-for row in cursor.fetchall():
-    print(f"{row['title']} - ${row['price']}")
-
-cursor.close()
-conn.close()
-                </code></pre>
-
-                <h3>JavaScript / Node.js (mysql2)</h3>
-                <p>The <code>mysql2</code> package is the most popular MySQL connector for Node.js:</p>
-
-                <pre><code class="language-javascript">
-import mysql from 'mysql2/promise';
-
-// Connect to MySQL
 const conn = await mysql.createConnection({
-    host: 'localhost',
-    database: 'bookstore',
-    user: 'app_user',
-    password: 'SecurePass123!'
+  host: 'localhost', database: 'bookstore',
+  user: 'bookstore_app', password: process.env.DB_PASSWORD,
 });
-
-// Prepared statement
 const [rows] = await conn.execute(
-    'SELECT title, price FROM books WHERE price < ?',
-    [15.00]
+  'SELECT title, price FROM books WHERE price &lt; ? ORDER BY price',
+  [maxPrice],
 );
+for (const row of rows) console.log(`${row.title} - $${row.price}`);
+await conn.end();</code></pre>
 
-rows.forEach(row => {
-    console.log(`${row.title} - $${row.price}`);
-});
+                <h4>C# (.NET, MySqlConnector)</h4>
+                <pre><code class="language-csharp">using MySqlConnector;
 
-await conn.end();
-                </code></pre>
-
-                <h3>C# (.NET / MySqlConnector)</h3>
-
-                <pre><code class="language-csharp">
-using MySqlConnector;
-
-var connStr = "Server=localhost;Database=bookstore;User=app_user;Password=SecurePass123!";
+var connStr = "Server=localhost;Database=bookstore;User ID=bookstore_app;Password="
+            + Environment.GetEnvironmentVariable("DB_PASSWORD");
 await using var conn = new MySqlConnection(connStr);
 await conn.OpenAsync();
 
 await using var cmd = new MySqlCommand(
-    "SELECT title, price FROM books WHERE price < @maxPrice", conn
-);
-cmd.Parameters.AddWithValue("@maxPrice", 15.00m);
+    "SELECT title, price FROM books WHERE price &lt; @max_price ORDER BY price", conn);
+cmd.Parameters.AddWithValue("@max_price", maxPrice);
 
 await using var reader = await cmd.ExecuteReaderAsync();
 while (await reader.ReadAsync())
-{
-    Console.WriteLine($"{reader.GetString("title")} - ${reader.GetDecimal("price")}");
-}
-                </code></pre>
+    Console.WriteLine($"{reader.GetString(0)} - ${reader.GetDecimal(1)}");</code></pre>
 
-                <div class="card card-success">
-                    <h4>✅ The Pattern Is Always the Same</h4>
-                    <p>Regardless of language, the workflow is: <strong>connect → prepare a statement with placeholders → execute with parameters → process results → close</strong>. The syntax changes; the pattern doesn't. Once you've done it in one language, the others feel familiar.</p>
-                </div>
-            </section>
+                <p>Four languages, one idea: the placeholder (<code>:max_price</code>, <code>%s</code>, <code>?</code>, <code>@max_price</code>) marks where a value goes, and the driver sends the value separately, so it can never change the meaning of the SQL. You can do exactly the same at the <code>mysql&gt;</code> prompt with <code>PREPARE</code> and <code>EXECUTE ... USING</code>; the Common Mistakes section shows why it matters.</p>
 
-            <!-- Section 4: ORMs -->
-            <section id="orms" class="lesson-section">
-                <h2>ORMs: The Next Abstraction</h2>
-                <p>An <strong>ORM</strong> (Object-Relational Mapper) lets you interact with the database using objects and methods in your programming language instead of writing raw SQL. The ORM translates your code into SQL behind the scenes.</p>
+                <h3>ORMs: the next layer up</h3>
+                <p>An <strong>ORM</strong> (object-relational mapper) lets you work with classes and objects and writes the SQL for you, parameterized. Popular choices: Eloquent (Laravel) and Doctrine for PHP; SQLAlchemy and the Django ORM for Python; Prisma, Drizzle, Sequelize and TypeORM for JavaScript and TypeScript; Entity Framework Core (and the lighter Dapper) for C#. Here is the same query in SQLAlchemy 2:</p>
+                <pre><code class="language-python">import os
+from decimal import Decimal
+from sqlalchemy import create_engine, select, String, Numeric
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Language</th>
-                                <th>Popular ORMs</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>PHP</td>
-                                <td>Eloquent (Laravel), Doctrine</td>
-                            </tr>
-                            <tr>
-                                <td>Python</td>
-                                <td>SQLAlchemy, Django ORM, Peewee</td>
-                            </tr>
-                            <tr>
-                                <td>JavaScript</td>
-                                <td>Prisma, Sequelize, TypeORM, Drizzle</td>
-                            </tr>
-                            <tr>
-                                <td>C#</td>
-                                <td>Entity Framework Core, Dapper</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+class Base(DeclarativeBase):
+    pass
 
-                <h3>ORM Example: SQLAlchemy (Python)</h3>
-
-                <pre><code class="language-python">
-from sqlalchemy import create_engine, Column, Integer, String, Numeric
-from sqlalchemy.orm import declarative_base, Session
-
-Base = declarative_base()
-
-# Define a model (maps to the "books" table)
 class Book(Base):
-    __tablename__ = 'books'
-    id = Column(Integer, primary_key=True)
-    title = Column(String(200))
-    price = Column(Numeric(10, 2))
+    __tablename__ = "books"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    price: Mapped[Decimal] = mapped_column(Numeric(8, 2))
 
-# Connect and query
-engine = create_engine('mysql+mysqlconnector://app_user:SecurePass123!@localhost/bookstore')
-
+engine = create_engine(
+    f"mysql+mysqlconnector://bookstore_app:{os.environ['DB_PASSWORD']}@localhost/bookstore")
 with Session(engine) as session:
-    # This generates: SELECT * FROM books WHERE price < 15.00
-    cheap_books = session.query(Book).filter(Book.price < 15.00).all()
-    for book in cheap_books:
-        print(f"{book.title} - ${book.price}")
-                </code></pre>
+    for book in session.scalars(select(Book).where(Book.price &lt; 10).order_by(Book.price)):
+        print(book.title, book.price)</code></pre>
+                <div class="card card-success">
+                    <h4>✅ You learned it in the right order</h4>
+                    <p>ORMs save a lot of typing for everyday reads and writes, but they generate SQL, and sometimes slow SQL. Because you know what a join, an index and a transaction are, you can turn on the ORM's query logging, read what it sends, run <code>EXPLAIN</code> on it, and drop down to plain SQL for the reports and bulk jobs ORMs handle poorly.</p>
+                </div>
+            </section>
 
-                <h3>Raw SQL vs ORM: When to Use Which?</h3>
+            <section id="next-topics" class="lesson-section">
+                <h2>🧭 What to Learn Next</h2>
 
+                <h3>Choose a path by goal</h3>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Use Raw SQL When...</th>
-                                <th>Use an ORM When...</th>
-                            </tr>
+                            <tr><th>Your goal</th><th>Next step</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>You need maximum performance control</td>
-                                <td>You want rapid development and less boilerplate</td>
-                            </tr>
-                            <tr>
-                                <td>The query involves complex joins or analytics</td>
-                                <td>You're building standard CRUD applications</td>
-                            </tr>
-                            <tr>
-                                <td>You want to understand exactly what's happening</td>
-                                <td>You want database-agnostic code (switch from MySQL to PostgreSQL)</td>
-                            </tr>
-                            <tr>
-                                <td>You're working with stored procedures or advanced features</td>
-                                <td>You want built-in migration tools and schema management</td>
-                            </tr>
+                            <tr><td>Build websites with PHP and WordPress</td><td><a href="https://rays-php.netlify.app/">PHP Foundations</a>, then <a href="https://rays-php-wordpress.netlify.app/">PHP and WordPress Development</a> (both use MySQL through PDO)</td></tr>
+                            <tr><td>Build applications in Python</td><td><a href="https://rays-python-intro.netlify.app/">Python Introduction</a>, then <a href="https://rays-python-course.netlify.app/">Python Full Stack</a></td></tr>
+                            <tr><td>Build applications in JavaScript</td><td><a href="https://rays-js-course.netlify.app/">Full-Stack JavaScript Bootcamp</a> (Node.js with a database)</td></tr>
+                            <tr><td>Build applications in C#</td><td><a href="https://rays-csharp.netlify.app/">C# Introduction</a>, then ADO.NET or Entity Framework Core with MySqlConnector</td></tr>
+                            <tr><td>Analyze data</td><td><a href="https://rays-python-datascience.netlify.app/">Python Data Science</a>: pandas reads straight from SQL queries, and your window-function skills carry over</td></tr>
+                            <tr><td>Run databases for others (DBA, DevOps)</td><td>Replication, monitoring, backups at scale and performance tuning (below)</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="card card-info">
-                    <h4>💡 Learn SQL First, ORM Second</h4>
-                    <p>You've done it the right way — learning SQL before ORMs. When an ORM generates a slow query, you'll know how to read the SQL, run <code>EXPLAIN</code>, and fix it. Developers who skip SQL and go straight to ORMs often struggle with debugging, performance tuning, and understanding what their code is actually doing.</p>
-                </div>
-            </section>
-
-            <!-- Section 5: Advanced Topics -->
-            <section id="advanced-topics" class="lesson-section">
-                <h2>Advanced Topics to Explore</h2>
-                <p>This course covered the foundations. Here's what lies beyond, grouped by area:</p>
-
-                <h3>Performance &amp; Optimization</h3>
+                <h3>Topics this course did not cover</h3>
                 <ul>
-                    <li><strong>Query optimization deep-dive</strong> — advanced <code>EXPLAIN</code> reading, covering indexes, index hints, query rewriting</li>
-                    <li><strong>Slow query log</strong> — identify and fix bottlenecks in production</li>
-                    <li><strong>Buffer pool tuning</strong> — configuring <code>innodb_buffer_pool_size</code> for your workload</li>
-                    <li><strong>Partitioning</strong> — splitting large tables for faster queries on subsets of data</li>
+                    <li><strong>More server features:</strong> triggers, scheduled events, full-text search (<code>FULLTEXT</code> indexes and <code>MATCH ... AGAINST</code>), generated columns (the final project's stretch exercise used one), and spatial data types.</li>
+                    <li><strong>Performance:</strong> reading <code>EXPLAIN ANALYZE</code> in depth, covering and invisible indexes, the slow query log, sizing <code>innodb_buffer_pool_size</code>, and partitioning very large tables.</li>
+                    <li><strong>High availability and scale:</strong> replication (a source and replicas), Group Replication and InnoDB Cluster with MySQL Router for automatic failover, connection pooling, and sharding (for example with Vitess).</li>
+                    <li><strong>Operations:</strong> MySQL Shell (<code>mysqlsh</code>) and its dump utilities, physical backups, point-in-time recovery with binary logs, and upgrading between LTS releases.</li>
+                    <li><strong>Managed MySQL in the cloud:</strong> Amazon RDS for MySQL and Aurora MySQL, Azure Database for MySQL, Google Cloud SQL, and Oracle's HeatWave MySQL. The provider handles backups, patches and failover; your SQL and design skills apply unchanged.</li>
+                    <li><strong>Other databases:</strong> PostgreSQL (the other major open-source relational database; most of your SQL transfers), MariaDB (a MySQL fork, met throughout this course), SQLite (a database in a single file, built into phones and browsers), MongoDB (documents) and Redis (in-memory key-value).</li>
                 </ul>
 
-                <h3>Reliability &amp; Scaling</h3>
+                <h3>Keep practicing</h3>
                 <ul>
-                    <li><strong>Replication</strong> — source-replica setups for read scaling and high availability</li>
-                    <li><strong>MySQL Group Replication / InnoDB Cluster</strong> — multi-primary clustering for automatic failover</li>
-                    <li><strong>Connection pooling</strong> — reusing database connections for better performance in web applications</li>
-                    <li><strong>Sharding</strong> — distributing data across multiple servers for massive scale</li>
-                </ul>
-
-                <h3>Data &amp; Schema</h3>
-                <ul>
-                    <li><strong>Triggers</strong> — automatically run SQL when rows are inserted, updated, or deleted</li>
-                    <li><strong>Events (scheduled tasks)</strong> — MySQL's built-in task scheduler</li>
-                    <li><strong>JSON columns</strong> — storing and querying semi-structured data within MySQL</li>
-                    <li><strong>Full-text search</strong> — <code>FULLTEXT</code> indexes for searching text content</li>
-                    <li><strong>Window functions</strong> — <code>ROW_NUMBER()</code>, <code>RANK()</code>, <code>LAG()</code>, <code>LEAD()</code> for analytical queries</li>
-                    <li><strong>CTEs (Common Table Expressions)</strong> — <code>WITH</code> clauses for readable, maintainable complex queries</li>
-                </ul>
-
-                <h3>Cloud &amp; Managed Databases</h3>
-                <ul>
-                    <li><strong>Amazon RDS for MySQL</strong> — managed MySQL on AWS</li>
-                    <li><strong>Azure Database for MySQL</strong> — managed MySQL on Microsoft Azure</li>
-                    <li><strong>Google Cloud SQL</strong> — managed MySQL on Google Cloud</li>
-                    <li><strong>PlanetScale</strong> — serverless MySQL platform built on Vitess</li>
-                </ul>
-
-                <h3>Other Databases to Know About</h3>
-                <ul>
-                    <li><strong>PostgreSQL</strong> — another powerful open-source relational database with advanced features</li>
-                    <li><strong>MariaDB</strong> — a MySQL-compatible fork with additional features</li>
-                    <li><strong>SQLite</strong> — a lightweight, file-based database perfect for embedded and mobile apps</li>
-                    <li><strong>MongoDB</strong> — a NoSQL document database for flexible, schema-less data</li>
-                    <li><strong>Redis</strong> — an in-memory data store for caching and real-time features</li>
-                </ul>
-
-                <div class="mermaid">
-                    graph TD
-                        YOU["You Are Here<br/>MySQL Foundations ✅"]
-                        YOU --> PHP["PHP + PDO<br/>(PHP Foundations course)"]
-                        YOU --> PY["Python + mysql-connector<br/>or SQLAlchemy"]
-                        YOU --> JS["Node.js + mysql2<br/>or Prisma"]
-                        YOU --> ADV["Advanced MySQL<br/>Replication, Performance"]
-                        PHP --> WP["WordPress Development"]
-                        PY --> DJANGO["Django / Flask"]
-                        JS --> NEXT["Next.js / Express"]
-                        ADV --> DBA["Database Administration"]
-                </div>
-            </section>
-
-            <!-- Section 6: Practice Projects -->
-            <section id="practice-projects" class="lesson-section">
-                <h2>Practice Project Ideas</h2>
-                <p>The best way to solidify your skills is to build something. Here are project ideas that use the concepts from this course:</p>
-
-                <h3>Beginner Projects</h3>
-
-                <div class="card card-info">
-                    <h4>📚 Personal Library Database</h4>
-                    <p>Track your book collection with tables for books, authors, genres, and reading status. Practice CRUD, joins, and aggregate queries (total books by genre, average rating, etc.).</p>
-                    <p><strong>Concepts used:</strong> CREATE TABLE, foreign keys, joins, GROUP BY, aggregate functions</p>
-                </div>
-
-                <div class="card card-info">
-                    <h4>🎮 Game Collection Tracker</h4>
-                    <p>Catalog your video games, board games, or tabletop RPGs. Include platforms, play status, ratings, and wish lists. Export your collection to CSV to share with friends.</p>
-                    <p><strong>Concepts used:</strong> Data types, many-to-many relationships, views, CSV export</p>
-                </div>
-
-                <h3>Intermediate Projects</h3>
-
-                <div class="card card-info">
-                    <h4>🛒 E-Commerce Database</h4>
-                    <p>Design a complete online store schema: products, categories, customers, orders, order items, reviews. Implement stored procedures for placing orders and calculate sales reports.</p>
-                    <p><strong>Concepts used:</strong> Normalization, transactions, stored procedures, indexes, complex joins</p>
-                </div>
-
-                <div class="card card-info">
-                    <h4>🏫 School Management System</h4>
-                    <p>Build a schema for students, teachers, courses, enrollments, and grades. Create user accounts for different roles (teacher, registrar, student). Automate backups.</p>
-                    <p><strong>Concepts used:</strong> User management, roles, views (grade reports), backup scripts</p>
-                </div>
-
-                <div class="card card-info">
-                    <h4>📝 Blog / CMS Database</h4>
-                    <p>Create the backend schema for a content management system: posts, categories, tags (many-to-many), comments, and users with different permission levels.</p>
-                    <p><strong>Concepts used:</strong> Junction tables, user permissions, subqueries, full-text search</p>
-                </div>
-            </section>
-
-            <!-- Section 7: Resources -->
-            <section id="resources" class="lesson-section">
-                <h2>Resources &amp; Community</h2>
-
-                <h3>Official Documentation</h3>
-                <ul>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/" target="_blank" rel="noopener">MySQL 8.0 Reference Manual</a> — the authoritative source for everything MySQL</li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/tutorial.html" target="_blank" rel="noopener">MySQL Tutorial</a> — MySQL's own beginner tutorial</li>
-                </ul>
-
-                <h3>Practice &amp; Challenges</h3>
-                <ul>
-                    <li><a href="https://leetcode.com/problemset/database/" target="_blank" rel="noopener">LeetCode SQL Problems</a> — coding challenges focused on SQL queries</li>
-                    <li><a href="https://www.hackerrank.com/domains/sql" target="_blank" rel="noopener">HackerRank SQL</a> — SQL challenges from beginner to advanced</li>
-                    <li><a href="https://sqlzoo.net/" target="_blank" rel="noopener">SQLZoo</a> — interactive SQL tutorials and exercises</li>
-                    <li><a href="https://mystery.knightlab.com/" target="_blank" rel="noopener">SQL Murder Mystery</a> — a fun, detective-style SQL learning game</li>
-                </ul>
-
-                <h3>Books</h3>
-                <ul>
-                    <li><em>Learning MySQL</em> by Vanni Bozzini &amp; Tim Shortill (O'Reilly) — great for deepening fundamentals</li>
-                    <li><em>High Performance MySQL</em> by Silvia Botros &amp; Jeremy Tinley (O'Reilly) — the go-to for optimization and scaling</li>
-                    <li><em>SQL Antipatterns</em> by Bill Karwin — common database design mistakes and how to avoid them</li>
-                </ul>
-
-                <h3>Community</h3>
-                <ul>
-                    <li><a href="https://dba.stackexchange.com/" target="_blank" rel="noopener">Database Administrators Stack Exchange</a> — expert Q&amp;A for database questions</li>
-                    <li><a href="https://stackoverflow.com/questions/tagged/mysql" target="_blank" rel="noopener">Stack Overflow (MySQL tag)</a> — the largest programming Q&amp;A community</li>
-                    <li><a href="https://forums.mysql.com/" target="_blank" rel="noopener">MySQL Forums</a> — official community forums</li>
+                    <li><strong>Build:</strong> a personal library or game collection, a recipe planner with ingredients (many-to-many), a club's membership and events, or the clinic brief from Lesson 8.2. Use real questions you want answered.</li>
+                    <li><strong>Drill:</strong> <a href="https://sqlzoo.net/">SQLZoo</a> for guided exercises, <a href="https://mystery.knightlab.com/">SQL Murder Mystery</a> for fun, and the SQL sections of LeetCode and HackerRank for interview-style problems.</li>
+                    <li><strong>Read:</strong> the <a href="https://dev.mysql.com/doc/">MySQL documentation</a> (pick your version), <em>Learning MySQL</em> by Vinicius M. Grippa and Sergey Kuzmichev, <em>High Performance MySQL</em> by Silvia Botros and Jeremy Tinley, and <em>SQL Antipatterns</em> by Bill Karwin.</li>
+                    <li><strong>Ask:</strong> Database Administrators Stack Exchange and Stack Overflow's <code>mysql</code> tag. Include your MySQL version, the <code>CREATE TABLE</code>, a few rows and the exact error: you know how to produce all of them now.</li>
                 </ul>
             </section>
 
-            <!-- Section 8: Final Summary -->
-            <section id="summary" class="lesson-section">
-                <h2>Final Summary</h2>
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Building SQL from user input (silent, and dangerous)</h3>
+                <p>An application looks up a customer by the email typed into a form. Here is what string-building does when the "email" is crafted by an attacker. <code>PREPARE</code> and <code>EXECUTE</code> let you see it at the prompt:</p>
+                <pre><code class="language-sql">SET @input = 'nobody@example.com'' OR ''1''=''1';
+
+SET @sql = CONCAT('SELECT first_name, email FROM customers WHERE email = ''', @input, '''');
+SELECT @sql AS query_sent;
+
+PREPARE lookup FROM @sql;
+EXECUTE lookup;
+DEALLOCATE PREPARE lookup;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------------------------------------------------------------------------+
+| query_sent                                                                            |
++---------------------------------------------------------------------------------------+
+| SELECT first_name, email FROM customers WHERE email = 'nobody@example.com' OR '1'='1' |
++---------------------------------------------------------------------------------------+
+Statement prepared
++------------+-------------------+
+| first_name | email             |
++------------+-------------------+
+| Alice      | alice@example.com |
+| Bob        | bob@example.com   |
+| Carol      | carol@example.com |
+| Dave       | dave@example.com  |
+| Eve        | eve@example.com   |
+| Frank      | frank@example.com |
+| Grace      | grace@example.com |
+| Hank       | hank@example.com  |
++------------+-------------------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> the quote inside the input closed the string early, and <code>OR '1'='1'</code> became part of the SQL. The query is true for every row, so every customer's email leaks, with no error at all. Variations of this delete tables or bypass logins. <strong>Fix:</strong> a placeholder. The value is sent separately and is only ever a value:</p>
+                <pre><code class="language-sql">PREPARE lookup FROM 'SELECT first_name, email FROM customers WHERE email = ?';
+EXECUTE lookup USING @input;
+DEALLOCATE PREPARE lookup;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Statement prepared
+Empty set</code></pre>
+                </div>
+                <p>No customer has that strange email address, so nothing comes back. This is exactly what the drivers in the previous section do. Escaping quotes by hand is not a substitute: it is easy to get wrong, and placeholders cost nothing.</p>
+
+                <h3>2. An UPDATE without a usable WHERE</h3>
+                <p>The mysql client's <code>--safe-updates</code> option (also <code>SET SQL_SAFE_UPDATES = 1</code>) refuses an <code>UPDATE</code> or <code>DELETE</code> that does not filter on a key. It is a good habit on any server holding real data:</p>
+                <pre data-raises="ERROR 1175"><code class="language-sql">SET SQL_SAFE_UPDATES = 1;
+
+UPDATE books SET price = price * 1.10;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1175 (HY000): You are using safe update mode and you tried to update a table without a WHERE that uses a KEY column.</code></pre>
+                </div>
+                <p><strong>What it means:</strong> the statement would change every row, which is usually a forgotten <code>WHERE</code>. <strong>Fix:</strong> add the <code>WHERE</code> you meant (<code>WHERE id = 3</code>). If you really mean every row, add a key condition such as <code>WHERE id &gt; 0</code> on purpose, or switch the setting off for that one statement.</p>
+                <pre><code class="language-sql">SET SQL_SAFE_UPDATES = 0;</code></pre>
+
+                <h3>3. Following old advice about mysql_native_password</h3>
+                <pre data-raises="ERROR 1524"><code class="language-sql">CREATE USER 'legacy_app'@'localhost'
+    IDENTIFIED WITH mysql_native_password BY 'Change-Me-Legacy-2026';</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1524 (HY000): Plugin 'mysql_native_password' is not loaded</code></pre>
+                </div>
+                <p><strong>What it means:</strong> the old authentication plugin is gone in MySQL 9.x (and disabled by default in 8.4). Old tutorials suggest it to work around drivers that could not handle the newer method. <strong>Fix:</strong> create the account normally (<code>IDENTIFIED BY ...</code> uses <code>caching_sha2_password</code>) and update the driver; every maintained driver supports it.</p>
+
+                <h3>4. FLOAT for money (silent)</h3>
+                <pre><code class="language-sql">CREATE TEMPORARY TABLE till (amount_float FLOAT, amount_decimal DECIMAL(8, 2));
+INSERT INTO till VALUES (0.10, 0.10), (0.20, 0.20), (19.99, 19.99);
+
+SELECT SUM(amount_float) AS total_float, SUM(amount_decimal) AS total_decimal
+FROM till;
+
+DROP TEMPORARY TABLE till;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+--------------------+---------------+
+| total_float        | total_decimal |
++--------------------+---------------+
+| 20.289999775588512 |         20.29 |
++--------------------+---------------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>FLOAT</code> stores binary approximations, so cents drift: the "total" is not 20.29. Across thousands of rows and some rounding, accounts stop balancing. <strong>Fix:</strong> <code>DECIMAL(p, 2)</code> for anything counted in cents. Health check 2 finds <code>FLOAT</code> and <code>DOUBLE</code> columns for you.</p>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: Health Check and Learning Plan</h2>
+                <p>Turn this lesson's checks into a script you can point at any database you meet in the future (your final project, a client's database, a job's), and finish the course with a written plan. Allow about 25 minutes.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: Make the script work for any database <span class="step-time">(5 min)</span></h3>
+                    <p>Create <code>health_check.sql</code>. Instead of writing <code>'bookstore'</code> into every query, set the database name once in a variable:</p>
+                    <pre><code class="language-sql">SET @db = 'bookstore';
+
+SELECT @db AS checking, COUNT(*) AS tables_found
+FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = @db AND TABLE_TYPE = 'BASE TABLE';</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-----------+--------------+
+| checking  | tables_found |
++-----------+--------------+
+| bookstore |            8 |
++-----------+--------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: Add the three checks <span class="step-time">(5 min)</span></h3>
+                    <p>Paste in checks 1 to 3 from this lesson, replacing <code>'bookstore'</code> with <code>@db</code>. Run the file with <code>SOURCE health_check.sql</code>; on the bookstore, checks 1 and 2 print <code>Empty set</code>, which is the result you want.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: Find foreign keys without their own index <span class="step-time">(5 min)</span></h3>
+                    <p>InnoDB creates an index for every foreign key automatically if none exists, so this is mostly a check for other engines and hand-made schemas. Still, it is a good example of a check that joins two catalog tables. Add it to the file:</p>
+                    <pre><code class="language-sql">SELECT k.TABLE_NAME, k.COLUMN_NAME, k.CONSTRAINT_NAME
+FROM information_schema.KEY_COLUMN_USAGE AS k
+LEFT JOIN information_schema.STATISTICS AS s
+       ON s.TABLE_SCHEMA = k.TABLE_SCHEMA
+      AND s.TABLE_NAME = k.TABLE_NAME
+      AND s.COLUMN_NAME = k.COLUMN_NAME
+      AND s.SEQ_IN_INDEX = 1
+WHERE k.TABLE_SCHEMA = @db
+  AND k.REFERENCED_TABLE_NAME IS NOT NULL
+  AND s.INDEX_NAME IS NULL
+ORDER BY k.TABLE_NAME, k.COLUMN_NAME;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Empty set</code></pre>
+                    </div>
+                    <p>Every foreign-key column in the bookstore leads an index, so nothing is reported. <code>SEQ_IN_INDEX = 1</code> matters: a column that is only the second part of an index does not help lookups on it alone.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: Run it on your final project <span class="step-time">(5 min)</span></h3>
+                    <p>Change the first line to <code>SET @db = 'tool_library';</code> (or whatever you named your project database), run the file again, and fix anything it reports. Add a comment at the top of the file saying what each check means, so the script explains itself in a year.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: Write your learning plan <span class="step-time">(5 min)</span></h3>
+                    <p>In <code>learning_plan.md</code>, answer: Which path from "Choose a path by goal" fits you? Which one topic from "Topics this course did not cover" will you learn first, and with what small project? What will you build in the next month? Put a date next to each answer.</p>
+                </div>
 
                 <div class="card card-success">
-                    <h3>🎉 What You've Accomplished</h3>
-                    <p>Over 21 lessons and 7 modules, you've built a complete MySQL skill set:</p>
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>health_check.sql</code> sets <code>@db</code> once and contains four commented checks</li>
+                        <li>On the bookstore, the checks for missing primary keys, risky types and unindexed foreign keys find nothing</li>
+                        <li>You ran it on your final project database and fixed or explained everything it reported</li>
+                        <li><code>learning_plan.md</code> names a path, a first topic, a project and dates</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: A Safe Search</h3>
+                    <p>Write a prepared statement that lists the titles and prices of books under a maximum price written by a given author, both supplied as parameters. Run it for George Orwell with a maximum of 9.00, then for the "author" <code>x' OR 'x'='x</code>.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Two <code>?</code> placeholders, and <code>EXECUTE ... USING @a, @b</code> in the same order. Join <code>books</code> to <code>authors</code> on <code>author_id</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">PREPARE by_author FROM
+    'SELECT b.title, b.price
+     FROM books AS b
+     JOIN authors AS a ON a.id = b.author_id
+     WHERE a.name = ? AND b.price &lt; ?
+     ORDER BY b.price';
+
+SET @author = 'George Orwell', @max_price = 9.00;
+EXECUTE by_author USING @author, @max_price;
+
+SET @author = 'x'' OR ''x''=''x';
+EXECUTE by_author USING @author, @max_price;
+
+DEALLOCATE PREPARE by_author;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>Statement prepared
++-------------+-------+
+| title       | price |
++-------------+-------+
+| Animal Farm |  8.49 |
++-------------+-------+
+Empty set</code></pre>
+                        </div>
+                        <p>Orwell has one book under 9.00, <em>Animal Farm</em> (<em>1984</em> costs 9.99). The injection attempt finds no author with that odd name and returns nothing.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 2: Where Can NULL Hide?</h3>
+                    <p>List every column in <code>bookstore</code> that allows <code>NULL</code>, with its table and type. For each one, decide whether <code>NULL</code> has a clear meaning there.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p><code>information_schema.COLUMNS</code> has an <code>IS_NULLABLE</code> column holding <code>'YES'</code> or <code>'NO'</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE
+FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = 'bookstore' AND IS_NULLABLE = 'YES'
+ORDER BY TABLE_NAME, ORDINAL_POSITION;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------+-------------+--------------------------------------------------+
+| TABLE_NAME | COLUMN_NAME | COLUMN_TYPE                                      |
++------------+-------------+--------------------------------------------------+
+| authors    | birth_year  | int                                              |
+| books      | pages       | int                                              |
+| books      | published   | date                                             |
+| books      | in_stock    | tinyint(1)                                       |
+| categories | description | varchar(255)                                     |
+| customers  | city        | varchar(50)                                      |
+| customers  | created_at  | datetime                                         |
+| employees  | department  | enum('sales','inventory','management','support') |
+| employees  | manager_id  | int                                              |
+| employees  | is_active   | tinyint(1)                                       |
++------------+-------------+--------------------------------------------------+</code></pre>
+                        </div>
+                        <p>Most have a clear meaning: an unknown birth year or city, no manager (Maria, at the top), no description yet. Some are worth a second look: should <code>in_stock</code> or <code>is_active</code> ever be unknown? A <code>NOT NULL</code> with a default would rule that out.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3 (Stretch): A One-Line Summary per Table</h3>
+                    <p>For each table in <code>bookstore</code>, show the number of columns, the number of indexes and the number of foreign keys it declares, in one query.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Start from <code>information_schema.TABLES</code> and use three correlated subqueries (Lesson 3.4) against <code>COLUMNS</code>, <code>STATISTICS</code> (count <code>DISTINCT INDEX_NAME</code>) and <code>REFERENTIAL_CONSTRAINTS</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT t.TABLE_NAME,
+       (SELECT COUNT(*) FROM information_schema.COLUMNS AS c
+         WHERE c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME) AS columns_count,
+       (SELECT COUNT(DISTINCT s.INDEX_NAME) FROM information_schema.STATISTICS AS s
+         WHERE s.TABLE_SCHEMA = t.TABLE_SCHEMA AND s.TABLE_NAME = t.TABLE_NAME) AS indexes,
+       (SELECT COUNT(*) FROM information_schema.REFERENTIAL_CONSTRAINTS AS r
+         WHERE r.CONSTRAINT_SCHEMA = t.TABLE_SCHEMA AND r.TABLE_NAME = t.TABLE_NAME) AS foreign_keys
+FROM information_schema.TABLES AS t
+WHERE t.TABLE_SCHEMA = 'bookstore' AND t.TABLE_TYPE = 'BASE TABLE'
+ORDER BY t.TABLE_NAME;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-----------------+---------------+---------+--------------+
+| TABLE_NAME      | columns_count | indexes | foreign_keys |
++-----------------+---------------+---------+--------------+
+| authors         |             3 |       1 |            0 |
+| book_categories |             2 |       2 |            2 |
+| books           |             7 |       2 |            1 |
+| categories      |             3 |       2 |            0 |
+| customers       |             6 |       2 |            0 |
+| employees       |             9 |       3 |            1 |
+| order_items     |             5 |       3 |            2 |
+| orders          |             3 |       2 |            1 |
++-----------------+---------------+---------+--------------+</code></pre>
+                        </div>
+                        <p>A quick portrait of a schema you have never seen: the junction table <code>book_categories</code> is nothing but two columns and two foreign keys, <code>order_items</code> also links two tables, and the lookup tables (<code>authors</code>, <code>categories</code>, <code>customers</code>) point at nothing.</p>
+                    </details>
+                </div>
+            </section>
+
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
+                <div class="card quiz-container">
+                    <h3>🎯 Check Your Understanding</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> What makes a parameterized query safe from SQL injection?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Escaping is a different, fragile technique. A placeholder does not change the input at all.">
+                                A) The driver removes every quote from the input
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="The SQL text and the values travel separately, so the server parses the statement before it sees the input, and the input can only ever be a value.">
+                                B) The value is sent separately from the SQL text, so it can never become part of the statement
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Privileges limit the damage, but an injected query still runs with whatever the account may do.">
+                                C) The application account has fewer privileges than root
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> A tutorial says to run <code>ALTER USER ... IDENTIFIED WITH mysql_native_password</code> so an old app can connect to MySQL 9.7. What happens, and what should you do?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Try it in your head with what Common Mistakes showed: does the plugin still exist in 9.x?">
+                                A) It works; it is the recommended setting
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Turning off authentication is never the answer.">
+                                B) It fails; switch the server to skip authentication instead
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="MySQL 9.x no longer has the mysql_native_password plugin (error 1524). Maintained drivers support caching_sha2_password, so the fix is a current driver.">
+                                C) It fails with error 1524; update the app's driver instead
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> Which <code>information_schema</code> table tells you what happens to child rows when a parent row is deleted?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="REFERENTIAL_CONSTRAINTS has one row per foreign key, with its UPDATE_RULE and DELETE_RULE.">
+                                A) <code>REFERENTIAL_CONSTRAINTS</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="COLUMNS describes types and nullability, not relationships.">
+                                B) <code>COLUMNS</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="STATISTICS describes indexes.">
+                                C) <code>STATISTICS</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> A shop stores prices in a <code>FLOAT</code> column and its daily totals are off by fractions of a cent. What is the fix?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="DOUBLE is also a binary approximation, just with more digits.">
+                                A) Change the column to <code>DOUBLE</code>
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="DECIMAL stores exact decimal digits, so sums of prices are exact to the cent.">
+                                B) Change the column to <code>DECIMAL(8, 2)</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Rounding the output hides the drift in one report but the stored values stay inexact.">
+                                C) Wrap every total in <code>ROUND()</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> You are choosing a MySQL version for a new production system. Which is the usual choice?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Innovation releases are supported only until the next one, a few months later.">
+                                A) The newest Innovation release, for the newest features
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="8.0 has reached its end of life and no longer gets security fixes.">
+                                B) MySQL 8.0, because most tutorials use it
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="LTS releases receive bug and security fixes for years without changing behavior, which is what production systems need.">
+                                C) The current Long-Term Support release, such as 9.7 or 8.4
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Is this course enough to get a job?</summary>
+                    <p>It is the database half of many entry-level developer and data roles: designing tables, writing joins and aggregates, using transactions and accounts. Pair it with one programming language and two or three finished projects (your final project is one), and be ready to write queries live, which is what most interviews test.</p>
+                </details>
+                <details>
+                    <summary>Should I learn PostgreSQL too?</summary>
+                    <p>Eventually, it is worth it: many companies use it. About 90% of what you learned transfers directly (SELECT, joins, GROUP BY, CTEs, window functions, transactions). The differences are in types, functions, auto-increment syntax and administration. Learn it when a project or job calls for it.</p>
+                </details>
+                <details>
+                    <summary>Do I still need SQL if I use an ORM or an AI assistant?</summary>
+                    <p>Yes. Both produce SQL that you are responsible for. You need to read it, judge whether it is correct and efficient, and fix it when it is not, especially for reports, migrations and anything involving money or permissions.</p>
+                </details>
+                <details>
+                    <summary>How do I keep my skills from fading?</summary>
+                    <p>Use them on something you care about every week or two, even briefly. Add a feature to your final project, answer a question on a forum, or redo an exercise from memory. Revisit the cheat sheet before a project starts.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>Pick one topic from "Topics this course did not cover" and add it to your final project: a trigger that writes every change of a tool's condition into a <code>tool_condition_log</code> table, a <code>FULLTEXT</code> index for searching tool names and descriptions, or a scheduled event that suspends members with tools more than 30 days overdue. Read the MySQL manual page for it first, then write down one thing the manual told you that this course did not.</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
                     <ul>
-                        <li><strong>Installed and configured</strong> MySQL on a LAMP stack</li>
-                        <li><strong>Designed tables</strong> with proper data types, constraints, and relationships</li>
-                        <li><strong>Written queries</strong> from simple SELECTs to multi-table joins with subqueries</li>
-                        <li><strong>Summarized data</strong> with aggregate functions, GROUP BY, and HAVING</li>
-                        <li><strong>Modeled relationships</strong> — one-to-one, one-to-many, many-to-many</li>
-                        <li><strong>Enforced integrity</strong> with foreign keys and referential actions</li>
-                        <li><strong>Optimized performance</strong> with indexes and EXPLAIN</li>
-                        <li><strong>Simplified access</strong> with views</li>
-                        <li><strong>Designed schemas</strong> using normalization principles (1NF–3NF)</li>
-                        <li><strong>Built reusable logic</strong> with stored procedures and functions</li>
-                        <li><strong>Protected data</strong> with transactions and ACID properties</li>
-                        <li><strong>Secured databases</strong> with user accounts, privileges, and roles</li>
-                        <li><strong>Managed data flow</strong> with mysqldump, CSV import/export, and backup strategies</li>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Look back at your first journal entry from Lesson 1.1. What did you think a database was then, and how would you explain it now? Which lesson changed your thinking the most, and which skill are you proudest of?</p>
+                </div>
+            </section>
+
+            <section id="summary" class="lesson-section">
+                <h2>📝 Lesson Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎓 Key Takeaways</h3>
+                    <ul>
+                        <li>Good habits are cheap insurance: primary keys, exact types, constraints, <code>ORDER BY</code>, previews before changes, and backups you have restored</li>
+                        <li><code>information_schema</code> describes every database as tables, so design checks can be automated with ordinary queries</li>
+                        <li>Application code sends values as parameters, never glued into SQL; <code>PREPARE ... EXECUTE ... USING</code> does the same at the prompt</li>
+                        <li>Applications use their own least-privilege accounts with <code>caching_sha2_password</code>; secrets stay out of code</li>
+                        <li>Production runs on a Long-Term Support release; MySQL 8.0 is past its end of life</li>
+                        <li>Your next step depends on your goal: a programming language, data analysis, or running databases for others</li>
                     </ul>
                 </div>
 
-                <h3>The Learning Path Forward</h3>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Your Goal</th>
-                                <th>Next Step</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Build web applications with PHP</td>
-                                <td><strong>PHP Foundations</strong> → PHP &amp; WordPress</td>
-                            </tr>
-                            <tr>
-                                <td>Build web apps with Python</td>
-                                <td>Learn Flask or Django (both use MySQL/PostgreSQL)</td>
-                            </tr>
-                            <tr>
-                                <td>Build web apps with JavaScript</td>
-                                <td>Learn Express.js or Next.js with mysql2 or Prisma</td>
-                            </tr>
-                            <tr>
-                                <td>Become a database administrator</td>
-                                <td>Study replication, performance tuning, and backup automation</td>
-                            </tr>
-                            <tr>
-                                <td>Work with data and analytics</td>
-                                <td>Learn window functions, CTEs, and Python's pandas</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>Over 25 lessons and 8 modules you installed MySQL, designed and built databases, queried them from simple filters to window functions, and protected them with constraints, transactions, accounts and backups</li>
+                        <li>You delivered a complete database from a client's brief</li>
+                        <li>You built a health-check script you can use on any MySQL database</li>
+                        <li>You have a written plan for what comes next</li>
+                    </ul>
                 </div>
 
-                <div class="card card-accent" style="text-align: center; padding: 2rem;">
-                    <h3>🎓 Course Complete!</h3>
-                    <p>Congratulations — you've completed <strong>MySQL Foundations</strong>! You now have the knowledge and skills to design, build, query, and manage MySQL databases. The SQL you've learned here is a skill you'll use throughout your entire career in technology. Well done!</p>
-                    <p style="margin-top: 1rem;"><a href="index.html">← Back to Course Home</a></p>
+                <h3>🔭 Looking Ahead</h3>
+                <p>This is the last lesson of MySQL Foundations. Follow your learning plan: if it says PHP, <a href="https://rays-php.netlify.app/">PHP Foundations</a> picks up where this course ends and connects to the databases you can now build; for any other path, the table in "What to Learn Next" has a first step. Whatever you choose, your next project will need a database, and you know how to make a good one.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
+                <ul>
+                    <li>There is no next lesson here, so set your own: put the first date from your learning plan in your calendar</li>
+                    <li>Push your final project and <code>health_check.sql</code> to a repository (placeholder passwords only)</li>
+                    <li>Bookmark the <a href="cheat-sheet.html">cheat sheet</a> and the <a href="common-errors.html">common errors</a> page for the next time an error number appears</li>
+                </ul>
+
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>Congratulations on finishing MySQL Foundations. You can now take a messy real-world problem and give it a structure that keeps data correct, answers questions in seconds and survives mistakes. That is a skill used in nearly every corner of technology, and it does not go out of date quickly: SQL has outlived many of the languages that call it. Keep building things that matter to you, keep reading the error messages carefully, and you will keep getting better.</p>
                 </div>
             </section>
 
             <nav class="lesson-nav" aria-label="Lesson Navigation">
-                <a href="lesson_20.html" class="prev-lesson">← Previous: Importing &amp; Exporting Data</a>
+                <a href="lesson_final_project.html" class="prev-lesson">← Previous: Final Project: Design and Build a Database</a>
                 <a href="index.html" class="home-link">🏠 Course Home</a>
-                <span class="next-lesson" style="visibility: hidden;">End of Course</span>
             </nav>
         </div>
     </main>
 
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>

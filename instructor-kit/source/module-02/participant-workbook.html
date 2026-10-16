@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Participant Workbook: Session 2</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Student workbook —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">write in it · bring it to every session</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Participant Workbook</div>
+    <h1>Session 2: The MySQL Client and Your First Tables</h1>
+    <p class="sub">Your workbook for Session 2: a warm-up on Session 1, the key ideas of Lessons 1.3 and 2.1, worked examples, the guided labs, predict-then-run practice, a self-check for each lesson, and your exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Lessons <b>1.3–2.1</b></span>
+      <span class="chip">Session <b>2</b> · 3 hours</span>
+      <span class="chip">Name: ____________________</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Session Goals</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Move around any MySQL server: log in and out, read the prompts, list databases and tables, look inside a table.</li>
+  <li>Tell SQL statements (they work in every client) from mysql client commands such as \G and SOURCE.</li>
+  <li>Save SQL in a .sql file and run it with SOURCE and from the shell.</li>
+  <li>Create a database with utf8mb4 and a named collation, and tables with columns, types and basic rules.</li>
+  <li>Change a table with ALTER TABLE without losing a rule, and build the bookstore from a script you can rerun.</li>
+</ul>
+
+  <div class="sec"><h2>Warm-Up: Session 1</h2><span class="rule"></span></div>
+<p>Five questions from Lessons 1.1 and 1.2. Four minutes, no notes. Circle your answer; the class checks them together.</p>
+<div class="q"><div class="qn">W1</div><div class="qt">Is MySQL a database?</div><div class="opts"><div class="opt">A) Yes: MySQL is the file that holds your tables</div><div class="opt">B) No: MySQL is the server (a DBMS); a database such as bookstore lives inside it</div><div class="opt">C) No: MySQL is a query language</div><div class="opt">D) Yes: every MySQL install is one database</div></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Which error tells you the server is running and answered?</div><div class="opts"><div class="opt">A) <code class="inline">ERROR 2002</code></div><div class="opt">B) <code class="inline">ERROR 2003</code></div><div class="opt">C) <code class="inline">ERROR 1045 (28000): Access denied</code></div><div class="opt">D) None of them</div></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">What does the SELECT print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> pets (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">20</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> pets <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Rex'</span>), (<span class="s">2</span>, <span class="s">'Tom'</span>), (<span class="s">3</span>, <span class="s">'Fido'</span>);
+<span class="k">DELETE</span> <span class="k">FROM</span> pets <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> pets;</pre><div class="opts"><div class="opt">A) Rows 1 Rex and 3 Fido</div><div class="opt">B) Rows 1 Rex and 2 Fido: the ids are renumbered</div><div class="opt">C) All three rows</div><div class="opt">D) <code class="inline">Empty set</code></div></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">Which statement removes Carol's row (id 3) and keeps every other customer?</div><div class="opts"><div class="opt">A) <code class="inline">DROP TABLE customers;</code></div><div class="opt">B) <code class="inline">DELETE FROM customers;</code></div><div class="opt">C) <code class="inline">DELETE FROM customers WHERE id = 3;</code></div><div class="opt">D) <code class="inline">UPDATE customers SET id = NULL WHERE id = 3;</code></div></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt"><code class="inline">mysql --version</code> prints 9.7.2. What does that prove about your server?</div><div class="opts"><div class="opt">A) That it is 9.7.2</div><div class="opt">B) That it is running</div><div class="opt">C) That it is MySQL, not MariaDB</div><div class="opt">D) Nothing: it describes the client; ask the server with SELECT VERSION();</div></div></div>
+
+  <div class="sec"><h2>Lessons</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">1.3</span><h3>MySQL CLI &amp; phpMyAdmin</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Log in to and out of the mysql client, and read its prompts (mysql&gt;, -&gt;, '&gt;)</li>
+  <li>Explore a server with SHOW DATABASES, USE, SHOW TABLES, DESCRIBE and SELECT DATABASE()</li>
+  <li>Tell SQL statements apart from client commands such as \G, \c, SOURCE and help</li>
+  <li>Save SQL in a .sql file and run it with SOURCE and with mysql &lt; file.sql, knowing what MySQL 9.x's client does differently in scripts</li>
+  <li>Find the Structure, SQL, Import and Export tabs in phpMyAdmin and choose the right tool for a task</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>A client</b> is any program that sends SQL to the server: the mysql command, phpMyAdmin, Workbench. Same statement, same result in all of them.</li>
+  <li><b>Log in</b> with <code class="inline">mysql -u root -p</code> (no space and no password after -p); leave with <code class="inline">exit</code>, <code class="inline">\q</code> or Ctrl+D. Ctrl+C cancels a statement; it does not log you out.</li>
+  <li><b>Find your way:</b> <code class="inline">SHOW DATABASES;</code> · <code class="inline">USE name;</code> · <code class="inline">SELECT DATABASE();</code> · <code class="inline">SHOW TABLES;</code> · <code class="inline">DESCRIBE table;</code>. <code class="inline">FROM database</code> and <code class="inline">database.table</code> reach other databases without moving.</li>
+  <li><b>Nothing runs until the semicolon.</b> <code class="inline">-&gt;</code> = waiting for the end · <code class="inline">'&gt;</code> = a quote is open · <code class="inline">\c</code> = give up.</li>
+  <li><b>SQL versus client commands:</b> SHOW, USE, DESCRIBE work in every client; <code class="inline">\G</code> (vertical output), <code class="inline">\c</code>, <code class="inline">SOURCE</code>, <code class="inline">help</code>, <code class="inline">status</code>, <code class="inline">exit</code> only in the mysql client.</li>
+  <li><b>Run files</b> with <code class="inline">SOURCE path</code> at the prompt or <code class="inline">mysql -u root -p &lt; file.sql</code> from the shell (batch mode: no boxes without -t; MySQL 9.x ignores client commands there unless you add --commands).</li>
+  <li><b>Errors to know:</b> 1049 unknown database · 1146 table not found (the message names the database it looked in) · 1064 cannot read the statement (often a reserved word such as current_time).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: exploring without moving</div>
+<p>You can explore without moving: in a fresh session there is no current database, and a full name <code class="inline">database.table</code> (or <code class="inline">FROM database</code>) reaches any table.</p>
+<pre class="code"><span class="k">SELECT</span> <span class="k">DATABASE</span>() <span class="k">AS</span> current_db;</pre>
+<pre class="out">+------------+
+| current_db |
++------------+
+| NULL       |
++------------+</pre><p>Which tables hold the built-in help texts? Ask the mysql database without switching to it:</p>
+<pre class="code"><span class="k">SHOW</span> <span class="k">TABLES</span> <span class="k">FROM</span> mysql <span class="k">LIKE</span> <span class="s">'help%'</span>;</pre>
+<pre class="out">+-------------------------+
+| Tables_in_mysql (help%) |
++-------------------------+
+| help_category           |
+| help_keyword            |
+| help_relation           |
+| help_topic              |
++-------------------------+</pre><p>What does one of them look like? <code class="inline">SHOW COLUMNS FROM</code> is DESCRIBE by another name:</p>
+<pre class="code"><span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> mysql.help_category;</pre>
+<pre class="out">+--------------------+-------------------+------+-----+---------+-------+
+| Field              | Type              | Null | Key | Default | Extra |
++--------------------+-------------------+------+-----+---------+-------+
+| help_category_id   | smallint unsigned | NO   | PRI | NULL    |       |
+| name               | char(64)          | NO   | UNI | NULL    |       |
+| parent_category_id | smallint unsigned | YES  |     | NULL    |       |
+| url                | text              | NO   |     | NULL    |       |
++--------------------+-------------------+------+-----+---------+-------+</pre><p>And a few of its rows (a SELECT with a full table name, filtered and sorted):</p>
+<pre class="code"><span class="k">SELECT</span> name
+<span class="k">FROM</span> mysql.help_category
+<span class="k">WHERE</span> name <span class="k">LIKE</span> <span class="s">'Data%'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> name;</pre>
+<pre class="out">+-------------------+
+| name              |
++-------------------+
+| Data Definition   |
+| Data Manipulation |
+| Data Types        |
++-------------------+</pre><p><code class="inline">SELECT DATABASE();</code> still says NULL: you never left. The same full names work in phpMyAdmin's SQL tab.</p>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>SOURCE <code class="inline">labs/module-02/l1_3-mysql-cli-phpmyadmin/find_your_way_starter.sql</code>. The setup builds a café database; do not read it.</li>
+  <li>TODO 1 together, TODOs 2 to 6 in pairs: replace each placeholder SELECT with one statement, save, SOURCE again.</li>
+  <li>Write what you found:</li>
+</ul>
+<table class="timing">
+<thead><tr><th>Question</th><th>My answer</th></tr></thead>
+<tbody>
+<tr><td>Tables in kit_s2_cafe</td><td></td></tr>
+<tr><td>menu_items: primary key / required columns</td><td></td></tr>
+<tr><td>cafe_orders: the _at columns</td><td></td></tr>
+<tr><td>time_zone tables in mysql</td><td></td></tr>
+<tr><td>Menu item 3 (vertically)</td><td></td></tr>
+<tr><td>staff_notes: engine and collation</td><td></td></tr>
+</tbody>
+</table>
+<ul class="tick">
+  <li>Finished early? <code class="inline">system_tour_starter.sql</code>, then <code class="inline">debug_lost.sql</code> in the same folder.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction on the line first, then run the code at the mysql&gt; prompt. A wrong prediction you can explain afterward is worth more than a right guess.</p>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it. (A fresh session: nothing chosen yet.)</div><pre class="code"><span class="k">SELECT</span> <span class="k">DATABASE</span>() <span class="k">AS</span> before_use;
+<span class="k">USE</span> mysql;
+<span class="k">SELECT</span> <span class="k">DATABASE</span>() <span class="k">AS</span> after_use;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it. (One column of mysql.user.)</div><pre class="code"><span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> mysql.user <span class="k">LIKE</span> <span class="s">'account_locked'</span>;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>A Server Report Script</b> (lesson page, "Project: A Server Report Script"). In class: Steps 1 to 3. At home: Steps 4 and 5.</p>
+<ul class="tick">
+  <li>☐ Step 1: who am I, and where (USER, CURRENT_USER, DATABASE)</li>
+  <li>☐ Step 2: tables per system database from information_schema</li>
+  <li>☐ Step 3: explore.sql saved, a header comment, every statement ends with ;</li>
+  <li>☐ Step 4: run with SOURCE, with <code class="inline">mysql -u root -p &lt; explore.sql</code> and with -t; why no boxes without -t?</li>
+  <li>☐ Step 5: the same SQL in phpMyAdmin (or DESCRIBE mysql.user; in the client)</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Which of these does nothing in phpMyAdmin's SQL tab, because only the mysql command-line client understands it?</div><div class="opts"><div class="opt">A) <code class="inline">SHOW DATABASES;</code></div><div class="opt">B) <code class="inline">DESCRIBE user;</code></div><div class="opt">C) <code class="inline">SOURCE ~/mysql-course/hello.sql</code></div><div class="opt">D) <code class="inline">SELECT DATABASE();</code></div></div></div>
+<div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">You press Enter and the prompt changes from <code class="inline">mysql&gt;</code> to <code class="inline">'&gt;</code>. What does it mean?</div><div class="opts"><div class="opt">A) The statement only needs a semicolon</div><div class="opt">B) A single quote is still open: close it, then type ;</div><div class="opt">C) The server is still running the query</div><div class="opt">D) You were logged out</div></div></div>
+<div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">On MySQL 9.7, how many rows does this print?</div><pre class="code"><span class="k">SHOW</span> <span class="k">TABLES</span> <span class="k">FROM</span> mysql <span class="k">LIKE</span> <span class="s">'time_zone%'</span>;</pre><div class="write"></div></div>
+<div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">You type <code class="inline">mysql -u root -p secret123</code> (with a space after -p). What happens?</div><div class="opts"><div class="opt">A) It logs in with the password secret123</div><div class="opt">B) <code class="inline">ERROR 1045 (28000): Access denied</code></div><div class="opt">C) It logs in without asking for a password</div><div class="opt">D) It asks for the password, then fails with <code class="inline">ERROR 1049 (42000): Unknown database 'secret123'</code></div></div></div>
+<div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">report.sql ends its query with <code class="inline">\G</code>. Which way of running it stops with Unknown command on MySQL 9.7?</div><div class="opts"><div class="opt">A) <code class="inline">mysql -u root -p &lt; report.sql</code></div><div class="opt">B) <code class="inline">SOURCE report.sql</code> at the mysql> prompt</div><div class="opt">C) <code class="inline">mysql --commands -u root -p &lt; report.sql</code></div><div class="opt">D) Typing the query at the prompt</div></div></div>
+<div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt">Which statement lists only the columns of mysql.user whose names contain lock?</div><div class="opts"><div class="opt">A) <code class="inline">SHOW TABLES FROM mysql LIKE '%lock%';</code></div><div class="opt">B) <code class="inline">SHOW COLUMNS FROM mysql.user LIKE '%lock%';</code></div><div class="opt">C) <code class="inline">DESCRIBE mysql.user WHERE lock;</code></div><div class="opt">D) <code class="inline">SELECT lock FROM mysql.user;</code></div></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Make your own cheat sheet of the ten commands you used most today, in two columns: "SQL (works in any client)" and "mysql client only". Which one surprised you by being in the column it is in?</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2.1</span><h3>Creating Databases &amp; Tables</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Create, select and drop a database, with the utf8mb4 character set and an explicit collation</li>
+  <li>Write a CREATE TABLE statement with column names, data types and basic constraints</li>
+  <li>Inspect a table with SHOW TABLES, DESCRIBE and SHOW CREATE TABLE</li>
+  <li>Add, rename, change and remove columns with ALTER TABLE, without losing a constraint by accident</li>
+  <li>Rename, empty and drop tables, and use IF EXISTS / IF NOT EXISTS to write scripts you can rerun</li>
+  <li>Read and fix errors 1007, 1046, 1050, 1064 and 1146</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>Server = cabinet, database = drawer, table = folder.</b> <code class="inline">CREATE DATABASE</code>, <code class="inline">USE</code>, <code class="inline">DROP DATABASE</code> (no undo).</li>
+  <li><b>Name the text settings:</b> <code class="inline">CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci</code>. Never utf8 (a three-byte subset, warning 3719).</li>
+  <li><b>Names:</b> lowercase, snake_case, plural tables (<code class="inline">books</code>), <code class="inline">id</code> for the key, <code class="inline">customer_id</code> for a link, no reserved words (<code class="inline">order</code>).</li>
+  <li><b>CREATE TABLE</b> lists each column's name, type and rules; commas between columns, none after the last. <code class="inline">IF NOT EXISTS</code> leaves an existing table untouched (Note 1050).</li>
+  <li><b>Inspect:</b> <code class="inline">DESCRIBE t;</code> for the columns, <code class="inline">SHOW CREATE TABLE t\G</code> for the full definition (engine, charset, collation).</li>
+  <li><b>ALTER TABLE</b> adds, renames, redefines and drops columns and keeps the rows. <b>MODIFY and CHANGE replace the whole definition:</b> repeat NOT NULL and DEFAULT, then DESCRIBE.</li>
+  <li><b>TRUNCATE</b> empties a table and resets AUTO_INCREMENT; <b>DROP</b> removes the table or database itself.</li>
+  <li><b>Build from a script</b> that starts with <code class="inline">DROP DATABASE IF EXISTS</code> and can run any number of times. Errors: 1007/1050 exists · 1046 no database selected · 1064 · 1146.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: a build script for a recipe box</div>
+<p>A build script for a recipe box, from nothing: the same shape as <code class="inline">create_bookstore.sql</code>, on another subject.</p>
+<pre class="code"><span class="k">DROP</span> <span class="k">DATABASE</span> <span class="k">IF</span> <span class="k">EXISTS</span> kit_recipes;
+<span class="k">CREATE</span> <span class="k">DATABASE</span> kit_recipes
+    <span class="k">CHARACTER</span> <span class="k">SET</span> utf8mb4
+    <span class="k">COLLATE</span> utf8mb4_unicode_ci;
+<span class="k">USE</span> kit_recipes;
+<span class="k">CREATE</span> <span class="k">TABLE</span> recipes (
+    id          <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    name        <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">UNIQUE</span>,
+    minutes     <span class="k">INT</span>,
+    vegetarian  <span class="k">BOOLEAN</span> <span class="k">DEFAULT</span> <span class="k">FALSE</span>,
+    added_on    <span class="k">DATE</span>
+);
+<span class="k">SHOW</span> <span class="k">TABLES</span>;</pre>
+<pre class="out">Database changed
++-----------------------+
+| Tables_in_kit_recipes |
++-----------------------+
+| recipes               |
++-----------------------+</pre><p>Check what MySQL stored. BOOLEAN became tinyint(1) and FALSE became 0:</p>
+<pre class="code"><span class="k">DESCRIBE</span> recipes;</pre>
+<pre class="out">+------------+--------------+------+-----+---------+----------------+
+| Field      | Type         | Null | Key | Default | Extra          |
++------------+--------------+------+-----+---------+----------------+
+| id         | int          | NO   | PRI | NULL    | auto_increment |
+| name       | varchar(100) | NO   | UNI | NULL    |                |
+| minutes    | int          | YES  |     | NULL    |                |
+| vegetarian | tinyint(1)   | YES  |     | 0       |                |
+| added_on   | date         | YES  |     | NULL    |                |
++------------+--------------+------+-----+---------+----------------+</pre><p>The full definition, vertically: the UNIQUE KEY MySQL built for name, the InnoDB engine, and the collation inherited from the database:</p>
+<pre class="code"><span class="k">SHOW</span> <span class="k">CREATE</span> <span class="k">TABLE</span> recipes\G</pre>
+<pre class="out">*************************** 1. row ***************************
+       Table: recipes
+Create Table: CREATE TABLE `recipes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `minutes` int DEFAULT NULL,
+  `vegetarian` tinyint(1) DEFAULT '0',
+  `added_on` date DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci</pre><p>Clean up (the recipe box was practice):</p>
+<pre class="code"><span class="k">DROP</span> <span class="k">DATABASE</span> kit_recipes;</pre></div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>Open <code class="inline">labs/module-02/l2_1-creating-databases-tables/events_build_starter.sql</code>. Step 1 builds the database for you.</li>
+  <li>TODO 1: fill the three gaps in the rooms skeleton. TODO 2: write the readings table from the spec in the comment. TODO 3: turn on the two lines.</li>
+  <li>SOURCE it, read the self-check, then SOURCE it again: a build script must work twice in a row.</li>
+  <li>Done when the self-check lists readings (7 columns) and rooms (3), both utf8mb4_unicode_ci.</li>
+  <li>Finished early? <code class="inline">change_request_starter.sql</code>, then <code class="inline">debug_build_script.sql</code>.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction first, then run the code in a practice database (<code class="inline">CREATE DATABASE scratch; USE scratch;</code>, and <code class="inline">DROP DATABASE scratch;</code> when you are done).</p>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it. (TRUNCATE, then one more row.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> tickets (
+    id    <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    label <span class="k">VARCHAR</span>(<span class="s">20</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> tickets (label) <span class="k">VALUES</span> (<span class="s">'first'</span>), (<span class="s">'second'</span>);
+<span class="k">TRUNCATE</span> <span class="k">TABLE</span> tickets;
+<span class="k">INSERT</span> <span class="k">INTO</span> tickets (label) <span class="k">VALUES</span> (<span class="s">'third'</span>);
+<span class="k">SELECT</span> * <span class="k">FROM</span> tickets;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it. (MODIFY without NOT NULL.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> notes (
+    id    <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    body  <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">ALTER</span> <span class="k">TABLE</span> notes <span class="k">MODIFY</span> <span class="k">COLUMN</span> body <span class="k">TEXT</span>;
+<span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> notes <span class="k">LIKE</span> <span class="s">'body'</span>;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>The Bookstore Build Script</b> (lesson page, "Project: The Bookstore Build Script"). All five steps in class: Session 3 starts from it.</p>
+<ul class="tick">
+  <li>☐ Step 1: header, <code class="inline">DROP DATABASE IF EXISTS bookstore;</code>, utf8mb4 + utf8mb4_unicode_ci, USE</li>
+  <li>☐ Step 2: books (seven columns)</li>
+  <li>☐ Step 3: customers and categories, each with a comment</li>
+  <li>☐ Step 4: the information_schema self-check</li>
+  <li>☐ Step 5: run it twice; the self-check shows books, categories, customers both times</li>
+</ul>
+<div class="write"></div>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">What happens when this runs?</div><pre class="code"><span class="k">CREATE</span> <span class="k">DATABASE</span> kit_q7 <span class="k">CHARACTER</span> <span class="k">SET</span> utf8;
+<span class="k">SHOW</span> <span class="k">WARNINGS</span>;</pre><div class="opts"><div class="opt">A) <code class="inline">ERROR 1064</code>: utf8 is not a character set</div><div class="opt">B) The database stores full Unicode, emoji included</div><div class="opt">C) Nothing: CHARACTER SET is ignored</div><div class="opt">D) The database is created with utf8mb3 (no emoji), and warning 3719 says to use utf8mb4</div></div></div>
+<div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">Which column does the last statement list first?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> members (
+    id   <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    name <span class="k">VARCHAR</span>(<span class="s">40</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">ALTER</span> <span class="k">TABLE</span> members <span class="k">ADD</span> <span class="k">COLUMN</span> email <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">FIRST</span>;
+<span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> members;</pre><div class="write"></div></div>
+<div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">A script stops with <code class="inline">ERROR 1046 (3D000): No database selected</code>. What does it mean?</div><div class="opts"><div class="opt">A) There is no current database: run USE first, or write database.table</div><div class="opt">B) The database name is misspelled</div><div class="opt">C) The table already exists</div><div class="opt">D) Your account may not create tables</div></div></div>
+<div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">Which name follows the course's naming conventions for a table of book reviews?</div><div class="opts"><div class="opt">A) <code class="inline">BookReviews</code></div><div class="opt">B) <code class="inline">tbl_review</code></div><div class="opt">C) <code class="inline">book_reviews</code></div><div class="opt">D) <code class="inline">bookReview</code></div></div></div>
+<div class="q" data-sc="11"><div class="qn">Q11</div><div class="qt">In <code class="inline">shelf</code>, title was <code class="inline">VARCHAR(200) NOT NULL</code>. After the ALTER below, what is true?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> shelf (
+    id    <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    title <span class="k">VARCHAR</span>(<span class="s">200</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">ALTER</span> <span class="k">TABLE</span> shelf <span class="k">CHANGE</span> <span class="k">COLUMN</span> title book_title <span class="k">VARCHAR</span>(<span class="s">250</span>);
+<span class="k">SHOW</span> <span class="k">COLUMNS</span> <span class="k">FROM</span> shelf;</pre><div class="opts"><div class="opt">A) The column is now book_title and is still required</div><div class="opt">B) The column is now book_title, VARCHAR(250), and allows NULL</div><div class="opt">C) ERROR: CHANGE cannot rename a column</div><div class="opt">D) title is kept and a new column book_title is added</div></div></div>
+<div class="q" data-sc="12" data-kind="short"><div class="qn">Q12</div><div class="qt">Write the one statement that removes every row of the customers table, keeps the table and starts the ids at 1 again.</div><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Sketch, on paper, the tables you would create for something you know well (a recipe box, a game collection, a club's members). Give each table a plural name and three to five columns with a type you would guess for each. Which column would be the primary key? Keep the sketch: Lesson 2.2 checks your type choices.</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<p>Three questions, no notes. Write your answers, hand them in or keep them: they tell you and your instructor what to revisit.</p>
+<div class="q"><div class="qn">E1</div><div class="qt">Name two statements that work in phpMyAdmin's SQL tab and one command that only the mysql client understands.</div><div class="write"></div></div>
+<div class="q"><div class="qn">E2</div><div class="qt">A script stops with <code class="inline">ERROR 1046 (3D000): No database selected</code>. Give two ways to fix it.</div><div class="write"></div></div>
+<div class="q"><div class="qn">E3</div><div class="qt">title is <code class="inline">VARCHAR(200) NOT NULL</code>. You run <code class="inline">ALTER TABLE books MODIFY COLUMN title VARCHAR(250);</code>. What did you lose, and which statement shows it?</div><div class="write"></div></div>
+
+  <div class="sec"><h2>Notes</h2><span class="rule"></span></div>
+<div class="notes-lines"></div>
+
+  <div class="sec"><h2>Homework Checklist</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ Finish explore.sql (Steps 4 and 5)</li>
+  <li>☐ create_bookstore.sql finished and run once more from a fresh session: SHOW TABLES lists books, categories, customers</li>
+  <li>☐ Lesson 1.3 Hands-on Exercises 1 to 3 (Exercise 4 is a stretch)</li>
+  <li>☐ Lesson 2.1 Hands-on Exercises 1 to 3 (Exercise 4 is a stretch)</li>
+  <li>☐ Both Quick Quizzes on the lesson pages</li>
+  <li>☐ Both journal entries (keep the 2.1 sketch for Lesson 2.2)</li>
+  <li>☐ Optional: <code class="inline">system_tour_starter.sql</code>, <code class="inline">change_request_starter.sql</code>, the two debug files</li>
+  <li>☐ Bring to Session 3: bookstore built on my laptop, create_bookstore.sql, my 2.1 sketch, this workbook and my journal</li>
+</ul>
+
+  <div class="sec"><h2>Glossary</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>client</td><td>A program that sends SQL to the server and shows the answer (<code class="inline">mysql</code>, phpMyAdmin, Workbench)</td></tr>
+<tr><td>client command</td><td>Something only the mysql program understands (<code class="inline">\G</code>, <code class="inline">\c</code>, SOURCE, help, exit); never sent to the server</td></tr>
+<tr><td>prompt</td><td><code class="inline">mysql&gt;</code> ready · <code class="inline">-&gt;</code> statement not finished · <code class="inline">'&gt;</code> quote open</td></tr>
+<tr><td>current database</td><td>The one <code class="inline">USE</code> selected; <code class="inline">SELECT DATABASE();</code> shows it (NULL if none)</td></tr>
+<tr><td>information_schema</td><td>Read-only system database that describes every database, table and column ("data about data")</td></tr>
+<tr><td>batch mode</td><td>The client reading a file from the shell (<code class="inline">mysql &lt; file.sql</code>): plain text output, no client commands in 9.x</td></tr>
+<tr><td>character set</td><td>Which characters can be stored; always <code class="inline">utf8mb4</code></td></tr>
+<tr><td>collation</td><td>How text is compared and sorted; <code class="inline">_ci</code> = case-insensitive (<code class="inline">utf8mb4_unicode_ci</code>)</td></tr>
+<tr><td>constraint</td><td>A rule on a column: PRIMARY KEY, NOT NULL, UNIQUE, DEFAULT (Lesson 2.2 adds CHECK)</td></tr>
+<tr><td>ALTER TABLE</td><td>Changes a table's structure and keeps its rows (ADD, RENAME, MODIFY, CHANGE, DROP COLUMN)</td></tr>
+<tr><td>TRUNCATE</td><td>Removes every row, keeps the table, resets AUTO_INCREMENT</td></tr>
+<tr><td>build script</td><td>A .sql file that rebuilds a database from nothing and can run any number of times</td></tr>
+</tbody>
+</table>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 2 · Participant Workbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

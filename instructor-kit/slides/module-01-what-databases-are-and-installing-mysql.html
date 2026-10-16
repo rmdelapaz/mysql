@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides: Session 1</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--ink2:#9fb2cd;--accent:#93c5fd;--accent2:#2563eb;--py:#f6a53b;--lab:#34d3bd;--warn:#fbbf24;--line:#22314c;--code:#0a1526;color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100%;width:100%;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:6vh 8vw;gap:20px}
+  .slide.on{display:flex}
+  h1,h2,h3{font-family:"Archivo",sans-serif;line-height:1.1;text-wrap:balance}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .slide h1{font-size:clamp(2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+  .slide h2{font-size:clamp(1.5rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+  .slide p.lead{font-size:clamp(1.05rem,2.4vw,1.5rem);color:var(--ink2);max-width:34ch}
+  ul,ol.num{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  ul li{position:relative;padding-left:34px;font-size:clamp(1.05rem,2.3vw,1.6rem)}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+  ul.lab li::before{background:var(--lab)}
+  ol.num{counter-reset:n}
+  ol.num li{position:relative;padding-left:46px;font-size:clamp(1rem,2.1vw,1.45rem)}
+  ol.num li::before{counter-increment:n;content:counter(n);position:absolute;left:0;top:.05em;width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#fff;font-family:"JetBrains Mono",monospace;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+  code.k{font-family:"JetBrains Mono",monospace;font-variant-ligatures:none;color:#bfdbfe;font-size:.92em}
+  pre{white-space:pre;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px 24px;font-family:"JetBrains Mono",monospace;font-size:clamp(.8rem,1.7vw,1.15rem);line-height:1.5;overflow:auto;max-width:100%;font-variant-ligatures:none}
+  pre .k{color:#7dd3fc} pre .s{color:#86efac} pre .c{color:#7183a3;font-style:italic}
+  table.ag{border-collapse:collapse;font-size:clamp(.9rem,1.9vw,1.25rem);width:100%;max-width:60rem}
+  table.ag td{padding:7px 12px;border-bottom:1px solid var(--line)}
+  table.ag td.t{font-family:"JetBrains Mono",monospace;color:var(--ink2);white-space:nowrap}
+  table.ag tr.brk td{color:var(--py)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);color:var(--ink2)}
+  .tag .pill{background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;letter-spacing:.06em}
+  .tag .pill.lab{background:var(--lab);color:#062b26} .tag .pill.warn{background:var(--warn);color:#3a2a05}
+  .section{background:linear-gradient(135deg,#0f2a5c,#0b1220)}
+  .section .big{font-size:clamp(3rem,12vw,8rem);font-family:"Archivo";font-weight:800;color:#3b82f6;line-height:.9}
+  .section .big.py{color:var(--py)}
+  .two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:30px;align-items:start}
+  .two pre{font-size:clamp(.72rem,1.35vw,1rem);padding:16px 18px}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .bar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--py));width:0;transition:width .25s;z-index:5}
+  .count{position:fixed;right:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--ink2);z-index:5}
+  .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+  .nav button{pointer-events:auto;background:transparent;border:none;color:transparent;width:22vw;height:100vh;cursor:pointer}
+  .foot{position:fixed;left:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#5d7391;z-index:5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <section class="slide on section">
+    <div class="eyebrow">MySQL Foundations · Part 1 · Session 1 of 14 · 3 hours</div>
+    <h1>Session 1<br>What Databases Are and Installing MySQL</h1>
+    <p class="lead">Why databases exist, and a working MySQL 9.7 on every laptop.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Today</div>
+    <h2>Three hours, two lessons</h2>
+    <table class="ag">
+      <tr><td class="t">0:00</td><td>Welcome, environment check, diagnostic</td></tr>
+      <tr><td class="t">0:30</td><td>1.1 What Is a Database? Model, demo, lab, project</td></tr>
+      <tr class="brk"><td class="t">1:25</td><td>Break (10 min)</td></tr>
+      <tr><td class="t">1:35</td><td>1.2 Installing MySQL: model, install clinic</td></tr>
+      <tr><td class="t">2:10</td><td>1.2 Connect and verify, lab, health check</td></tr>
+      <tr><td class="t">2:50</td><td>Exit ticket, homework, what to bring next time</td></tr>
+    </table>
+    <div class="tag"><span class="pill lab">LABS</span> <span>Lab files are in <code class="k">labs/module-01</code>. Open the <code class="k">_starter.sql</code> file, never the solution.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Welcome</div>
+    <h2>How this course runs</h2>
+    <ul>
+      <li>14 sessions of 3 hours, two lessons a session</li>
+      <li>Part 1 (Sessions 1 to 7): from nothing to joining tables</li>
+      <li>Part 2 (Sessions 8 to 14): beyond the basics, then your own database</li>
+      <li>One online bookstore all the way through</li>
+      <li>In the room: model, demo, lab, project start · At home: 2 to 3 hours</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Opening · 12 minutes</div>
+    <h2>Is your computer ready?</h2>
+    <ol class="num">
+      <li>Open a terminal in your course folder (the one with labs/)</li>
+      <li>macOS, Linux: <code class="k">bash labs/.../check_environment.sh</code></li>
+      <li>Windows: <code class="k">check_environment.ps1</code> (command on the handout)</li>
+      <li>Last table <code class="k">READY</code>? You are a helper now</li>
+      <li>NOT READY? Pair up. Install clinic at 1:45</li>
+    </ol>
+    <div class="tag"><span class="pill warn">TRIAGE</span> <span>command not found = PATH · 1045 = password · 2002/2003 = server stopped</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Opening · 8 minutes</div>
+    <h2>Diagnostic: six questions, not graded</h2>
+    <ul>
+      <li>Workbook, Start Here page: D1 to D6</li>
+      <li>Five are about one small sheet of orders, one about folders</li>
+      <li>Filter · sort · AND or OR · a formula · empty cells · a file path</li>
+      <li>It tells you what to practice and me what to slow down for</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span>Every spreadsheet move has a SQL twin: filter = WHERE, sort = ORDER BY.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big">1.1</div><h2>What Is a Database?</h2><p class="lead">Why one big sheet stops working, and what replaces it.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · Mental model</div>
+    <h2>The bookshop that outgrew its sheet</h2>
+    <ul>
+      <li>One row per order, the customer's name typed every time</li>
+      <li>At 5,000 orders: three spellings of Alice, Bob in two cities</li>
+      <li>No rules: "about 26" in the total column</li>
+      <li>Two people save the file: one loses their work</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span>A database stores each fact once and refuses bad data.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · Mental model</div>
+    <h2>Your app never touches the files</h2>
+    <ol class="num">
+      <li><b>Your application</b> (or you, in a client) sends SQL</li>
+      <li><b>The DBMS</b>, the MySQL server, reads and writes, checks the rules</li>
+      <li><b>The database files</b> on disk: only the server touches them</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>MySQL is the server. A database such as bookstore lives inside it.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · Tables and keys</div>
+    <h2>Store each fact once, point with a key</h2>
+    <ul>
+      <li><b>Table</b>: one kind of thing · <b>row</b>: one thing · <b>column</b>: one typed fact</li>
+      <li><b>Primary key</b> <code class="k">customers.id</code>: unique, never empty</li>
+      <li><b>Foreign key</b> <code class="k">orders.customer_id</code>: points to a customer</li>
+      <li>Fix Alice's email once: every order is right</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · Code</div>
+    <h2>A practice database and a table</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">DATABASE</span> preview_shop;   <span class="c">-- a new, empty database</span>
+<span class="k">USE</span> preview_shop;               <span class="c">-- work inside it from now on</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> customers (
+    id         <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    first_name <span class="k">VARCHAR</span>(<span class="s">50</span>)  <span class="k">NOT</span> <span class="k">NULL</span>,
+    last_name  <span class="k">VARCHAR</span>(<span class="s">50</span>)  <span class="k">NOT</span> <span class="k">NULL</span>,
+    email      <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">UNIQUE</span>,
+    city       <span class="k">VARCHAR</span>(<span class="s">50</span>)
+);</pre>
+    <pre class="code">Database changed</pre>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">NOT NULL</code> = required · <code class="k">UNIQUE</code> = no two alike · <code class="k">AUTO_INCREMENT</code> = MySQL picks the id</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · CRUD</div>
+    <h2>Create, then read</h2>
+    <pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> customers (first_name, last_name, email, city)
+<span class="k">VALUES</span> (<span class="s">'Alice'</span>, <span class="s">'Johnson'</span>,  <span class="s">'alice@example.com'</span>, <span class="s">'New York'</span>),
+       (<span class="s">'Bob'</span>,   <span class="s">'Smith'</span>,    <span class="s">'bob@example.com'</span>,   <span class="s">'Chicago'</span>),
+       (<span class="s">'Carol'</span>, <span class="s">'Williams'</span>, <span class="s">'carol@example.com'</span>, <span class="s">'Los Angeles'</span>);
+
+<span class="k">SELECT</span> first_name, last_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'Chicago'</span>;</pre>
+    <pre class="code">Query OK, 3 rows affected
+Records: 3  Duplicates: 0  Warnings: 0
++------------+-----------+---------+
+| first_name | last_name | city    |
++------------+-----------+---------+
+| Bob        | Smith     | Chicago |
++------------+-----------+---------+</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · CRUD</div>
+    <h2>Update: Bob moves to Boston</h2>
+    <pre class="code"><span class="k">UPDATE</span> customers
+<span class="k">SET</span> city = <span class="s">'Boston'</span>
+<span class="k">WHERE</span> id = <span class="s">2</span>;</pre>
+    <pre class="code">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>No <code class="k">WHERE</code>: every row changes. Read the WHERE line before you press Enter.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · CRUD</div>
+    <h2>Delete, then look at everything</h2>
+    <pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> customers
+<span class="k">WHERE</span> id = <span class="s">3</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> customers;</pre>
+    <pre class="code">+----+------------+-----------+-------------------+----------+
+| id | first_name | last_name | email             | city     |
++----+------------+-----------+-------------------+----------+
+|  1 | Alice      | Johnson   | alice@example.com | New York |
+|  2 | Bob        | Smith     | bob@example.com   | Boston   |
++----+------------+-----------+-------------------+----------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Carol is gone, and her id 3 will not be handed out again.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · The database says no</div>
+    <h2>Three refused rows</h2>
+    <pre class="code"><span class="k">INSERT</span> ... <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Dave'</span>, ...);      <span class="c">-- id 1 is Alice's</span>
+<span class="k">INSERT</span> ... <span class="k">VALUES</span> (<span class="s">'abc'</span>, <span class="s">'Dave'</span>, ...);  <span class="c">-- text in an INT</span>
+<span class="k">INSERT</span> ... (first_name, email) ...;     <span class="c">-- no last_name</span></pre>
+    <pre class="code">ERROR 1062 (23000): Duplicate entry '1' for key 'customers.PRIMARY'
+ERROR 1366 (HY000): Incorrect integer value: 'abc' for column 'id' at row 1
+ERROR 1364 (HY000): Field 'last_name' doesn't have a default value</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>A spreadsheet takes all three. Read the number first, then the reason.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> notes (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, title <span class="k">VARCHAR</span>(<span class="s">30</span>) <span class="k">NOT</span> <span class="k">NULL</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> notes <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Buy milk'</span>), (<span class="s">2</span>, <span class="s">'Call Bob'</span>), (<span class="s">3</span>, <span class="s">'Pay rent'</span>);
+<span class="k">DELETE</span> <span class="k">FROM</span> notes <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> notes;</pre>
+    <ul>
+      <li>Which rows survive the DELETE?</li>
+      <li>Do the ids get renumbered?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · Common mistakes</div>
+    <h2>What goes wrong in week one</h2>
+    <ul>
+      <li>Mixing up the server, a client and a database</li>
+      <li>A missing <code class="k">;</code>: the prompt turns into <code class="k">-&gt;</code> and waits</li>
+      <li>A list squeezed into one column (book1, book2, book3)</li>
+      <li>Copying the same facts into many rows: no error at all</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · Guided lab · 15 minutes</div>
+    <h2>What one big sheet gets wrong</h2>
+    <ul class="lab">
+      <li><code class="k">order_sheet_starter.sql</code> in <code class="k">labs/module-01/l1_1-...</code></li>
+      <li>Run it: <code class="k">SOURCE labs/module-01/l1_1-what-is-a-database/order_sheet_starter.sql</code></li>
+      <li>Each TODO changes one value: edit, save, SOURCE again</li>
+      <li>Spellings · cities · "Dune" · a total that is not a number</li>
+      <li>One sentence per TODO: how would keys prevent it?</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">crud_tour_starter.sql</code>, then <code class="k">debug_rules.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.1 · Project</div>
+    <h2>Sketch the bookstore</h2>
+    <ul class="lab">
+      <li>Underline the nouns in the store's description: about 5 tables</li>
+      <li>4 to 6 typed columns per table</li>
+      <li>Primary keys: why not the title? why not the email?</li>
+      <li>Foreign keys, and two linking tables</li>
+      <li>Compare with the course design</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>In class: Steps 1 and 2. At home: Steps 3 to 5.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big py">10</div><h2>Break</h2><p class="lead">Back at 1:35. NOT READY machines: install clinic right after.</p></section>
+
+  <section class="slide section"><div class="big">1.2</div><h2>Installing MySQL</h2><p class="lead">A server, a client, and proof that they talk.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">1.2 · Mental model</div>
+    <h2>Two programs and a door number</h2>
+    <ul>
+      <li><b>Server</b> <code class="k">mysqld</code>: runs in the background, owns the data</li>
+      <li>It listens on a <b>port</b>: 3306</li>
+      <li><b>Client</b> <code class="k">mysql</code>: knocks on that door with your SQL</li>
+      <li>Same laptop today; different machines at work</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span>Ask the SERVER which version it is, not the client.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.2 · Versions</div>
+    <h2>Install 9.7 LTS on purpose</h2>
+    <ul>
+      <li>Windows: MSI + MySQL Configurator, then add <code class="k">bin</code> to PATH</li>
+      <li>macOS: <code class="k">brew install mysql@9.7</code> or the DMG</li>
+      <li>Linux: MySQL's APT or Yum repository</li>
+      <li>Anywhere: <code class="k">docker run ... mysql:9.7</code></li>
+    </ul>
+    <div class="tag"><span class="pill warn">WATCH</span> <span><code class="k">brew install mysql</code> and <code class="k">mysql:latest</code> are 26.x; XAMPP is MariaDB.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.2 · Install clinic · 25 minutes</div>
+    <h2>Fix by platform</h2>
+    <ul class="lab">
+      <li>Windows: PATH, then is the MySQL97 service running?</li>
+      <li>macOS: the keg-only PATH line, <code class="k">brew services start mysql@9.7</code></li>
+      <li>Ubuntu's own package: <code class="k">sudo mysql</code>, then set a password</li>
+      <li>Docker: port taken? <code class="k">-p 3307:3306</code> and <code class="k">-h 127.0.0.1 -P 3307</code></li>
+      <li>Done = the environment check says READY</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.2 · Code</div>
+    <h2>Connect, then ask the server</h2>
+    <pre class="code"><span class="k">SELECT</span> VERSION() <span class="k">AS</span> version,
+       CURRENT_USER() <span class="k">AS</span> logged_in_as,
+       @@character_set_server <span class="k">AS</span> charset;</pre>
+    <pre class="code">+---------+----------------+---------+
+| version | logged_in_as   | charset |
++---------+----------------+---------+
+| 9.7.2   | root@localhost | utf8mb4 |
++---------+----------------+---------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Any 9.7.x is right. Through Docker's port you are <code class="k">root@%</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.2 · Code</div>
+    <h2>What is in a fresh server?</h2>
+    <pre class="code"><span class="k">SHOW</span> <span class="k">DATABASES</span>;</pre>
+    <pre class="code">+--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Four system databases. Never put your own tables in them.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.2 · Code</div>
+    <h2>How does root log in?</h2>
+    <pre class="code"><span class="k">SELECT</span> user, host, plugin
+<span class="k">FROM</span> mysql.user
+<span class="k">WHERE</span> user = <span class="s">'root'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> host;</pre>
+    <pre class="code">+------+-----------+-----------------------+
+| user | host      | plugin                |
++------+-----------+-----------------------+
+| root | localhost | caching_sha2_password |
++------+-----------+-----------------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Never <code class="k">mysql_native_password</code>: it is gone in 9.x.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.2 · Old advice</div>
+    <h2>Two forum fixes that fail on 9.7</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">USER</span> <span class="s">'legacy_app'</span>@<span class="s">'localhost'</span>
+    <span class="k">IDENTIFIED</span> <span class="k">WITH</span> mysql_native_password <span class="k">BY</span> <span class="s">'placeholder-password'</span>;
+<span class="k">SELECT</span> @@default_authentication_plugin;</pre>
+    <pre class="code">ERROR 1524 (HY000): Plugin 'mysql_native_password' is not loaded
+ERROR 1193 (HY000): Unknown system variable 'default_authentication_plugin'</pre>
+    <div class="tag"><span class="pill warn">RULE</span> <span>Update the client; never weaken the server.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.2 · Error triage</div>
+    <h2>Which number?</h2>
+    <ul>
+      <li><b>command not found</b>: the client is not on your PATH</li>
+      <li><b>1045</b>: the server answered and refused your password</li>
+      <li><b>2002 / 2003</b>: nothing answered: server stopped, or wrong address</li>
+      <li>Docker on macOS/Linux: <code class="k">127.0.0.1</code>, not <code class="k">localhost</code></li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.2 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">SELECT</span> VERSION() <span class="k">LIKE</span> <span class="s">'%MariaDB%'</span> <span class="k">AS</span> on_mariadb,
+       @@character_set_server   <span class="k">AS</span> charset;</pre>
+    <ul>
+      <li>On the course's MySQL 9.7 server</li>
+      <li>What would a XAMPP laptop print?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.2 · Guided lab · 15 minutes</div>
+    <h2>Ask your server who it is</h2>
+    <ul class="lab">
+      <li><code class="k">server_facts_starter.sql</code> in <code class="k">labs/module-01/l1_2-...</code></li>
+      <li>Version, MySQL or MariaDB, character set, engine</li>
+      <li>TODOs 3 to 6: replace each <code class="k">TODO</code> line with a real SELECT</li>
+      <li>Copy the answers onto your health-check page</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">accounts_check_starter.sql</code>, then <code class="k">debug_old_advice.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">1.2 · Project</div>
+    <h2>Installation health check</h2>
+    <ul class="lab">
+      <li>Steps 1 and 2: installed and secured (prework and clinic)</li>
+      <li>Step 3: version, edition, port; user, charset, collation</li>
+      <li>Step 4: root's host and plugin</li>
+      <li>Step 5 at home: stop, see 2002/2003, start again</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>When something breaks in week five, rerun it.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Wrap-up · 4 minutes</div>
+    <h2>Exit ticket</h2>
+    <ol class="num">
+      <li>Server, client, database: one sentence each</li>
+      <li>ERROR 2002: what do you check first? And 1045?</li>
+      <li>orders(id, customer_id, order_date): which key is which, and why no customer name?</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>No notes. Workbook Exit Ticket box or a sticky note on the way out.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Before Session 2</div>
+    <h2>Homework and bring list</h2>
+    <ul class="lab">
+      <li>Finish the bookstore sketch and the health check</li>
+      <li>Exercises 1 to 3 of both lessons; both quizzes; both journals</li>
+      <li>Not READY yet? Follow your plan, run the check, email me</li>
+      <li>Bring: a READY laptop, your root password, labs/, your sketch</li>
+    </ul>
+    <div class="tag"><span class="pill">NEXT</span> <span>Session 2: The MySQL Client and Your First Tables.</span></div>
+  </section>
+
+
+</div>
+
+<div class="foot">© 2026 Ray de la Paz · MySQL Foundations</div>
+<div class="count" id="count">1 / 1</div>
+<div class="nav"><button id="prev" aria-label="Previous slide"></button><button id="next" aria-label="Next slide"></button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'), count=document.getElementById('count');
+  let i=0;
+  function show(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%'; count.textContent=(i+1)+' / '+slides.length; }
+  document.getElementById('next').onclick=()=>show(i+1);
+  document.getElementById('prev').onclick=()=>show(i-1);
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0); else if(e.key==='End')show(slides.length-1);
+  });
+  show(0);
+</script>
+</body>
+</html>

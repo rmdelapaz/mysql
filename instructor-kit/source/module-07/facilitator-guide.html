@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 7</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 7: Joins and the Part 1 Assessment</h1>
+    <p class="sub">How to teach the seventh session of MySQL Foundations, the last of Part 1: Lesson 4.3 (INNER and LEFT joins, the anti-join, self-joins, joins with GROUP BY and the three silent join bugs), then the 60-minute Part 1 assessment on a new database (the Riverside Cooking School), a short review, and a close that works whether the course ends here or continues with Part 2.</p>
+    <div class="meta-row">
+      <span class="chip"><b>1</b> lesson + assessment</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lesson <b>4.3</b> · Part 1 assessment</span>
+      <span class="chip">Session <b>7</b> of 14 · Part 1</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Two halves.</b> The first half teaches Lesson 4.3 in the usual rhythm (frame, live demo, guided lab, project start); the second half is the <b>Part 1 assessment</b> (60 minutes) and a short review, then a close that works both when Part 1 runs on its own and when Part 2 follows.</li>
+  <li><b>The assessment lives in two places.</b> Learners work in <code class="inline">labs/module-07/part1-assessment/part1_assessment_starter.sql</code>: the file IS the brief (rules, data, tasks, hand-in). You score with the rubric in <code class="inline">final-assessment.html</code> at the kit root, Part 1 assessment section, whose instructor answer notes hold the reference output (from <code class="inline">labs/module-07/part1-assessment/part1_assessment_solution.sql</code>) and the common wrong answers with their real numbers. The Answer Key repeats the reference output.</li>
+  <li>Every SQL block below was run on MySQL 9.7.2 on a fresh <code class="inline">bookstore.sql</code> (Lesson 4.3) or in the assessment's own practice database <code class="inline">kit_riverside</code>. Type the short joins; the long ones can be pasted.</li>
+  <li>Keep <code class="inline">lesson_13.html</code> open for the join diagrams. Labs live in <code class="inline">labs/module-07/</code>.</li>
+  <li>Joins are the most used and most interviewed-about skill in SQL, and learners meet them one hour before an assessment that includes them. The assessment is designed for that: every join task also accepts a subquery answer (Lessons 3.4 and 4.1), and the rubric scores the result and the reasoning, not the technique.</li>
+</ul>
+<div class="note warn"><div class="t">The #1 risk of Session 7: the assessment starts late</div>
+<p>Sixty minutes is the minimum for the assessment; every minute lost before 1:35 comes out of it, and learners who rush Part B make the mistakes the rubric is built to catch. <b>Protect the 1:25 start:</b> the 4.3 lab is cut first (it continues at home), then the project start. Have the starter file on every laptop BEFORE the break (put it on the shared folder or USB stick at 0:00; the break slide says "copy it now"). <b>Protect the 60 minutes:</b> no new content after 1:25; questions about the environment only (a client that will not start, a file that will not open), never about the SQL. If the room starts late anyway, keep the 60 minutes and shorten the review to five minutes: the review is the only segment that can go home (the Answer Key and the reference solution can be shared after scoring).</p>
+</div>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Data:</b> every laptop has <code class="inline">bookstore.sql</code> loaded (Session 6's bring list). The assessment builds its own database (<code class="inline">kit_riverside</code>) and drops it at the end; it needs nothing else.</li>
+  <li>☐ <b>Files:</b> <code class="inline">labs/module-07/</code> WITHOUT the two <code class="inline">*_solution.sql</code> files and WITHOUT <code class="inline">part1-assessment/part1_assessment_solution.sql</code>. Run <code class="inline">python3 labs/check_labs.py module-07</code> once (7 files, every line PASS). Print or open <code class="inline">final-assessment.html</code> (Part 1 assessment section): the rubric, the scoring sheet and the answer notes.</li>
+  <li>☐ <b>Hand-in channel:</b> decide now how files come back (a shared folder, a USB stick passed around, email, the LMS). Learners rename the file <code class="inline">part1_assessment_&lt;name&gt;.sql</code>. Test it with your own file.</li>
+  <li>☐ <b>Projector machine:</b> <code class="inline">bookstore.sql</code> loaded; terminal at 18 pt; <code class="inline">lesson_13.html</code> open. For the review, the reference solution's output ready to show (the Answer Key has it).</li>
+  <li>☐ <b>Board:</b> "What does one row of this join stand for?" in large letters (it stays up during the assessment); next to it the join decision: "must every row of one table appear? → put it first, LEFT JOIN; only the unmatched? → WHERE right.id IS NULL".</li>
+  <li>☐ <b>Room for the assessment:</b> power for every laptop, seats spread out if possible, a visible clock. Learners with extended time agreed in advance (see the accommodations in the assessment section).</li>
+  <li>☐ <b>If Part 1 runs on its own:</b> certificates or completion letters to fill in after scoring, and the course evaluation link for the close. If Part 2 follows: Session 8's bring list on the last slide.</li>
+</ul>
+<div class="blk warn"><div class="h">Known traps today</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><code class="inline">ERROR 1052 ... ambiguous</code></td><td>A column (usually <code class="inline">id</code>) that exists in both joined tables</td><td>Qualify it: <code class="inline">o.id</code>, <code class="inline">c.id</code>.</td></tr>
+<tr><td><code class="inline">ERROR 1054 Unknown column 'books.title'</code></td><td>The table name used after an alias was given</td><td>Use the alias everywhere in that query.</td></tr>
+<tr><td><code class="inline">ERROR 1066 Not unique table/alias</code></td><td>The same table joined twice without aliases (a self-join)</td><td>Give each copy its own alias: <code class="inline">employees AS e</code>, <code class="inline">employees AS m</code>.</td></tr>
+<tr><td>A join returns 110 or 96 rows</td><td>A missing ON (a silent cross join)</td><td>Add the ON condition.</td></tr>
+<tr><td>Counts too high after a join</td><td>Fan-out: one row per order line, not per order</td><td><code class="inline">COUNT(DISTINCT o.id)</code>, or count before you join.</td></tr>
+<tr><td>Assessment: <code class="inline">Failed to open file</code></td><td>The client was started outside the course folder</td><td><code class="inline">exit</code>, <code class="inline">cd</code> into the folder that holds <code class="inline">labs/</code>, log in, SOURCE again.</td></tr>
+<tr><td>Assessment: everything after A1 fails</td><td>The CREATE TABLE has an error, so the enrollments INSERT fails too</td><td>Read the FIRST error; fix A1; SOURCE again (every run rebuilds <code class="inline">kit_riverside</code>).</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 7 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">10</td><td>Warm-up</td><td>Five retrieval questions on Lessons 4.1 and 4.2 (where the key goes, CASCADE, 1451, NO ACTION, following a link); homework check.</td></tr>
+      <tr><td class="t">0:10</td><td class="t">10</td><td><b>4.3</b> Frame and mental model</td><td>A join pairs rows: INNER keeps pairs, LEFT keeps every left row; what one joined row stands for.</td></tr>
+      <tr><td class="t">0:20</td><td class="t">25</td><td><b>4.3</b> Live demo</td><td>INNER JOIN and aliases, LEFT JOIN and the anti-join, a join without ON, a self-join, four tables, joins with GROUP BY, three traps.</td></tr>
+      <tr><td class="t">0:45</td><td class="t">20</td><td><b>4.3</b> Guided lab</td><td><code class="inline">labs/module-07/l4_3-joins/catalog_joins_starter.sql</code> in pairs.</td></tr>
+      <tr><td class="t">1:05</td><td class="t">10</td><td><b>4.3</b> Start the lesson project</td><td>The sales report, Step 1 (one line per order); the rest goes home.</td></tr>
+      <tr><td class="t">1:15</td><td class="t">10</td><td>Break</td><td>Laptops charged and plugged in; the assessment file copied into everyone's course folder.</td></tr>
+      <tr><td class="t">1:25</td><td class="t">10</td><td>Part 1 assessment: brief and setup</td><td>Rules (open book, alone, no AI), the Riverside Cooking School data, how to hand in; everyone SOURCEs the starter once.</td></tr>
+      <tr><td class="t">1:35</td><td class="t">60</td><td>Part 1 assessment</td><td><code class="inline">labs/module-07/part1-assessment/part1_assessment_starter.sql</code>: Part A build (about 20 min), Part B eight queries (about 35), a final SOURCE (5).</td></tr>
+      <tr><td class="t">2:35</td><td class="t">15</td><td>Part 1 review</td><td>How each task is solved (approaches, not scores), then the map of Part 1: what each module gave you.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up and close</td><td>Exit ticket; then the course close (Part 1 on its own) or the bridge to Part 2 (bring list for Session 8).</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> Lesson 4.3 estimates 110 minutes for a solo learner; the room has 65 for it, so the lesson keeps its model, demo, a guided lab and the first project step, and the project's other five steps go home. The second half belongs to the assessment: 10 minutes of setup, 60 of work, 15 of review.</p>
+<p><b>Goes home (about 2 to 3 hours).</b> The sales report Steps 2 to 6; the 4.3 Hands-on Exercises 1 to 3; the 4.3 Quick Quiz and journal; the labs not finished (<code class="inline">catalog_joins</code>, <code class="inline">city_sales</code>, <code class="inline">debug_joins</code>); the workbook's Part 1 review self-check (Q7 to Q12). Programs that end with Part 1 make all of it optional practice.</p>
+<p><b>Protect, in this order:</b> the 60 assessment minutes; the 1:25 start; the 4.3 demo Steps 1 to 4 and 12 to 14 (INNER, LEFT, the anti-join, the WHERE-versus-ON trap, <code class="inline">COUNT(*)</code>); the review's walk-through of B6 to B8. <b>Cut first:</b> the 4.3 lab (homework with its README expectations), then the project start, then demo Steps 5 to 8 (show the slides).</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Warm-up: Relationships and Foreign Keys</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">6m</td><td>Five retrieval questions on Lessons 4.1 and 4.2, in the workbook, then on the projector</td></tr>
+<tr><td class="t">4m</td><td>Homework check: book_reviews Steps 5 and 6; is <code class="inline">bookstore.sql</code> loaded on every laptop (8 tables)?</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Retrieval questions and answers</div>
+<ol class="steps">
+  <li><b>One order has many lines. Where does the foreign key go?</b> <b>Answer:</b> <code class="inline">order_items.order_id</code> (the many side).</li>
+  <li><b>Predict the count.</b> (Order 3 has one line; fk_items_order is ON DELETE CASCADE.)<pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> orders <span class="k">WHERE</span> id = <span class="s">3</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> items <span class="k">FROM</span> order_items;
+<span class="k">ROLLBACK</span>;</pre><pre class="out">+-------+
+| items |
++-------+
+|    17 |
++-------+</pre><b>Answer:</b> 17: the order's one line went with it; ROLLBACK put both back.</li>
+  <li><b>What happens, and why?</b><pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> authors <span class="k">WHERE</span> id = <span class="s">6</span>;</pre><pre class="out">ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`bookstore`.`books`, CONSTRAINT `fk_books_author` FOREIGN KEY (`author_id`) REFERENCES `authors` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE)</pre><b>Answer:</b> 1451: Tolkien has books and fk_books_author is RESTRICT. "delete or update a PARENT row".</li>
+  <li><b>A key is declared with no ON DELETE. What does MySQL do when a parent with children is deleted?</b> <b>Answer:</b> it refuses: NO ACTION behaves exactly like RESTRICT.</li>
+  <li><b>How many links?</b><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> links
+<span class="k">FROM</span> book_categories
+<span class="k">WHERE</span> book_id <span class="k">IN</span> (<span class="k">SELECT</span> id <span class="k">FROM</span> books <span class="k">WHERE</span> author_id = <span class="s">6</span>);</pre><pre class="out">+-------+
+| links |
++-------+
+|     4 |
++-------+</pre><b>Answer:</b> 4: Tolkien's two books are each Fiction and Fantasy. Today the same question becomes one join instead of a nested IN.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">How to read the warm-up</div>
+<ul class="tick">
+  <li><b>Q5 slow or wrong:</b> following keys through two tables is exactly what a join does in one step; say "after this hour, you will write that as a join".</li>
+  <li><b>Q2 or Q3 wrong:</b> the assessment's Part A asks for delete rules with a reason; point those learners to their Session 6 relationship map before the break.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plan</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">4.3</span><h3>Joins</h3><span class="dur">65 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Combine matching rows from two or more tables with INNER JOIN ... ON, using table aliases</li>
+  <li>Keep unmatched rows with LEFT JOIN, and find rows with no match using the anti-join pattern</li>
+  <li>Explain what RIGHT JOIN and CROSS JOIN return, and when (rarely) to use them</li>
+  <li>Join a table to itself to read a hierarchy such as employees and managers</li>
+  <li>Combine joins with GROUP BY without the two silent traps: COUNT(*) on outer joins and row fan-out</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: a join pairs rows; INNER keeps pairs, LEFT keeps every left row; one joined row stands for what?</td></tr>
+<tr><td class="t">25m</td><td>Live demo: INNER, aliases, LEFT, the anti-join, a join without ON, a self-join, four tables, GROUP BY, three traps</td></tr>
+<tr><td class="t">20m</td><td>Guided lab: <code class="inline">catalog_joins_starter.sql</code> in pairs</td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: the sales report, Step 1</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Two short lists on the board, a guest list and the RSVPs (the lesson's journal prompt): "A JOIN pairs each guest with their RSVPs and keeps the pairs: a guest who never replied is not in the result. A LEFT JOIN keeps every guest, and where there is no RSVP it writes NULL. Same lists, same condition, one more word."</p>
+<p>Then the question that prevents the silent bugs, pointing at the board: <b>"what does one row of this join stand for?"</b> "Join customers to orders and one row is an order. Add order_items and one row is an order LINE: Alice's first order now appears twice. Count after that and you count lines."</p>
+<p>Then where conditions go: "ON says how the tables connect. WHERE filters the joined rows. On a LEFT JOIN, a condition on the right table goes in ON, or the NULL rows you wanted to keep are filtered away."</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>The lesson's own examples on a fresh <code class="inline">bookstore.sql</code>. Ask for a row count before every join: it is the habit that catches fan-out and missing ON clauses.</p>
+<ol class="steps">
+  <li><b>INNER JOIN: only the matches (3m).</b> "An order row says customer_id 1; the name lives in customers. A join pairs each row with the rows of another table that meet a condition, usually foreign key equals primary key." Point at the ON line.
+<pre class="code"><span class="k">SELECT</span> books.title, authors.name <span class="k">AS</span> author
+<span class="k">FROM</span> books
+<span class="k">INNER</span> <span class="k">JOIN</span> authors <span class="k">ON</span> books.author_id = authors.id
+<span class="k">ORDER</span> <span class="k">BY</span> books.title;</pre>
+<pre class="out">+------------------------+---------------------+
+| title                  | author              |
++------------------------+---------------------+
+| 1984                   | George Orwell       |
+| Animal Farm            | George Orwell       |
+| Brave New World        | Aldous Huxley       |
+| Dune                   | Frank Herbert       |
+| Fahrenheit 451         | Ray Bradbury        |
+| Lord of the Rings      | J.R.R. Tolkien      |
+| Pride and Prejudice    | Jane Austen         |
+| The Catcher in the Rye | J.D. Salinger       |
+| The Great Gatsby       | F. Scott Fitzgerald |
+| The Hobbit             | J.R.R. Tolkien      |
+| To Kill a Mockingbird  | Harper Lee          |
++------------------------+---------------------+</pre>
+Eleven books, eleven rows. Asimov is absent: an inner join keeps only pairs.</li>
+  <li><b>Aliases and WHERE (2m).</b> "b and a are short names. ON says how the tables connect; WHERE says which results you want."
+<pre class="code"><span class="k">SELECT</span> b.title, b.price, a.name <span class="k">AS</span> author
+<span class="k">FROM</span> books <span class="k">AS</span> b
+<span class="k">JOIN</span> authors <span class="k">AS</span> a <span class="k">ON</span> b.author_id = a.id
+<span class="k">WHERE</span> a.name = <span class="s">'George Orwell'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> b.title;</pre>
+<pre class="out">+-------------+-------+---------------+
+| title       | price | author        |
++-------------+-------+---------------+
+| 1984        |  9.99 | George Orwell |
+| Animal Farm |  8.49 | George Orwell |
++-------------+-------+---------------+</pre>
+JOIN on its own means INNER JOIN. Once a table has an alias, use only the alias (Step 11).</li>
+  <li><b>LEFT JOIN: keep every left row (3m).</b> "Same tables, same ON, one more word." Ask: how many rows now? Then run it.
+<pre class="code"><span class="k">SELECT</span> a.name <span class="k">AS</span> author, b.title
+<span class="k">FROM</span> authors <span class="k">AS</span> a
+<span class="k">LEFT</span> <span class="k">JOIN</span> books <span class="k">AS</span> b <span class="k">ON</span> b.author_id = a.id
+<span class="k">ORDER</span> <span class="k">BY</span> a.id, b.title;</pre>
+<pre class="out">+---------------------+------------------------+
+| author              | title                  |
++---------------------+------------------------+
+| Frank Herbert       | Dune                   |
+| George Orwell       | 1984                   |
+| George Orwell       | Animal Farm            |
+| Harper Lee          | To Kill a Mockingbird  |
+| F. Scott Fitzgerald | The Great Gatsby       |
+| Jane Austen         | Pride and Prejudice    |
+| J.R.R. Tolkien      | Lord of the Rings      |
+| J.R.R. Tolkien      | The Hobbit             |
+| Aldous Huxley       | Brave New World        |
+| J.D. Salinger       | The Catcher in the Rye |
+| Ray Bradbury        | Fahrenheit 451         |
+| Isaac Asimov        | NULL                   |
++---------------------+------------------------+</pre>
+Twelve: the eleven pairs plus Asimov with NULL. The left table is the one before the word JOIN.</li>
+  <li><b>The anti-join (3m).</b> "The NULLs are a tool. Keep only the rows where the right side is missing."
+<pre class="code"><span class="k">SELECT</span> c.first_name, c.last_name
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o <span class="k">ON</span> o.customer_id = c.id
+<span class="k">WHERE</span> o.id <span class="k">IS</span> <span class="k">NULL</span>
+<span class="k">ORDER</span> <span class="k">BY</span> c.id;</pre>
+<pre class="out">+------------+-----------+
+| first_name | last_name |
++------------+-----------+
+| Carol      | Williams  |
+| Hank       | Taylor    |
++------------+-----------+</pre>
+Test the right table's primary key: it can only be NULL when there was no match. NOT EXISTS (Lesson 3.4) answers the same question.</li>
+  <li><b>Books never sold (1m).</b> 
+<pre class="code"><span class="k">SELECT</span> b.title
+<span class="k">FROM</span> books <span class="k">AS</span> b
+<span class="k">LEFT</span> <span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.book_id = b.id
+<span class="k">WHERE</span> oi.id <span class="k">IS</span> <span class="k">NULL</span>
+<span class="k">ORDER</span> <span class="k">BY</span> b.title;</pre>
+<pre class="out">+------------------------+
+| title                  |
++------------------------+
+| The Catcher in the Rye |
+| The Great Gatsby       |
++------------------------+</pre></li>
+  <li><b>A join without ON (1m).</b> "Forget the ON and MySQL does not complain."
+<pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> rows_returned
+<span class="k">FROM</span> books
+<span class="k">JOIN</span> authors;</pre>
+<pre class="out">+---------------+
+| rows_returned |
++---------------+
+|           110 |
++---------------+</pre>
+11 × 10 = 110: a cross join. If a join returns far more rows than expected, check the ON first.</li>
+  <li><b>Self-join: two roles, one table (3m).</b> "employees.manager_id points at another employee. e plays the employee, m the manager."
+<pre class="code"><span class="k">SELECT</span>
+    CONCAT(e.first_name, <span class="s">' '</span>, e.last_name) <span class="k">AS</span> employee,
+    CONCAT(m.first_name, <span class="s">' '</span>, m.last_name) <span class="k">AS</span> manager
+<span class="k">FROM</span> employees <span class="k">AS</span> e
+<span class="k">LEFT</span> <span class="k">JOIN</span> employees <span class="k">AS</span> m <span class="k">ON</span> e.manager_id = m.id
+<span class="k">ORDER</span> <span class="k">BY</span> e.id;</pre>
+<pre class="out">+---------------+--------------+
+| employee      | manager      |
++---------------+--------------+
+| Maria Santos  | NULL         |
+| Daniel Reyes  | Maria Santos |
+| Priya Nair    | Daniel Reyes |
+| Tom Becker    | Priya Nair   |
+| Lena Park     | Priya Nair   |
+| Marcus Hill   | Daniel Reyes |
+| Sofia Alvarez | Marcus Hill  |
+| James Okafor  | Maria Santos |
+| Nina Kowalski | James Okafor |
+| Ben Carter    | Priya Nair   |
++---------------+--------------+</pre>
+Maria survives only because this is a LEFT JOIN; an inner join would drop the head of the company. To walk the whole tree: Lesson 5.1 (recursive CTE).</li>
+  <li><b>Four tables: who bought what (2m).</b> "Each JOIN adds one table to the row you are building. Walk the keys from orders outward."
+<pre class="code"><span class="k">SELECT</span> o.id <span class="k">AS</span> order_id, o.order_date, b.title, oi.quantity
+<span class="k">FROM</span> orders <span class="k">AS</span> o
+<span class="k">JOIN</span> customers <span class="k">AS</span> c    <span class="k">ON</span> o.customer_id = c.id
+<span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.order_id = o.id
+<span class="k">JOIN</span> books <span class="k">AS</span> b        <span class="k">ON</span> oi.book_id = b.id
+<span class="k">WHERE</span> c.first_name = <span class="s">'Alice'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> o.order_date, b.title;</pre>
+<pre class="out">+----------+------------+---------------------+----------+
+| order_id | order_date | title               | quantity |
++----------+------------+---------------------+----------+
+|        1 | 2026-01-15 | 1984                |        2 |
+|        1 | 2026-01-15 | Dune                |        1 |
+|        2 | 2026-02-20 | Pride and Prejudice |        1 |
+|        8 | 2026-04-05 | Lord of the Rings   |        1 |
++----------+------------+---------------------+----------+</pre>
+Order 1 appears twice: one row per order LINE. Remember that before adding things up.</li>
+  <li><b>Joins with GROUP BY: zeros included (2m).</b> "Books per author, Asimov included. COUNT the right table's id."
+<pre class="code"><span class="k">SELECT</span> a.name <span class="k">AS</span> author, COUNT(b.id) <span class="k">AS</span> books
+<span class="k">FROM</span> authors <span class="k">AS</span> a
+<span class="k">LEFT</span> <span class="k">JOIN</span> books <span class="k">AS</span> b <span class="k">ON</span> b.author_id = a.id
+<span class="k">GROUP</span> <span class="k">BY</span> a.id, a.name
+<span class="k">ORDER</span> <span class="k">BY</span> books <span class="k">DESC</span>, author;</pre>
+<pre class="out">+---------------------+-------+
+| author              | books |
++---------------------+-------+
+| George Orwell       |     2 |
+| J.R.R. Tolkien      |     2 |
+| Aldous Huxley       |     1 |
+| F. Scott Fitzgerald |     1 |
+| Frank Herbert       |     1 |
+| Harper Lee          |     1 |
+| J.D. Salinger       |     1 |
+| Jane Austen         |     1 |
+| Ray Bradbury        |     1 |
+| Isaac Asimov        |     0 |
++---------------------+-------+</pre></li>
+  <li><b>What each customer spent (2m).</b> "Both joins LEFT so Carol and Hank stay; COUNT(DISTINCT o.id) counts orders, not lines; COALESCE turns their NULL sums into 0."
+<pre class="code"><span class="k">SELECT</span>
+    CONCAT(c.first_name, <span class="s">' '</span>, c.last_name)           <span class="k">AS</span> customer,
+    COUNT(<span class="k">DISTINCT</span> o.id)                             <span class="k">AS</span> orders,
+    COALESCE(SUM(oi.quantity * oi.price_at_time), <span class="s">0</span>) <span class="k">AS</span> spent
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o       <span class="k">ON</span> o.customer_id = c.id
+<span class="k">LEFT</span> <span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.order_id = o.id
+<span class="k">GROUP</span> <span class="k">BY</span> c.id, c.first_name, c.last_name
+<span class="k">ORDER</span> <span class="k">BY</span> spent <span class="k">DESC</span>, customer;</pre>
+<pre class="out">+----------------+--------+-------+
+| customer       | orders | spent |
++----------------+--------+-------+
+| Alice Johnson  |      3 | 58.95 |
+| Dave Brown     |      2 | 45.96 |
+| Frank Miller   |      2 | 41.96 |
+| Grace Wilson   |      2 | 33.97 |
+| Bob Smith      |      2 | 33.47 |
+| Eve Davis      |      1 | 22.98 |
+| Carol Williams |      0 |  0.00 |
+| Hank Taylor    |      0 |  0.00 |
++----------------+--------+-------+</pre></li>
+  <li><b>Trap 1: an ambiguous column.</b> 
+<pre class="code"><span class="k">SELECT</span> id, title, name
+<span class="k">FROM</span> books
+<span class="k">JOIN</span> authors <span class="k">ON</span> books.author_id = authors.id;</pre>
+<pre class="out">ERROR 1052 (23000): Column 'id' in field list is ambiguous</pre>
+Qualify it: <code class="inline">books.id</code> or <code class="inline">b.id</code>.</li>
+  <li><b>Trap 2: WHERE on the right table (silent) (2m).</b> "Every customer, with their orders from May on." Predict how many customers come back.
+<pre class="code"><span class="k">SELECT</span> c.first_name, o.order_date
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o <span class="k">ON</span> o.customer_id = c.id
+<span class="k">WHERE</span> o.order_date &gt;= <span class="s">'2026-05-01'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> c.first_name;</pre>
+<pre class="out">+------------+------------+
+| first_name | order_date |
++------------+------------+
+| Dave       | 2026-06-07 |
+| Frank      | 2026-05-02 |
+| Grace      | 2026-05-19 |
++------------+------------+</pre>
+Three, not eight: for customers without a May order the date is NULL and WHERE drops them. The LEFT JOIN has quietly become an inner join.</li>
+  <li><b>The fix: the condition goes in ON (1m).</b> 
+<pre class="code"><span class="k">SELECT</span> c.first_name, o.order_date
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o
+       <span class="k">ON</span> o.customer_id = c.id
+      <span class="k">AND</span> o.order_date &gt;= <span class="s">'2026-05-01'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> c.first_name;</pre>
+<pre class="out">+------------+------------+
+| first_name | order_date |
++------------+------------+
+| Alice      | NULL       |
+| Bob        | NULL       |
+| Carol      | NULL       |
+| Dave       | 2026-06-07 |
+| Eve        | NULL       |
+| Frank      | 2026-05-02 |
+| Grace      | 2026-05-19 |
+| Hank       | NULL       |
++------------+------------+</pre>
+Eight customers; the condition decides which orders match without removing anyone.</li>
+  <li><b>Trap 3: COUNT(*) after a LEFT JOIN (silent).</b> "Asimov has no books."
+<pre class="code"><span class="k">SELECT</span> a.name, COUNT(*) <span class="k">AS</span> books
+<span class="k">FROM</span> authors <span class="k">AS</span> a
+<span class="k">LEFT</span> <span class="k">JOIN</span> books <span class="k">AS</span> b <span class="k">ON</span> b.author_id = a.id
+<span class="k">WHERE</span> a.id <span class="k">IN</span> (<span class="s">2</span>, <span class="s">10</span>)
+<span class="k">GROUP</span> <span class="k">BY</span> a.id, a.name
+<span class="k">ORDER</span> <span class="k">BY</span> a.id;</pre>
+<pre class="out">+---------------+-------+
+| name          | books |
++---------------+-------+
+| George Orwell |     2 |
+| Isaac Asimov  |     1 |
++---------------+-------+</pre>
+<code class="inline">COUNT(*)</code> counted his padded row. Count the right table's column: <code class="inline">COUNT(b.id)</code>.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Ambiguous or alias-mismatched columns</b> (1052, 1054). Coach: "Which table does this column come from? Write it in front, with the alias." Many developers qualify every column in a join.</li>
+  <li><b>A LEFT JOIN that silently became an inner join</b> (a right-table condition in WHERE). Coach: "Who disappeared? Carol and Hank? Then your WHERE removed the NULL rows: move the condition into ON."</li>
+  <li><b>Counting after a fan-out.</b> Coach with the board question: "What does one row stand for here?" Then <code class="inline">COUNT(DISTINCT ...)</code>, or count the right table's id after a LEFT JOIN.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-07/l4_3-joins/catalog_joins_starter.sql</code>; reference <code class="inline">labs/module-07/l4_3-joins/catalog_joins_solution.sql</code>. Four questions, each missing its join: an INNER JOIN through three tables, a LEFT JOIN with GROUP BY (Asimov's 0), an anti-join on the self-reference (Session 6 did it with NOT EXISTS), and a self-join with a computed column.</p>
+<ul class="tick">
+  <li><b>TODO 1 together (5m), TODOs 2 to 4 in pairs (13m).</b> Expected: order 7 = 1984 and Animal Farm (Orwell), order 12 = Animal Farm and Fahrenheit 451; authors Orwell 2 / 8.49, Tolkien 2 / 10.99 ... Asimov 0 / NULL; Tom, Lena, Sofia, Nina, Ben manage nobody; Sofia was hired 5 years after Marcus, Tom 3 after Priya.</li>
+  <li><b>Circulate for:</b> <code class="inline">COUNT(*)</code> in TODO 2 (Asimov gets 1: ask them to read his row), the anti-join testing <code class="inline">e.id IS NULL</code> instead of <code class="inline">report.id IS NULL</code> (nothing comes back), and a self-join without aliases (1066).</li>
+  <li><b>Debrief (2m):</b> "TODO 3 answered a Session 6 question. Which version, NOT EXISTS or the anti-join, would you rather read next month?" Either is right.</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-07/l4_3-joins/city_sales_starter.sql</code> (revenue per city with the NULL group, DISTINCT after a fan-out, the WHERE-versus-ON trap on a new question), then <code class="inline">labs/module-07/l4_3-joins/debug_joins.sql</code> (1052, 1054, 1066 and one silent count).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>The Sales Report</b>: <code class="inline">sales_report.sql</code>, six joined queries for the owner. In the room: Step 1 only (10 minutes).</p>
+<ul class="tick">
+  <li>Step 1: one row per order with the customer's name, the number of books and the total, grouped by the order. Twelve rows; order 1 totals 34.97.</li>
+  <li><b>Done in the room</b> = Step 1 runs from the file with SOURCE.</li>
+  <li><b>Goes home:</b> Steps 2 to 6 (revenue by month, best sellers, customers to welcome with the anti-join, sales by category, the staff directory with a self-join). The checklist's "the six monthly revenues add up to the sum of all order totals" is a good self-test: 237.29 both ways.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud during the demo and the lab:</p>
+<ul class="tick">
+  <li>Customers JOIN orders returns 12 rows; LEFT JOIN returns 14. Who are the two extra rows? <b>Answer:</b> Carol and Hank, with NULL order columns.</li>
+  <li>How do you find the customers who never ordered? <b>Answer:</b> LEFT JOIN orders, WHERE o.id IS NULL (or NOT EXISTS).</li>
+  <li>Why <code class="inline">COUNT(b.id)</code> and not <code class="inline">COUNT(*)</code> after a LEFT JOIN? <b>Answer:</b> <code class="inline">COUNT(*)</code> counts the NULL-padded row; COUNT(b.id) skips it.</li>
+  <li>Why does a self-join need aliases? <b>Answer:</b> the same table plays two roles; without aliases every column is ambiguous (1066).</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6 (4.3):</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">C) <code class="inline">14</code></span>; <b>Q2</b> <span data-sc="2">A) <code class="inline">FROM books b LEFT JOIN order_items oi ON oi.book_id = b.id WHERE oi.id IS NULL</code></span>; <b>Q3</b> <span data-sc="3"><code class="inline">4</code> (one row per order line, not per order)</span>; <b>Q4</b> <span data-sc="4">B) <code class="inline">ERROR 1052 (23000): Column 'id' in field list is ambiguous</code></span>; <b>Q5</b> <span data-sc="5"><code class="inline">Carol | 0</code> and <code class="inline">Dave | 2</code></span>; <b>Q6</b> <span data-sc="6">D) The WHERE runs after the join: for the padded rows b.in_stock is NULL, so the LEFT JOIN behaves like an inner join</span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> the workbook's worked example (guests and RSVPs, four guests, three replies) shows JOIN, LEFT JOIN, the anti-join and <code class="inline">COUNT(*)</code> against <code class="inline">COUNT(r.id)</code> on data small enough to check by eye.</p>
+<p><b>Stretch:</b> <code class="inline">city_sales_starter.sql</code> and <code class="inline">debug_joins.sql</code>; the lesson's Exercise 4 (skip-level managers) and the Bonus Challenge (a full outer join with UNION).</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Part 1 Assessment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">1:25</span><h3>Part 1 Assessment: The Riverside Cooking School</h3><span class="dur">70 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Brief and setup: the rules, the data, the hand-in; everyone SOURCEs the starter once and sees its placeholder output</td></tr>
+<tr><td class="t">20m</td><td>Part A (suggested): build the enrollments table, load it, two refused statements, one UPDATE, one DELETE</td></tr>
+<tr><td class="t">35m</td><td>Part B (suggested): eight queries on the data after Part A</td></tr>
+<tr><td class="t">5m</td><td>Final run: SOURCE the whole file, fix the first error, hand in</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">What to say at 1:25 (brief and setup)</div>
+<ul class="tick">
+  <li>"For the next hour you show what you can do with Part 1, alone. It is <b>open book</b>: the lesson pages, your notes, your workbook and your own scripts are all allowed. Other people and AI assistants are not. Nobody can finish everything perfectly in an hour; do what you can do well."</li>
+  <li>"Open <code class="inline">labs/module-07/part1-assessment/part1_assessment_starter.sql</code> in your editor. The file is the brief: read its first block with me." Walk through the header: the cooking school, the three given tables, Part A, Part B, the hand-in. Everyone runs it once: <code class="inline">SOURCE labs/module-07/part1-assessment/part1_assessment_starter.sql</code>. They should see the three tables built, TODO lines and no ERROR.</li>
+  <li>"Write every answer in the file, under its TODO. After each answer, save and SOURCE the file again: it rebuilds the school from scratch every time, so you cannot break anything. Part B runs on the data AFTER Part A: if you skip a Part A step, later numbers change, and that is fine; just keep going."</li>
+  <li>"You may answer with joins or with subqueries: either is fine if the result is right and the query reads clearly. Every query that returns several rows needs an ORDER BY."</li>
+  <li>"At 2:30 I say 'five minutes': SOURCE the whole file once more, fix the FIRST error if there is one, rename the file <code class="inline">part1_assessment_&lt;yourname&gt;.sql</code> and hand it in." Write the hand-in channel and 2:35 on the board.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">During the assessment</div>
+<ul class="tick">
+  <li><b>Answer environment questions only:</b> a client that will not start, <code class="inline">Failed to open file</code>, a forgotten password. For SQL questions: "Look at the error number, then the lesson page for it."</li>
+  <li><b>Time calls on the board:</b> 1:55 "Part A should be done", 2:15 "halfway through Part B", 2:30 "five minutes: run the whole file, hand in".</li>
+  <li><b>Watch, do not grade yet:</b> note learners who are stuck on A1 for more than 15 minutes; at 1:50 tell them privately to paste the A2 INSERT under a minimal table (two INT columns and a date) so Part B can run (they lose points on A1 only).</li>
+  <li><b>A learner finishes early:</b> ask them to reread every ORDER BY and every typed number, then the stretch: "what would change in B8 if class prices changed later?" (a price_at_time column).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Scoring (after the session)</div>
+<p>Score each file with the five-row rubric in <code class="inline">final-assessment.html</code> (Part 1 assessment section): table design and constraints; data changes and integrity; filtering, sorting and aggregates; subqueries and joins; script quality. Run each file first (<code class="inline">SOURCE</code> it, or <code class="inline">python3 labs/check_labs.py --file &lt;file&gt;</code> after adding a <code class="inline">-- state: none</code> line if it is missing); a file that stops with an error is scored on what it printed and the code you can read. The answer notes list the reference numbers and what each common wrong answer prints.</p>
+<p>The reference output (instructor copy, never handed out before scoring):</p>
+<pre class="out">+---------------+-------------+---------+
+| name          | enrollments | revenue |
++---------------+-------------+---------+
+| Marco Rossi   |           5 |  330.00 |
+| Aiko Tanaka   |           4 |  260.00 |
+| Lena Fischer  |           4 |  240.00 |
+| Diego Morales |           2 |  100.00 |
+| Nadia Haddad  |           0 |    0.00 |
++---------------+-------------+---------+</pre><p>Above: B8, the hardest task (five instructors, Nadia Haddad with 0 enrollments and 0.00). The Answer Key prints the whole reference run.</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2:35</span><h3>Part 1 Review</h3><span class="dur">15 min</span></div>
+    <div class="lesson-body">
+<div class="blk lab"><div class="h">How it runs</div>
+<p>Files are in; scores come later. This is about how to think, not about marks. On the projector, the reference solution's approaches (not its numbers, if your program returns scored work before sharing answers):</p>
+<ul class="tick">
+  <li><b>A1 (3m):</b> the composite primary key (<code class="inline">PRIMARY KEY (student_id, class_id)</code>) is the "only once" rule; the CHECK is the 1 to 5 rule; two named keys. Ask two learners for their delete rules and reasons: different choices with good reasons both score.</li>
+  <li><b>B2 and B4 (3m):</b> WHERE before the piles, HAVING after; <code class="inline">COUNT(rating)</code> and <code class="inline">AVG(rating)</code> skip the blanks, <code class="inline">COALESCE(rating, 0)</code> would turn "not yet rated" into a zero star and drag the averages down.</li>
+  <li><b>B5 (1m):</b> a typed 61.43 gives the right rows today and the wrong ones after the next price change: a subquery computes it fresh.</li>
+  <li><b>B6 to B8 (5m):</b> one row of B6's join is one enrollment; B7 is the anti-join (or NOT EXISTS); B8 needs every instructor (LEFT JOIN from instructors) and a sum that ignores the padded rows.</li>
+  <li><b>The map of Part 1 (3m):</b> the workbook's Part 1 map, one line per module: Module 1 server, client, database; Module 2 tables, types, constraints, CRUD; Module 3 filter, sort, summarize, nest; Module 4 relate, protect, join. "Every task in the assessment came from one of these lines."</li>
+</ul>
+<p>The workbook's Part 1 review self-check (Q7 to Q12, one question per lesson group; homework or a Session 8 refresher):</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">A) <code class="inline">DECIMAL(8, 2)</code></span>; <b>Q8</b> <span data-sc="8"><code class="inline">ERROR 1062 (23000): Duplicate entry 'alice@example.com' for key 'customers.email'</code></span>; <b>Q9</b> <span data-sc="9">B) <code class="inline">3</code></span>; <b>Q10</b> <span data-sc="10">D) SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT</span>; <b>Q11</b> <span data-sc="11"><code class="inline">Pride and Prejudice</code> (one row)</span>; <b>Q12</b> <span data-sc="12">C) A junction table linking orders and books (many-to-many), carrying facts about each link: quantity and price_at_time</span>. Full set with explanations in the Answer Key.</p></div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, 4 minutes)</div>
+<p>A reflective exit ticket after the assessment; collect it with the files. Question 2 tells you what to reteach first if Part 2 follows.</p>
+<ol class="steps">
+  <li>In one sentence each, with the customers and orders tables: what does JOIN return, and what does LEFT JOIN add? <b>Answer:</b> JOIN returns one row per customer-order pair (12 rows, no Carol or Hank); LEFT JOIN also keeps every customer without an order, with NULLs (14 rows).</li>
+  <li>Which assessment task was hardest for you, and what would you look up first? <b>Answer:</b> a reflection; group the answers by task (A1, B4, B7 and B8 are the usual ones).</li>
+  <li>Name one thing from Part 1 you will use in a project or at work, and one you want to practice. <b>Answer:</b> a reflection.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Version A: Part 1 runs on its own (the course ends today)</div>
+<ul class="tick">
+  <li><b>Close the course (5m).</b> Thank the room. Show the map of Part 1 once more: "Seven sessions ago you installed a server. Today you designed a table with keys and rules, changed data safely, and answered eight questions about a database you had never seen."</li>
+  <li><b>Completion:</b> say how and when results come back (within a week is a good promise). A learner completes Part 1 when the assessment is met on the rubric in <code class="inline">final-assessment.html</code> (or met after one revision) and the sessions were attended or made up.</li>
+  <li><b>Next steps:</b> Part 2 if your program offers it (CTEs and window functions, indexes and views, design and normalization, stored programs, transactions and JSON, users and backups, a final project); otherwise the course site's Lessons 5.1 to 8.3 are a self-study path in the same style. Practice suggestion: one real question a week about data they care about, answered in SQL.</li>
+  <li><b>Course evaluation</b> before they leave (link or paper).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Version B: Part 2 follows (Session 8 is next)</div>
+<ul class="tick">
+  <li><b>Homework (about 2 to 3 hours):</b> the sales report Steps 2 to 6; 4.3 Hands-on Exercises 1 to 3; the 4.3 Quick Quiz and journal; the workbook's Part 1 review self-check (Q7 to Q12); the 4.3 labs not finished.</li>
+  <li><b>Bring list for Session 8:</b> a laptop with <code class="inline">bookstore.sql</code> loaded (reload it: today's labs change nothing, but the 4.3 lesson's "Before the Next Lesson" asks for a fresh copy); <code class="inline">sales_report.sql</code>, finished; the course folder with <code class="inline">labs/</code>; the workbook and the journal.</li>
+  <li><b>Bridge (1m):</b> "Your sales report reads inside out in places, and the staff hierarchy needed one join per level. Session 8 fixes both: CTEs name the steps of a long query, and window functions rank and total without collapsing rows."</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours)</div>
+<ul class="tick">
+  <li><b>Finish the lesson project:</b> <code class="inline">sales_report.sql</code> Steps 2 to 6 (optional practice if Part 1 ends today).</li>
+  <li><b>Lesson exercises:</b> 4.3 Exercises 1 to 3 (Exercise 4 is a stretch).</li>
+  <li><b>The 4.3 Quick Quiz</b> on the lesson page and <b>the 4.3 journal entry</b> (the guest list and RSVPs).</li>
+  <li><b>Part 1 review:</b> the workbook's self-check Q7 to Q12, then the matching lesson sections for any you missed.</li>
+  <li><b>Labs not finished in class:</b> <code class="inline">catalog_joins_starter.sql</code>, <code class="inline">city_sales_starter.sql</code>, <code class="inline">debug_joins.sql</code>.</li>
+  <li><b>Before the Next Lesson (from 4.3, if Part 2 follows):</b> run <code class="inline">sales_report.sql</code> from a fresh session; rewrite one anti-join with NOT EXISTS; reload <code class="inline">bookstore.sql</code>.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> the 60 assessment minutes and the 1:25 start; 4.3 demo Steps 1 to 4 and 12 to 14.</li>
+  <li><b>Cut first (saves up to 20m):</b> the 4.3 guided lab. Learners take <code class="inline">catalog_joins_starter.sql</code> home; its expected output is in the file.</li>
+  <li><b>Cut second (saves 10m):</b> the project start: Step 1 goes home with the rest.</li>
+  <li><b>Cut third (saves 7m):</b> demo Steps 5 to 8 (books never sold, the cross join, the self-join, four tables): show the slides only.</li>
+  <li><b>If the assessment starts late anyway:</b> keep the full 60 minutes and shorten the review to five minutes (A1 and B8 only).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>Before the break: <code class="inline">debug_joins.sql</code> with the whole room (three errors and the silent fan-out).</li>
+  <li>After the assessment: let learners compare their B8 with a neighbor's and explain any difference in one sentence (the most instructive task to discuss).</li>
+  <li>For Version A: ten minutes of "ask me anything" about where SQL goes next (the jobs, the tools, the other databases).</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 7 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

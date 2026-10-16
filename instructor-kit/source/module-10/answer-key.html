@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 10</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 10: Normalization and Stored Programs</h1>
+    <p class="sub">Answers and reasoning for every Session 10 item: the warm-up, both self-checks, the predict-then-run items, the lab reference outputs, both debug handouts, the lesson pages' own quizzes and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>10</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Warm-up</h2><span class="rule"></span></div>
+<p>Answers to W1 to W5, with MySQL's real output where the question shows code:</p>
+<div class="q"><div class="qn">W1</div><div class="qt">Which plan line do you expect, and why is there an index at all?</div><pre class="code"><span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> orders <span class="k">WHERE</span> customer_id = <span class="s">4</span>\G</pre><div class="opts"><div class="opt correct">Index lookup on orders using fk_orders_customer: InnoDB created that index for the foreign key.</div></div><div class="why"><pre class="out">*************************** 1. row ***************************
+EXPLAIN: -&gt; Index lookup on orders using fk_orders_customer (customer_id = 4)  (cost=0.7 rows=2)</pre></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Is this view updatable?</div><pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_cheap <span class="k">AS</span> <span class="k">SELECT</span> id, title, price <span class="k">FROM</span> books <span class="k">WHERE</span> price &lt; <span class="s">9</span>;
+<span class="k">SELECT</span> TABLE_NAME, IS_UPDATABLE <span class="k">FROM</span> information_schema.VIEWS
+<span class="k">WHERE</span> TABLE_SCHEMA = <span class="s">'bookstore'</span> <span class="k">AND</span> TABLE_NAME = <span class="s">'v_cheap'</span>;
+<span class="k">DROP</span> <span class="k">VIEW</span> v_cheap;</pre><div class="opts"><div class="opt correct">YES: each view row is one books row (no grouping, DISTINCT or UNION).</div></div><div class="why"><pre class="out">+------------+--------------+
+| TABLE_NAME | IS_UPDATABLE |
++------------+--------------+
+| v_cheap    | YES          |
++------------+--------------+</pre></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">An index on (customer_id, sold_on): can a query on a sold_on range alone seek with it?</div><div class="opts"><div class="opt correct">No: the dates are sorted only within each customer (leftmost prefix).</div></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">What does MySQL store when you create a view?</div><div class="opts"><div class="opt correct">Only the query; rows are computed on every read.</div></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">What does WITH CHECK OPTION refuse?</div><div class="opts"><div class="opt correct">A write through the view that would produce a row the view cannot show (1369).</div></div></div>
+
+  <div class="sec"><h2>6.3 · Database Design &amp; Normalization: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Alice's email is stored on three order rows. Someone corrects it on one row only, and now the table holds two emails for her. Which anomaly is this?</div><div class="opts"><div class="opt correct">A) An update anomaly</div><div class="opt">B) An insert anomaly</div><div class="opt">C) A delete anomaly</div><div class="opt">D) A first normal form violation</div></div><div class="why"><b>Why:</b> A fact stored several times was changed in one place: the copies drift apart and no query can tell which is right. The cause is the same as for all three anomalies: facts about a customer stored in an order table.<br><b>B</b> is wrong: An insert anomaly is when you cannot add a fact (a customer with no order) without another one.<br><b>C</b> is wrong: A delete anomaly is losing a fact (a customer) by deleting another (their only order).<br><b>D</b> is wrong: Every cell here holds one value; the problem is repetition, which 2NF and 3NF deal with.</div></div>
+  <div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">A contacts table has the columns <code class="inline">name</code>, <code class="inline">phone1</code>, <code class="inline">phone2</code> and <code class="inline">phone3</code>. Which normal form does it break?</div><div class="opts"><div class="opt">A) Second normal form</div><div class="opt">B) Third normal form</div><div class="opt correct">C) First normal form: a repeating group of columns</div><div class="opt">D) None: three columns are fine</div></div><div class="why"><b>Why:</b> Numbered columns are a list spread across columns: a fourth phone needs a new column, and "who has this number?" must check three columns. 1NF: one row per phone in a child table (contact_id, phone).<br><b>A</b> is wrong: 2NF is about partial dependencies on a composite key.<br><b>B</b> is wrong: 3NF is about non-key columns that depend on other non-key columns.<br><b>D</b> is wrong: It works until someone has four numbers, and every search gets three times longer.</div></div>
+  <div class="q" data-sc="3"><div class="qn">Q3</div><div class="qt"><code class="inline">enrollments(student_id, course, course_room, grade)</code> has the key <code class="inline">(student_id, course)</code>. Each course meets in one room. Which rule does <code class="inline">course → course_room</code> break?</div><div class="opts"><div class="opt">A) 1NF</div><div class="opt correct">B) 2NF: course_room depends on only part of the key</div><div class="opt">C) 3NF: a transitive dependency</div><div class="opt">D) None: course is part of the key</div></div><div class="why"><b>Why:</b> course_room needs only course, not the whole key, so every student's row repeats the room. Fix: courses(course, room) and enrollments(student_id, course, grade).<br><b>A</b> is wrong: Every cell holds one value.<br><b>C</b> is wrong: Transitive means through a NON-key column; course is part of the key.<br><b>D</b> is wrong: Being part of the key is exactly what makes it a partial dependency.</div></div>
+  <div class="q" data-sc="4" data-kind="short"><div class="qn">Q4</div><div class="qt"><code class="inline">employees(id, name, dept_id, dept_name)</code> has the key <code class="inline">id</code>. Which dependency breaks 3NF, and what is the fix?</div><div class="opts"><div class="opt correct"><code class="inline">dept_id → dept_name</code> (a transitive dependency: id → dept_id → dept_name); move dept_name to <code class="inline">departments(id, name)</code> and keep dept_id as a foreign key</div></div><div class="why"><b>Why:</b> dept_name describes the department, not the employee. As long as it lives in employees, renaming a department means updating every employee in it.</div></div>
+  <div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">You split a flat table into four, then run two EXCEPT queries in opposite directions (old rows EXCEPT the rebuilt join, and the other way). Both print Empty set. What does that prove?</div><div class="opts"><div class="opt">A) Every new table has a primary key</div><div class="opt">B) The new tables contain no duplicates</div><div class="opt">C) The design is in 3NF</div><div class="opt correct">D) The four tables, joined back, hold exactly the original rows: the split lost nothing and added nothing</div></div><div class="why"><b>Why:</b> EXCEPT returns rows of the first query missing from the second. One direction catches lost rows, the other catches invented ones (a wrong join). Both empty = lossless.<br><b>A</b> is wrong: Keys are a separate check (SHOW CREATE TABLE).<br><b>B</b> is wrong: EXCEPT compares the two sides; it says nothing about duplicates inside one table.<br><b>C</b> is wrong: A lossless split can still keep a transitive dependency.</div></div>
+  <div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt"><code class="inline">SELECT member_email FROM club_signups GROUP BY member_email HAVING COUNT(DISTINCT member_name) &gt; 1;</code> prints Empty set. What can you conclude?</div><div class="opts"><div class="opt">A) <code class="inline">member_email → member_name</code> is proved</div><div class="opt correct">B) The data does not contradict member_email → member_name; whether it is a rule is a business decision</div><div class="opt">C) <code class="inline">member_name → member_email</code> holds</div><div class="opt">D) The table is in 3NF</div></div><div class="why"><b>Why:</b> Data can disprove a dependency (one counterexample is enough) but never prove one: the next sign-up might break it. The rule comes from the business ("an email belongs to one member").<br><b>A</b> is wrong: Six rows cannot prove a rule about all future rows.<br><b>C</b> is wrong: The query tests the other direction.<br><b>D</b> is wrong: One dependency says nothing about the whole table's normal form.</div></div>
+
+  <div class="sec"><h2>6.3 · Database Design &amp; Normalization: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> sheet (member <span class="k">VARCHAR</span>(<span class="s">30</span>), club <span class="k">VARCHAR</span>(<span class="s">30</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> sheet <span class="k">VALUES</span> (<span class="s">'Ana'</span>, <span class="s">'Chess'</span>), (<span class="s">'Ben'</span>, <span class="s">'Chess'</span>), (<span class="s">'Ana'</span>, <span class="s">'Poetry'</span>),
+                         (<span class="s">'Cy'</span>, <span class="s">'Poetry'</span>), (<span class="s">'Ben'</span>, <span class="s">'Chess'</span>);
+<span class="k">CREATE</span> <span class="k">TABLE</span> members (id <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">30</span>) <span class="k">UNIQUE</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> members (name) <span class="k">SELECT</span> <span class="k">DISTINCT</span> member <span class="k">FROM</span> sheet <span class="k">ORDER</span> <span class="k">BY</span> member;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> sheet_rows, (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> members) <span class="k">AS</span> members <span class="k">FROM</span> sheet;</pre><div class="opts"><div class="opt correct"><pre class="out">+------------+---------+
+| sheet_rows | members |
++------------+---------+
+|          5 |       3 |
++------------+---------+</pre></div></div><div class="why"><b>Why:</b> Five sheet rows, three distinct members (Ana, Ben, Cy): SELECT DISTINCT collapses the copies, and the UNIQUE on name would refuse a second run (1062).</div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> title <span class="k">FROM</span> books <span class="k">WHERE</span> price &lt; <span class="s">9</span>
+<span class="k">EXCEPT</span>
+<span class="k">SELECT</span> title <span class="k">FROM</span> books <span class="k">WHERE</span> in_stock = <span class="k">FALSE</span>
+<span class="k">ORDER</span> <span class="k">BY</span> title;</pre><div class="opts"><div class="opt correct"><pre class="out">+---------------------+
+| title               |
++---------------------+
+| Animal Farm         |
+| Pride and Prejudice |
++---------------------+</pre></div></div><div class="why"><b>Why:</b> Books under $9 are The Great Gatsby, The Catcher in the Rye, Animal Farm and Pride and Prejudice; EXCEPT removes the two that are out of stock. The ORDER BY sorts the whole EXCEPT result.</div></div>
+
+  <div class="sec"><h2>7.1 · Stored Procedures &amp; Functions: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">In the mysql client, without changing the delimiter, you type a procedure whose body is <code class="inline">BEGIN SELECT ...; END;</code>. What happens?</div><div class="opts"><div class="opt correct">A) Two <code class="inline">ERROR 1064</code> lines: the client sent the text in two pieces at the semicolons</div><div class="opt">B) <code class="inline">ERROR 1418</code></div><div class="opt">C) The procedure is created</div><div class="opt">D) <code class="inline">ERROR 1304: PROCEDURE already exists</code></div></div><div class="why"><b>Why:</b> The client splits at every ; and sends the unfinished CREATE ... BEGIN SELECT ... (1064 near ''), then the leftover END (1064 near 'END'). DELIMITER // ... // ... DELIMITER ; sends the whole body at once (the debug handout's section A).<br><b>B</b> is wrong: 1418 is for functions without characteristics.<br><b>C</b> is wrong: Only a one-statement body without BEGIN and END works without a delimiter change.<br><b>D</b> is wrong: Nothing was created, so nothing exists yet.</div></div>
+  <div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">What does this print? (Books under $9: The Great Gatsby, The Catcher in the Rye, Animal Farm, Pride and Prejudice.)</div><pre class="code"><span class="k">CREATE</span> <span class="k">PROCEDURE</span> count_cheaper(<span class="k">IN</span> p_price <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>), <span class="k">OUT</span> p_n <span class="k">INT</span>)
+    <span class="k">SELECT</span> COUNT(*) <span class="k">INTO</span> p_n <span class="k">FROM</span> books <span class="k">WHERE</span> price &lt; p_price;
+<span class="k">CALL</span> count_cheaper(<span class="s">9.00</span>, @n);
+<span class="k">SELECT</span> @n <span class="k">AS</span> cheaper;</pre><div class="opts"><div class="opt correct"><code class="inline">4</code> (in a column named <code class="inline">cheaper</code>)</div></div><div class="why"><b>Why:</b> The one-statement body needs no BEGIN and no delimiter change. SELECT ... INTO stores the count in the OUT parameter, which lands in @n; the CALL itself prints nothing.</div></div>
+  <div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">A stored function returns <code class="inline">ROUND(p_amount * 1.08, 2)</code> and reads no table. Which characteristics are true of it?</div><div class="opts"><div class="opt">A) <code class="inline">READS SQL DATA</code></div><div class="opt">B) <code class="inline">MODIFIES SQL DATA</code></div><div class="opt">C) <code class="inline">NOT DETERMINISTIC</code> (the default)</div><div class="opt correct">D) <code class="inline">DETERMINISTIC</code> and <code class="inline">NO SQL</code></div></div><div class="why"><b>Why:</b> Same input, same output, and no SQL statement in the body: the lesson's with_tax. With binary logging on, one of DETERMINISTIC, NO SQL or READS SQL DATA is required (1418), and the promise must be true.<br><b>A</b> is wrong: It reads no table.<br><b>B</b> is wrong: It changes nothing.<br><b>C</b> is wrong: False modesty is legal but untrue, and on its own it is refused with 1418.</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">A procedure runs <code class="inline">SELECT title INTO p_title FROM books WHERE author_id = p_author_id;</code>. What happens when it is called for J.R.R. Tolkien, who has two books?</div><div class="opts"><div class="opt">A) p_title gets the first title in id order</div><div class="opt">B) p_title is NULL</div><div class="opt correct">C) <code class="inline">ERROR 1172 (42000): Result consisted of more than one row</code></div><div class="opt">D) p_title holds both titles, separated by a comma</div></div><div class="why"><b>Why:</b> One variable cannot hold two rows. The procedure was created without complaint; the error appears only on a call that hits it, which is why routines are tested with awkward inputs. Fix: an aggregate (MIN(title)) or ORDER BY ... LIMIT 1.<br><b>A</b> is wrong: MySQL does not pick one for you.<br><b>B</b> is wrong: NULL comes from an aggregate over no rows, not from two rows.<br><b>D</b> is wrong: That would be GROUP_CONCAT.</div></div>
+  <div class="q" data-sc="11" data-kind="short"><div class="qn">Q11</div><div class="qt">What does the CALL print?</div><pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> check_qty(<span class="k">IN</span> p_qty <span class="k">INT</span>)
+<span class="k">BEGIN</span>
+    <span class="k">IF</span> p_qty &lt; <span class="s">1</span> <span class="k">THEN</span>
+        <span class="k">SIGNAL</span> SQLSTATE <span class="s">'45000'</span> <span class="k">SET</span> MESSAGE_TEXT = <span class="s">'Quantity must be at least 1'</span>;
+    <span class="k">END</span> <span class="k">IF</span>;
+    <span class="k">SELECT</span> p_qty <span class="k">AS</span> accepted;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">CALL</span> check_qty(<span class="s">0</span>);</pre><div class="opts"><div class="opt correct"><code class="inline">ERROR 1644 (45000): Quantity must be at least 1</code></div></div><div class="why"><b>Why:</b> SIGNAL SQLSTATE '45000' raises your own error, reported as 1644 with your message, and stops the procedure: the SELECT after it never runs.</div></div>
+  <div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">Which of these can a stored function NOT do?</div><div class="opts"><div class="opt">A) Return one value</div><div class="opt">B) Read tables (declared READS SQL DATA)</div><div class="opt correct">C) Run <code class="inline">COMMIT</code> or <code class="inline">START TRANSACTION</code></div><div class="opt">D) Be used inside <code class="inline">WHERE</code></div></div><div class="why"><b>Why:</b> Functions cannot control transactions and cannot return result sets; procedures can (Lesson 7.2 puts transactions inside procedures). Used in WHERE, a function runs once per row, so keep it cheap.<br><b>A</b> is wrong: That is what a function is for.<br><b>B</b> is wrong: copies_sold and author_revenue do exactly that.<br><b>D</b> is wrong: Anywhere an expression fits: the functions lab filters with copies_sold(id) = 0.</div></div>
+
+  <div class="sec"><h2>7.1 · Stored Procedures &amp; Functions: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> double_it(<span class="k">INOUT</span> p_n <span class="k">INT</span>)
+<span class="k">BEGIN</span>
+    <span class="k">SET</span> p_n = p_n * <span class="s">2</span>;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">SET</span> @n = <span class="s">10</span>;
+<span class="k">CALL</span> double_it(@n);
+<span class="k">CALL</span> double_it(@n);
+<span class="k">SELECT</span> @n <span class="k">AS</span> n;</pre><div class="opts"><div class="opt correct"><pre class="out">+------+
+| n    |
++------+
+|   40 |
++------+</pre></div></div><div class="why"><b>Why:</b> INOUT reads the caller's value and replaces it: 10 → 20 → 40.</div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> first_title(<span class="k">IN</span> p_author_id <span class="k">INT</span>, <span class="k">OUT</span> p_title <span class="k">VARCHAR</span>(<span class="s">200</span>))
+<span class="k">BEGIN</span>
+    <span class="k">SELECT</span> MIN(title) <span class="k">INTO</span> p_title <span class="k">FROM</span> books <span class="k">WHERE</span> author_id = p_author_id;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">SET</span> @t = <span class="s">'nothing yet'</span>;
+<span class="k">CALL</span> first_title(<span class="s">10</span>, @t);
+<span class="k">SELECT</span> @t <span class="k">AS</span> asimov_first_title;</pre><div class="opts"><div class="opt correct"><pre class="out">+--------------------+
+| asimov_first_title |
++--------------------+
+| NULL               |
++--------------------+</pre></div></div><div class="why"><b>Why:</b> NULL, not 'nothing yet': an OUT parameter starts as NULL inside the procedure (it does not carry the caller's value in), and MIN over no rows is NULL. (With INOUT, 'nothing yet' would come in, but MIN over no rows would still overwrite it with NULL.)</div></div>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Lab 6.3-A: labs/module-10/l6_3-normalization/anomalies_starter.sql → anomalies_solution.sql</div>
+<p>The solution prints (the interactive client also prints Empty set for the host_email → host_name test):</p>
+<pre class="out">Database changed
++---------------+---------------------+---------------+------------+--------------+-------+
+| attendee_name | workshop            | workshop_date | room       | host_name    | fee   |
++---------------+---------------------+---------------+------------+--------------+-------+
+| Alice Johnson | Bookbinding Basics  | 2026-07-11    | Back room  | Lena Park    | 15.00 |
+| Bob Smith     | Bookbinding Basics  | 2026-07-11    | Back room  | Lena Park    | 15.00 |
+| Eve Davis     | Bookbinding Basics  | 2026-07-11    | Back room  | Lena Park    | 15.00 |
+| Alice Johnson | Writing Fan Fiction | 2026-07-18    | Front room | James Okafor | 10.00 |
+| Grace Wilson  | Writing Fan Fiction | 2026-07-18    | Front room | James Okafor | 10.00 |
+| Frank Miller  | Speed Reading       | 2026-07-25    | Back room  | Lena Park    | 12.00 |
++---------------+---------------------+---------------+------------+--------------+-------+
++--------------------+---------------+
+| workshop           | workshop_date |
++--------------------+---------------+
+| Bookbinding Basics | 2026-07-11    |
+| Bookbinding Basics | 2026-07-12    |
++--------------------+---------------+
++--------------------------+
+| rows_about_speed_reading |
++--------------------------+
+|                        0 |
++--------------------------+
++---------------------+-------+-------+-------+------+
+| workshop            | dates | rooms | hosts | fees |
++---------------------+-------+-------+-------+------+
+| Bookbinding Basics  |     1 |     1 |     1 |    1 |
+| Speed Reading       |     1 |     1 |     1 |    1 |
+| Writing Fan Fiction |     1 |     1 |     1 |    1 |
++---------------------+-------+-------+-------+------+
+Empty set
++-----------------------------+-----------+
+| host_email                  | workshops |
++-----------------------------+-----------+
+| lena.park@bookstore.example |         2 |
++-----------------------------+-----------+
++-------------+----------------+--------------------+
+| signup_rows | distinct_pairs | distinct_attendees |
++-------------+----------------+--------------------+
+|           6 |              6 |                  5 |
++-------------+----------------+--------------------+</pre><p>The dependencies: attendee_email → attendee_name; workshop → workshop_date, room, host_email, fee; host_email → host_name. The key: (attendee_email, workshop). host_email → workshop is broken by Lena (two workshops), which is why workshops point at hosts and not the other way around. Room → host is a trap: the data shows one host per room today (both back-room workshops are Lena's), but no business rule says so.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 6.3-B: labs/module-10/l6_3-normalization/normalize_starter.sql → normalize_solution.sql</div>
+<p>The solution prints (interactively, the two EXCEPT queries print Empty set between the counts and the last table):</p>
+<pre class="out">Database changed
++-----------+-------+-----------+---------+
+| attendees | hosts | workshops | signups |
++-----------+-------+-----------+---------+
+|         5 |     2 |         3 |       6 |
++-----------+-------+-----------+---------+
+Empty set
+Empty set
++---------------+--------------------+---------------+
+| attendee      | title              | workshop_date |
++---------------+--------------------+---------------+
+| Alice Johnson | Bookbinding Basics | 2026-07-12    |
+| Bob Smith     | Bookbinding Basics | 2026-07-12    |
+| Eve Davis     | Bookbinding Basics | 2026-07-12    |
++---------------+--------------------+---------------+</pre><p>Before TODO 1 and 2 the counts are 5, 0, 0, 0 and the first EXCEPT lists all six sheet rows: a missing parent makes the children's joins find nothing, which the proof catches. The second direction would catch a wrong join that invents rows (for example joining workshops on room instead of title).</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-10/l6_3-normalization/debug_design.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">Database changed
+ERROR 1062 (23000): Duplicate entry 'lena.park@bookstore.example' for key 'hosts.email'
+ERROR 3780 (HY000): Referencing column 'workshop_id' and referenced column 'id' in foreign key constraint 'fk_dbg_feedback_workshop' are incompatible.
+ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`kit_s10_debug`.`workshops`, CONSTRAINT `fk_dbg_workshops_host` FOREIGN KEY (`host_id`) REFERENCES `hosts` (`id`))
++-------+-----------+
+| hosts | workshops |
++-------+-----------+
+|     2 |         2 |
++-------+-----------+</pre><p>Fixes are in the guide's clinic block. The final counts (2 hosts, 2 workshops) show that nothing got in and nothing got lost.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 7.1-A: labs/module-10/l7_1-stored-procedures/procedures_starter.sql → procedures_solution.sql</div>
+<p>The solution prints (the Note 1305 lines in the checker's output come from DROP ... IF EXISTS on a first run):</p>
+<pre class="out">+-----------------+-------+
+| title           | price |
++-----------------+-------+
+| Brave New World |  9.49 |
+| 1984            |  9.99 |
+| Fahrenheit 451  | 10.49 |
++-----------------+-------+
++--------------+---------------+--------------+---------------+
+| orwell_books | orwell_copies | asimov_books | asimov_copies |
++--------------+---------------+--------------+---------------+
+|            2 |             6 |            0 |             0 |
++--------------+---------------+--------------+---------------+
++----+------------+-------+
+| id | title      | price |
++----+------------+-------+
+|  6 | The Hobbit | 12.09 |
++----+------------+-------+
++----+------------+-------+
+| id | title      | price |
++----+------------+-------+
+|  6 | The Hobbit | 10.99 |
++----+------------+-------+
++----------------+--------------+
+| ROUTINE_NAME   | ROUTINE_TYPE |
++----------------+--------------+
+| author_stats   | PROCEDURE    |
+| category_shelf | PROCEDURE    |
+| raise_price    | PROCEDURE    |
++----------------+--------------+</pre><p>TODO 3's test, run for real after the solution file: <code class="inline">CALL raise_price(6, 80);</code> prints</p>
+<pre class="out">ERROR 1644 (45000): Percent must be between 1 and 50
++----+------------+-------+
+| id | title      | price |
++----+------------+-------+
+|  6 | The Hobbit | 10.99 |
++----+------------+-------+</pre><p>and The Hobbit keeps its price, because the guard runs before the UPDATE.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 7.1-B: labs/module-10/l7_1-stored-procedures/functions_starter.sql → functions_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+----------+-------+----------+
+| order_id | items | shipping |
++----------+-------+----------+
+|        1 |     3 |     6.99 |
+|        2 |     1 |     4.99 |
+|        4 |     2 |     5.99 |
+|        8 |     1 |     4.99 |
+|       12 |     2 |     5.99 |
++----------+-------+----------+
++-------------------+--------+
+| title             | copies |
++-------------------+--------+
+| 1984              |      4 |
+| The Hobbit        |      3 |
+| Animal Farm       |      2 |
+| Lord of the Rings |      2 |
+| The Great Gatsby  |      0 |
++-------------------+--------+
++------------------------+
+| title                  |
++------------------------+
+| The Catcher in the Rye |
+| The Great Gatsby       |
++------------------------+
++--------------+------------------+-----------------+
+| ROUTINE_NAME | IS_DETERMINISTIC | SQL_DATA_ACCESS |
++--------------+------------------+-----------------+
+| copies_sold  | NO               | READS SQL DATA  |
+| shipping_fee | YES              | NO SQL          |
++--------------+------------------+-----------------+</pre><p>shipping_fee is DETERMINISTIC and NO SQL: the same item count always gives the same fee. copies_sold reads order_items, whose rows change, so READS SQL DATA (DETERMINISTIC would be a false promise the server cannot check). Used in WHERE, copies_sold runs once per book: fine for 11 rows, a reason to prefer a JOIN ... GROUP BY on big tables.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-10/l7_1-stored-procedures/debug_routines.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '' at line 3
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'END' at line 1
+ERROR 1418 (HY000): This function has none of DETERMINISTIC, NO SQL, or READS SQL DATA in its declaration and binary logging is enabled (you *might* want to use the less safe log_bin_trust_function_creators variable)
+ERROR 1172 (42000): Result consisted of more than one row
+ERROR 1304 (42000): PROCEDURE dbg_count_books already exists
+ERROR 1644 (45000): Pages must be a positive number
++----+----------------+-------+
+| id | title          | pages |
++----+----------------+-------+
+| 10 | Fahrenheit 451 |   158 |
++----+----------------+-------+</pre><p>Fixes are in the guide's clinic block. Section B fails only with binary logging on (the MySQL 8.0+ default); on MariaDB or a server with <code class="inline">--skip-log-bin</code> the function is created, which is exactly the trap the lesson describes.</p>
+</div>
+
+  <div class="sec"><h2>The Lesson Pages' Own Quick Quizzes</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Lesson 6.3 · Database Design &amp; Normalization</div>
+<ol class="steps" data-lesson-quiz="6.3">
+  <li><b>A</b> First normal form: 1NF requires one value per cell. A comma list puts two values in one cell, which is why SQL cannot sum or join on them.</li>
+  <li><b>C</b> A non-key column that depends on another non-key column: A non-key column determined by another non-key column, like order_id determining cust_email and cust_email determining cust_city. 3NF removes it by moving the customer columns to their own table.</li>
+  <li><b>B</b> 2NF: it depends on part of the key: order_date depends on order_id, which is only part of the composite key: a partial dependency, so the table is not in 2NF. That is why the date repeats on every line of an order.</li>
+  <li><b>A</b> No: it records what was paid on that order, a different fact from today's price: price_at_time is a fact about the sale, determined by (order_id, book_id). books.price is the current price. They only coincide until the first price change, and then old orders must keep what was actually paid.</li>
+  <li><b>B</b> When a measured query is too slow and you have a plan to keep the total in sync: Denormalize only for a measured problem that indexes and better queries did not solve, and only with a plan (a transaction, a trigger or a refresh) that keeps the stored value correct.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Lesson 7.1 · Stored Procedures &amp; Functions</div>
+<ol class="steps" data-lesson-quiz="7.1">
+  <li><b>B</b> The mysql command-line client: DELIMITER is a client command. The mysql client uses it to decide where one statement ends before sending it; the server only ever receives the finished CREATE PROCEDURE statement.</li>
+  <li><b>C</b> Every book in the table: Inside the routine the name id means the parameter, so the condition is 1 = 1 on every row and all the books come back, with no error or warning.</li>
+  <li><b>A</b> READS SQL DATA: The function reads tables and changes nothing, so READS SQL DATA is the honest description. It is also enough to avoid error 1418.</li>
+  <li><b>C</b> A stored function: Only a stored function returns a single value that can be used inside an expression, once per row of the query.</li>
+  <li><b>A</b> Error 1644 with the message from SIGNAL, and nothing is inserted: The IF check runs first and SIGNAL raises error 1644 with the procedure's own message. The procedure stops there, before either INSERT, so no author and no book are added.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>Partial dependency:</b> <code class="inline">order_id → order_date</code> (moves to orders) or <code class="inline">book_title → book_price</code> (moves to books). Reject <code class="inline">(order_id, book_title) → quantity</code>: that is the whole key, which is fine.</li>
+  <li><b>Check before change:</b> so a refused call leaves the data untouched (statements that already ran are not undone by SIGNAL); <code class="inline">SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '...'</code>, reported as error 1644.</li>
+  <li><b>Function / procedure:</b> a function (one value, inside a SELECT); a procedure (it inserts rows and returns the new id through an OUT parameter, like the project's add_book).</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q2 A or B.</b> Thinks numbered columns are a dependency problem. They are a list: 1NF.</li>
+  <li><b>Q3 C.</b> Mixes up "part of the key" (2NF) with "another non-key column" (3NF).</li>
+  <li><b>Q6 A.</b> Treats data as proof; worth repeating with the worked example's price_at_time.</li>
+  <li><b>Q7 C.</b> Believes the server reads DELIMITER, or has only seen one-statement bodies.</li>
+  <li><b>Q9 A.</b> Picks READS SQL DATA by reflex: the function reads no table.</li>
+  <li><b>Q10 A.</b> Expects MySQL to pick a row: it refuses (1172).</li>
+  <li><b>Exit ticket 3 "procedure" for both.</b> Ask them to write the SELECT with a CALL inside it: impossible.</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 10 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

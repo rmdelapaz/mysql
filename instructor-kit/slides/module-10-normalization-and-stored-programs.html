@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides: Session 10</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--ink2:#9fb2cd;--accent:#93c5fd;--accent2:#2563eb;--py:#f6a53b;--lab:#34d3bd;--warn:#fbbf24;--line:#22314c;--code:#0a1526;color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100%;width:100%;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:6vh 8vw;gap:20px}
+  .slide.on{display:flex}
+  h1,h2,h3{font-family:"Archivo",sans-serif;line-height:1.1;text-wrap:balance}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .slide h1{font-size:clamp(2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+  .slide h2{font-size:clamp(1.5rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+  .slide p.lead{font-size:clamp(1.05rem,2.4vw,1.5rem);color:var(--ink2);max-width:34ch}
+  ul,ol.num{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  ul li{position:relative;padding-left:34px;font-size:clamp(1.05rem,2.3vw,1.6rem)}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+  ul.lab li::before{background:var(--lab)}
+  ol.num{counter-reset:n}
+  ol.num li{position:relative;padding-left:46px;font-size:clamp(1rem,2.1vw,1.45rem)}
+  ol.num li::before{counter-increment:n;content:counter(n);position:absolute;left:0;top:.05em;width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#fff;font-family:"JetBrains Mono",monospace;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+  code.k{font-family:"JetBrains Mono",monospace;font-variant-ligatures:none;color:#bfdbfe;font-size:.92em}
+  pre{white-space:pre;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px 24px;font-family:"JetBrains Mono",monospace;font-size:clamp(.8rem,1.7vw,1.15rem);line-height:1.5;overflow:auto;max-width:100%;font-variant-ligatures:none}
+  pre .k{color:#7dd3fc} pre .s{color:#86efac} pre .c{color:#7183a3;font-style:italic}
+  table.ag{border-collapse:collapse;font-size:clamp(.9rem,1.9vw,1.25rem);width:100%;max-width:60rem}
+  table.ag td{padding:7px 12px;border-bottom:1px solid var(--line)}
+  table.ag td.t{font-family:"JetBrains Mono",monospace;color:var(--ink2);white-space:nowrap}
+  table.ag tr.brk td{color:var(--py)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);color:var(--ink2)}
+  .tag .pill{background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;letter-spacing:.06em}
+  .tag .pill.lab{background:var(--lab);color:#062b26} .tag .pill.warn{background:var(--warn);color:#3a2a05}
+  .section{background:linear-gradient(135deg,#0f2a5c,#0b1220)}
+  .section .big{font-size:clamp(3rem,12vw,8rem);font-family:"Archivo";font-weight:800;color:#3b82f6;line-height:.9}
+  .section .big.py{color:var(--py)}
+  .two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:30px;align-items:start}
+  .two pre{font-size:clamp(.72rem,1.35vw,1rem);padding:16px 18px}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .bar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--py));width:0;transition:width .25s;z-index:5}
+  .count{position:fixed;right:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--ink2);z-index:5}
+  .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+  .nav button{pointer-events:auto;background:transparent;border:none;color:transparent;width:22vw;height:100vh;cursor:pointer}
+  .foot{position:fixed;left:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#5d7391;z-index:5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <section class="slide on section">
+    <div class="eyebrow">MySQL Foundations · Part 2 · Session 10 of 14 · 3 hours</div>
+    <h1>Session 10<br>Normalization and Stored Programs</h1>
+    <p class="lead">Store each fact once, then save the rules next to the data.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Today</div>
+    <h2>Three hours, two lessons</h2>
+    <table class="ag">
+      <tr><td class="t">0:00</td><td>Warm-up: Session 9, and your spreadsheet</td></tr>
+      <tr><td class="t">0:10</td><td>6.3 Normalization: model, demo, lab, project</td></tr>
+      <tr class="brk"><td class="t">1:05</td><td>Break (10 min): then SOURCE bookstore.sql</td></tr>
+      <tr><td class="t">1:15</td><td>7.1 Procedures and functions: model, demo, lab, project</td></tr>
+      <tr><td class="t">2:25</td><td>Clinic: design review, eight errors</td></tr>
+      <tr><td class="t">2:50</td><td>Exit ticket, homework, bring list</td></tr>
+    </table>
+    <div class="tag"><span class="pill lab">LABS</span> <span>Lab files are in <code class="k">labs/module-10</code>. Open the <code class="k">_starter.sql</code> file, never the solution.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Warm-up · 10 minutes</div>
+    <h2>Session 9 in five questions</h2>
+    <ol class="num">
+      <li><code class="k">WHERE customer_id = 4</code> on orders: which plan line?</li>
+      <li><code class="k">SELECT id, title, price FROM books WHERE price &lt; 9</code>: updatable?</li>
+      <li>(customer_id, sold_on): a date range alone?</li>
+      <li>What does a view store?</li>
+      <li>What does WITH CHECK OPTION refuse?</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>Then: one repeated value from your spreadsheet.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big">6.3</div><h2>Database Design &amp; Normalization</h2><p class="lead">Each fact stored once, in the right place.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">6.3 · Mental model</div>
+    <h2>One big sheet corrupts itself</h2>
+    <ul>
+      <li><b>Update</b>: one copy changes, the others do not</li>
+      <li><b>Insert</b>: a customer cannot exist without an order</li>
+      <li><b>Delete</b>: cancel the only order, lose the customer</li>
+      <li>One cause: facts about different things in one row</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span>Fix: a table per kind of thing, connected by keys.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.3 · The sheet</div>
+    <h2>Lists in cells</h2>
+    <pre class="code"><span class="k">SELECT</span> order_id, cust_name, book_titles, quantities
+<span class="k">FROM</span> order_sheet
+<span class="k">ORDER</span> <span class="k">BY</span> order_id;</pre>
+    <pre class="code">+----------+---------------+-------------------------------+------------+
+| order_id | cust_name     | book_titles                   | quantities |
++----------+---------------+-------------------------------+------------+
+|        1 | Alice Johnson | Dune, 1984                    | 1, 2       |
+|        2 | Alice Johnson | Pride and Prejudice           | 1          |
+|        3 | Bob Smith     | Dune                          | 1          |
+|        4 | Dave Brown    | The Hobbit, Lord of the Rings | 1, 1       |
+|        7 | Bob Smith     | 1984, Animal Farm             | 1, 1       |
++----------+---------------+-------------------------------+------------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>How many copies of 1984? In there, but not for SQL.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.3 · Anomalies</div>
+    <h2>Two emails for one Alice</h2>
+    <pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> order_sheet <span class="k">SET</span> cust_email = <span class="s">'alice.j@example.com'</span> <span class="k">WHERE</span> order_id = <span class="s">2</span>;
+<span class="k">SELECT</span> <span class="k">DISTINCT</span> cust_name, cust_email
+<span class="k">FROM</span> order_sheet
+<span class="k">WHERE</span> cust_name = <span class="s">'Alice Johnson'</span>;
+<span class="k">ROLLBACK</span>;</pre>
+    <pre class="code">+---------------+---------------------+
+| cust_name     | cust_email          |
++---------------+---------------------+
+| Alice Johnson | alice@example.com   |
+| Alice Johnson | alice.j@example.com |
++---------------+---------------------+</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.3 · Dependencies</div>
+    <h2>A → B: same A, same B</h2>
+    <ul>
+      <li><code class="k">order_id → order_date, cust_email</code></li>
+      <li><code class="k">cust_email → cust_name, cust_city</code></li>
+      <li><code class="k">book_title → book_price</code></li>
+      <li>Key of the lines: <code class="k">(order_id, book_title)</code></li>
+      <li>Data can disprove a rule, never prove one</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.3 · Normal forms</div>
+    <h2>The key, the whole key, nothing but the key</h2>
+    <ul>
+      <li><b>1NF</b>: one value per cell, a key: one row per item</li>
+      <li><b>2NF</b>: nothing depends on part of the key: a table per part</li>
+      <li><b>3NF</b>: nothing depends on a non-key column: a table per hidden thing</li>
+      <li>Result: customers, books, orders, order_items</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.3 · Prove it</div>
+    <h2>EXCEPT, both directions</h2>
+    <pre class="code"><span class="k">SELECT</span> ... <span class="k">FROM</span> order_lines_1nf
+<span class="k">EXCEPT</span>
+<span class="k">SELECT</span> ... <span class="k">FROM</span> orders <span class="k">JOIN</span> customers <span class="k">JOIN</span> order_items <span class="k">JOIN</span> books;
+<span class="c">-- and the other way around</span></pre>
+    <pre class="code">Empty set
+Empty set</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Both empty: the four tables hold exactly the original rows.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.3 · Silent</div>
+    <h2>A stored total drifts</h2>
+    <pre class="code">+----+--------------+------------+
+| id | stored_total | real_total |
++----+--------------+------------+
+|  1 |        34.97 |      44.96 |
+|  2 |         7.99 |       7.99 |
+|  3 |        14.99 |      14.99 |
+|  4 |        26.98 |      26.98 |
+|  7 |        18.48 |      18.48 |
++----+--------------+------------+</pre>
+    <div class="tag"><span class="pill warn">RULE</span> <span>Do not store what you can compute: order 1 now has two totals.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.3 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">SELECT</span> title <span class="k">FROM</span> books <span class="k">WHERE</span> price &lt; <span class="s">9</span>
+<span class="k">EXCEPT</span>
+<span class="k">SELECT</span> title <span class="k">FROM</span> books <span class="k">WHERE</span> in_stock = <span class="k">FALSE</span>
+<span class="k">ORDER</span> <span class="k">BY</span> title;</pre>
+    <ul>
+      <li>Which books cost less than 9?</li>
+      <li>Which of them are out of stock?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.3 · Guided lab · 15 minutes</div>
+    <h2>The workshop sign-up sheet</h2>
+    <ul class="lab">
+      <li><code class="k">anomalies_starter.sql</code> in <code class="k">labs/module-10/l6_3-normalization</code></li>
+      <li>TODO 1: one workshop, two dates</li>
+      <li>TODO 2: Frank cancels; Speed Reading vanishes</li>
+      <li>TODO 3: which dependency does the data break?</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Home: <code class="k">normalize_starter.sql</code>: migrate it and prove it.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">6.3 · Project</div>
+    <h2>Normalize the book club sheet</h2>
+    <ul class="lab">
+      <li><code class="k">book_club.sql</code> in normalize_lab</li>
+      <li>Steps 1 to 3: import, dependencies as comments, the 3NF tables</li>
+      <li>Steps 4 to 6 at home: migrate, EXCEPT, one row moves the club</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>Write the dependencies BEFORE you read the lesson's answer.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big py">10</div><h2>Break</h2><p class="lead">Back at 1:15. First thing: SOURCE bookstore.sql.</p></section>
+
+  <section class="slide section"><div class="big">7.1</div><h2>Stored Procedures &amp; Functions</h2><p class="lead">Logic saved next to the data, with a name and parameters.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">7.1 · Mental model</div>
+    <h2>Procedure or function?</h2>
+    <ul>
+      <li><b>Procedure</b>: <code class="k">CALL name(...)</code>, result sets, OUT values, changes data</li>
+      <li><b>Function</b>: one value, inside a query: <code class="k">SELECT with_tax(price)</code></li>
+      <li>One copy of the rule for every app that calls it</li>
+      <li>Costs: logic in two places, its own version control</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.1 · DELIMITER</div>
+    <h2>A client command</h2>
+    <pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> say_hello()
+<span class="k">BEGIN</span>
+    <span class="k">SELECT</span> <span class="s">'Hello from the bookstore!'</span> <span class="k">AS</span> greeting;
+    <span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> books_in_stock <span class="k">FROM</span> books <span class="k">WHERE</span> in_stock = <span class="k">TRUE</span>;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">CALL</span> say_hello();</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>The CLIENT waits for //. The server never sees the word DELIMITER.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.1 · OUT</div>
+    <h2>An answer through a variable</h2>
+    <div class="two"><pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> count_books_by(
+    <span class="k">IN</span>  p_author <span class="k">VARCHAR</span>(<span class="s">100</span>),
+    <span class="k">OUT</span> p_count  <span class="k">INT</span>)
+<span class="k">BEGIN</span>
+    <span class="k">SELECT</span> COUNT(*) <span class="k">INTO</span> p_count
+    <span class="k">FROM</span> books <span class="k">AS</span> b
+    <span class="k">JOIN</span> authors <span class="k">AS</span> a <span class="k">ON</span> a.id = b.author_id
+    <span class="k">WHERE</span> a.name = p_author;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">CALL</span> count_books_by(<span class="s">'J.R.R. Tolkien'</span>, @n);
+<span class="k">SELECT</span> @n <span class="k">AS</span> tolkien_books;</pre><pre class="code">+---------------+
+| tolkien_books |
++---------------+
+|             2 |
++---------------+</pre></div>
+    <div class="tag"><span class="pill">WHY</span> <span>SELECT ... INTO prints nothing: the answer lands in @n.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.1 · Characteristics</div>
+    <h2>What a function promises</h2>
+    <ul>
+      <li><code class="k">DETERMINISTIC</code>: same inputs, same result</li>
+      <li><code class="k">NO SQL</code>: no table read · <code class="k">READS SQL DATA</code>: reads, never changes</li>
+      <li>Binary logging is on by default: none of them = <code class="k">ERROR 1418</code></li>
+      <li>The server cannot check your promise: make it true</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.1 · SIGNAL</div>
+    <h2>Check first, then change</h2>
+    <pre class="code"><span class="k">CALL</span> set_book_price(<span class="s">5</span>, -<span class="s">1.00</span>);
+<span class="k">CALL</span> set_book_price(<span class="s">99</span>, <span class="s">9.99</span>);</pre>
+    <pre class="code">ERROR 1644 (45000): Price must be greater than zero
+ERROR 1644 (45000): No book with that id</pre>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">'45000'</code> = your own error, reported as 1644. Nothing changed.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.1 · Silent</div>
+    <h2>Book 1, please</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">PROCEDURE</span> book_by_id(<span class="k">IN</span> id <span class="k">INT</span>)
+    <span class="k">SELECT</span> b.id, b.title <span class="k">FROM</span> books <span class="k">AS</span> b <span class="k">WHERE</span> id = id <span class="k">ORDER</span> <span class="k">BY</span> b.id;
+<span class="k">CALL</span> book_by_id(<span class="s">1</span>);</pre>
+    <ul>
+      <li>Inside the routine, a bare <code class="k">id</code> is the parameter</li>
+      <li><code class="k">WHERE id = id</code> is 1 = 1: all eleven books come back</li>
+      <li>Fix: <code class="k">p_id</code>, <code class="k">v_total</code>, or <code class="k">b.id</code></li>
+    </ul>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Picture this in a DELETE.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.1 · Common mistakes</div>
+    <h2>Five routine errors</h2>
+    <ul>
+      <li>1064 twice: a body without DELIMITER</li>
+      <li>1418: a function without characteristics</li>
+      <li>1172: SELECT ... INTO finds two rows</li>
+      <li>1304: created twice: DROP ... IF EXISTS first</li>
+      <li>1644: your own SIGNAL (that one is the design working)</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.1 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">DELIMITER</span> //
+<span class="k">CREATE</span> <span class="k">PROCEDURE</span> double_it(<span class="k">INOUT</span> p_n <span class="k">INT</span>)
+<span class="k">BEGIN</span>
+    <span class="k">SET</span> p_n = p_n * <span class="s">2</span>;
+<span class="k">END</span> //
+<span class="k">DELIMITER</span> ;
+<span class="k">SET</span> @n = <span class="s">10</span>;
+<span class="k">CALL</span> double_it(@n);
+<span class="k">CALL</span> double_it(@n);
+<span class="k">SELECT</span> @n <span class="k">AS</span> n;</pre>
+    <ul>
+      <li>INOUT reads and replaces</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.1 · Guided lab · 20 minutes</div>
+    <h2>Three admin-page procedures</h2>
+    <ul class="lab">
+      <li><code class="k">procedures_starter.sql</code> in <code class="k">labs/module-10/l7_1-stored-procedures</code></li>
+      <li>TODO 1: filter on the IN parameter</li>
+      <li>TODO 2: the second OUT value (try Asimov)</li>
+      <li>TODO 3: a SIGNAL guard; then <code class="k">CALL raise_price(6, 80);</code></li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">functions_starter.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.1 · Project</div>
+    <h2>The bookstore routine library</h2>
+    <ul class="lab">
+      <li><code class="k">bookstore_routines.sql</code>: DROP ... IF EXISTS before every routine</li>
+      <li>Steps 1 and 2: order_total and customer_tier (READS SQL DATA)</li>
+      <li>Steps 3 to 6 at home: customer_report, add_book, break it, rerun</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>Routines go in the script; test CALLs go at the prompt.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Clinic · 25 minutes</div>
+    <h2>Design review, then eight errors</h2>
+    <ul class="lab">
+      <li>Two warm-up spreadsheets: dependencies, key, tables</li>
+      <li><code class="k">debug_design.sql</code>: 1062, 3780, 1451</li>
+      <li><code class="k">debug_routines.sql</code>: 1064, 1418, 1172, 1304, 1644</li>
+      <li>Number, cause, fix: in the workbook table</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Wrap-up · 4 minutes</div>
+    <h2>Exit ticket</h2>
+    <ol class="num">
+      <li>One partial dependency in order_lines, and where it moves</li>
+      <li>Why check before the UPDATE, and how to refuse?</li>
+      <li>Price with tax in a SELECT; add a book and return its id: which is which?</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>No notes. Workbook Exit Ticket box or a sticky note.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Before Session 11</div>
+    <h2>Homework and bring list</h2>
+    <ul class="lab">
+      <li>Finish book_club.sql and bookstore_routines.sql</li>
+      <li>Exercises 1 to 3 of both lessons; both quizzes; both journals</li>
+      <li>Two mysql client windows open at once (Lesson 7.2)</li>
+      <li>Checkpoint 2 next time: Modules 5 and 6</li>
+    </ul>
+    <div class="tag"><span class="pill">NEXT</span> <span>Session 11: Transactions and JSON.</span></div>
+  </section>
+
+
+</div>
+
+<div class="foot">© 2026 Ray de la Paz · MySQL Foundations</div>
+<div class="count" id="count">1 / 1</div>
+<div class="nav"><button id="prev" aria-label="Previous slide"></button><button id="next" aria-label="Next slide"></button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'), count=document.getElementById('count');
+  let i=0;
+  function show(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%'; count.textContent=(i+1)+' / '+slides.length; }
+  document.getElementById('next').onclick=()=>show(i+1);
+  document.getElementById('prev').onclick=()=>show(i-1);
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0); else if(e.key==='End')show(slides.length-1);
+  });
+  show(0);
+</script>
+</body>
+</html>

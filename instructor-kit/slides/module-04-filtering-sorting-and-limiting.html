@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides: Session 4</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--ink2:#9fb2cd;--accent:#93c5fd;--accent2:#2563eb;--py:#f6a53b;--lab:#34d3bd;--warn:#fbbf24;--line:#22314c;--code:#0a1526;color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100%;width:100%;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:6vh 8vw;gap:20px}
+  .slide.on{display:flex}
+  h1,h2,h3{font-family:"Archivo",sans-serif;line-height:1.1;text-wrap:balance}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .slide h1{font-size:clamp(2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+  .slide h2{font-size:clamp(1.5rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+  .slide p.lead{font-size:clamp(1.05rem,2.4vw,1.5rem);color:var(--ink2);max-width:34ch}
+  ul,ol.num{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  ul li{position:relative;padding-left:34px;font-size:clamp(1.05rem,2.3vw,1.6rem)}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+  ul.lab li::before{background:var(--lab)}
+  ol.num{counter-reset:n}
+  ol.num li{position:relative;padding-left:46px;font-size:clamp(1rem,2.1vw,1.45rem)}
+  ol.num li::before{counter-increment:n;content:counter(n);position:absolute;left:0;top:.05em;width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#fff;font-family:"JetBrains Mono",monospace;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+  code.k{font-family:"JetBrains Mono",monospace;font-variant-ligatures:none;color:#bfdbfe;font-size:.92em}
+  pre{white-space:pre;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px 24px;font-family:"JetBrains Mono",monospace;font-size:clamp(.8rem,1.7vw,1.15rem);line-height:1.5;overflow:auto;max-width:100%;font-variant-ligatures:none}
+  pre .k{color:#7dd3fc} pre .s{color:#86efac} pre .c{color:#7183a3;font-style:italic}
+  table.ag{border-collapse:collapse;font-size:clamp(.9rem,1.9vw,1.25rem);width:100%;max-width:60rem}
+  table.ag td{padding:7px 12px;border-bottom:1px solid var(--line)}
+  table.ag td.t{font-family:"JetBrains Mono",monospace;color:var(--ink2);white-space:nowrap}
+  table.ag tr.brk td{color:var(--py)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);color:var(--ink2)}
+  .tag .pill{background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;letter-spacing:.06em}
+  .tag .pill.lab{background:var(--lab);color:#062b26} .tag .pill.warn{background:var(--warn);color:#3a2a05}
+  .section{background:linear-gradient(135deg,#0f2a5c,#0b1220)}
+  .section .big{font-size:clamp(3rem,12vw,8rem);font-family:"Archivo";font-weight:800;color:#3b82f6;line-height:.9}
+  .section .big.py{color:var(--py)}
+  .two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:30px;align-items:start}
+  .two pre{font-size:clamp(.72rem,1.35vw,1rem);padding:16px 18px}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .bar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--py));width:0;transition:width .25s;z-index:5}
+  .count{position:fixed;right:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--ink2);z-index:5}
+  .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+  .nav button{pointer-events:auto;background:transparent;border:none;color:transparent;width:22vw;height:100vh;cursor:pointer}
+  .foot{position:fixed;left:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#5d7391;z-index:5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <section class="slide on section">
+    <div class="eyebrow">MySQL Foundations · Part 1 · Session 4 of 14 · 3 hours</div>
+    <h1>Session 4<br>Filtering, Sorting and Limiting</h1>
+    <p class="lead">Exactly the rows you want, in an order you can trust. Then Checkpoint 1.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Today</div>
+    <h2>Two lessons and a checkpoint</h2>
+    <table class="ag">
+      <tr><td class="t">0:00</td><td>Warm-up: the Module 3 data, Session 3 in five questions</td></tr>
+      <tr><td class="t">0:10</td><td>3.1 WHERE Clauses: model, demo, lab, project</td></tr>
+      <tr class="brk"><td class="t">1:15</td><td>Break (10 min)</td></tr>
+      <tr><td class="t">1:25</td><td>3.2 Sorting &amp; Limiting: model, demo, lab, project</td></tr>
+      <tr><td class="t">2:20</td><td>Checkpoint 1: Modules 1 and 2 (30 min)</td></tr>
+      <tr><td class="t">2:50</td><td>Exit ticket, homework, what to bring next time</td></tr>
+    </table>
+    <div class="tag"><span class="pill lab">DATA</span> <span>First: <code class="k">SOURCE labs/_states/flat.sql</code> on every laptop.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Warm-up · 4 minutes</div>
+    <h2>Session 3 in five questions</h2>
+    <ol class="num">
+      <li>Which type stores a price?</li>
+      <li>An explicit NULL in a NOT NULL column: which error?</li>
+      <li>UPDATE to the value it already has: the second line?</li>
+      <li>What do you run before an UPDATE on several rows?</li>
+      <li>Which statement gives an existing row a NEW id?</li>
+    </ol>
+    <div class="tag"><span class="pill warn">TODAY</span> <span>Checkpoint 1 at 2:20: everything up to Lesson 2.3, open notes.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big">3.1</div><h2>WHERE Clauses, Operators &amp; Filtering</h2><p class="lead">Ask for exactly the rows you mean.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · Mental model</div>
+    <h2>A test on every row</h2>
+    <ol class="num">
+      <li>MySQL runs the condition on each row</li>
+      <li>The answer is true, false, or <b>unknown</b> (a NULL is involved)</li>
+      <li>Only true rows are kept</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>Say how many rows you expect before you run it.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · Code</div>
+    <h2>WHERE, and the test as a column</h2>
+    <pre class="code"><span class="k">SELECT</span> title, price, price &lt; <span class="s">10</span> <span class="k">AS</span> passes
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> id
+<span class="k">LIMIT</span> <span class="s">4</span>;</pre>
+    <pre class="code">+-----------------------+-------+--------+
+| title                 | price | passes |
++-----------------------+-------+--------+
+| Dune                  | 14.99 |      0 |
+| 1984                  |  9.99 |      1 |
+| To Kill a Mockingbird | 11.99 |      0 |
+| The Great Gatsby      |  8.99 |      1 |
++-----------------------+-------+--------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>A condition is a value: 1, 0 or NULL.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · Code</div>
+    <h2>Eight customers, two in New York</h2>
+    <pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city != <span class="s">'New York'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre>
+    <pre class="code">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Grace      | Chicago     |
++------------+-------------+</pre>
+    <div class="tag"><span class="pill warn">COUNT</span> <span>Only four: Eve and Hank have no city, and unknown is dropped.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · Operators</div>
+    <h2>Combine and match</h2>
+    <ul>
+      <li><code class="k">AND</code> narrows · <code class="k">OR</code> widens · <code class="k">NOT</code> flips</li>
+      <li><code class="k">IN (...)</code> a list · <code class="k">BETWEEN a AND b</code> both ends included</li>
+      <li><code class="k">LIKE</code>: <code class="k">%</code> any characters, <code class="k">_</code> exactly one</li>
+      <li>DATETIME: <code class="k">&gt;= '2026-01-01' AND &lt; '2026-02-01'</code></li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · Code</div>
+    <h2>LIKE: contains</h2>
+    <pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> title <span class="k">LIKE</span> <span class="s">'%the%'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> title;</pre>
+    <pre class="code">+------------------------+
+| title                  |
++------------------------+
+| Lord of the Rings      |
+| The Catcher in the Rye |
+| The Great Gatsby       |
+| The Hobbit             |
++------------------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Case-insensitive: 'the' finds The.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · NULL</div>
+    <h2>Unknown, even compared with itself</h2>
+    <pre class="code"><span class="k">SELECT</span>
+    <span class="k">NULL</span> = <span class="k">NULL</span>   <span class="k">AS</span> equals,
+    <span class="k">NULL</span> != <span class="s">'x'</span>   <span class="k">AS</span> not_equals,
+    <span class="k">NULL</span> <span class="k">IS</span> <span class="k">NULL</span>  <span class="k">AS</span> is_null;</pre>
+    <pre class="code">+--------+------------+---------+
+| equals | not_equals | is_null |
++--------+------------+---------+
+|   NULL |       NULL |       1 |
++--------+------------+---------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Test missing values with <code class="k">IS NULL</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · NULL</div>
+    <h2>Keep the NULL rows on purpose</h2>
+    <div class="two"><div><pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city != <span class="s">'New York'</span> <span class="k">OR</span> city <span class="k">IS</span> <span class="k">NULL</span>
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre></div><div><pre class="code">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Eve        | NULL        |
+| Grace      | Chicago     |
+| Hank       | NULL        |
++------------+-------------+</pre></div></div>
+    <div class="tag"><span class="pill">WHY</span> <span>Six now: Eve and Hank are back.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · Precedence</div>
+    <h2>AND before OR</h2>
+    <pre class="code"><span class="k">SELECT</span> title, author, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> author = <span class="s">'J.R.R. Tolkien'</span> <span class="k">OR</span> author = <span class="s">'George Orwell'</span> <span class="k">AND</span> price &lt; <span class="s">12</span>
+<span class="k">ORDER</span> <span class="k">BY</span> price;</pre>
+    <pre class="code">+-------------------+----------------+-------+
+| title             | author         | price |
++-------------------+----------------+-------+
+| 1984              | George Orwell  |  9.99 |
+| The Hobbit        | J.R.R. Tolkien | 10.99 |
+| Lord of the Rings | J.R.R. Tolkien | 15.99 |
++-------------------+----------------+-------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Lord of the Rings at 15.99 got in: A OR (B AND C).</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · Precedence</div>
+    <h2>Parentheses say what you meant</h2>
+    <pre class="code"><span class="k">SELECT</span> title, author, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> (author = <span class="s">'J.R.R. Tolkien'</span> <span class="k">OR</span> author = <span class="s">'George Orwell'</span>)
+  <span class="k">AND</span> price &lt; <span class="s">12</span>
+<span class="k">ORDER</span> <span class="k">BY</span> price;</pre>
+    <pre class="code">+------------+----------------+-------+
+| title      | author         | price |
++------------+----------------+-------+
+| 1984       | George Orwell  |  9.99 |
+| The Hobbit | J.R.R. Tolkien | 10.99 |
++------------+----------------+-------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Mixing AND and OR? Always add them.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · Mistakes</div>
+    <h2>Loud and silent</h2>
+    <pre class="code"><span class="k">SELECT</span> title <span class="k">FROM</span> books <span class="k">WHERE</span> author = Tolkien;
+<span class="k">SELECT</span> first_name, city <span class="k">FROM</span> customers <span class="k">WHERE</span> city = <span class="k">NULL</span>;</pre>
+    <pre class="code">ERROR 1054 (42S22): Unknown column 'Tolkien' in 'where clause'
+Empty set</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>The silent one: <code class="k">= NULL</code> finds nothing. <code class="k">IS NULL</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · Predict, then run</div>
+    <h2>How many rows?</h2>
+    <pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> n
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="s">'Chicago'</span>, <span class="s">'Houston'</span>);</pre>
+    <ul>
+      <li>Which customers survive?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · Guided lab · 20 minutes</div>
+    <h2>Seven requests from the staff</h2>
+    <ul class="lab">
+      <li><code class="k">staff_requests_starter.sql</code> in <code class="k">labs/module-04/l3_1-...</code></li>
+      <li>Each WHERE says <code class="k">FALSE</code>: replace it</li>
+      <li>Count the rows you expect first</li>
+      <li>Request 5: what about NULL?</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">null_detective_starter.sql</code>, then <code class="k">debug_filters.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.1 · Project</div>
+    <h2>Saved searches</h2>
+    <ul class="lab">
+      <li>Steps 1 to 3 in class: gift ideas, long reads, mid-century shelf</li>
+      <li>Steps 4 to 7 at home: title search, follow-up list, flyer, run it</li>
+    </ul>
+  </section>
+
+  <section class="slide section"><div class="big py">10</div><h2>Break</h2><p class="lead">Back at 1:25.</p></section>
+
+  <section class="slide section"><div class="big">3.2</div><h2>Sorting &amp; Limiting Results</h2><p class="lead">An order you can trust, and the right slice of it.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · Mental model</div>
+    <h2>A table has no order</h2>
+    <ul>
+      <li>Without ORDER BY: whatever is cheapest for the server</li>
+      <li><code class="k">ASC</code> is the default; <code class="k">DESC</code> belongs to one column</li>
+      <li>Extra columns break ties: end with a unique one</li>
+      <li>FROM → WHERE → SELECT → ORDER BY → LIMIT</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · Code</div>
+    <h2>A direction per column</h2>
+    <pre class="code"><span class="k">SELECT</span> title, in_stock, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &lt; <span class="s">10</span>
+<span class="k">ORDER</span> <span class="k">BY</span> in_stock <span class="k">DESC</span>, price, title;</pre>
+    <pre class="code">+------------------------+----------+-------+
+| title                  | in_stock | price |
++------------------------+----------+-------+
+| Pride and Prejudice    |        1 |  7.99 |
+| Brave New World        |        1 |  9.49 |
+| 1984                   |        1 |  9.99 |
+| The Catcher in the Rye |        0 |  8.99 |
+| The Great Gatsby       |        0 |  8.99 |
++------------------------+----------+-------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>In stock first (1 before 0), then cheapest.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · Code</div>
+    <h2>A custom order with CASE</h2>
+    <div class="two"><div><pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">ORDER</span> <span class="k">BY</span>
+    <span class="k">CASE</span> city
+        <span class="k">WHEN</span> <span class="s">'Chicago'</span>  <span class="k">THEN</span> <span class="s">1</span>
+        <span class="k">WHEN</span> <span class="s">'New York'</span> <span class="k">THEN</span> <span class="s">2</span>
+        <span class="k">ELSE</span> <span class="s">3</span>
+    <span class="k">END</span>,
+    first_name;</pre></div><div><pre class="code">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Grace      | Chicago     |
+| Alice      | New York    |
+| Frank      | New York    |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Eve        | NULL        |
+| Hank       | NULL        |
++------------+-------------+</pre></div></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · NULLs</div>
+    <h2>Missing values last</h2>
+    <div class="two"><div><pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">ORDER</span> <span class="k">BY</span> city <span class="k">IS</span> <span class="k">NULL</span>, city, first_name;</pre></div><div><pre class="code">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Grace      | Chicago     |
+| Dave       | Houston     |
+| Carol      | Los Angeles |
+| Alice      | New York    |
+| Frank      | New York    |
+| Eve        | NULL        |
+| Hank       | NULL        |
++------------+-------------+</pre></div></div>
+    <div class="tag"><span class="pill">WHY</span> <span>MySQL has no NULLS LAST: <code class="k">col IS NULL, col</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · Code</div>
+    <h2>Top 3</h2>
+    <pre class="code"><span class="k">SELECT</span> title, pages
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> pages <span class="k">DESC</span>
+<span class="k">LIMIT</span> <span class="s">3</span>;</pre>
+    <pre class="code">+---------------------+-------+
+| title               | pages |
++---------------------+-------+
+| Lord of the Rings   |  1178 |
+| Pride and Prejudice |   432 |
+| Dune                |   412 |
++---------------------+-------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>LIMIT runs last: filter, sort, then cut.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · Code</div>
+    <h2>OFFSET: rows 4 to 6</h2>
+    <pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price, title
+<span class="k">LIMIT</span> <span class="s">3</span> <span class="k">OFFSET</span> <span class="s">3</span>;</pre>
+    <pre class="code">+-----------------+-------+
+| title           | price |
++-----------------+-------+
+| Brave New World |  9.49 |
+| 1984            |  9.99 |
+| Fahrenheit 451  | 10.49 |
++-----------------+-------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Same ORDER BY, with a tie-breaker, on every page.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · Pages</div>
+    <h2>Page 2 of the catalog</h2>
+    <pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> title
+<span class="k">LIMIT</span> <span class="s">4</span> <span class="k">OFFSET</span> <span class="s">4</span>;</pre>
+    <pre class="code">+------------------------+-------+
+| title                  | price |
++------------------------+-------+
+| Lord of the Rings      | 15.99 |
+| Pride and Prejudice    |  7.99 |
+| The Catcher in the Rye |  8.99 |
+| The Great Gatsby       |  8.99 |
++------------------------+-------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Page count: <code class="k">CEILING(COUNT(*) / 4)</code> = 3 (10 books). Page N: OFFSET (N - 1) x 4.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · Keyset</div>
+    <h2>The page after id 4</h2>
+    <pre class="code"><span class="k">SELECT</span> id, title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> id &gt; <span class="s">4</span>
+<span class="k">ORDER</span> <span class="k">BY</span> id
+<span class="k">LIMIT</span> <span class="s">4</span>;</pre>
+    <pre class="code">+----+------------------------+
+| id | title                  |
++----+------------------------+
+|  5 | Pride and Prejudice    |
+|  6 | The Hobbit             |
+|  7 | Brave New World        |
+|  8 | The Catcher in the Rye |
++----+------------------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>No jump to page 37, but fast however deep.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · Mistakes</div>
+    <h2>Two loud, one silent</h2>
+    <pre class="code"><span class="k">SELECT</span> ... <span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">WHERE</span> price &gt; <span class="s">10</span>;
+<span class="k">SELECT</span> ... <span class="k">LIMIT</span> <span class="s">4</span> <span class="k">OFFSET</span> (<span class="s">3</span> - <span class="s">1</span>) * <span class="s">4</span>;
+<span class="k">SELECT</span> title, price <span class="k">FROM</span> books <span class="k">ORDER</span> <span class="k">BY</span> <span class="s">'price'</span> <span class="k">DESC</span> <span class="k">LIMIT</span> <span class="s">3</span>;</pre>
+    <pre class="code">ERROR 1064 (42000): You have an error in your SQL syntax; ...
+ERROR 1064 (42000): You have an error in your SQL syntax; ...
++-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| Dune                  | 14.99 |
+| 1984                  |  9.99 |
+| To Kill a Mockingbird | 11.99 |
++-----------------------+-------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>'price' in quotes is text: no error, wrong rows.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">ORDER</span> <span class="k">BY</span> city <span class="k">DESC</span>, first_name
+<span class="k">LIMIT</span> <span class="s">3</span>;</pre>
+    <ul>
+      <li>Where do Eve and Hank go?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · Guided lab · 15 minutes</div>
+    <h2>Six lists for the display board</h2>
+    <ul class="lab">
+      <li><code class="k">bestseller_board_starter.sql</code> in <code class="k">labs/module-04/l3_2-...</code></li>
+      <li>Replace each <code class="k">ORDER BY id</code></li>
+      <li>Could two rows tie? Add a tie-breaker</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">paging_starter.sql</code>, then <code class="k">debug_sorting.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">3.2 · Project</div>
+    <h2>The storefront queries</h2>
+    <ul class="lab">
+      <li>Steps 1 and 2 in class: new and notable, bargain shelf</li>
+      <li>Steps 3 to 6 at home: catalog pages, page count, customer directory</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Checkpoint 1 · 30 minutes</div>
+    <h2>Modules 1 and 2</h2>
+    <ul class="lab">
+      <li><code class="k">labs/module-04/checkpoint-1/checkpoint_starter.sql</code> + the workbook page</li>
+      <li>A: build two tables · B: fill and change · C: read · D: on paper</li>
+      <li>Open notes: workbook, your scripts, the lesson pages</li>
+      <li>On your own; SOURCE after each part</li>
+    </ul>
+    <div class="tag"><span class="pill lab">CHECKPOINT</span> <span>Hand in the file and the Part D page at 2:50.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Wrap-up · 4 minutes</div>
+    <h2>Exit ticket</h2>
+    <ol class="num">
+      <li>Why does city != 'Chicago' skip Eve and Hank? How do you include them?</li>
+      <li>The WHERE for $9 to $11, ends included, not by Tolkien</li>
+      <li>Why end an ORDER BY that feeds a LIMIT with a unique column?</li>
+    </ol>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Before Session 5</div>
+    <h2>Homework and bring list</h2>
+    <ul class="lab">
+      <li>Finish saved_searches.sql and storefront.sql</li>
+      <li>Exercises 1 to 3 of both lessons; both quizzes; both journals</li>
+      <li>Bring: bookstore with the Module 3 data, your scripts, labs/</li>
+    </ul>
+    <div class="tag"><span class="pill">NEXT</span> <span>Session 5: Aggregates and Subqueries.</span></div>
+  </section>
+
+
+</div>
+
+<div class="foot">© 2026 Ray de la Paz · MySQL Foundations</div>
+<div class="count" id="count">1 / 1</div>
+<div class="nav"><button id="prev" aria-label="Previous slide"></button><button id="next" aria-label="Next slide"></button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'), count=document.getElementById('count');
+  let i=0;
+  function show(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%'; count.textContent=(i+1)+' / '+slides.length; }
+  document.getElementById('next').onclick=()=>show(i+1);
+  document.getElementById('prev').onclick=()=>show(i-1);
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0); else if(e.key==='End')show(slides.length-1);
+  });
+  show(0);
+</script>
+</body>
+</html>

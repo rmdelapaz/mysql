@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 9</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 9: Indexes and Views</h1>
+    <p class="sub">Answers and reasoning for every Session 9 item: the warm-up, both self-checks, the predict-then-run items, the lab reference outputs, both debug handouts, the lesson pages' own quizzes and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>9</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Warm-up</h2><span class="rule"></span></div>
+<p>Answers to W1 to W5, with MySQL's real output where the question shows code:</p>
+<div class="q"><div class="qn">W1</div><div class="qt">What does this print?</div><pre class="code"><span class="k">WITH</span> <span class="k">RECURSIVE</span> s <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="s">1</span> <span class="k">AS</span> n <span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> n + <span class="s">2</span> <span class="k">FROM</span> s <span class="k">WHERE</span> n &lt; <span class="s">7</span>
+)
+<span class="k">SELECT</span> GROUP_CONCAT(n <span class="k">ORDER</span> <span class="k">BY</span> n) <span class="k">AS</span> odd <span class="k">FROM</span> s;</pre><div class="opts"><div class="opt correct">1,3,5,7: the round that reads 7 fails n &lt; 7 and stops.</div></div><div class="why"><pre class="out">+---------+
+| odd     |
++---------+
+| 1,3,5,7 |
++---------+</pre></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Which price_level do The Catcher in the Rye and The Great Gatsby (both 8.99) get, and Animal Farm after them?</div><pre class="code"><span class="k">SELECT</span> title, price,
+       DENSE_RANK() <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">DESC</span>) <span class="k">AS</span> price_level
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &lt; <span class="s">9.50</span>
+<span class="k">ORDER</span> <span class="k">BY</span> price <span class="k">DESC</span>, title;</pre><div class="opts"><div class="opt correct">Both 2, Animal Farm 3: DENSE_RANK ties without a gap (RANK would give Animal Farm 4).</div></div><div class="why"><pre class="out">+------------------------+-------+-------------+
+| title                  | price | price_level |
++------------------------+-------+-------------+
+| Brave New World        |  9.49 |           1 |
+| The Catcher in the Rye |  8.99 |           2 |
+| The Great Gatsby       |  8.99 |           2 |
+| Animal Farm            |  8.49 |           3 |
+| Pride and Prejudice    |  7.99 |           4 |
++------------------------+-------+-------------+</pre></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">Why can't WHERE filter on ROW_NUMBER(), and what do you write instead?</div><div class="opts"><div class="opt correct">Windows are computed after WHERE (3593): number the rows in a CTE, filter in the outer query.</div></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">In a recursive CTE over employees, which join walks UP the hierarchy?</div><div class="opts"><div class="opt correct">e.id = cte.manager_id ("who is this person's manager?"); e.manager_id = cte.id walks down.</div></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">AVG(salary) with GROUP BY department versus AVG(salary) OVER (PARTITION BY department): how many rows from the 10 employees?</div><div class="opts"><div class="opt correct">4 versus 10: GROUP BY collapses, OVER keeps every row.</div></div></div>
+
+  <div class="sec"><h2>6.1 · Indexes &amp; Query Optimization: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Which index does every InnoDB table have, even though you never created one by name?</div><div class="opts"><div class="opt">A) One index per column</div><div class="opt correct">B) The primary key: the rows themselves are stored in its order (the clustered index)</div><div class="opt">C) An index on every VARCHAR column</div><div class="opt">D) None: MySQL scans every table until you add indexes</div></div><div class="why"><b>Why:</b> InnoDB stores the rows in a B-tree sorted by the primary key, so WHERE id = ... is always fast. UNIQUE constraints and foreign keys add more indexes automatically (email, fk_orders_customer ...).<br><b>A</b> is wrong: Only the columns you (or a constraint) choose are indexed.<br><b>C</b> is wrong: Types do not decide it; constraints and CREATE INDEX do.<br><b>D</b> is wrong: The primary key is always there.</div></div>
+  <div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt"><code class="inline">sales_log</code> has an index on <code class="inline">(customer_id, sold_on)</code> and no other index. Which query can NOT seek with it?</div><div class="opts"><div class="opt">A) <code class="inline">WHERE customer_id = 3</code></div><div class="opt">B) <code class="inline">WHERE customer_id = 3 AND sold_on &gt;= '2025-03-01'</code></div><div class="opt">C) <code class="inline">WHERE sold_on &gt;= '2025-03-01' AND customer_id = 3</code></div><div class="opt correct">D) <code class="inline">WHERE sold_on BETWEEN '2025-03-01' AND '2025-03-31'</code></div></div><div class="why"><b>Why:</b> A composite index serves its leftmost prefix. The dates are sorted only within each customer, so a date range alone has no place to jump to (at best a skip scan). The order of the conditions in WHERE does not matter, which is why C works as well as B.<br><b>A</b> is wrong: customer_id is the first column: a seek.<br><b>B</b> is wrong: Both columns, in index order: the best case.<br><b>C</b> is wrong: Same as B: MySQL does not care about the order of the AND.</div></div>
+  <div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt"><code class="inline">sold_on</code> has an index. Rewrite <code class="inline">WHERE YEAR(sold_on) = 2024</code> so MySQL can use it.</div><div class="opts"><div class="opt correct"><code class="inline">WHERE sold_on &gt;= '2024-01-01' AND sold_on &lt; '2025-01-01'</code></div></div><div class="why"><b>Why:</b> The index is sorted by the column, not by YEAR(column). A range on the bare column (up to, but not including, the next January 1) gives the same rows and stays correct if the column ever becomes DATETIME.</div></div>
+  <div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt"><code class="inline">receipt_no</code> is <code class="inline">CHAR(7)</code> with a unique index, yet <code class="inline">WHERE receipt_no = 4242</code> shows <code class="inline">Table scan</code>. Why?</div><div class="opts"><div class="opt correct">A) The text column is converted to a number on every row, so the index order no longer helps</div><div class="opt">B) Unique indexes cannot be used for equality</div><div class="opt">C) The table needs ANALYZE TABLE first</div><div class="opt">D) 4242 is too small: receipt numbers start at 1000000</div></div><div class="why"><b>Why:</b> A string column compared with a number is converted row by row ('0004242' becomes 4242), and converted values are not in the index's sort order. <code class="inline">WHERE receipt_no = '0004242'</code> is a single-row lookup again. SHOW WARNINGS after the EXPLAIN even says so (warning 1739).<br><b>B</b> is wrong: Equality on a unique index is the best case: Rows fetched before execution.<br><b>C</b> is wrong: Fresh statistics do not change a type conversion.<br><b>D</b> is wrong: The value matches a real row (the count is 1); only the plan is slow.</div></div>
+  <div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">An index <code class="inline">idx_sales_customer_date (customer_id, sold_on)</code> exists. You run <code class="inline">CREATE INDEX idx_sales_customer ON sales_log (customer_id);</code>. What happens?</div><div class="opts"><div class="opt">A) <code class="inline">ERROR 1061: Duplicate key name</code></div><div class="opt">B) MySQL refuses: the column is already indexed</div><div class="opt correct">C) It succeeds without an error or a warning, and the new index is pure overhead</div><div class="opt">D) It replaces the composite index</div></div><div class="why"><b>Why:</b> The composite index already serves customer_id alone (its leftmost prefix), so the new one only slows every write. MySQL warns only when the columns are exactly the same (1831). Check SHOW INDEX before adding one.<br><b>A</b> is wrong: 1061 is about the NAME, and this name is new.<br><b>B</b> is wrong: MySQL lets you index a column many times.<br><b>D</b> is wrong: Indexes are never replaced silently; both now exist.</div></div>
+  <div class="q" data-sc="6" data-kind="short"><div class="qn">Q6</div><div class="qt"><code class="inline">DROP INDEX fk_orders_customer ON orders;</code> fails. Which error number, and why does MySQL refuse?</div><div class="opts"><div class="opt correct"><code class="inline">1553</code>: the foreign key from orders to customers needs an index on customer_id, and this is the only one</div></div><div class="why"><b>Why:</b> InnoDB created fk_orders_customer for the foreign key. To replace it, create another index that starts with customer_id first; InnoDB then drops its own.</div></div>
+
+  <div class="sec"><h2>6.1 · Indexes &amp; Query Optimization: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> INDEX_NAME, COLUMN_NAME
+<span class="k">FROM</span> information_schema.STATISTICS
+<span class="k">WHERE</span> TABLE_SCHEMA = <span class="s">'bookstore'</span> <span class="k">AND</span> TABLE_NAME = <span class="s">'categories'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> INDEX_NAME;</pre><div class="opts"><div class="opt correct"><pre class="out">+------------+-------------+
+| INDEX_NAME | COLUMN_NAME |
++------------+-------------+
+| name       | name        |
+| PRIMARY    | id          |
++------------+-------------+</pre></div></div><div class="why"><b>Why:</b> Two indexes: the primary key and <code class="inline">name</code>, the unique index MySQL created for the UNIQUE constraint on categories.name (named after the column).</div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> employees <span class="k">WHERE</span> email = <span class="s">'nina.kowalski@bookstore.example'</span>\G</pre><div class="opts"><div class="opt correct"><pre class="out">*************************** 1. row ***************************
+EXPLAIN: -&gt; Rows fetched before execution  (cost=0..0 rows=1)</pre></div></div><div class="why"><b>Why:</b> email is UNIQUE, so a constant comparison finds at most one row while MySQL is still planning: Rows fetched before execution, the same line as a primary-key lookup.</div></div>
+
+  <div class="sec"><h2>6.2 · Views: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">What does MySQL store when you create a view?</div><div class="opts"><div class="opt correct">A) Only the query: the rows are computed every time the view is read</div><div class="opt">B) A copy of the rows, refreshed every night</div><div class="opt">C) A copy of the rows, refreshed on every INSERT</div><div class="opt">D) An index on the base tables</div></div><div class="why"><b>Why:</b> A view is a named, saved SELECT (with its definer and security settings). Querying it runs the query against the base tables, so it is always current and exactly as fast as that query.<br><b>B</b> is wrong: That is a summary table you refresh yourself; MySQL has no materialized views.<br><b>C</b> is wrong: Views hold no rows at all.<br><b>D</b> is wrong: Views have no indexes; the base tables' indexes do the work.</div></div>
+  <div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">What happens when the second statement runs?</div><pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_ny <span class="k">AS</span>
+<span class="k">SELECT</span> id, first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'New York'</span>
+<span class="k">WITH</span> <span class="k">CHECK</span> <span class="k">OPTION</span>;
+<span class="k">UPDATE</span> v_ny <span class="k">SET</span> city = <span class="s">'Boston'</span> <span class="k">WHERE</span> id = <span class="s">1</span>;</pre><div class="opts"><div class="opt correct"><code class="inline">ERROR 1369 (HY000): CHECK OPTION failed 'bookstore.v_ny'</code></div></div><div class="why"><b>Why:</b> Alice would leave the view she was changed through. WITH CHECK OPTION rejects any write through the view that produces a row the view itself would not show; nothing is changed.</div></div>
+  <div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">Which of these views accepts an UPDATE that passes through to its base table?</div><div class="opts"><div class="opt">A) <code class="inline">SELECT author_id, COUNT(*) AS books FROM books GROUP BY author_id</code></div><div class="opt">B) <code class="inline">SELECT DISTINCT city FROM customers</code></div><div class="opt correct">C) <code class="inline">SELECT id, title, price FROM books WHERE price &lt; 10</code></div><div class="opt">D) <code class="inline">SELECT title FROM books UNION SELECT name FROM authors</code></div></div><div class="why"><b>Why:</b> Each row of C is exactly one row of books, so MySQL knows which row to change. Grouping, DISTINCT and UNION make one view row stand for several base rows (error 1288).<br><b>A</b> is wrong: A count has no single base row behind it.<br><b>B</b> is wrong: DISTINCT merges rows: not updatable (IS_UPDATABLE says NO).<br><b>D</b> is wrong: UNION combines two tables' rows.</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt"><code class="inline">v_all</code> was created as <code class="inline">SELECT * FROM products</code>. Then a column <code class="inline">color</code> is added to products. What does <code class="inline">SELECT * FROM v_all</code> return?</div><div class="opts"><div class="opt">A) <code class="inline">ERROR 1356</code></div><div class="opt">B) All columns, including color</div><div class="opt">C) An empty result until the view is refreshed</div><div class="opt correct">D) The old columns only, without color</div></div><div class="why"><b>Why:</b> The * was expanded into a fixed column list when the view was created, and that list is what MySQL saved. List columns explicitly and replace the view when the table gains one it should show.<br><b>A</b> is wrong: 1356 is for a renamed or dropped column the view still names.<br><b>B</b> is wrong: The column list is frozen at creation.<br><b>C</b> is wrong: Views are never "refreshed"; the rows are current, only the column list is fixed.</div></div>
+  <div class="q" data-sc="11" data-kind="short"><div class="qn">Q11</div><div class="qt">Why does the course put ORDER BY in the query that reads a view, and not inside the view?</div><div class="opts"><div class="opt correct">MySQL ignores a view's ORDER BY when the outer query has its own, and the SQL standard promises no order from a view: sort where you read</div></div><div class="why"><b>Why:</b> The lesson's "Performance and Limitations" section. The project's checklist says it too: no view contains an ORDER BY; every query that reads one does.</div></div>
+  <div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">An account has <code class="inline">SELECT</code> on <code class="inline">v_staff_directory</code> only. The view uses the default <code class="inline">SQL SECURITY DEFINER</code>. What can the account do?</div><div class="opts"><div class="opt">A) Read every column of employees, salaries included</div><div class="opt correct">B) Read the directory through the view, but not the employees table itself</div><div class="opt">C) Nothing: it has no privilege on employees</div><div class="opt">D) Update salaries through the view</div></div><div class="why"><b>Why:</b> The view reads employees with its definer's rights, so it works for the account; SELECT on employees directly fails with 1142. The view is the security boundary: never select more columns than the audience should see.<br><b>A</b> is wrong: Only the view's columns (no salary) are visible.<br><b>C</b> is wrong: DEFINER security is exactly what makes the view work for it.<br><b>D</b> is wrong: The grant is SELECT only, and the view has no salary column.</div></div>
+
+  <div class="sec"><h2>6.2 · Views: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_pricey <span class="k">AS</span> <span class="k">SELECT</span> title <span class="k">FROM</span> books <span class="k">WHERE</span> price &gt; <span class="s">12</span>;
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> books <span class="k">SET</span> price = <span class="s">9.00</span> <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SELECT</span> title <span class="k">FROM</span> v_pricey <span class="k">ORDER</span> <span class="k">BY</span> title;
+<span class="k">ROLLBACK</span>;
+<span class="k">DROP</span> <span class="k">VIEW</span> v_pricey;</pre><div class="opts"><div class="opt correct"><pre class="out">+-------------------+
+| title             |
++-------------------+
+| Lord of the Rings |
++-------------------+</pre></div></div><div class="why"><b>Why:</b> Only Lord of the Rings: Dune's price dropped to 9.00 inside the transaction, and the view runs its query against the current rows. After ROLLBACK the view shows Dune again; nothing needs refreshing.</div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_cities <span class="k">AS</span> <span class="k">SELECT</span> <span class="k">DISTINCT</span> city <span class="k">FROM</span> customers;
+<span class="k">SELECT</span> TABLE_NAME, IS_UPDATABLE
+<span class="k">FROM</span> information_schema.VIEWS
+<span class="k">WHERE</span> TABLE_SCHEMA = <span class="s">'bookstore'</span> <span class="k">AND</span> TABLE_NAME = <span class="s">'v_cities'</span>;
+<span class="k">DROP</span> <span class="k">VIEW</span> v_cities;</pre><div class="opts"><div class="opt correct"><pre class="out">+------------+--------------+
+| TABLE_NAME | IS_UPDATABLE |
++------------+--------------+
+| v_cities   | NO           |
++------------+--------------+</pre></div></div><div class="why"><b>Why:</b> NO: DISTINCT merges rows, so one view row can stand for several customers and MySQL cannot know which one to change.</div></div>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<p>EXPLAIN estimates (cost, rows) differ between servers and runs; the plan shapes and the counts must match.</p>
+<div class="blk lab"><div class="h">Lab 6.1-A: labs/module-09/l6_1-indexes/plan_reading_starter.sql → plan_reading_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+---------------------+---------+----------+----------+
+| Table               | Op      | Msg_type | Msg_text |
++---------------------+---------+----------+----------+
+| bookstore.visit_log | analyze | status   | OK       |
++---------------------+---------+----------+----------+
++--------+------------+------------+
+| visits | first_day  | last_day   |
++--------+------------+------------+
+| 100000 | 2025-01-01 | 2026-05-15 |
++--------+------------+------------+
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Filter: (visit_log.visited_on = DATE'2025-06-01')  (cost=10083 rows=10011)
+    -&gt; Table scan on visit_log  (cost=10083 rows=100110)
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Index lookup on visit_log using idx_visits_on (visited_on = DATE'2025-06-01')  (cost=70 rows=200)
++------------------+
+| visits_on_june_1 |
++------------------+
+|              200 |
++------------------+
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Aggregate: count(0)  (cost=303 rows=1)
+    -&gt; Filter: ((visit_log.customer_id = 3) and (visit_log.visited_on &gt;= DATE'2025-06-01') and (visit_log.visited_on &lt; DATE'2025-07-01'))  (cost=142 rows=700)
+        -&gt; Covering index range scan on visit_log using idx_visits_customer_on over (customer_id = 3 AND '2025-06-01' &lt;= visited_on &lt; '2025-07-01')  (cost=142 rows=700)
++--------------------+
+| customer_3_in_june |
++--------------------+
+|                700 |
++--------------------+
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Rows fetched before execution  (cost=0..0 rows=1)
++------------------------+------------------------+------------+
+| INDEX_NAME             | columns_in_order       | NON_UNIQUE |
++------------------------+------------------------+------------+
+| idx_visits_customer_on | customer_id,visited_on |          1 |
+| idx_visits_on          | visited_on             |          1 |
+| PRIMARY                | id                     |          0 |
+| uq_visits_ticket       | ticket                 |          0 |
++------------------------+------------------------+------------+</pre><p>Reading it: before the index, a Filter over a Table scan of all 100,000 rows; after, one Index lookup line. The composite index answers customer 3 in June as a covering range scan (COUNT(*) needs only the indexed columns). The unique ticket is found while planning. A learner who writes <code class="inline">(visited_on, customer_id)</code> in TODO 2 gets a different plan (an index range scan over the whole of June, checking the customer on each entry): a good discussion of column order.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 6.1-B: labs/module-09/l6_1-indexes/index_killers_starter.sql → index_killers_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+---------------------+---------+----------+----------+
+| Table               | Op      | Msg_type | Msg_text |
++---------------------+---------+----------+----------+
+| bookstore.visit_log | analyze | status   | OK       |
++---------------------+---------+----------+----------+
++-----------+
+| slow_june |
++-----------+
+|      6000 |
++-----------+
++-----------+
+| fast_june |
++-----------+
+|      6000 |
++-----------+
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Filter: ((year(visit_log.visited_on) = 2025) and (month(visit_log.visited_on) = 6))  (cost=10083 rows=100110)
+    -&gt; Table scan on visit_log  (cost=10083 rows=100110)
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Index range scan on visit_log using idx_visits_on over ('2025-06-01' &lt;= visited_on &lt; '2025-07-01'), with index condition: ((visit_log.visited_on &gt;= DATE'2025-06-01') and (visit_log.visited_on &lt; DATE'2025-07-01'))  (cost=2700 rows=6000)
++-----------------+
+| slow_first_week |
++-----------------+
+|             200 |
++-----------------+
++-----------------+
+| fast_first_week |
++-----------------+
+|             200 |
++-----------------+
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Index range scan on visit_log using idx_visits_on over (visited_on &lt;= '2025-01-01'), with index condition: (visit_log.visited_on &lt;= DATE'2025-01-01')  (cost=90.3 rows=200)
++-------------+
+| slow_ticket |
++-------------+
+|           1 |
++-------------+
++-------------+
+| fast_ticket |
++-------------+
+|           1 |
++-------------+
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Filter: (visit_log.ticket = 4242)  (cost=10083 rows=10011)
+    -&gt; Table scan on visit_log  (cost=10083 rows=100110)
++---------+------+-----------------------------------------------------------------------------------------------------------+
+| Level   | Code | Message                                                                                                   |
++---------+------+-----------------------------------------------------------------------------------------------------------+
+| Warning | 1739 | Cannot use ref access on index 'uq_visits_ticket' due to type or collation conversion on field 'ticket'   |
+| Warning | 1739 | Cannot use range access on index 'uq_visits_ticket' due to type or collation conversion on field 'ticket' |
++---------+------+-----------------------------------------------------------------------------------------------------------+
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Rows fetched before execution  (cost=0..0 rows=1)
++-------------+
+| starts_0042 |
++-------------+
+|         100 |
++-------------+
++----+-------------+-----------+------------+------+---------------+------+---------+------+--------+----------+-------------+
+| id | select_type | table     | partitions | type | possible_keys | key  | key_len | ref  | rows   | filtered | Extra       |
++----+-------------+-----------+------------+------+---------------+------+---------+------+--------+----------+-------------+
+|  1 | SIMPLE      | visit_log | NULL       | ALL  | NULL          | NULL | NULL    | NULL | 100110 |    11.11 | Using where |
++----+-------------+-----------+------------+------+---------------+------+---------+------+--------+----------+-------------+
++----+-------------+-----------+------------+-------+------------------+------------------+---------+------+------+----------+-----------------------+
+| id | select_type | table     | partitions | type  | possible_keys    | key              | key_len | ref  | rows | filtered | Extra                 |
++----+-------------+-----------+------------+-------+------------------+------------------+---------+------+------+----------+-----------------------+
+|  1 | SIMPLE      | visit_log | NULL       | range | uq_visits_ticket | uq_visits_ticket | 24      | NULL |  100 |   100.00 | Using index condition |
++----+-------------+-----------+------------+-------+------------------+------------------+---------+------+------+----------+-----------------------+</pre><p>Same counts in every pair (6000, 200, 1, 100): the rewrites change the plan, not the answer. SHOW WARNINGS after the number comparison prints warning 1739, MySQL's own explanation (the checker shows it as a WARN line). The leading-% query cannot be rewritten without changing the question: "ends with 4242" really needs the scan (or a different design).</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-09/l6_1-indexes/debug_indexes.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints (the index list first: nothing changed):</p>
+<pre class="out">ERROR 1061 (42000): Duplicate key name 'fk_books_author'
+ERROR 1091 (42000): Can't DROP 'idx_books_price'; check that column/key exists
+ERROR 1553 (HY000): Cannot drop index 'fk_orders_customer': needed in a foreign key constraint
+ERROR 1062 (23000): Duplicate entry 'New York' for key 'customers.uq_customers_city'
++------------+--------------------+-------------+
+| TABLE_NAME | INDEX_NAME         | COLUMN_NAME |
++------------+--------------------+-------------+
+| books      | fk_books_author    | author_id   |
+| books      | PRIMARY            | id          |
+| customers  | email              | email       |
+| customers  | PRIMARY            | id          |
+| orders     | fk_orders_customer | customer_id |
+| orders     | PRIMARY            | id          |
++------------+--------------------+-------------+</pre><p>Fixes are in the guide's clinic block. Note D's message: the first duplicate found is New York (Alice and Frank), not Chicago.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 6.2-A: labs/module-09/l6_2-views/report_views_starter.sql → report_views_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+---------------------+-------+--------+---------+
+| author              | books | copies | revenue |
++---------------------+-------+--------+---------+
+| J.R.R. Tolkien      |     2 |      5 |   64.95 |
+| George Orwell       |     2 |      6 |   56.94 |
+| Frank Herbert       |     1 |      3 |   44.97 |
+| Harper Lee          |     1 |      2 |   23.98 |
+| Ray Bradbury        |     1 |      2 |   20.98 |
+| Jane Austen         |     1 |      2 |   15.98 |
+| Aldous Huxley       |     1 |      1 |    9.49 |
+| F. Scott Fitzgerald |     1 |      0 |    0.00 |
+| Isaac Asimov        |     0 |      0 |    0.00 |
+| J.D. Salinger       |     1 |      0 |    0.00 |
++---------------------+-------+--------+---------+
++---------------------+-------+
+| author              | books |
++---------------------+-------+
+| F. Scott Fitzgerald |     1 |
+| Isaac Asimov        |     0 |
+| J.D. Salinger       |     1 |
++---------------------+-------+
++-----------+--------+-------------+
+| city      | orders | first_order |
++-----------+--------+-------------+
+| New York  |      5 | 2026-01-15  |
+| Chicago   |      4 | 2026-02-14  |
+| Houston   |      2 | 2026-01-22  |
+| (no city) |      1 | 2026-04-18  |
++-----------+--------+-------------+
++----------------+-------+----------+---------+
+| author         | books | cheapest | revenue |
++----------------+-------+----------+---------+
+| George Orwell  |     2 |     8.49 |   56.94 |
+| J.R.R. Tolkien |     2 |    10.99 |   64.95 |
++----------------+-------+----------+---------+
++---------------------+------------+
+| Tables_in_bookstore | Table_type |
++---------------------+------------+
+| v_author_sales      | VIEW       |
+| v_city_orders       | VIEW       |
++---------------------+------------+
++----------------+--------------+
+| TABLE_NAME     | IS_UPDATABLE |
++----------------+--------------+
+| v_author_sales | NO           |
+| v_city_orders  | YES          |
++----------------+--------------+</pre><p>COUNT(DISTINCT b.id) keeps the book count right after the join to order_items multiplies the rows (Lesson 4.3's fan-out). Asimov has 0 books and Fitzgerald and Salinger have books nobody ordered. The second view groups nothing, so it is updatable; the first groups, so it is not. The checker shows the views under its scratch database name.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 6.2-B: labs/module-09/l6_2-views/guarded_views_starter.sql → guarded_views_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+----------+
+| on_shelf |
++----------+
+|        9 |
++----------+
++----+------------+-------+
+| id | title      | price |
++----+------------+-------+
+|  6 | The Hobbit | 11.99 |
++----+------------+-------+
++----+------------+-------+
+| id | title      | price |
++----+------------+-------+
+|  6 | The Hobbit | 10.99 |
++----+------------+-------+
++-------------+-----------+
+| city        | customers |
++-------------+-----------+
+| Chicago     |         2 |
+| New York    |         2 |
+| Houston     |         1 |
+| Los Angeles |         1 |
++-------------+-----------+
++--------------------------------------------------------------------------------+
+| Grants for kit_marketing@localhost                                             |
++--------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_marketing`@`localhost`                              |
+| GRANT SELECT ON `bookstore`.`v_customer_cities` TO `kit_marketing`@`localhost` |
++--------------------------------------------------------------------------------+
++-------------------+--------------+--------------+
+| TABLE_NAME        | IS_UPDATABLE | CHECK_OPTION |
++-------------------+--------------+--------------+
+| v_customer_cities | YES          | NONE         |
+| v_shelf           | YES          | CASCADED     |
++-------------------+--------------+--------------+</pre><p>TODO 1's prompt experiment, run for real: with the check option, <code class="inline">UPDATE v_shelf SET in_stock = FALSE WHERE id = 1;</code> prints</p>
+<pre class="out">ERROR 1369 (HY000): CHECK OPTION failed 'bookstore.v_shelf'</pre><p>Without it, the update succeeds and Dune silently leaves the view (reload bookstore.sql afterward). The Note 3162 line in the checker's output comes from <code class="inline">DROP USER IF EXISTS</code> when the account does not exist yet: harmless.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-09/l6_2-views/debug_views.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 1050 (42S01): Table 'v_dbg_cheap' already exists
+ERROR 1288 (HY000): The target table v_dbg_counts of the UPDATE is not updatable
+ERROR 1369 (HY000): CHECK OPTION failed 'bookstore.v_dbg_cheap'
+ERROR 1356 (HY000): View 'bookstore.v_dbg_flyer_prices' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them
++----+-------+-------+
+| id | title | price |
++----+-------+-------+
+|  2 | 1984  |  9.99 |
++----+-------+-------+</pre><p>The SELECT at the end proves C changed nothing (1984 is still 9.99). Fixes are in the guide's clinic block.</p>
+</div>
+
+  <div class="sec"><h2>The Lesson Pages' Own Quick Quizzes</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Lesson 6.1 · Indexes &amp; Query Optimization</div>
+<ol class="steps" data-lesson-quiz="6.1">
+  <li><b>B</b> It returns the right rows after reading the whole table: Without an index MySQL reads every row and tests each one: a full table scan. The result is correct, it just takes longer as the table grows.</li>
+  <li><b>A</b> WHERE customer_id = 7 AND sold_on &gt;= '2026-01-01': customer_id is the leftmost column, so MySQL can jump to customer 7, and inside it the dates are sorted, so the date range is a tight slice.</li>
+  <li><b>C</b> Every row is read and then filtered: no index is used: Table scan means every row is read and the Filter keeps the matches. On a big table that is the step to fix, with an index or a rewritten condition.</li>
+  <li><b>C</b> The index is sorted by the column, not by the function's result: The index is sorted by sold_on, not by YEAR(sold_on), so MySQL must compute the function for every row. A range on the bare column (from 2026-01-01 up to 2027-01-01) can use the index.</li>
+  <li><b>A</b> Make it INVISIBLE and watch the slow queries: An invisible index is ignored by the optimizer but still maintained, so you can watch for slow queries and make it VISIBLE again instantly if something needed it.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Lesson 6.2 · Views</div>
+<ol class="steps" data-lesson-quiz="6.2">
+  <li><b>C</b> The new numbers, including the new order: A view stores only its query. Every SELECT runs that query against the current base tables, so the new order is counted immediately.</li>
+  <li><b>B</b> A GROUP BY with COUNT(*): With GROUP BY, one view row stands for many base rows, so MySQL cannot tell which row an update should change. Such views report IS_UPDATABLE = NO and fail with error 1288.</li>
+  <li><b>A</b> Rejects writes through the view that would create rows the view cannot show: It rejects inserts and updates through the view that would produce a row the view's WHERE clause excludes, with error 1369.</li>
+  <li><b>B</b> The old columns only, without color: The star was expanded into a fixed column list when the view was created, so the new column is silently missing until the view is replaced.</li>
+  <li><b>C</b> Read the directory through the view, but not the table itself: The view reads employees with its definer's privileges, so the account sees exactly the view's columns and rows, and nothing else of the table.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>Index:</b> <code class="inline">(customer_id, book_id, sold_on)</code>: both equality columns first (either order), the sort column last. <code class="inline">(customer_id, sold_on)</code> alone still has to check the book on every row; <code class="inline">(sold_on, ...)</code> first cannot seek.</li>
+  <li><b>Index killers:</b> a function or arithmetic around the column (<code class="inline">YEAR(sold_on)</code>, <code class="inline">price * 1.1</code>); a leading <code class="inline">%</code>; a text column compared with a number; OR across columns. Accept "a condition that matches most of the table" as a reason the optimizer ignores an index.</li>
+  <li><b>Views:</b> reasons: reuse a long query, a safe updatable slice (with a check option), a security boundary. Not: stored rows, indexes, speed. Accept "refresh itself" only if they explain it is always current because it stores no rows.</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q2 C.</b> Believes the order of the conditions in WHERE matters. It does not; the order of the columns in the index does.</li>
+  <li><b>Q4 B or C.</b> Has not met type conversion. Run the lesson's step with SHOW WARNINGS: 1739 says it in words.</li>
+  <li><b>Q5 A.</b> Mixes up an index's name with its columns.</li>
+  <li><b>Q7 B.</b> Expects a cache. MySQL has no materialized views; P3 shows the view is always current.</li>
+  <li><b>Q9 A or B.</b> Thinks "simple-looking" means updatable. The test: one view row = one base row.</li>
+  <li><b>Q10 B.</b> The most common view surprise; the lesson's Common Mistake 5.</li>
+  <li><b>Exit ticket 1 with <code class="inline">(sold_on, customer_id, book_id)</code>.</b> The sort column first: worth two minutes of the Session 10 warm-up.</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 9 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

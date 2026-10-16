@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides: Session 11</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--ink2:#9fb2cd;--accent:#93c5fd;--accent2:#2563eb;--py:#f6a53b;--lab:#34d3bd;--warn:#fbbf24;--line:#22314c;--code:#0a1526;color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100%;width:100%;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:6vh 8vw;gap:20px}
+  .slide.on{display:flex}
+  h1,h2,h3{font-family:"Archivo",sans-serif;line-height:1.1;text-wrap:balance}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .slide h1{font-size:clamp(2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+  .slide h2{font-size:clamp(1.5rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+  .slide p.lead{font-size:clamp(1.05rem,2.4vw,1.5rem);color:var(--ink2);max-width:34ch}
+  ul,ol.num{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  ul li{position:relative;padding-left:34px;font-size:clamp(1.05rem,2.3vw,1.6rem)}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+  ul.lab li::before{background:var(--lab)}
+  ol.num{counter-reset:n}
+  ol.num li{position:relative;padding-left:46px;font-size:clamp(1rem,2.1vw,1.45rem)}
+  ol.num li::before{counter-increment:n;content:counter(n);position:absolute;left:0;top:.05em;width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#fff;font-family:"JetBrains Mono",monospace;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+  code.k{font-family:"JetBrains Mono",monospace;font-variant-ligatures:none;color:#bfdbfe;font-size:.92em}
+  pre{white-space:pre;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px 24px;font-family:"JetBrains Mono",monospace;font-size:clamp(.8rem,1.7vw,1.15rem);line-height:1.5;overflow:auto;max-width:100%;font-variant-ligatures:none}
+  pre .k{color:#7dd3fc} pre .s{color:#86efac} pre .c{color:#7183a3;font-style:italic}
+  table.ag{border-collapse:collapse;font-size:clamp(.9rem,1.9vw,1.25rem);width:100%;max-width:60rem}
+  table.ag td{padding:7px 12px;border-bottom:1px solid var(--line)}
+  table.ag td.t{font-family:"JetBrains Mono",monospace;color:var(--ink2);white-space:nowrap}
+  table.ag tr.brk td{color:var(--py)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);color:var(--ink2)}
+  .tag .pill{background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;letter-spacing:.06em}
+  .tag .pill.lab{background:var(--lab);color:#062b26} .tag .pill.warn{background:var(--warn);color:#3a2a05}
+  .section{background:linear-gradient(135deg,#0f2a5c,#0b1220)}
+  .section .big{font-size:clamp(3rem,12vw,8rem);font-family:"Archivo";font-weight:800;color:#3b82f6;line-height:.9}
+  .section .big.py{color:var(--py)}
+  .two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:30px;align-items:start}
+  .two pre{font-size:clamp(.72rem,1.35vw,1rem);padding:16px 18px}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .bar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--py));width:0;transition:width .25s;z-index:5}
+  .count{position:fixed;right:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--ink2);z-index:5}
+  .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+  .nav button{pointer-events:auto;background:transparent;border:none;color:transparent;width:22vw;height:100vh;cursor:pointer}
+  .foot{position:fixed;left:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#5d7391;z-index:5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <section class="slide on section">
+    <div class="eyebrow">MySQL Foundations · Part 2 · Session 11 of 14 · 3 hours</div>
+    <h1>Session 11<br>Transactions and JSON</h1>
+    <p class="lead">Checkpoint 2, then changes that happen completely or not at all, and data that does not fit in columns.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Today</div>
+    <h2>Three hours, a checkpoint and two lessons</h2>
+    <table class="ag">
+      <tr><td class="t">0:00</td><td>Warm-up: normalization and stored programs</td></tr>
+      <tr><td class="t">0:10</td><td>Checkpoint 2: Modules 5 and 6 (30 min)</td></tr>
+      <tr><td class="t">0:40</td><td>7.2 Transactions: model, demo, lab, project</td></tr>
+      <tr class="brk"><td class="t">1:40</td><td>Break (10 min)</td></tr>
+      <tr><td class="t">1:50</td><td>7.3 JSON Columns: model, demo, lab, project</td></tr>
+      <tr><td class="t">2:50</td><td>Exit ticket, homework, what to bring next time</td></tr>
+    </table>
+    <div class="tag"><span class="pill lab">LABS</span> <span>Lab files are in <code class="k">labs/module-11</code>. Open the <code class="k">_starter.sql</code> file, never the solution.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Warm-up · 6 minutes</div>
+    <h2>Five questions from Lessons 6.3 and 7.1</h2>
+    <ol class="num">
+      <li>A cell reads <code class="k">Dune, 1984</code>: which normal form breaks?</li>
+      <li>"The whole key" and "nothing but the key": 2NF or 3NF?</li>
+      <li>Who reads <code class="k">DELIMITER //</code>: server, client or procedure?</li>
+      <li><code class="k">SELECT title, sale_price(price)</code>: procedure or function?</li>
+      <li>Predict <code class="k">sale_price</code> for Dune (14.99) and 1984 (9.99)</li>
+    </ol>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Checkpoint 2 · 30 minutes</div>
+    <h2>Modules 5 and 6, alone, open notes</h2>
+    <ul>
+      <li>Parts 1 to 4 in <code class="k">checkpoint2_starter.sql</code>; Part 5 on paper</li>
+      <li>CTE + RANK() · recursive CTE · a view · an index and EXPLAIN · 3NF</li>
+      <li>About five minutes per part; stuck? write what you would do</li>
+      <li>Lesson pages and your own files: yes. A neighbor: no</li>
+    </ul>
+    <div class="tag"><span class="pill warn">TIME</span> <span>Stop at 0:40 sharp. The rubric comes back in Session 12.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big">7.2</div><h2>Transactions</h2><p class="lead">Several changes that happen completely or not at all.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Mental model</div>
+    <h2>All or nothing</h2>
+    <ol class="num">
+      <li><code class="k">START TRANSACTION</code>: from here on, nothing is final</li>
+      <li>Your statements: visible to you, invisible to everyone else</li>
+      <li><code class="k">COMMIT</code> keeps all of it · <code class="k">ROLLBACK</code> throws all of it away</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>Autocommit: without START TRANSACTION, every statement commits by itself.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · ACID</div>
+    <h2>Four promises, in the bookstore</h2>
+    <ul>
+      <li><b>Atomicity</b>: an order never exists without its items</li>
+      <li><b>Consistency</b>: <code class="k">CHECK (balance &gt;= 0)</code> holds after every commit</li>
+      <li><b>Isolation</b>: a report never counts a half-placed order</li>
+      <li><b>Durability</b>: after COMMIT, it survives a power cut</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Code</div>
+    <h2>COMMIT: a transfer that sticks</h2>
+    <pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> accounts <span class="k">SET</span> balance = balance - <span class="s">30</span> <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">UPDATE</span> accounts <span class="k">SET</span> balance = balance + <span class="s">30</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">COMMIT</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> accounts <span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+    <pre class="code">+----+----------------+---------+
+| id | name           | balance |
++----+----------------+---------+
+|  1 | Alice Johnson  |  120.00 |
+|  2 | Bob Smith      |   80.00 |
+|  3 | Carol Williams |    0.00 |
++----+----------------+---------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Between START TRANSACTION and COMMIT, only this session sees 120 and 80.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Code</div>
+    <h2>ROLLBACK: a rehearsal</h2>
+    <pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> order_items;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> items_inside <span class="k">FROM</span> order_items;
+<span class="k">ROLLBACK</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> items_after_rollback <span class="k">FROM</span> order_items;</pre>
+    <pre class="code">+--------------+
+| items_inside |
++--------------+
+|            0 |
++--------------+
++----------------------+
+| items_after_rollback |
++----------------------+
+|                   18 |
++----------------------+</pre>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Implicit commits</div>
+    <h2>Statements that commit by themselves</h2>
+    <ul>
+      <li><code class="k">CREATE</code>, <code class="k">ALTER</code>, <code class="k">DROP</code>, <code class="k">RENAME</code>, <code class="k">TRUNCATE</code></li>
+      <li><code class="k">CREATE USER</code>, <code class="k">GRANT</code>, <code class="k">REVOKE</code></li>
+      <li>A second <code class="k">START TRANSACTION</code>, <code class="k">LOCK TABLES</code></li>
+      <li>ROLLBACK undoes only what came after the last commit</li>
+    </ul>
+    <div class="tag"><span class="pill warn">RULE</span> <span>Keep schema changes out of transactions: before or after.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Silent trap 1</div>
+    <h2>A CREATE TABLE in the middle</h2>
+    <pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> accounts <span class="k">SET</span> balance = <span class="s">0</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">CREATE</span> <span class="k">TABLE</span> demo_audit (note <span class="k">VARCHAR</span>(<span class="s">100</span>));
+<span class="k">ROLLBACK</span>;
+<span class="k">SELECT</span> id, balance <span class="k">FROM</span> accounts <span class="k">WHERE</span> id = <span class="s">2</span>;</pre>
+    <pre class="code">+----+---------+
+| id | balance |
++----+---------+
+|  2 |    0.00 |
++----+---------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Bob's 0.00 is real: CREATE TABLE committed it before it ran.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Silent trap 2</div>
+    <h2>COMMIT after an error</h2>
+    <pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> accounts <span class="k">SET</span> balance = balance + <span class="s">40</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">UPDATE</span> accounts <span class="k">SET</span> balance = balance - <span class="s">40</span> <span class="k">WHERE</span> id = <span class="s">3</span>;
+<span class="k">COMMIT</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> accounts <span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+    <pre class="code">ERROR 3819 (HY000): Check constraint 'chk_balance' is violated.
++----+----------------+---------+
+| id | name           | balance |
++----+----------------+---------+
+|  1 | Alice Johnson  |  120.00 |
+|  2 | Bob Smith      |  120.00 |
+|  3 | Carol Williams |    0.00 |
++----+----------------+---------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>A failed statement undoes only itself. Bob got 40 from nothing.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Two windows</div>
+    <h2>Who sees what, who waits</h2>
+    <ol class="num">
+      <li>A: START TRANSACTION; Alice minus 20 · A sees <code class="k">100.00</code></li>
+      <li>B: plain SELECT · sees <code class="k">120.00</code> at once, no waiting</li>
+      <li>B: UPDATE the same row · waits for A's row lock</li>
+      <li>A: COMMIT · the lock is released</li>
+      <li>B: SELECT again · sees <code class="k">100.00</code></li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>Readers never wait and never see unfinished work. Writers wait for writers.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Lock wait</div>
+    <h2>When B waits too long</h2>
+    <pre class="code"><span class="k">UPDATE</span> accounts <span class="k">SET</span> balance = balance + <span class="s">1</span> <span class="k">WHERE</span> id = <span class="s">1</span>;   <span class="c">-- window B</span></pre>
+    <pre class="code">ERROR 1205 (HY000): Lock wait timeout exceeded; try restarting transaction</pre>
+    <ul>
+      <li>After <code class="k">innodb_lock_wait_timeout</code>: 50 s by default</li>
+      <li>Only the waiting statement fails; nothing is undone</li>
+      <li>If A commits in time, B's UPDATE simply finishes</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Locking reads</div>
+    <h2>FOR UPDATE and deadlocks</h2>
+    <ul>
+      <li>Read-then-write? <code class="k">SELECT ... FOR UPDATE</code> locks the rows you will change</li>
+      <li>Two cashiers can no longer spend the same balance</li>
+      <li>Deadlock: InnoDB rolls one transaction back with <code class="k">1213</code></li>
+      <li>Retry the WHOLE transaction; lock rows in the same order everywhere</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Procedures</div>
+    <h2>The handler: two lines</h2>
+    <pre class="code"><span class="k">DECLARE</span> <span class="k">EXIT</span> <span class="k">HANDLER</span> <span class="k">FOR</span> SQLEXCEPTION
+<span class="k">BEGIN</span>
+    <span class="k">ROLLBACK</span>;   <span class="c">-- undo everything this call did</span>
+    RESIGNAL;   <span class="c">-- and pass the original error to the caller</span>
+<span class="k">END</span>;</pre>
+    <ul>
+      <li>Declared after the variables, before the other statements</li>
+      <li>Catches every error, including your own SIGNALs</li>
+    </ul>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>ROLLBACK without RESIGNAL hides the failure from the app.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Code</div>
+    <h2>The hardest failing call</h2>
+    <pre class="code"><span class="k">CALL</span> transfer(<span class="s">1</span>, <span class="s">3</span>, <span class="s">5.00</span>);
+<span class="k">CALL</span> transfer(<span class="s">1</span>, <span class="s">99</span>, <span class="s">5.00</span>);
+<span class="k">SELECT</span> * <span class="k">FROM</span> accounts <span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+    <pre class="code">ERROR 1644 (45000): No such destination account
++----+----------------+---------+
+| id | name           | balance |
++----+----------------+---------+
+|  1 | Alice Johnson  |   95.00 |
+|  2 | Bob Smith      |   80.00 |
+|  3 | Carol Williams |    5.00 |
++----+----------------+---------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>The debit to 99 succeeded, the credit found no row: the handler undid the debit.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> seats (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, taken <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> seats <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">0</span>), (<span class="s">2</span>, <span class="s">0</span>);
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> seats <span class="k">SET</span> taken = <span class="s">1</span> <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SAVEPOINT</span> one_seat;
+<span class="k">UPDATE</span> seats <span class="k">SET</span> taken = <span class="s">1</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">ROLLBACK</span> <span class="k">TO</span> <span class="k">SAVEPOINT</span> one_seat;
+<span class="k">COMMIT</span>;
+<span class="k">SELECT</span> SUM(taken) <span class="k">AS</span> seats_taken <span class="k">FROM</span> seats;</pre>
+    <ul>
+      <li>Which UPDATE survives the ROLLBACK TO?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Common mistakes</div>
+    <h2>What goes wrong</h2>
+    <ul>
+      <li>COMMIT after an error: the earlier changes are saved</li>
+      <li>A schema change inside a transaction: ROLLBACK does nothing</li>
+      <li>A savepoint name typo: <code class="k">ERROR 1305</code>, transaction still open</li>
+      <li>Writing in <code class="k">START TRANSACTION READ ONLY</code>: <code class="k">ERROR 1792</code></li>
+      <li>A MyISAM table: ROLLBACK ignored, warning <code class="k">1196</code></li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Guided lab · 15 minutes</div>
+    <h2>Loyalty points, all or nothing</h2>
+    <ul class="lab">
+      <li><code class="k">loyalty_points_starter.sql</code> in <code class="k">labs/module-11/l7_2-...</code></li>
+      <li>TODO 1 COMMIT · 2 ROLLBACK · 3 a savepoint · 4 an implicit commit</li>
+      <li>Edit, save, SOURCE again; predict before each run</li>
+      <li>TODO 4: why did the ROLLBACK do nothing?</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">return_item_starter.sql</code>, then <code class="k">debug_lost_points.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.2 · Project</div>
+    <h2>An all-or-nothing checkout</h2>
+    <ul class="lab">
+      <li>Setup: the accounts table</li>
+      <li>Step 1: checkout.sql creates the procedure</li>
+      <li>Steps 2 to 4: a good order, four calls that must fail</li>
+      <li>Step 5: the integrity audit, and the gap in the ids</li>
+      <li>Step 6: the file runs twice</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>In class: setup and Step 1. At home: Steps 2 to 6.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big py">10</div><h2>Break</h2><p class="lead">Back at 1:50. Reload bookstore.sql: Lesson 7.3 starts from a clean copy.</p></section>
+
+  <section class="slide section"><div class="big">7.3</div><h2>JSON Columns</h2><p class="lead">Flexible details next to the ordinary columns, and when not to use them.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Mental model</div>
+    <h2>Columns, or JSON?</h2>
+    <ul>
+      <li>Every row has it, you join, sum or constrain it: a <b>column</b></li>
+      <li>A list of related things: a <b>table</b></li>
+      <li>Optional, varied, mostly for display: <b>JSON</b></li>
+      <li>Design the tables first; JSON gets the leftovers</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Code</div>
+    <h2>One document per row</h2>
+    <pre class="code"><span class="k">SELECT</span> id, title, attributes-&gt;&gt;<span class="s">'$.format'</span> <span class="k">AS</span> format,
+       attributes-&gt;<span class="s">'$.awards'</span> <span class="k">AS</span> awards
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> id <span class="k">IN</span> (<span class="s">1</span>, <span class="s">2</span>, <span class="s">6</span>)
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+    <pre class="code">+----+------------+-----------+--------------------+
+| id | title      | format    | awards             |
++----+------------+-----------+--------------------+
+|  1 | Dune       | paperback | ["Hugo", "Nebula"] |
+|  2 | 1984       | paperback | []                 |
+|  6 | The Hobbit | hardcover | NULL               |
++----+------------+-----------+--------------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Paths start at <code class="k">$</code>: <code class="k">$.format</code>, <code class="k">$.awards[0]</code>. Keys come back sorted.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Code</div>
+    <h2>MySQL checks every document</h2>
+    <pre class="code"><span class="k">UPDATE</span> books <span class="k">SET</span> attributes = <span class="s">'{format: "ebook"}'</span> <span class="k">WHERE</span> id = <span class="s">2</span>;</pre>
+    <ul>
+      <li><code class="k">ERROR 3140 (22032)</code>: Invalid JSON text</li>
+      <li><code class="k">Missing a name for object member.</code> at position 1</li>
+      <li>JSON keys need double quotes; JavaScript's bare keys are not JSON</li>
+    </ul>
+    <div class="tag"><span class="pill warn">FIX</span> <span>Or let <code class="k">JSON_OBJECT()</code> write the document for you.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Code</div>
+    <h2>Two arrows</h2>
+    <pre class="code"><span class="k">SELECT</span> title, JSON_EXTRACT(attributes, <span class="s">'$.format'</span>) <span class="k">AS</span> extracted,
+       attributes-&gt;<span class="s">'$.format'</span> <span class="k">AS</span> arrow, attributes-&gt;&gt;<span class="s">'$.format'</span> <span class="k">AS</span> double_arrow
+<span class="k">FROM</span> books <span class="k">WHERE</span> id <span class="k">IN</span> (<span class="s">1</span>, <span class="s">6</span>) <span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+    <pre class="code">+------------+-------------+-------------+--------------+
+| title      | extracted   | arrow       | double_arrow |
++------------+-------------+-------------+--------------+
+| Dune       | "paperback" | "paperback" | paperback    |
+| The Hobbit | "hardcover" | "hardcover" | hardcover    |
++------------+-------------+-------------+--------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">-&gt;</code> gives JSON (with quotes) · <code class="k">-&gt;&gt;</code> gives plain text</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Code</div>
+    <h2>Missing keys are NULL</h2>
+    <pre class="code"><span class="k">SELECT</span> title, attributes-&gt;&gt;<span class="s">'$.awards[0]'</span> <span class="k">AS</span> first_award,
+       JSON_LENGTH(attributes-&gt;<span class="s">'$.awards'</span>) <span class="k">AS</span> award_count, attributes-&gt;&gt;<span class="s">'$.series'</span> <span class="k">AS</span> series
+<span class="k">FROM</span> books <span class="k">WHERE</span> id <span class="k">IN</span> (<span class="s">1</span>, <span class="s">2</span>, <span class="s">6</span>) <span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+    <pre class="code">+------------+-------------+-------------+-----------------+
+| title      | first_award | award_count | series          |
++------------+-------------+-------------+-----------------+
+| Dune       | Hugo        |           2 | Dune Chronicles |
+| 1984       | NULL        |           0 | NULL            |
+| The Hobbit | NULL        |        NULL | Middle-earth    |
++------------+-------------+-------------+-----------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>1984 has an empty list; the Hobbit has no awards key at all. No error either way.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Code</div>
+    <h2>Change part of a document</h2>
+    <pre class="code"><span class="k">UPDATE</span> books
+<span class="k">SET</span> attributes = JSON_SET(attributes, <span class="s">'$.edition'</span>, <span class="s">'75th anniversary'</span>)
+<span class="k">WHERE</span> id = <span class="s">6</span>;
+<span class="k">SELECT</span> attributes-&gt;&gt;<span class="s">'$.edition'</span> <span class="k">AS</span> edition, attributes-&gt;&gt;<span class="s">'$.format'</span> <span class="k">AS</span> format
+<span class="k">FROM</span> books <span class="k">WHERE</span> id = <span class="s">6</span>;</pre>
+    <pre class="code">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
++------------------+-----------+
+| edition          | format    |
++------------------+-----------+
+| 75th anniversary | hardcover |
++------------------+-----------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">JSON_SET</code> adds or replaces · <code class="k">JSON_INSERT</code> only adds · <code class="k">JSON_REPLACE</code> only replaces</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Code</div>
+    <h2>JSON from rows</h2>
+    <pre class="code"><span class="k">SELECT</span> JSON_OBJECT(<span class="s">'id'</span>, id, <span class="s">'title'</span>, title, <span class="s">'price'</span>, price) <span class="k">AS</span> item
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> id &lt;= <span class="s">3</span>
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+    <pre class="code">+-------------------------------------------------------------+
+| item                                                        |
++-------------------------------------------------------------+
+| {"id": 1, "price": 14.99, "title": "Dune"}                  |
+| {"id": 2, "price": 9.99, "title": "1984"}                   |
+| {"id": 3, "price": 11.99, "title": "To Kill a Mockingbird"} |
++-------------------------------------------------------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span><code class="k">JSON_ARRAYAGG</code> and <code class="k">JSON_OBJECTAGG</code> build JSON from a group of rows.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Code</div>
+    <h2>JSON back to rows</h2>
+    <pre class="code"><span class="k">SELECT</span> b.title, aw.award
+<span class="k">FROM</span> books <span class="k">AS</span> b,
+     JSON_TABLE(b.attributes, <span class="s">'$.awards[*]'</span> <span class="k">COLUMNS</span> (award <span class="k">VARCHAR</span>(<span class="s">40</span>) PATH <span class="s">'$'</span>)) <span class="k">AS</span> aw
+<span class="k">ORDER</span> <span class="k">BY</span> b.title, aw.award;</pre>
+    <pre class="code">+-------+--------+
+| title | award  |
++-------+--------+
+| Dune  | Hugo   |
+| Dune  | Nebula |
++-------+--------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>One row per array element. Books with no awards produce no rows.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Code</div>
+    <h2>Index a path</h2>
+    <pre class="code"><span class="k">ALTER</span> <span class="k">TABLE</span> books
+    <span class="k">ADD</span> <span class="k">COLUMN</span> format <span class="k">VARCHAR</span>(<span class="s">20</span>)
+        GENERATED ALWAYS <span class="k">AS</span> (attributes-&gt;&gt;<span class="s">'$.format'</span>) VIRTUAL,
+    <span class="k">ADD</span> <span class="k">INDEX</span> idx_books_format (format);
+<span class="k">SELECT</span> title, format <span class="k">FROM</span> books <span class="k">WHERE</span> format = <span class="s">'hardcover'</span> <span class="k">ORDER</span> <span class="k">BY</span> title;</pre>
+    <pre class="code">+-------------------+-----------+
+| title             | format    |
++-------------------+-----------+
+| Lord of the Rings | hardcover |
+| The Hobbit        | hardcover |
++-------------------+-----------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>EXPLAIN on the original <code class="k">-&gt;&gt;</code> query: <code class="k">Index lookup ... idx_books_format</code></span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Silent mistake 1</div>
+    <h2>A misspelled key</h2>
+    <pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> attributes-&gt;&gt;<span class="s">'$.Format'</span> = <span class="s">'hardcover'</span>;</pre>
+    <pre class="code">Empty set</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Keys are case-sensitive, and a missing key is NULL: nothing matches, nothing warns.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Silent mistake 2</div>
+    <h2>The single arrow on a web page</h2>
+    <pre class="code"><span class="k">SELECT</span> CONCAT(title, <span class="s">' ('</span>, attributes-&gt;<span class="s">'$.format'</span>, <span class="s">')'</span>) <span class="k">AS</span> label
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> id = <span class="s">1</span>;</pre>
+    <pre class="code">+--------------------+
+| label              |
++--------------------+
+| Dune ("paperback") |
++--------------------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Use <code class="k">-&gt;&gt;</code> whenever a value leaves JSON: display, CONCAT, comparisons.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Predict, then run</div>
+    <h2>What does this print?</h2>
+    <pre class="code"><span class="k">SET</span> @doc = <span class="s">'{"format": "paperback"}'</span>;
+<span class="k">SELECT</span> JSON_INSERT(@doc, <span class="s">'$.format'</span>, <span class="s">'ebook'</span>)  <span class="k">AS</span> ins,
+       JSON_REPLACE(@doc, <span class="s">'$.pages'</span>, <span class="s">300</span>)      <span class="k">AS</span> rep;</pre>
+    <ul>
+      <li>One key exists, one does not. Which function changes anything?</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Guided lab · 15 minutes</div>
+    <h2>Reader preferences in JSON</h2>
+    <ul class="lab">
+      <li><code class="k">reader_prefs_starter.sql</code> in <code class="k">labs/module-11/l7_3-...</code></li>
+      <li>Who wants the newsletter? A JSON true is the text <code class="k">'true'</code></li>
+      <li>MEMBER OF, a nested path, a missing key vs a missing document</li>
+      <li>JSON_SET, ARRAY_APPEND, REMOVE; an indexed generated column</li>
+    </ul>
+    <div class="tag"><span class="pill lab">MORE</span> <span>Finished? <code class="k">order_documents_starter.sql</code>, then <code class="k">debug_bad_json.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">7.3 · Project</div>
+    <h2>The catalog feed</h2>
+    <ul class="lab">
+      <li>Setup: attributes, the format column, the CHECK</li>
+      <li>Step 1: two ebooks with JSON_SET</li>
+      <li>Steps 2 to 4: formats, awards, the JSON feed</li>
+      <li>Steps 5 and 6: a series index; a file that runs twice</li>
+    </ul>
+    <div class="tag"><span class="pill lab">PROJECT</span> <span>In class: setup and Step 1. At home: Steps 2 to 6.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Wrap-up · 4 minutes</div>
+    <h2>Exit ticket</h2>
+    <ol class="num">
+      <li>An UPDATE fails with 3819, then COMMIT: what is saved?</li>
+      <li>Write the handler that rolls back and still reports the error</li>
+      <li>One fact for JSON, one for a column, a reason each</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>No notes. Workbook Exit Ticket box or a sticky note on the way out.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Before Session 12</div>
+    <h2>Homework and bring list</h2>
+    <ul class="lab">
+      <li>Finish checkout.sql and catalog_feed.sql (Steps 2 to 6)</li>
+      <li>Exercises 1 to 3 of both lessons; both quizzes; both journals</li>
+      <li>Reload bookstore.sql before next time</li>
+      <li>Bring: root password, two terminal windows, your project files</li>
+    </ul>
+    <div class="tag"><span class="pill">NEXT</span> <span>Session 12: Users, Permissions and Backups, and the final-project brief.</span></div>
+  </section>
+
+
+</div>
+
+<div class="foot">© 2026 Ray de la Paz · MySQL Foundations</div>
+<div class="count" id="count">1 / 1</div>
+<div class="nav"><button id="prev" aria-label="Previous slide"></button><button id="next" aria-label="Next slide"></button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'), count=document.getElementById('count');
+  let i=0;
+  function show(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%'; count.textContent=(i+1)+' / '+slides.length; }
+  document.getElementById('next').onclick=()=>show(i+1);
+  document.getElementById('prev').onclick=()=>show(i-1);
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0); else if(e.key==='End')show(slides.length-1);
+  });
+  show(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides: Session 14</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--ink2:#9fb2cd;--accent:#93c5fd;--accent2:#2563eb;--py:#f6a53b;--lab:#34d3bd;--warn:#fbbf24;--line:#22314c;--code:#0a1526;color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100%;width:100%;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;padding:6vh 8vw;gap:20px}
+  .slide.on{display:flex}
+  h1,h2,h3{font-family:"Archivo",sans-serif;line-height:1.1;text-wrap:balance}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+  .slide h1{font-size:clamp(2rem,6vw,4rem);font-weight:800;letter-spacing:-.02em}
+  .slide h2{font-size:clamp(1.5rem,4.2vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+  .slide p.lead{font-size:clamp(1.05rem,2.4vw,1.5rem);color:var(--ink2);max-width:34ch}
+  ul,ol.num{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  ul li{position:relative;padding-left:34px;font-size:clamp(1.05rem,2.3vw,1.6rem)}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+  ul.lab li::before{background:var(--lab)}
+  ol.num{counter-reset:n}
+  ol.num li{position:relative;padding-left:46px;font-size:clamp(1rem,2.1vw,1.45rem)}
+  ol.num li::before{counter-increment:n;content:counter(n);position:absolute;left:0;top:.05em;width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#fff;font-family:"JetBrains Mono",monospace;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+  code.k{font-family:"JetBrains Mono",monospace;font-variant-ligatures:none;color:#bfdbfe;font-size:.92em}
+  pre{white-space:pre;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px 24px;font-family:"JetBrains Mono",monospace;font-size:clamp(.8rem,1.7vw,1.15rem);line-height:1.5;overflow:auto;max-width:100%;font-variant-ligatures:none}
+  pre .k{color:#7dd3fc} pre .s{color:#86efac} pre .c{color:#7183a3;font-style:italic}
+  table.ag{border-collapse:collapse;font-size:clamp(.9rem,1.9vw,1.25rem);width:100%;max-width:60rem}
+  table.ag td{padding:7px 12px;border-bottom:1px solid var(--line)}
+  table.ag td.t{font-family:"JetBrains Mono",monospace;color:var(--ink2);white-space:nowrap}
+  table.ag tr.brk td{color:var(--py)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:"JetBrains Mono",monospace;font-size:clamp(.7rem,1.4vw,.95rem);color:var(--ink2)}
+  .tag .pill{background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;letter-spacing:.06em}
+  .tag .pill.lab{background:var(--lab);color:#062b26} .tag .pill.warn{background:var(--warn);color:#3a2a05}
+  .section{background:linear-gradient(135deg,#0f2a5c,#0b1220)}
+  .section .big{font-size:clamp(3rem,12vw,8rem);font-family:"Archivo";font-weight:800;color:#3b82f6;line-height:.9}
+  .section .big.py{color:var(--py)}
+  .two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:30px;align-items:start}
+  .two pre{font-size:clamp(.72rem,1.35vw,1rem);padding:16px 18px}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .bar{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--py));width:0;transition:width .25s;z-index:5}
+  .count{position:fixed;right:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:var(--ink2);z-index:5}
+  .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:space-between;pointer-events:none;z-index:4}
+  .nav button{pointer-events:auto;background:transparent;border:none;color:transparent;width:22vw;height:100vh;cursor:pointer}
+  .foot{position:fixed;left:16px;bottom:12px;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#5d7391;z-index:5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <section class="slide on section">
+    <div class="eyebrow">MySQL Foundations · Part 2 · Session 14 of 14 · 3 hours</div>
+    <h1>Session 14<br>Final Project Studio II, Showcase and Next Steps</h1>
+    <p class="lead">Rules, accounts and a backup that restores; your showcase; and what comes next.</p>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Today</div>
+    <h2>Three hours, one project</h2>
+    <table class="ag">
+      <tr><td class="t">0:00</td><td>Warm-up: the rebuild check</td></tr>
+      <tr><td class="t">0:10</td><td>8.2 Rules across rows: the shape</td></tr>
+      <tr><td class="t">0:25</td><td>Studio: Milestone 5, logic</td></tr>
+      <tr><td class="t">1:05</td><td>Studio: Milestones 6 and 7</td></tr>
+      <tr class="brk"><td class="t">1:30</td><td>Break (10 min)</td></tr>
+      <tr><td class="t">1:40</td><td>Showcase: three minutes each</td></tr>
+      <tr><td class="t">2:15</td><td>8.3 Next Steps & Best Practices</td></tr>
+      <tr><td class="t">2:35</td><td>8.3 Health check on your project</td></tr>
+      <tr><td class="t">2:50</td><td>Submission, exit ticket, course close</td></tr>
+    </table>
+    <div class="tag"><span class="pill lab">LABS</span> <span>Labs in <code class="k">labs/module-14</code>. Your project stays in <code class="k">tool-library</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Warm-up · 10 minutes</div>
+    <h2>The rebuild check</h2>
+    <pre class="code">cd tool-library
+mysql -u root -p
+SOURCE 02_data.sql
+SOURCE 03_queries.sql</pre>
+    <ul>
+      <li>Anything needs a manual fix? That is today's first job</li>
+      <li>What would ROW_NUMBER lose in Saturday question 3?</li>
+      <li>Why <code class="k">@today</code> and not <code class="k">CURDATE()</code>?</li>
+    </ul>
+  </section>
+
+  <section class="slide section"><div class="big">8.2</div><h2>Studio II: Logic, Security, Backup</h2><p class="lead">Milestones 5, 6 and 7, then the showcase.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Mental model</div>
+    <h2>The only door into loans</h2>
+    <ul>
+      <li>The desk's account gets <code class="k">EXECUTE</code>, not INSERT</li>
+      <li>The procedure runs with its definer's rights</li>
+      <li>So every loan passes every rule</li>
+      <li>Check-then-insert has a gap: two volunteers, one drill</li>
+    </ul>
+    <div class="tag"><span class="pill">WHY</span> <span>A transaction and a row lock close the gap.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · The shape</div>
+    <h2>Five steps and one handler</h2>
+    <ol class="num">
+      <li><code class="k">START TRANSACTION</code></li>
+      <li>Read and lock: <code class="k">SELECT ... FOR UPDATE</code></li>
+      <li>Check each rule: <code class="k">SIGNAL SQLSTATE '45000'</code></li>
+      <li><code class="k">INSERT</code> the loan</li>
+      <li><code class="k">COMMIT</code></li>
+    </ol>
+    <div class="tag"><span class="pill">HANDLER</span> <span>Around it: <code class="k">EXIT HANDLER ... ROLLBACK; RESIGNAL;</code></span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Proven</div>
+    <h2>One failing call per rule</h2>
+    <pre class="code"><span class="k">CALL</span> checkout_tool(<span class="s">8</span>, <span class="s">1</span>, <span class="s">'2026-06-15'</span>);   <span class="c">-- Victor is suspended</span>
+<span class="k">CALL</span> checkout_tool(<span class="s">1</span>, <span class="s">12</span>, <span class="s">'2026-06-15'</span>);  <span class="c">-- tile cutter in repair</span>
+<span class="k">CALL</span> checkout_tool(<span class="s">6</span>, <span class="s">7</span>, <span class="s">'2026-06-15'</span>);   <span class="c">-- ladder is out with Amara</span>
+<span class="k">CALL</span> checkout_tool(<span class="s">7</span>, <span class="s">6</span>, <span class="s">'2026-06-15'</span>);   <span class="c">-- Tessa has no chainsaw course</span></pre>
+    <pre class="code">ERROR 1644 (45000): Member is suspended
+ERROR 1644 (45000): Tool is out for repair
+ERROR 1644 (45000): Tool is already on loan
+ERROR 1644 (45000): Safety course required for this tool</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>The reference answering. Yours: one message per rule.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Proven</div>
+    <h2>The limit: a fourth tool for Kevin</h2>
+    <pre class="code"><span class="c">-- Kevin has the socket set; two calls just gave him loans 17 and 18</span>
+<span class="k">CALL</span> checkout_tool(<span class="s">2</span>, <span class="s">8</span>, <span class="s">'2026-06-15'</span>);   <span class="c">-- a fourth tool for Kevin</span></pre>
+    <pre class="code">+---------+------------+
+| loan_id | due_on     |
++---------+------------+
+|      18 | 2026-06-22 |
++---------+------------+
+ERROR 1644 (45000): Loan limit reached (3 open loans)</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>A success prints the new loan and due date; the fourth is refused.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Studio · 40 minutes</div>
+    <h2>Milestone 5: Business logic</h2>
+    <ul class="lab">
+      <li><code class="k">v_open_loans</code>: the desk's screen</li>
+      <li><code class="k">checkout_tool(member, tool, date)</code>: five rules</li>
+      <li><code class="k">return_tool(tool, date)</code>; NULL date = today</li>
+      <li>A call that must fail for every rule, one that succeeds</li>
+    </ul>
+    <div class="tag"><span class="pill lab">LAB</span> <span>Stuck? <code class="k">add_item_rules_starter.sql</code> first: the same shape on the bookstore.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Studio · 25 minutes</div>
+    <h2>Milestone 6: Security</h2>
+    <ul class="lab">
+      <li>Roles <code class="k">tl_desk</code> and <code class="k">tl_reports</code></li>
+      <li>One account for the web form, one for the treasurer</li>
+      <li><code class="k">SET DEFAULT ROLE</code> for both</li>
+      <li>No DELETE anywhere; no INSERT on loans for the desk</li>
+      <li>Log in as the desk account and try</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Milestone 6</div>
+    <h2>Logged in as tl_desk_app</h2>
+    <pre class="code"><span class="k">CALL</span> checkout_tool(<span class="s">4</span>, <span class="s">1</span>, <span class="s">'2026-06-17'</span>);
+<span class="k">DELETE</span> <span class="k">FROM</span> loans <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">INSERT</span> <span class="k">INTO</span> loans (tool_id, member_id, loaned_on, due_on)
+<span class="k">VALUES</span> (<span class="s">3</span>, <span class="s">4</span>, <span class="s">'2026-06-17'</span>, <span class="s">'2026-06-24'</span>);</pre>
+    <pre class="code">+---------+------------+
+| loan_id | due_on     |
++---------+------------+
+|      19 | 2026-06-24 |
++---------+------------+
+ERROR 1142 (42000): DELETE command denied to user 'tl_desk_app'@'localhost' for
+    table 'loans'
+ERROR 1142 (42000): INSERT command denied to user 'tl_desk_app'@'localhost' for
+    table 'loans'</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>The CALL works through definer's rights; direct writes are refused.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Milestone 7</div>
+    <h2>Back up, restore, compare</h2>
+    <pre class="code">mysqldump -u root -p --single-transaction --routines --events \
+    --set-gtid-purged=OFF tool_library &gt; tool_library_$(date +%F).sql
+mysql -u root -p -e "CREATE DATABASE tool_library_test"
+mysql -u root -p tool_library_test &lt; tool_library_$(date +%F).sql</pre>
+    <pre class="code">+----------------+------------+
+| loans_original | loans_copy |
++----------------+------------+
+|             18 |         18 |
++----------------+------------+</pre>
+    <div class="tag"><span class="pill warn">WATCH</span> <span>Accounts are not in the dump: 05_security.sql is their backup.</span></div>
+  </section>
+
+  <section class="slide section"><div class="big py">10</div><h2>Break</h2><p class="lead">Back at 1:40 for the showcase. Pick your three things now.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Showcase · 35 minutes</div>
+    <h2>Three minutes each</h2>
+    <ol class="num">
+      <li><b>One design decision</b>, and why</li>
+      <li><b>One Saturday answer</b>, checked by hand</li>
+      <li><b>One rule refused</b>, live</li>
+    </ol>
+    <div class="tag"><span class="pill lab">PEERS</span> <span>Listeners: one strength and one question per presenter, on a sticky note.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.2 · Showcase</div>
+    <h2>What happens after today</h2>
+    <ul>
+      <li>The showcase is practice: not scored</li>
+      <li>Scores come from the files you submit</li>
+      <li>Milestone 8: rebuild from the files on a clean server</li>
+      <li>README: design, rebuild, restore date and counts, next steps</li>
+      <li>Due one week from today</li>
+    </ul>
+  </section>
+
+  <section class="slide section"><div class="big">8.3</div><h2>Next Steps &amp; Best Practices</h2><p class="lead">Habits, a health check, and where to go next.</p></section>
+
+  <section class="slide">
+    <div class="eyebrow">8.3 · The course in one page</div>
+    <h2>Eight modules</h2>
+    <table class="ag">
+      <tr><td class="t">1–2</td><td>Install, tables, types, CRUD</td></tr>
+      <tr><td class="t">3–4</td><td>Query, summarize, relate, join</td></tr>
+      <tr><td class="t">5</td><td>CTEs and window functions</td></tr>
+      <tr><td class="t">6</td><td>Indexes, views, normalization</td></tr>
+      <tr><td class="t">7</td><td>Procedures, transactions, JSON, users</td></tr>
+      <tr><td class="t">8</td><td>Backups, a whole project, next steps</td></tr>
+    </table>
+    <div class="tag"><span class="pill">WHY</span> <span>Cheat sheet, glossary, common errors, troubleshooting: they stay online.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.3 · Habits</div>
+    <h2>Each one prevents a problem you met</h2>
+    <ul>
+      <li><b>Design:</b> a primary key everywhere; DECIMAL money; constraints</li>
+      <li><b>Queries:</b> ORDER BY; preview with SELECT before UPDATE or DELETE</li>
+      <li><b>Security:</b> placeholders; one small account per app; no secrets in code</li>
+      <li><b>Operations:</b> backups you have restored; scripts in version control; LTS</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.3 · Injection</div>
+    <h2>Input glued into SQL</h2>
+    <pre class="code"><span class="k">SET</span> @input = <span class="s">'nobody@example.com'' OR ''1''=''1'</span>;
+<span class="k">SET</span> @sql = CONCAT(<span class="s">'SELECT first_name, email FROM customers WHERE email = '''</span>, @input, <span class="s">''''</span>);
+PREPARE lookup <span class="k">FROM</span> @sql;
+EXECUTE lookup;
+DEALLOCATE PREPARE lookup;</pre>
+    <pre class="code">+------------+-------------------+
+| first_name | email             |
++------------+-------------------+
+| Alice      | alice@example.com |
+| Bob        | bob@example.com   |
+| Carol      | carol@example.com |
++------------+-------------------+
+(8 rows; 3 shown)</pre>
+    <div class="tag"><span class="pill warn">LEAK</span> <span>The quote ends the string early: OR '1'='1' is true for every row.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.3 · The fix</div>
+    <h2>A placeholder: the value stays a value</h2>
+    <pre class="code">PREPARE lookup <span class="k">FROM</span> <span class="s">'SELECT first_name, email FROM customers WHERE email = ?'</span>;
+EXECUTE lookup <span class="k">USING</span> @input;
+DEALLOCATE PREPARE lookup;</pre>
+    <pre class="code">Statement prepared
+Empty set</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Drivers: <code class="k">?</code> <code class="k">%s</code> <code class="k">:name</code> <code class="k">@name</code>, all the same idea.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.3 · information_schema</div>
+    <h2>Find what is missing</h2>
+    <div class="two">
+      <pre class="code"><span class="k">SELECT</span> t.TABLE_NAME <span class="k">AS</span> table_without_pk
+<span class="k">FROM</span> information_schema.<span class="k">TABLES</span> <span class="k">AS</span> t
+<span class="k">LEFT</span> <span class="k">JOIN</span> information_schema.TABLE_CONSTRAINTS <span class="k">AS</span> c
+       <span class="k">ON</span> c.TABLE_SCHEMA = t.TABLE_SCHEMA
+      <span class="k">AND</span> c.TABLE_NAME = t.TABLE_NAME
+      <span class="k">AND</span> c.CONSTRAINT_TYPE = <span class="s">'PRIMARY KEY'</span>
+<span class="k">WHERE</span> t.TABLE_SCHEMA = <span class="s">'bookstore'</span>
+  <span class="k">AND</span> t.TABLE_TYPE = <span class="s">'BASE TABLE'</span>
+  <span class="k">AND</span> c.CONSTRAINT_NAME <span class="k">IS</span> <span class="k">NULL</span>
+<span class="k">ORDER</span> <span class="k">BY</span> t.TABLE_NAME;</pre>
+      <pre class="code">+------------------+
+| table_without_pk |
++------------------+
+| hc_demo_payments |
++------------------+</pre>
+    </div>
+    <div class="tag"><span class="pill">WHY</span> <span>The LEFT JOIN ... IS NULL pattern, pointed at the catalog.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.3 · Safe updates</div>
+    <h2>A forgotten WHERE, caught</h2>
+    <pre class="code"><span class="k">SET</span> SQL_SAFE_UPDATES = <span class="s">1</span>;
+
+<span class="k">UPDATE</span> books <span class="k">SET</span> price = price * <span class="s">1.10</span>;</pre>
+    <pre class="code">ERROR 1175 (HY000): You are using safe update mode and you tried to update a table
+    without a WHERE that uses a KEY column.</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>Then <code class="k">SET SQL_SAFE_UPDATES = 0;</code></span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.3 · Project · 15 minutes</div>
+    <h2>Health check on YOUR database</h2>
+    <ul class="lab">
+      <li><code class="k">SET @db = 'bookstore';</code> and the three checks</li>
+      <li>Step 3: foreign keys without their own index</li>
+      <li>Step 4: <code class="k">SET @db = 'tool_library';</code>: fix what it finds</li>
+      <li>Step 5 at home: learning_plan.md with dates</li>
+    </ul>
+    <div class="tag"><span class="pill lab">LABS</span> <span>More: <code class="k">health_check_starter.sql</code>, <code class="k">safe_search_starter.sql</code>.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.3 · On the reference tool_library</div>
+    <h2>Delete rules, from check 3</h2>
+    <pre class="code"><span class="k">SET</span> @db = <span class="s">'tool_library'</span>;   <span class="c">-- then the lesson's check 3</span></pre>
+    <pre class="code">+----------------+-------------------+-----------------------+-------------+
+| TABLE_NAME     | CONSTRAINT_NAME   | REFERENCED_TABLE_NAME | DELETE_RULE |
++----------------+-------------------+-----------------------+-------------+
+| loans          | fk_loans_member   | members               | NO ACTION   |
+| loans          | fk_loans_tool     | tools                 | NO ACTION   |
+| member_courses | fk_mc_course      | safety_courses        | NO ACTION   |
+| member_courses | fk_mc_member      | members               | CASCADE     |
+| tools          | fk_tools_category | categories            | NO ACTION   |
+| tools          | fk_tools_course   | safety_courses        | NO ACTION   |
++----------------+-------------------+-----------------------+-------------+</pre>
+    <div class="tag"><span class="pill">WHY</span> <span>NO ACTION = refuse (no rule written). Only course records cascade.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">8.3 · What next</div>
+    <h2>Choose a path by goal</h2>
+    <table class="ag">
+      <tr><td class="t">Websites</td><td>PHP Foundations, then PHP and WordPress</td></tr>
+      <tr><td class="t">Python apps</td><td>Python Introduction, then Full Stack</td></tr>
+      <tr><td class="t">JavaScript</td><td>Full-Stack JavaScript Bootcamp</td></tr>
+      <tr><td class="t">C#</td><td>C# Introduction, then EF Core</td></tr>
+      <tr><td class="t">Data</td><td>Python Data Science</td></tr>
+      <tr><td class="t">Run databases</td><td>replication, monitoring, tuning</td></tr>
+    </table>
+    <div class="tag"><span class="pill">WHY</span> <span>Your plan: a path, one first topic, one small project, dates.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Course close</div>
+    <h2>Final submission</h2>
+    <ul class="lab">
+      <li>The zipped <code class="k">tool-library</code> folder: five scripts, the backup, README.md</li>
+      <li>Your self-scored rubric in the README</li>
+      <li>Placeholder passwords only</li>
+      <li>Within one week</li>
+    </ul>
+    <div class="tag"><span class="pill">LAST</span> <span>A backup is only a backup once it has been restored.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Wrap-up · 3 minutes</div>
+    <h2>Exit ticket</h2>
+    <ol class="num">
+      <li>Why can the desk create a loan it may not INSERT?</li>
+      <li>Rewrite <code class="k">CONCAT(... @input ...)</code> safely</li>
+      <li>Your next step, and the date you start</li>
+    </ol>
+    <div class="tag"><span class="pill">WHY</span> <span>Then the course evaluation: one thing to keep, one to change.</span></div>
+  </section>
+
+  <section class="slide section">
+    <div class="eyebrow">MySQL Foundations · the end</div>
+    <h2>Thank you</h2>
+    <p class="lead">You can take a messy real-world problem and give it a structure that keeps data correct, answers questions in seconds and survives mistakes.</p>
+  </section>
+
+
+</div>
+
+<div class="foot">© 2026 Ray de la Paz · MySQL Foundations</div>
+<div class="count" id="count">1 / 1</div>
+<div class="nav"><button id="prev" aria-label="Previous slide"></button><button id="next" aria-label="Next slide"></button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const bar=document.getElementById('bar'), count=document.getElementById('count');
+  let i=0;
+  function show(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%'; count.textContent=(i+1)+' / '+slides.length; }
+  document.getElementById('next').onclick=()=>show(i+1);
+  document.getElementById('prev').onclick=()=>show(i-1);
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();show(i+1);}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1);}
+    else if(e.key==='Home')show(0); else if(e.key==='End')show(slides.length-1);
+  });
+  show(0);
+</script>
+</body>
+</html>

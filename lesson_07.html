@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Master MySQL WHERE clauses with comparison operators, AND/OR logic, IN, BETWEEN, LIKE pattern matching, and IS NULL to filter query results precisely.">
-    <meta name="author" content="Ray De La Paz">
+    <meta name="description" content="Filter MySQL query results with WHERE: comparison operators, AND, OR and NOT, IN, BETWEEN, LIKE patterns and IS NULL, plus the silent mistakes that return the wrong rows. MySQL Foundations Lesson 3.1.">
+    <meta name="author" content="Ray de la Paz">
     <title>WHERE Clauses, Operators &amp; Filtering - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -43,31 +43,35 @@
         <ul>
             <li><a href="index.html">Home</a></li>
             <li><a href="index.html#modules">Module 3: Querying Data</a></li>
-            <li aria-current="page">Lesson 7: WHERE Clauses, Operators &amp; Filtering</li>
+            <li aria-current="page">Lesson 3.1: WHERE Clauses, Operators &amp; Filtering</li>
         </ul>
     </nav>
 
     <main id="main-content">
         <div class="container">
             <header>
-                <h1>🔍 Lesson 7: WHERE Clauses, Operators &amp; Filtering</h1>
-                <p class="lead">A database with a million rows is useless if you can't find the exact data you need. The <code>WHERE</code> clause is your search engine — it lets you filter rows by value, range, pattern, and logic. Master it and you master SQL.</p>
+                <h1>🔍 Lesson 3.1: WHERE Clauses, Operators &amp; Filtering</h1>
+                <p class="lead">A table can hold ten rows or ten million, and most questions are about only a few of them: the books under $10, the customers in Chicago, the titles that start with "The". The <code>WHERE</code> clause is how you ask for exactly those rows. This lesson covers every everyday filtering tool, and the quiet mistakes that return the wrong rows without any error.</p>
 
                 <div class="card card-info">
                     <h2>🎯 Learning Objectives</h2>
                     <p>By the end of this lesson, you will be able to:</p>
                     <ul>
-                        <li>Filter rows with <strong>comparison operators</strong> (<code>=</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>)</li>
-                        <li>Combine conditions with <strong>AND</strong>, <strong>OR</strong>, and <strong>NOT</strong></li>
-                        <li>Check membership with <strong>IN</strong> and <strong>NOT IN</strong></li>
-                        <li>Filter ranges with <strong>BETWEEN</strong></li>
-                        <li>Match patterns with <strong>LIKE</strong> and wildcards (<code>%</code>, <code>_</code>)</li>
-                        <li>Handle missing data with <strong>IS NULL</strong> and <strong>IS NOT NULL</strong></li>
-                        <li>Understand <strong>operator precedence</strong> and use parentheses to control logic</li>
+                        <li>Filter rows by numbers, text and dates with the comparison operators (<code>=</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>)</li>
+                        <li>Combine conditions with <code>AND</code>, <code>OR</code> and <code>NOT</code>, and use parentheses to say exactly what you mean</li>
+                        <li>Match lists, ranges and text patterns with <code>IN</code>, <code>BETWEEN</code> and <code>LIKE</code></li>
+                        <li>Find missing values with <code>IS NULL</code> and explain why <code>= NULL</code> finds nothing</li>
+                        <li>Spot the silent filtering mistakes (missing <code>NULL</code> rows, <code>AND</code>/<code>OR</code> mix-ups) and fix error 1054</li>
+                        <li>Save a set of reusable searches in a <code>.sql</code> script</li>
                     </ul>
-                    <p><strong>Estimated Time:</strong> 45 minutes</p>
-                    <p><strong>Prerequisites:</strong> CRUD operations (<a href="lesson_06.html">Lesson 6</a>)</p>
                 </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 95 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_06.html">Lesson 2.3: CRUD Operations</a></li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>saved_searches.sql</code>, six searches the bookstore staff can rerun any time</li>
+                    <li><span class="meta-label">🗄️ Database</span> <code>bookstore</code>, rebuilt by the <a href="#setup">setup script</a> in this lesson: 10 books, 8 customers, 5 categories</li>
+                </ul>
             </header>
 
             <details class="card toc-card" open>
@@ -78,31 +82,67 @@
                 </summary>
                 <nav aria-label="Table of Contents">
                     <ol>
-                        <li><a href="#setup" class="toc-link">Sample Data Setup</a></li>
+                        <li><a href="#setup" class="toc-link">Set Up the Practice Data</a></li>
+                        <li><a href="#how-where-works" class="toc-link">How WHERE Works</a></li>
                         <li><a href="#comparison" class="toc-link">Comparison Operators</a></li>
-                        <li><a href="#and-or-not" class="toc-link">AND, OR &amp; NOT</a></li>
-                        <li><a href="#in" class="toc-link">IN &amp; NOT IN</a></li>
-                        <li><a href="#between" class="toc-link">BETWEEN</a></li>
-                        <li><a href="#like" class="toc-link">LIKE &amp; Pattern Matching</a></li>
-                        <li><a href="#null" class="toc-link">IS NULL &amp; IS NOT NULL</a></li>
-                        <li><a href="#precedence" class="toc-link">Operator Precedence</a></li>
-                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
-                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                        <li><a href="#and-or-not" class="toc-link">AND, OR and NOT</a></li>
+                        <li><a href="#in" class="toc-link">IN: Matching a List</a></li>
+                        <li><a href="#between" class="toc-link">BETWEEN: Matching a Range</a></li>
+                        <li><a href="#like" class="toc-link">LIKE: Matching a Pattern</a></li>
+                        <li><a href="#null" class="toc-link">IS NULL: Finding Missing Values</a></li>
+                        <li><a href="#precedence" class="toc-link">Operator Precedence and Parentheses</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: Saved Searches</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
                     </ol>
                 </nav>
             </details>
 
-            <!-- Section 1: Setup -->
             <section id="setup" class="lesson-section">
-                <h2>Sample Data Setup</h2>
-                <p>We'll continue with the <code>bookstore</code> database. Run this to ensure you have a good dataset to work with:</p>
+                <h2>🧰 Set Up the Practice Data</h2>
+                <p>Every lesson in Module 3 uses the same small bookstore: 10 books, 8 customers and 5 categories. In Lesson 2.3 you inserted, changed and deleted rows, so your tables probably hold something different by now. The script below rebuilds the <code>bookstore</code> database from scratch, so that your results match the ones in this lesson line for line.</p>
 
-                <pre><code class="language-sql">
+                <div class="card card-warning">
+                    <h4>⚠️ This script starts over</h4>
+                    <p>The first line drops the whole <code>bookstore</code> database, including anything you added yourself. That is the point: a known starting state. Run this block again whenever your results stop matching the lesson, in this lesson or in the next three.</p>
+                </div>
+
+                <pre><code class="language-sql">DROP DATABASE IF EXISTS bookstore;
+
+CREATE DATABASE bookstore
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
 USE bookstore;
 
--- Clear and reload books
-DELETE FROM books;
-ALTER TABLE books AUTO_INCREMENT = 1;
+CREATE TABLE books (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    title       VARCHAR(200) NOT NULL,
+    author      VARCHAR(100) NOT NULL,
+    price       DECIMAL(8, 2) NOT NULL,
+    pages       INT,
+    published   DATE,
+    in_stock    BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE customers (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    first_name  VARCHAR(50) NOT NULL,
+    last_name   VARCHAR(50) NOT NULL,
+    email       VARCHAR(100) NOT NULL UNIQUE,
+    city        VARCHAR(50),
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE categories (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(50) NOT NULL UNIQUE,
+    description VARCHAR(255)
+);
 
 INSERT INTO books (title, author, price, pages, published, in_stock) VALUES
     ('Dune', 'Frank Herbert', 14.99, 412, '1965-08-01', TRUE),
@@ -116,596 +156,607 @@ INSERT INTO books (title, author, price, pages, published, in_stock) VALUES
     ('Lord of the Rings', 'J.R.R. Tolkien', 15.99, 1178, '1954-07-29', TRUE),
     ('Fahrenheit 451', 'Ray Bradbury', 10.49, 158, '1953-10-19', TRUE);
 
--- Clear and reload customers
-DELETE FROM customers;
-ALTER TABLE customers AUTO_INCREMENT = 1;
+INSERT INTO customers (id, first_name, last_name, email, city, created_at) VALUES
+    (1, 'Alice', 'Johnson', 'alice@example.com', 'New York', '2026-01-04 10:15:00'),
+    (2, 'Bob', 'Smith', 'bob@example.com', 'Chicago', '2026-01-06 14:02:00'),
+    (3, 'Carol', 'Williams', 'carol@example.com', 'Los Angeles', '2026-01-09 09:40:00'),
+    (4, 'Dave', 'Brown', 'dave@example.com', 'Houston', '2026-01-12 16:25:00'),
+    (5, 'Eve', 'Davis', 'eve@example.com', NULL, '2026-01-20 11:08:00'),
+    (6, 'Frank', 'Miller', 'frank@example.com', 'New York', '2026-01-27 13:30:00'),
+    (7, 'Grace', 'Wilson', 'grace@example.com', 'Chicago', '2026-02-02 08:55:00'),
+    (8, 'Hank', 'Taylor', 'hank@example.com', NULL, '2026-02-10 19:12:00');
 
-INSERT INTO customers (first_name, last_name, email, city) VALUES
-    ('Alice', 'Johnson', 'alice@email.com', 'New York'),
-    ('Bob', 'Smith', 'bob@email.com', 'Chicago'),
-    ('Carol', 'Williams', 'carol@email.com', 'Los Angeles'),
-    ('Dave', 'Brown', 'dave@email.com', 'Houston'),
-    ('Eve', 'Davis', 'eve@email.com', NULL),
-    ('Frank', 'Miller', 'frank@email.com', 'New York'),
-    ('Grace', 'Wilson', 'grace@email.com', 'Chicago'),
-    ('Hank', 'Taylor', 'hank@email.com', NULL);
-                </code></pre>
-
-                <div class="card card-accent">
-                    <h4>📖 Follow Along!</h4>
-                    <p>Open your MySQL CLI and run each query as you read. Experiment — change the values, combine operators, break things. That's how you learn.</p>
+INSERT INTO categories (id, name, description) VALUES
+    (1, 'Fiction', 'Novels, short stories, and other imaginative works'),
+    (2, 'Science Fiction', 'Stories exploring futuristic or scientific concepts'),
+    (3, 'Classic', 'Timeless literary works recognized across generations'),
+    (4, 'Fantasy', 'Stories set in imaginary worlds with magical elements'),
+    (5, 'Dystopian', 'Stories about oppressive societies and dark futures');</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Database changed</code></pre>
                 </div>
+                <p>Paste the whole block into the mysql client (or save it as <code>bookstore_flat.sql</code> and run it with <code>SOURCE</code>, as you learned in Lesson 1.3). The customers get explicit <code>created_at</code> values, so every query on that column gives the same answer on your machine as on this page.</p>
+
+                <p>Take one look at the books before you start filtering. You will be checking your results against this table all lesson:</p>
+                <pre><code class="language-sql">SELECT id, title, author, price, pages, published, in_stock
+FROM books
+ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+------------------------+---------------------+-------+-------+------------+----------+
+| id | title                  | author              | price | pages | published  | in_stock |
++----+------------------------+---------------------+-------+-------+------------+----------+
+|  1 | Dune                   | Frank Herbert       | 14.99 |   412 | 1965-08-01 |        1 |
+|  2 | 1984                   | George Orwell       |  9.99 |   328 | 1949-06-08 |        1 |
+|  3 | To Kill a Mockingbird  | Harper Lee          | 11.99 |   281 | 1960-07-11 |        1 |
+|  4 | The Great Gatsby       | F. Scott Fitzgerald |  8.99 |   180 | 1925-04-10 |        0 |
+|  5 | Pride and Prejudice    | Jane Austen         |  7.99 |   432 | 1813-01-28 |        1 |
+|  6 | The Hobbit             | J.R.R. Tolkien      | 10.99 |   310 | 1937-09-21 |        1 |
+|  7 | Brave New World        | Aldous Huxley       |  9.49 |   311 | 1932-01-01 |        1 |
+|  8 | The Catcher in the Rye | J.D. Salinger       |  8.99 |   234 | 1951-07-16 |        0 |
+|  9 | Lord of the Rings      | J.R.R. Tolkien      | 15.99 |  1178 | 1954-07-29 |        1 |
+| 10 | Fahrenheit 451         | Ray Bradbury        | 10.49 |   158 | 1953-10-19 |        1 |
++----+------------------------+---------------------+-------+-------+------------+----------+</code></pre>
+                </div>
+
+                <pre><code class="language-sql">SELECT id, first_name, last_name, city, created_at
+FROM customers
+ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+------------+-----------+-------------+---------------------+
+| id | first_name | last_name | city        | created_at          |
++----+------------+-----------+-------------+---------------------+
+|  1 | Alice      | Johnson   | New York    | 2026-01-04 10:15:00 |
+|  2 | Bob        | Smith     | Chicago     | 2026-01-06 14:02:00 |
+|  3 | Carol      | Williams  | Los Angeles | 2026-01-09 09:40:00 |
+|  4 | Dave       | Brown     | Houston     | 2026-01-12 16:25:00 |
+|  5 | Eve        | Davis     | NULL        | 2026-01-20 11:08:00 |
+|  6 | Frank      | Miller    | New York    | 2026-01-27 13:30:00 |
+|  7 | Grace      | Wilson    | Chicago     | 2026-02-02 08:55:00 |
+|  8 | Hank       | Taylor    | NULL        | 2026-02-10 19:12:00 |
++----+------------+-----------+-------------+---------------------+</code></pre>
+                </div>
+                <p>Two customers, Eve and Hank, have no city on file. Keep them in mind: they are the reason for half of this lesson's surprises.</p>
             </section>
 
-            <!-- Section 2: Comparison Operators -->
-            <section id="comparison" class="lesson-section">
-                <h2>Comparison Operators</h2>
-                <p>Comparison operators compare a column's value against a target. They return <code>TRUE</code> or <code>FALSE</code> for each row, and only rows where the condition is <code>TRUE</code> appear in the results.</p>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Operator</th>
-                                <th>Meaning</th>
-                                <th>Example</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>=</code></td>
-                                <td>Equal to</td>
-                                <td><code>WHERE price = 9.99</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>!=</code> or <code>&lt;&gt;</code></td>
-                                <td>Not equal to</td>
-                                <td><code>WHERE author != 'Unknown'</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>&lt;</code></td>
-                                <td>Less than</td>
-                                <td><code>WHERE price &lt; 10</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>&gt;</code></td>
-                                <td>Greater than</td>
-                                <td><code>WHERE pages &gt; 300</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>&lt;=</code></td>
-                                <td>Less than or equal to</td>
-                                <td><code>WHERE price &lt;= 9.99</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>&gt;=</code></td>
-                                <td>Greater than or equal to</td>
-                                <td><code>WHERE pages &gt;= 300</code></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3>Equality: =</h3>
-
-                <pre><code class="language-sql">
--- Find a specific book
-SELECT * FROM books WHERE title = '1984';
-
--- Find a specific author's books
-SELECT title, price FROM books WHERE author = 'J.R.R. Tolkien';
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output (Tolkien query):</h4>
-                    <pre><code>
-+-------------------+-------+
-| title             | price |
-+-------------------+-------+
-| The Hobbit        | 10.99 |
-| Lord of the Rings | 15.99 |
-+-------------------+-------+
-                    </code></pre>
-                </div>
-
-                <div class="card card-info">
-                    <h4>💡 String Comparisons Are Case-Insensitive</h4>
-                    <p>By default (with <code>utf8mb4_unicode_ci</code> collation), MySQL string comparisons are <strong>case-insensitive</strong>. This means <code>WHERE author = 'j.r.r. tolkien'</code> matches <code>'J.R.R. Tolkien'</code>. This is usually what you want, but be aware of it.</p>
-                </div>
-
-                <h3>Inequality: != or &lt;&gt;</h3>
-
-                <pre><code class="language-sql">
--- All books NOT by Tolkien
-SELECT title, author FROM books WHERE author != 'J.R.R. Tolkien';
-
--- Same thing with <>
-SELECT title, author FROM books WHERE author <> 'J.R.R. Tolkien';
-                </code></pre>
-
-                <p>Both <code>!=</code> and <code>&lt;&gt;</code> do exactly the same thing. Use whichever feels more natural — <code>!=</code> is more common in modern usage.</p>
-
-                <h3>Greater / Less Than</h3>
-
-                <pre><code class="language-sql">
--- Books under $10
-SELECT title, price FROM books WHERE price < 10;
-
--- Books with more than 300 pages
-SELECT title, pages FROM books WHERE pages > 300;
-
--- Books published on or after 1950
-SELECT title, published FROM books WHERE published >= '1950-01-01';
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output (published &gt;= 1950):</h4>
-                    <pre><code>
-+-----------------------+------------+
-| title                 | published  |
-+-----------------------+------------+
-| Dune                  | 1965-08-01 |
-| To Kill a Mockingbird | 1960-07-11 |
-| The Catcher in the Rye| 1951-07-16 |
-| Lord of the Rings     | 1954-07-29 |
-| Fahrenheit 451        | 1953-10-19 |
-+-----------------------+------------+
-                    </code></pre>
-                </div>
-
-                <div class="card card-info">
-                    <h4>💡 Comparing Dates</h4>
-                    <p>MySQL compares <code>DATE</code> values chronologically, so <code>&lt;</code> means "before" and <code>&gt;</code> means "after." This is one of the big reasons to store dates as <code>DATE</code> rather than <code>VARCHAR</code> — string comparison would give wrong results (e.g., "9" > "10" as strings).</p>
-                </div>
-            </section>
-
-            <!-- Section 3: AND, OR & NOT -->
-            <section id="and-or-not" class="lesson-section">
-                <h2>AND, OR &amp; NOT</h2>
-                <p>Logical operators combine multiple conditions. They let you build complex filters by chaining simple ones together.</p>
+            <section id="how-where-works" class="lesson-section">
+                <h2>🧪 How WHERE Works</h2>
+                <p><code>WHERE</code> is a test that MySQL runs on every row, one row at a time. The test is a condition such as <code>price &lt; 10</code>. For each row the condition comes out <strong>true</strong>, <strong>false</strong> or <strong>unknown</strong> (the third answer appears when a <code>NULL</code> is involved). Only the rows where it is true make it into the result.</p>
 
                 <div class="mermaid">
-                    graph TD
-                        A["Logical Operators"] --> B["AND<br/>Both conditions must be TRUE"]
-                        A --> C["OR<br/>At least one must be TRUE"]
-                        A --> D["NOT<br/>Reverses the condition"]
+graph TD
+    A["each row of books"] --> B["test: price less than 10"]
+    B -->|"true"| C["row is kept"]
+    B -->|"false"| D["row is dropped"]
+    B -->|"unknown (NULL)"| D
                 </div>
 
-                <h3>AND — Both Must Be True</h3>
-
-                <pre><code class="language-sql">
--- Books under $10 AND more than 200 pages
-SELECT title, price, pages
+                <p>The clause goes right after <code>FROM</code>:</p>
+                <pre><code class="language-sql">SELECT title, price
 FROM books
-WHERE price < 10 AND pages > 200;
-                </code></pre>
-
+WHERE price &lt; 10
+ORDER BY price, title;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-------------------------+-------+-------+
-| title                   | price | pages |
-+-------------------------+-------+-------+
-| 1984                    |  9.99 |   328 |
-| Pride and Prejudice     |  7.99 |   432 |
-| Brave New World         |  9.49 |   311 |
-| The Catcher in the Rye  |  8.99 |   234 |
-+-------------------------+-------+-------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+-------+
+| title                  | price |
++------------------------+-------+
+| Pride and Prejudice    |  7.99 |
+| The Catcher in the Rye |  8.99 |
+| The Great Gatsby       |  8.99 |
+| Brave New World        |  9.49 |
+| 1984                   |  9.99 |
++------------------------+-------+</code></pre>
                 </div>
-
-                <pre><code class="language-sql">
--- In-stock books by Tolkien
-SELECT title, price FROM books
-WHERE author = 'J.R.R. Tolkien' AND in_stock = TRUE;
-
--- Customers in New York named Alice
-SELECT * FROM customers
-WHERE city = 'New York' AND first_name = 'Alice';
-                </code></pre>
-
-                <h3>OR — At Least One Must Be True</h3>
-
-                <pre><code class="language-sql">
--- Books by Orwell OR Huxley
-SELECT title, author FROM books
-WHERE author = 'George Orwell' OR author = 'Aldous Huxley';
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-----------------+---------------+
-| title           | author        |
-+-----------------+---------------+
-| 1984            | George Orwell |
-| Brave New World | Aldous Huxley |
-+-----------------+---------------+
-                    </code></pre>
-                </div>
-
-                <pre><code class="language-sql">
--- Books that are cheap OR short
-SELECT title, price, pages FROM books
-WHERE price < 9 OR pages < 200;
-
--- Customers from New York or Chicago
-SELECT first_name, last_name, city FROM customers
-WHERE city = 'New York' OR city = 'Chicago';
-                </code></pre>
-
-                <h3>NOT — Reverse the Condition</h3>
-
-                <pre><code class="language-sql">
--- Books NOT in stock
-SELECT title, in_stock FROM books
-WHERE NOT in_stock;
-
--- Same result, different syntax:
-SELECT title, in_stock FROM books
-WHERE in_stock = FALSE;
-                </code></pre>
-
-                <h3>Combining AND &amp; OR</h3>
-                <p>You can chain multiple operators, but be careful with precedence — <code>AND</code> is evaluated before <code>OR</code>:</p>
-
-                <pre><code class="language-sql">
--- ⚠️ This might not do what you expect:
-SELECT title, author, price FROM books
-WHERE author = 'J.R.R. Tolkien' OR author = 'George Orwell' AND price < 12;
-                </code></pre>
-
-                <p>Because <code>AND</code> binds tighter than <code>OR</code>, MySQL reads this as:</p>
-                <pre><code class="language-sql">
--- What MySQL actually evaluates:
-WHERE author = 'J.R.R. Tolkien'
-   OR (author = 'George Orwell' AND price < 12)
-                </code></pre>
-
-                <p>This returns ALL Tolkien books (regardless of price) plus Orwell books under $12. To get the intended meaning, use parentheses:</p>
-
-                <pre><code class="language-sql">
--- ✅ Use parentheses to control logic:
-SELECT title, author, price FROM books
-WHERE (author = 'J.R.R. Tolkien' OR author = 'George Orwell')
-  AND price < 12;
-                </code></pre>
-
-                <div class="card card-success">
-                    <h4>✅ Best Practice: Always Use Parentheses</h4>
-                    <p>When mixing <code>AND</code> and <code>OR</code>, <strong>always use parentheses</strong> to make your intent explicit — even when they're technically not needed. It makes your SQL easier to read and prevents subtle bugs.</p>
-                </div>
-            </section>
-
-            <!-- Section 4: IN & NOT IN -->
-            <section id="in" class="lesson-section">
-                <h2>IN &amp; NOT IN</h2>
-                <p><code>IN</code> checks if a value matches any item in a list. It's a cleaner alternative to chaining multiple <code>OR</code> conditions:</p>
-
-                <pre><code class="language-sql">
--- Instead of this:
-SELECT title, author FROM books
-WHERE author = 'George Orwell'
-   OR author = 'Aldous Huxley'
-   OR author = 'Ray Bradbury';
-
--- Use IN:
-SELECT title, author FROM books
-WHERE author IN ('George Orwell', 'Aldous Huxley', 'Ray Bradbury');
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-----------------+---------------+
-| title           | author        |
-+-----------------+---------------+
-| 1984            | George Orwell |
-| Brave New World | Aldous Huxley |
-| Fahrenheit 451  | Ray Bradbury  |
-+-----------------+---------------+
-                    </code></pre>
-                </div>
-
-                <pre><code class="language-sql">
--- Customers in specific cities
-SELECT first_name, city FROM customers
-WHERE city IN ('New York', 'Chicago', 'Houston');
-
--- Books with specific page counts
-SELECT title, pages FROM books
-WHERE pages IN (180, 310, 412);
-                </code></pre>
-
-                <h3>NOT IN — Exclude Matches</h3>
-
-                <pre><code class="language-sql">
--- All books NOT by these authors
-SELECT title, author FROM books
-WHERE author NOT IN ('J.R.R. Tolkien', 'Jane Austen');
-                </code></pre>
-
-                <div class="card card-warning">
-                    <h4>⚠️ NOT IN and NULL</h4>
-                    <p>If the list in <code>NOT IN</code> contains a <code>NULL</code>, the result is always empty! This is because comparing anything to <code>NULL</code> yields <code>UNKNOWN</code>, not <code>TRUE</code> or <code>FALSE</code>. Avoid <code>NULL</code> in <code>NOT IN</code> lists:</p>
-                    <pre><code class="language-sql">
--- ⛔ This returns NO rows (even though you'd expect some):
-SELECT * FROM customers
-WHERE city NOT IN ('New York', NULL);
-
--- ✅ Handle NULL separately:
-SELECT * FROM customers
-WHERE city NOT IN ('New York')
-  AND city IS NOT NULL;
-                    </code></pre>
-                </div>
-            </section>
-
-            <!-- Section 5: BETWEEN -->
-            <section id="between" class="lesson-section">
-                <h2>BETWEEN</h2>
-                <p><code>BETWEEN</code> filters values within an inclusive range — it's shorthand for <code>&gt;= AND &lt;=</code>:</p>
-
-                <pre><code class="language-sql">
--- Books priced between $9 and $12 (inclusive)
-SELECT title, price FROM books
-WHERE price BETWEEN 9 AND 12;
-
--- Same as:
-SELECT title, price FROM books
-WHERE price >= 9 AND price <= 12;
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-----------------------+-------+
-| title                 | price |
-+-----------------------+-------+
-| 1984                  |  9.99 |
-| To Kill a Mockingbird | 11.99 |
-| The Hobbit            | 10.99 |
-| Brave New World       |  9.49 |
-| Fahrenheit 451        | 10.49 |
-+-----------------------+-------+
-                    </code></pre>
-                </div>
-
-                <h3>BETWEEN with Dates</h3>
-                <p><code>BETWEEN</code> works beautifully with dates:</p>
-
-                <pre><code class="language-sql">
--- Books published in the 1950s
-SELECT title, published FROM books
-WHERE published BETWEEN '1950-01-01' AND '1959-12-31';
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-------------------------+------------+
-| title                   | published  |
-+-------------------------+------------+
-| The Catcher in the Rye  | 1951-07-16 |
-| Lord of the Rings       | 1954-07-29 |
-| Fahrenheit 451          | 1953-10-19 |
-+-------------------------+------------+
-                    </code></pre>
-                </div>
-
-                <pre><code class="language-sql">
--- Books published in the 20th century (1900-1999)
-SELECT title, published FROM books
-WHERE published BETWEEN '1900-01-01' AND '1999-12-31';
-                </code></pre>
-
-                <h3>NOT BETWEEN</h3>
-
-                <pre><code class="language-sql">
--- Books NOT in the $9–$12 range
-SELECT title, price FROM books
-WHERE price NOT BETWEEN 9 AND 12;
-                </code></pre>
+                <p>Five of the ten books pass the test. The <code>ORDER BY</code> line sorts the result so it reads the same on every server; <a href="lesson_08.html">Lesson 3.2</a> covers sorting in depth. For now, read it as "cheapest first, then alphabetical".</p>
 
                 <div class="card card-info">
-                    <h4>💡 BETWEEN Is Inclusive</h4>
-                    <p><code>BETWEEN 9 AND 12</code> includes both 9 and 12. If you want to exclude the endpoints, use <code>&gt;</code> and <code>&lt;</code> instead: <code>WHERE price > 9 AND price < 12</code>.</p>
+                    <h4>💡 You can see the test itself</h4>
+                    <p>A condition is just an expression that MySQL evaluates to 1 (true), 0 (false) or <code>NULL</code> (unknown). Put it in the <code>SELECT</code> list and you can watch it work row by row:</p>
+                    <pre><code class="language-sql">SELECT title, price, price &lt; 10 AS passes
+FROM books
+ORDER BY id
+LIMIT 4;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-----------------------+-------+--------+
+| title                 | price | passes |
++-----------------------+-------+--------+
+| Dune                  | 14.99 |      0 |
+| 1984                  |  9.99 |      1 |
+| To Kill a Mockingbird | 11.99 |      0 |
+| The Great Gatsby      |  8.99 |      1 |
++-----------------------+-------+--------+</code></pre>
+                    </div>
+                    <p>This trick is the fastest way to debug a <code>WHERE</code> clause that returns the wrong rows: show the condition as a column and look for the rows where it surprises you.</p>
                 </div>
             </section>
 
-            <!-- Section 6: LIKE & Pattern Matching -->
-            <section id="like" class="lesson-section">
-                <h2>LIKE &amp; Pattern Matching</h2>
-                <p><code>LIKE</code> searches for text patterns using two special wildcard characters:</p>
+            <section id="comparison" class="lesson-section">
+                <h2>⚖️ Comparison Operators</h2>
+                <p>Comparison operators compare a column with a value (or with another column). They work on numbers, text and dates.</p>
 
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Wildcard</th>
-                                <th>Matches</th>
-                                <th>Example</th>
-                                <th>Would Match</th>
-                            </tr>
+                            <tr><th>Operator</th><th>Meaning</th><th>Example</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><code>%</code></td>
-                                <td>Any number of characters (including zero)</td>
-                                <td><code>'The%'</code></td>
-                                <td>"The Hobbit", "The Great Gatsby", "The"</td>
-                            </tr>
-                            <tr>
-                                <td><code>_</code></td>
-                                <td>Exactly one character</td>
-                                <td><code>'_984'</code></td>
-                                <td>"1984", but not "984" or "19984"</td>
-                            </tr>
+                            <tr><td><code>=</code></td><td>Equal to</td><td><code>WHERE price = 9.99</code></td></tr>
+                            <tr><td><code>!=</code> or <code>&lt;&gt;</code></td><td>Not equal to</td><td><code>WHERE city != 'Chicago'</code></td></tr>
+                            <tr><td><code>&lt;</code></td><td>Less than</td><td><code>WHERE price &lt; 10</code></td></tr>
+                            <tr><td><code>&gt;</code></td><td>Greater than</td><td><code>WHERE pages &gt; 300</code></td></tr>
+                            <tr><td><code>&lt;=</code></td><td>Less than or equal to</td><td><code>WHERE price &lt;= 9.99</code></td></tr>
+                            <tr><td><code>&gt;=</code></td><td>Greater than or equal to</td><td><code>WHERE published &gt;= '1950-01-01'</code></td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <h3>Starts With</h3>
-
-                <pre><code class="language-sql">
--- Titles starting with "The"
-SELECT title FROM books WHERE title LIKE 'The%';
-                </code></pre>
-
+                <h3>Equal to: <code>=</code></h3>
+                <pre><code class="language-sql">SELECT title, price
+FROM books
+WHERE author = 'J.R.R. Tolkien'
+ORDER BY title;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-------------------------+
-| title                   |
-+-------------------------+
-| The Great Gatsby        |
-| The Hobbit              |
-| The Catcher in the Rye  |
-+-------------------------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+-------+
+| title             | price |
++-------------------+-------+
+| Lord of the Rings | 15.99 |
+| The Hobbit        | 10.99 |
++-------------------+-------+</code></pre>
+                </div>
+                <p>Text values go in single quotes. Numbers do not: <code>WHERE price = 9.99</code>, not <code>'9.99'</code>.</p>
+
+                <div class="card card-info">
+                    <h4>💡 Text comparisons ignore upper and lower case</h4>
+                    <p>The bookstore uses the <code>utf8mb4_unicode_ci</code> collation (the setup script above chose it). The <code>ci</code> stands for <em>case-insensitive</em>, so a sloppy search still finds Tolkien:</p>
+                    <pre><code class="language-sql">SELECT title
+FROM books
+WHERE author = 'j.r.r. tolkien'
+ORDER BY title;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------------------+
+| title             |
++-------------------+
+| Lord of the Rings |
+| The Hobbit        |
++-------------------+</code></pre>
+                    </div>
+                    <p>MySQL's own default collation, <code>utf8mb4_0900_ai_ci</code>, is case-insensitive too. That is usually what people want from a search box, but it also means a <code>UNIQUE</code> email column treats <code>Alice@Example.com</code> and <code>alice@example.com</code> as the same value.</p>
                 </div>
 
-                <h3>Ends With</h3>
-
-                <pre><code class="language-sql">
--- Authors whose last name ends with "ley"
-SELECT DISTINCT author FROM books WHERE author LIKE '%ley';
-                </code></pre>
-
+                <h3>Not equal: <code>!=</code> or <code>&lt;&gt;</code></h3>
+                <pre><code class="language-sql">SELECT first_name, city
+FROM customers
+WHERE city != 'New York'
+ORDER BY first_name;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+---------------+
+                    <h4>Output</h4>
+                    <pre><code>+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Grace      | Chicago     |
++------------+-------------+</code></pre>
+                </div>
+                <p><code>!=</code> and <code>&lt;&gt;</code> mean exactly the same thing; <code>&lt;&gt;</code> is the standard SQL spelling. Now count the rows: eight customers, two in New York, yet only four came back. Eve and Hank are missing, because "is an unknown city different from New York?" is unknown, not true. You will fix that in the <a href="#null">IS NULL</a> section.</p>
+
+                <h3>Greater and less than</h3>
+                <pre><code class="language-sql">SELECT title, pages
+FROM books
+WHERE pages &gt; 400
+ORDER BY pages DESC;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------+-------+
+| title               | pages |
++---------------------+-------+
+| Lord of the Rings   |  1178 |
+| Pride and Prejudice |   432 |
+| Dune                |   412 |
++---------------------+-------+</code></pre>
+                </div>
+
+                <h3>Comparing dates</h3>
+                <p>Write dates as text in the <code>'YYYY-MM-DD'</code> format and MySQL compares them as dates: earlier is smaller.</p>
+                <pre><code class="language-sql">SELECT title, published
+FROM books
+WHERE published &gt;= '1950-01-01'
+ORDER BY published;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+------------+
+| title                  | published  |
++------------------------+------------+
+| The Catcher in the Rye | 1951-07-16 |
+| Fahrenheit 451         | 1953-10-19 |
+| Lord of the Rings      | 1954-07-29 |
+| To Kill a Mockingbird  | 1960-07-11 |
+| Dune                   | 1965-08-01 |
++------------------------+------------+</code></pre>
+                </div>
+                <p>This works because <code>published</code> is a <code>DATE</code> column. Had it been stored as <code>VARCHAR</code> with dates typed as <code>7/16/1951</code>, the comparison would be alphabetical and wrong, which is one more reason to use the proper type (Lesson 2.2).</p>
+
+                <h3>Comparing text alphabetically</h3>
+                <p><code>&lt;</code> and <code>&gt;</code> work on text too, in dictionary order:</p>
+                <pre><code class="language-sql">SELECT first_name, last_name
+FROM customers
+WHERE last_name &lt; 'M'
+ORDER BY last_name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+-----------+
+| first_name | last_name |
++------------+-----------+
+| Dave       | Brown     |
+| Eve        | Davis     |
+| Alice      | Johnson   |
++------------+-----------+</code></pre>
+                </div>
+                <p>Every last name that sorts before the letter M. Miller is not included: "Miller" sorts after the one-letter string "M".</p>
+            </section>
+
+            <section id="and-or-not" class="lesson-section">
+                <h2>🔗 AND, OR and NOT</h2>
+                <p>One condition is rarely enough. The logical operators combine conditions into one test.</p>
+
+                <div class="mermaid">
+graph TD
+    A["two conditions"] --> B["AND: both must be true"]
+    A --> C["OR: at least one is true"]
+                </div>
+
+                <h3>AND: every condition must be true</h3>
+                <p>Books that are cheap <em>and</em> long:</p>
+                <pre><code class="language-sql">SELECT title, price, pages
+FROM books
+WHERE price &lt; 10 AND pages &gt; 300
+ORDER BY price;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------+-------+-------+
+| title               | price | pages |
++---------------------+-------+-------+
+| Pride and Prejudice |  7.99 |   432 |
+| Brave New World     |  9.49 |   311 |
+| 1984                |  9.99 |   328 |
++---------------------+-------+-------+</code></pre>
+                </div>
+                <p>Each extra <code>AND</code> makes the filter stricter, so the result can only shrink.</p>
+
+                <h3>OR: at least one condition must be true</h3>
+                <p>Books that are cheap <em>or</em> short:</p>
+                <pre><code class="language-sql">SELECT title, price, pages
+FROM books
+WHERE price &lt; 9 OR pages &lt; 200
+ORDER BY title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+-------+-------+
+| title                  | price | pages |
++------------------------+-------+-------+
+| Fahrenheit 451         | 10.49 |   158 |
+| Pride and Prejudice    |  7.99 |   432 |
+| The Catcher in the Rye |  8.99 |   234 |
+| The Great Gatsby       |  8.99 |   180 |
++------------------------+-------+-------+</code></pre>
+                </div>
+                <p><em>The Great Gatsby</em> passes both tests and still appears once: <code>OR</code> keeps a row when either condition is true, and a row is never duplicated. Each extra <code>OR</code> makes the filter looser, so the result can only grow.</p>
+
+                <h3>NOT: reverse a condition</h3>
+                <pre><code class="language-sql">SELECT title, in_stock
+FROM books
+WHERE NOT in_stock
+ORDER BY title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+----------+
+| title                  | in_stock |
++------------------------+----------+
+| The Catcher in the Rye |        0 |
+| The Great Gatsby       |        0 |
++------------------------+----------+</code></pre>
+                </div>
+                <p><code>in_stock</code> holds 1 or 0, so it already is a true-or-false value, and <code>NOT in_stock</code> means "out of stock". <code>WHERE in_stock = FALSE</code> gives the same two rows and may read more clearly to a beginner. <code>NOT</code> pairs naturally with the operators that follow: <code>NOT IN</code>, <code>NOT BETWEEN</code>, <code>NOT LIKE</code>, <code>IS NOT NULL</code>.</p>
+            </section>
+
+            <section id="in" class="lesson-section">
+                <h2>📋 IN: Matching a List</h2>
+                <p>Three <code>OR</code>s on the same column are hard to read. <code>IN</code> says the same thing with a list:</p>
+                <pre><code class="language-sql">SELECT title, author
+FROM books
+WHERE author IN ('George Orwell', 'Aldous Huxley', 'Ray Bradbury')
+ORDER BY author;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------+---------------+
+| title           | author        |
++-----------------+---------------+
+| Brave New World | Aldous Huxley |
+| 1984            | George Orwell |
+| Fahrenheit 451  | Ray Bradbury  |
++-----------------+---------------+</code></pre>
+                </div>
+                <p>That is exactly <code>author = 'George Orwell' OR author = 'Aldous Huxley' OR author = 'Ray Bradbury'</code>. Lists of numbers work the same way: <code>WHERE id IN (1, 4, 9)</code>.</p>
+
+                <h3>NOT IN: everything except the list</h3>
+                <pre><code class="language-sql">SELECT first_name, city
+FROM customers
+WHERE city NOT IN ('New York', 'Chicago')
+ORDER BY first_name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Carol      | Los Angeles |
+| Dave       | Houston     |
++------------+-------------+</code></pre>
+                </div>
+                <p>Only Carol and Dave. Once again Eve and Hank vanish: an unknown city cannot be shown to be outside the list.</p>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Never put NULL inside a NOT IN list</h4>
+                    <p><code>city NOT IN ('New York', NULL)</code> means <code>city != 'New York' AND city != NULL</code>. The second half is unknown for every row, so the whole condition can never be true and the query returns no rows at all:</p>
+                    <pre><code class="language-sql">SELECT first_name, city
+FROM customers
+WHERE city NOT IN ('New York', NULL);</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Empty set</code></pre>
+                    </div>
+                    <p>No error, just nothing. You will rarely type a <code>NULL</code> into a list by hand, but in <a href="lesson_10.html">Lesson 3.4</a> the list will come from another query, and a <code>NULL</code> can sneak in that way.</p>
+                </div>
+            </section>
+
+            <section id="between" class="lesson-section">
+                <h2>📏 BETWEEN: Matching a Range</h2>
+                <p><code>BETWEEN low AND high</code> keeps the values from <code>low</code> to <code>high</code>, <strong>including both ends</strong>. It is shorthand for <code>&gt;= low AND &lt;= high</code>.</p>
+                <pre><code class="language-sql">SELECT title, price
+FROM books
+WHERE price BETWEEN 9.49 AND 10.99
+ORDER BY price;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------+-------+
+| title           | price |
++-----------------+-------+
+| Brave New World |  9.49 |
+| 1984            |  9.99 |
+| Fahrenheit 451  | 10.49 |
+| The Hobbit      | 10.99 |
++-----------------+-------+</code></pre>
+                </div>
+                <p>Both endpoints, 9.49 and 10.99, are in the result. The smaller value must come first: <code>BETWEEN 10.99 AND 9.49</code> is not an error, it simply matches nothing.</p>
+
+                <h3>BETWEEN with dates</h3>
+                <pre><code class="language-sql">SELECT title, published
+FROM books
+WHERE published BETWEEN '1950-01-01' AND '1959-12-31'
+ORDER BY published;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+------------+
+| title                  | published  |
++------------------------+------------+
+| The Catcher in the Rye | 1951-07-16 |
+| Fahrenheit 451         | 1953-10-19 |
+| Lord of the Rings      | 1954-07-29 |
++------------------------+------------+</code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Date ranges on a DATETIME column</h4>
+                    <p><code>customers.created_at</code> holds a date <em>and</em> a time. <code>BETWEEN '2026-01-01' AND '2026-01-31'</code> stops at midnight at the start of January 31, so anyone who signed up later that day would be missed. For date-and-time columns, use a half-open range: on or after the first day, and before the first day of the next month.</p>
+                    <pre><code class="language-sql">SELECT first_name, created_at
+FROM customers
+WHERE created_at &gt;= '2026-01-01'
+  AND created_at &lt;  '2026-02-01'
+ORDER BY created_at;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+------------+---------------------+
+| first_name | created_at          |
++------------+---------------------+
+| Alice      | 2026-01-04 10:15:00 |
+| Bob        | 2026-01-06 14:02:00 |
+| Carol      | 2026-01-09 09:40:00 |
+| Dave       | 2026-01-12 16:25:00 |
+| Eve        | 2026-01-20 11:08:00 |
+| Frank      | 2026-01-27 13:30:00 |
++------------+---------------------+</code></pre>
+                    </div>
+                    <p>Six customers joined in January. The pattern never misses a late-night row and never counts one twice when you move on to February.</p>
+                </div>
+
+                <h3>NOT BETWEEN</h3>
+                <pre><code class="language-sql">SELECT title, price
+FROM books
+WHERE price NOT BETWEEN 9 AND 12
+ORDER BY price, title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+-------+
+| title                  | price |
++------------------------+-------+
+| Pride and Prejudice    |  7.99 |
+| The Catcher in the Rye |  8.99 |
+| The Great Gatsby       |  8.99 |
+| Dune                   | 14.99 |
+| Lord of the Rings      | 15.99 |
++------------------------+-------+</code></pre>
+                </div>
+                <p>The three books under $9 and the two over $12.</p>
+            </section>
+
+            <section id="like" class="lesson-section">
+                <h2>🔤 LIKE: Matching a Pattern</h2>
+                <p><code>LIKE</code> compares text with a pattern that can contain two wildcards:</p>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Wildcard</th><th>Matches</th><th>Pattern</th><th>Matches, for example</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>%</code></td><td>Any number of characters, including none</td><td><code>'The%'</code></td><td>The Hobbit, The Great Gatsby, Theory</td></tr>
+                            <tr><td><code>_</code></td><td>Exactly one character</td><td><code>'_984'</code></td><td>1984, but not 984 or 19984</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Starts with</h3>
+                <pre><code class="language-sql">SELECT title
+FROM books
+WHERE title LIKE 'The %'
+ORDER BY title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+
+| title                  |
++------------------------+
+| The Catcher in the Rye |
+| The Great Gatsby       |
+| The Hobbit             |
++------------------------+</code></pre>
+                </div>
+                <p>The space before <code>%</code> makes the pattern "the word The, then more". Without it, <code>'The%'</code> would also match a title like <em>Theory of Everything</em>.</p>
+
+                <h3>Ends with</h3>
+                <pre><code class="language-sql">SELECT DISTINCT author
+FROM books
+WHERE author LIKE '%ley'
+ORDER BY author;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------+
 | author        |
 +---------------+
 | Aldous Huxley |
-| Ray Bradbury  |
-+---------------+
-                    </code></pre>
++---------------+</code></pre>
                 </div>
-
-                <p>Wait — "Bradbury" doesn't end in "ley"! Actually, looking at the data again, it doesn't match. Let's try a more precise example:</p>
-
-                <pre><code class="language-sql">
--- Titles ending with a specific word
-SELECT title FROM books WHERE title LIKE '%Rye';
--- Returns: "The Catcher in the Rye"
-                </code></pre>
+                <p>Only Aldous Huxley ends in "ley". (<code>DISTINCT</code> removes duplicate rows from the result; it matters when an author has several books.)</p>
 
                 <h3>Contains</h3>
-
-                <pre><code class="language-sql">
--- Titles containing "the" anywhere
-SELECT title FROM books WHERE title LIKE '%the%';
-                </code></pre>
-
+                <pre><code class="language-sql">SELECT title
+FROM books
+WHERE title LIKE '%the%'
+ORDER BY title;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-------------------------+
-| title                   |
-+-------------------------+
-| The Great Gatsby        |
-| The Hobbit              |
-| The Catcher in the Rye  |
-+-------------------------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+
+| title                  |
++------------------------+
+| Lord of the Rings      |
+| The Catcher in the Rye |
+| The Great Gatsby       |
+| The Hobbit             |
++------------------------+</code></pre>
                 </div>
+                <p>Four titles. <code>LIKE</code> follows the same case-insensitive collation as <code>=</code>, so the lowercase pattern finds "The" at the start of three titles and "the" in the middle of <em>Lord of the Rings</em>.</p>
 
-                <p>Notice "To Kill a Mockingbird" doesn't appear — it doesn't contain "the" (it has "a", not "the"). But "The Catcher in the Rye" matches twice — at the beginning and in the middle.</p>
+                <h3>Exactly one character: <code>_</code></h3>
+                <pre><code class="language-sql">SELECT first_name
+FROM customers
+WHERE first_name LIKE '___'
+ORDER BY first_name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+
+| first_name |
++------------+
+| Bob        |
+| Eve        |
++------------+</code></pre>
+                </div>
+                <p>Three underscores, three characters exactly: Bob and Eve.</p>
 
-                <h3>Single Character: _</h3>
-
-                <pre><code class="language-sql">
--- Exactly 4-character titles
-SELECT title FROM books WHERE title LIKE '____';
--- Matches "Dune" and "1984"
-
--- Customer names with exactly 3 letters
-SELECT first_name FROM customers WHERE first_name LIKE '___';
--- Matches "Bob", "Eve"
-                </code></pre>
-
-                <h3>Combining Wildcards</h3>
-
-                <pre><code class="language-sql">
--- Author first name starts with any char, then "a"
-SELECT DISTINCT author FROM books WHERE author LIKE '_a%';
--- Matches: "Jane Austen", "Ray Bradbury"
-
--- Emails with exactly 3 characters before @
-SELECT first_name, email FROM customers WHERE email LIKE '___@%';
--- Matches: "Bob" (bob@email.com), "Eve" (eve@email.com)
-                </code></pre>
+                <pre><code class="language-sql">SELECT DISTINCT author
+FROM books
+WHERE author LIKE '_a%'
+ORDER BY author;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+--------------+
+| author       |
++--------------+
+| Harper Lee   |
+| Jane Austen  |
+| Ray Bradbury |
++--------------+</code></pre>
+                </div>
+                <p>One character, then an <code>a</code>, then anything: every author whose name has "a" as its second letter.</p>
 
                 <h3>NOT LIKE</h3>
-
-                <pre><code class="language-sql">
--- Titles NOT starting with "The"
-SELECT title FROM books WHERE title NOT LIKE 'The%';
-                </code></pre>
+                <pre><code class="language-sql">SELECT title
+FROM books
+WHERE title NOT LIKE 'The %'
+ORDER BY title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------------+
+| title                 |
++-----------------------+
+| 1984                  |
+| Brave New World       |
+| Dune                  |
+| Fahrenheit 451        |
+| Lord of the Rings     |
+| Pride and Prejudice   |
+| To Kill a Mockingbird |
++-----------------------+</code></pre>
+                </div>
 
                 <div class="card card-info">
-                    <h4>💡 LIKE Performance</h4>
-                    <p><code>LIKE 'prefix%'</code> (starts with) can use indexes and is fast. <code>LIKE '%suffix'</code> (ends with) and <code>LIKE '%middle%'</code> (contains) cannot use indexes and scan every row — they're slower on large tables. For full-text search on big datasets, MySQL offers <code>FULLTEXT</code> indexes (an advanced topic).</p>
+                    <h4>💡 LIKE and speed</h4>
+                    <p>A pattern with a fixed start, such as <code>'The %'</code>, can use an index on the column and stays fast on big tables. A pattern that starts with <code>%</code> (ends-with or contains) has to read every row. You will meet indexes in Lesson 6.1; for real full-text search MySQL offers <code>FULLTEXT</code> indexes.</p>
                 </div>
             </section>
 
-            <!-- Section 7: IS NULL & IS NOT NULL -->
             <section id="null" class="lesson-section">
-                <h2>IS NULL &amp; IS NOT NULL</h2>
-                <p><code>NULL</code> represents unknown or missing data. It's not zero, not an empty string, not "nothing" — it's <em>unknown</em>. And it requires special treatment.</p>
-
-                <div class="mermaid">
-                    graph LR
-                        A["NULL"] --> B["≠ 0"]
-                        A --> C["≠ ''<br/>(empty string)"]
-                        A --> D["≠ FALSE"]
-                        A --> E["= Unknown /<br/>Missing"]
-                </div>
-
-                <h3>The NULL Trap</h3>
-                <p>You <strong>cannot</strong> use <code>=</code> or <code>!=</code> to check for NULL — this is one of the most common SQL mistakes:</p>
-
-                <pre><code class="language-sql">
--- ⛔ WRONG — this returns NO rows, even though Eve and Hank have NULL cities!
-SELECT * FROM customers WHERE city = NULL;
-
--- ⛔ ALSO WRONG:
-SELECT * FROM customers WHERE city != NULL;
-
--- ✅ CORRECT — use IS NULL:
-SELECT * FROM customers WHERE city IS NULL;
-                </code></pre>
-
+                <h2>🕳️ IS NULL: Finding Missing Values</h2>
+                <p><code>NULL</code> means "no value here": not zero, not an empty string, but <em>unknown</em>. Any comparison with an unknown value gives an unknown answer, even comparing <code>NULL</code> with itself:</p>
+                <pre><code class="language-sql">SELECT
+    NULL = NULL   AS equals,
+    NULL != 'x'   AS not_equals,
+    NULL IS NULL  AS is_null;</code></pre>
                 <div class="card card-output">
-                    <h4>Output (IS NULL):</h4>
-                    <pre><code>
-+----+------------+-----------+----------------+------+---------------------+
-| id | first_name | last_name | email          | city | created_at          |
-+----+------------+-----------+----------------+------+---------------------+
-|  5 | Eve        | Davis     | eve@email.com  | NULL | 2026-04-16 ...      |
-|  8 | Hank       | Taylor    | hank@email.com | NULL | 2026-04-16 ...      |
-+----+------------+-----------+----------------+------+---------------------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+--------+------------+---------+
+| equals | not_equals | is_null |
++--------+------------+---------+
+|   NULL |       NULL |       1 |
++--------+------------+---------+</code></pre>
                 </div>
+                <p>Think of two customers whose cities you do not know. Are they from the same city? You cannot say, so the answer is unknown. That is why <code>WHERE city = NULL</code> finds nothing (you will see it fail in Common Mistakes) and why SQL has a separate operator that asks the right question: <code>IS NULL</code>.</p>
 
-                <div class="card card-warning">
-                    <h4>⚠️ Why <code>= NULL</code> Doesn't Work</h4>
-                    <p>In SQL, any comparison with <code>NULL</code> yields <code>UNKNOWN</code> — not <code>TRUE</code> or <code>FALSE</code>. Even <code>NULL = NULL</code> is <code>UNKNOWN</code>! Think of it this way: if you don't know Alice's city and you don't know Bob's city, you can't say their cities are the same. They're both unknown.</p>
-                </div>
-
-                <h3>IS NOT NULL</h3>
-
-                <pre><code class="language-sql">
--- Customers who DO have a city
-SELECT first_name, city FROM customers WHERE city IS NOT NULL;
-                </code></pre>
-
+                <pre><code class="language-sql">SELECT first_name, last_name, city
+FROM customers
+WHERE city IS NULL
+ORDER BY first_name;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+------------+-------------+
+                    <h4>Output</h4>
+                    <pre><code>+------------+-----------+------+
+| first_name | last_name | city |
++------------+-----------+------+
+| Eve        | Davis     | NULL |
+| Hank       | Taylor    | NULL |
++------------+-----------+------+</code></pre>
+                </div>
+
+                <pre><code class="language-sql">SELECT first_name, city
+FROM customers
+WHERE city IS NOT NULL
+ORDER BY first_name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+-------------+
 | first_name | city        |
 +------------+-------------+
 | Alice      | New York    |
@@ -714,304 +765,533 @@ SELECT first_name, city FROM customers WHERE city IS NOT NULL;
 | Dave       | Houston     |
 | Frank      | New York    |
 | Grace      | Chicago     |
-+------------+-------------+
-                    </code></pre>
++------------+-------------+</code></pre>
                 </div>
 
-                <h3>Combining NULL Checks with Other Conditions</h3>
-
-                <pre><code class="language-sql">
--- Customers in New York OR with unknown city
-SELECT first_name, city FROM customers
-WHERE city = 'New York' OR city IS NULL;
-
--- Books with known page counts over 300
-SELECT title, pages FROM books
-WHERE pages IS NOT NULL AND pages > 300;
-                </code></pre>
+                <h3>Keeping the NULL rows on purpose</h3>
+                <p>Back to the customers outside New York. If the people without a city should count as "not New York", say so explicitly:</p>
+                <pre><code class="language-sql">SELECT first_name, city
+FROM customers
+WHERE city != 'New York' OR city IS NULL
+ORDER BY first_name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Eve        | NULL        |
+| Grace      | Chicago     |
+| Hank       | NULL        |
++------------+-------------+</code></pre>
+                </div>
+                <p>Six rows now: the four from before plus Eve and Hank.</p>
 
                 <div class="card card-success">
-                    <h4>✅ NULL-Safe Equality: &lt;=&gt;</h4>
-                    <p>MySQL has a special operator <code>&lt;=&gt;</code> (spaceship operator) that treats NULL as a comparable value:</p>
-                    <pre><code class="language-sql">
--- These two NULLs ARE considered equal:
-SELECT * FROM customers WHERE city <=> NULL;
--- Same as: WHERE city IS NULL
-
--- Compare two potentially-NULL values safely:
--- WHERE a <=> b  (returns TRUE if both are NULL)
-                    </code></pre>
-                    <p>The <code>&lt;=&gt;</code> operator is rarely needed but useful when comparing columns that might both contain NULL.</p>
+                    <h4>✅ The NULL-safe equals: <code>&lt;=&gt;</code></h4>
+                    <p>MySQL also has <code>&lt;=&gt;</code>, an "equals" that treats two <code>NULL</code>s as equal and never answers unknown. <code>WHERE city &lt;=&gt; NULL</code> works like <code>IS NULL</code>. It is handy when you compare two columns that may both be empty, but it is MySQL-specific: <code>IS NULL</code> and <code>IS NOT NULL</code> are clearer and work in every database.</p>
                 </div>
             </section>
 
-            <!-- Section 8: Operator Precedence -->
             <section id="precedence" class="lesson-section">
-                <h2>Operator Precedence</h2>
-                <p>When a <code>WHERE</code> clause has multiple operators, MySQL evaluates them in a specific order:</p>
+                <h2>🧮 Operator Precedence and Parentheses</h2>
+                <p>When one <code>WHERE</code> clause mixes operators, MySQL does not simply read left to right. Like multiplication before addition in arithmetic, some operators bind more tightly than others:</p>
 
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Priority</th>
-                                <th>Operator</th>
-                                <th>Evaluated</th>
-                            </tr>
+                            <tr><th>Evaluated</th><th>Operators</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>1 (highest)</td>
-                                <td><code>NOT</code></td>
-                                <td>First</td>
-                            </tr>
-                            <tr>
-                                <td>2</td>
-                                <td><code>AND</code></td>
-                                <td>Second</td>
-                            </tr>
-                            <tr>
-                                <td>3 (lowest)</td>
-                                <td><code>OR</code></td>
-                                <td>Last</td>
-                            </tr>
+                            <tr><td>1st</td><td>Comparisons: <code>=</code> <code>!=</code> <code>&lt;</code> <code>&gt;</code> <code>IS</code> <code>LIKE</code> <code>IN</code> <code>BETWEEN</code></td></tr>
+                            <tr><td>2nd</td><td><code>NOT</code></td></tr>
+                            <tr><td>3rd</td><td><code>AND</code></td></tr>
+                            <tr><td>4th</td><td><code>OR</code></td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <p>This means <code>AND</code> always binds tighter than <code>OR</code>. Let's see how this can bite you:</p>
-
-                <pre><code class="language-sql">
--- "Find cheap books by Orwell or Huxley"
--- ⛔ WRONG interpretation:
-SELECT title, author, price FROM books
-WHERE author = 'George Orwell' OR author = 'Aldous Huxley' AND price < 10;
--- MySQL reads: Orwell (any price) OR (Huxley AND price < 10)
--- Returns ALL Orwell books + only cheap Huxley books
-
--- ✅ CORRECT — parentheses force the OR to evaluate first:
-SELECT title, author, price FROM books
-WHERE (author = 'George Orwell' OR author = 'Aldous Huxley') AND price < 10;
--- Returns cheap books by either Orwell or Huxley
-                </code></pre>
-
-                <blockquote>
-                    <strong>💡 Golden Rule:</strong> When mixing <code>AND</code> and <code>OR</code>, <strong>always use parentheses</strong>. Even when you know the precedence, parentheses make your intent clear to the next developer (including future you).
-                </blockquote>
-
-                <h3>Complex Example</h3>
-
-                <pre><code class="language-sql">
--- Find in-stock books that are either:
---   - under $10, OR
---   - by Tolkien
-SELECT title, author, price, in_stock FROM books
-WHERE in_stock = TRUE
-  AND (price < 10 OR author = 'J.R.R. Tolkien');
-                </code></pre>
-
+                <p>The rule that bites is the last two lines: <strong><code>AND</code> before <code>OR</code></strong>. Suppose you want "Tolkien or Orwell books under $12" and write it the way you would say it:</p>
+                <pre><code class="language-sql">SELECT title, author, price
+FROM books
+WHERE author = 'J.R.R. Tolkien' OR author = 'George Orwell' AND price &lt; 12
+ORDER BY price;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+---------------------+----------------+-------+----------+
-| title               | author         | price | in_stock |
-+---------------------+----------------+-------+----------+
-| 1984                | George Orwell  |  9.99 |        1 |
-| Pride and Prejudice | Jane Austen    |  7.99 |        1 |
-| The Hobbit          | J.R.R. Tolkien | 10.99 |        1 |
-| Brave New World     | Aldous Huxley  |  9.49 |        1 |
-| Lord of the Rings   | J.R.R. Tolkien | 15.99 |        1 |
-+---------------------+----------------+-------+----------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+----------------+-------+
+| title             | author         | price |
++-------------------+----------------+-------+
+| 1984              | George Orwell  |  9.99 |
+| The Hobbit        | J.R.R. Tolkien | 10.99 |
+| Lord of the Rings | J.R.R. Tolkien | 15.99 |
++-------------------+----------------+-------+</code></pre>
                 </div>
-            </section>
+                <p><em>Lord of the Rings</em> at $15.99 is in the result. MySQL read the condition as <code>author = 'J.R.R. Tolkien' OR (author = 'George Orwell' AND price &lt; 12)</code>: every Tolkien book, plus the cheap Orwell ones. Parentheses say what you meant:</p>
 
-            <!-- Section 9: Exercises -->
-            <section id="exercises" class="lesson-section">
-                <h2>Exercises</h2>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 1: Comparison Operators</h3>
-                    <p>Write queries to find:</p>
-                    <ol>
-                        <li>All books priced at exactly $9.99</li>
-                        <li>All books with more than 400 pages</li>
-                        <li>All books published before 1950</li>
-                        <li>All customers NOT in Houston</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- 1
-SELECT * FROM books WHERE price = 9.99;
-
--- 2
-SELECT title, pages FROM books WHERE pages > 400;
-
--- 3
-SELECT title, published FROM books WHERE published < '1950-01-01';
-
--- 4
-SELECT first_name, city FROM customers
-WHERE city != 'Houston';
--- Note: this excludes NULL cities too!
--- To include NULL: WHERE city != 'Houston' OR city IS NULL
-                        </code></pre>
-                    </details>
+                <div class="mermaid">
+graph TD
+    A["you write: A OR B AND C"] --> B["MySQL reads: A OR (B AND C)"]
+    B --> C["you meant: (A OR B) AND C"]
+    C --> D["so type the parentheses"]
                 </div>
 
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 2: AND, OR, IN, BETWEEN</h3>
-                    <p>Write queries to find:</p>
-                    <ol>
-                        <li>In-stock books priced between $9 and $12</li>
-                        <li>Books by Tolkien, Orwell, or Huxley (use IN)</li>
-                        <li>Books published in the 1960s (1960–1969)</li>
-                        <li>Customers from New York or Chicago with first names starting before "F" alphabetically</li>
-                    </ol>
+                <pre><code class="language-sql">SELECT title, author, price
+FROM books
+WHERE (author = 'J.R.R. Tolkien' OR author = 'George Orwell')
+  AND price &lt; 12
+ORDER BY price;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+----------------+-------+
+| title      | author         | price |
++------------+----------------+-------+
+| 1984       | George Orwell  |  9.99 |
+| The Hobbit | J.R.R. Tolkien | 10.99 |
++------------+----------------+-------+</code></pre>
+                </div>
+                <p>Now the price limit applies to both authors. Writing the list with <code>IN</code> avoids the trap altogether: <code>WHERE author IN ('J.R.R. Tolkien', 'George Orwell') AND price &lt; 12</code>.</p>
 
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- 1
-SELECT title, price, in_stock FROM books
-WHERE in_stock = TRUE AND price BETWEEN 9 AND 12;
-
--- 2
-SELECT title, author FROM books
-WHERE author IN ('J.R.R. Tolkien', 'George Orwell', 'Aldous Huxley');
-
--- 3
-SELECT title, published FROM books
-WHERE published BETWEEN '1960-01-01' AND '1969-12-31';
-
--- 4
-SELECT first_name, last_name, city FROM customers
-WHERE city IN ('New York', 'Chicago')
-  AND first_name < 'F';
-                        </code></pre>
-                    </details>
+                <div class="card card-success">
+                    <h4>✅ Rule of thumb</h4>
+                    <p>Whenever a condition mixes <code>AND</code> and <code>OR</code>, add parentheses, even where they are not strictly needed. They cost nothing and tell the next reader (including you, next month) exactly what you meant.</p>
                 </div>
 
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 3: LIKE &amp; NULL</h3>
-                    <p>Write queries to find:</p>
-                    <ol>
-                        <li>All books with "the" in the title (anywhere)</li>
-                        <li>Authors whose names contain a period (.)</li>
-                        <li>Customers with 4-letter first names</li>
-                        <li>All customers whose city is unknown (NULL)</li>
-                        <li>All customers who have a known city that is NOT "New York"</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- 1
-SELECT title FROM books WHERE title LIKE '%the%';
-
--- 2
-SELECT DISTINCT author FROM books WHERE author LIKE '%.%';
-
--- 3
-SELECT first_name FROM customers WHERE first_name LIKE '____';
-
--- 4
-SELECT first_name, city FROM customers WHERE city IS NULL;
-
--- 5 (must exclude NULLs explicitly)
-SELECT first_name, city FROM customers
-WHERE city IS NOT NULL AND city != 'New York';
-                        </code></pre>
-                    </details>
-                </div>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 4: Complex Filters</h3>
-                    <p>Write a single query that finds all books that are:</p>
-                    <ul>
-                        <li>Currently in stock, AND</li>
-                        <li>EITHER priced under $10 OR published after 1960, AND</li>
-                        <li>NOT by Jane Austen</li>
-                    </ul>
-                    <p><strong>Hint:</strong> Use parentheses carefully!</p>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
-SELECT title, author, price, published, in_stock
+                <h3>A longer filter</h3>
+                <p>In-stock books that are either under $10 or by Tolkien:</p>
+                <pre><code class="language-sql">SELECT title, author, price
 FROM books
 WHERE in_stock = TRUE
-  AND (price < 10 OR published > '1960-12-31')
-  AND author != 'Jane Austen';
-                        </code></pre>
+  AND (price &lt; 10 OR author = 'J.R.R. Tolkien')
+ORDER BY price;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------+----------------+-------+
+| title               | author         | price |
++---------------------+----------------+-------+
+| Pride and Prejudice | Jane Austen    |  7.99 |
+| Brave New World     | Aldous Huxley  |  9.49 |
+| 1984                | George Orwell  |  9.99 |
+| The Hobbit          | J.R.R. Tolkien | 10.99 |
+| Lord of the Rings   | J.R.R. Tolkien | 15.99 |
++---------------------+----------------+-------+</code></pre>
+                </div>
+                <p>Write long filters one condition per line, with the <code>AND</code> or <code>OR</code> at the start of the line: you can read them top to bottom and comment out a line while testing.</p>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Forgetting the quotes around text</h3>
+                <pre data-raises="ERROR 1054"><code class="language-sql">SELECT title FROM books WHERE author = Tolkien;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1054 (42S22): Unknown column 'Tolkien' in 'where clause'</code></pre>
+                </div>
+                <p><strong>What it means:</strong> without quotes, <code>Tolkien</code> is read as the name of a column, and <code>books</code> has no such column. <strong>Fix:</strong> put text values in single quotes: <code>WHERE author = 'J.R.R. Tolkien'</code>. (MySQL also accepts double quotes for text by default, but single quotes are standard SQL and work everywhere.)</p>
+
+                <h3>2. Writing <code>= NULL</code> (silent)</h3>
+                <pre><code class="language-sql">SELECT first_name, city
+FROM customers
+WHERE city = NULL;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Empty set</code></pre>
+                </div>
+                <p><strong>What it means:</strong> no error, and no rows, even though Eve and Hank have no city. <code>city = NULL</code> is unknown for every row, so nothing passes. <strong>Fix:</strong> <code>WHERE city IS NULL</code>. The same goes for <code>!= NULL</code>, which should be <code>IS NOT NULL</code>.</p>
+
+                <h3>3. Expecting <code>!=</code> to include the missing values (silent)</h3>
+                <pre><code class="language-sql">SELECT COUNT(*) AS not_in_houston
+FROM customers
+WHERE city != 'Houston';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------------+
+| not_in_houston |
++----------------+
+|              5 |
++----------------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> eight customers, one in Houston, so you expect 7. You get 5, because the two customers without a city are neither equal nor unequal to Houston: they are unknown and dropped. <strong>Fix:</strong> decide what the empty rows should do and say it: <code>WHERE city != 'Houston' OR city IS NULL</code> gives 7. The same applies to <code>NOT IN</code>, <code>NOT LIKE</code> and <code>NOT BETWEEN</code>.</p>
+
+                <h3>4. Mixing AND and OR without parentheses (silent)</h3>
+                <p>The goal: in-stock books by Orwell or Salinger.</p>
+                <pre><code class="language-sql">SELECT title, author, in_stock
+FROM books
+WHERE in_stock = TRUE AND author = 'George Orwell' OR author = 'J.D. Salinger'
+ORDER BY title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+---------------+----------+
+| title                  | author        | in_stock |
++------------------------+---------------+----------+
+| 1984                   | George Orwell |        1 |
+| The Catcher in the Rye | J.D. Salinger |        0 |
++------------------------+---------------+----------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <em>The Catcher in the Rye</em> is out of stock (<code>in_stock</code> is 0), yet it is in the list. <code>AND</code> ran first, so the stock check only applied to Orwell. <strong>Fix:</strong> group the alternatives: <code>WHERE in_stock = TRUE AND (author = 'George Orwell' OR author = 'J.D. Salinger')</code>, which returns only <em>1984</em>.</p>
+
+                <h3>5. Using <code>=</code> with a wildcard (silent)</h3>
+                <pre><code class="language-sql">SELECT title
+FROM books
+WHERE title = 'The %';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Empty set</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>=</code> looks for a title that is literally "The %", percent sign included. Wildcards only mean something to <code>LIKE</code>. <strong>Fix:</strong> <code>WHERE title LIKE 'The %'</code>.</p>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: Saved Searches</h2>
+                <p>The bookstore staff keep asking you the same questions: what can I recommend under $10, who has no city on file, which customers should get the East-and-Midwest flyer? You will collect the answers in one script, <code>saved_searches.sql</code>, one commented query per search, so anyone can rerun it. Allow about 35 minutes.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: Gift ideas under $10 <span class="step-time">(5 min)</span></h3>
+                    <p>Create <code>saved_searches.sql</code> in your <code>mysql-course</code> folder (VS Code or any plain text editor). Start with <code>USE bookstore;</code> and the first search: books a customer can actually buy today for under $10. Run each query in the mysql client as you add it.</p>
+                    <pre><code class="language-sql">USE bookstore;
+
+-- 1. Gift ideas: in stock and under $10
+SELECT title, author, price
+FROM books
+WHERE in_stock = TRUE
+  AND price &lt; 10
+ORDER BY price;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Database changed
++---------------------+---------------+-------+
+| title               | author        | price |
++---------------------+---------------+-------+
+| Pride and Prejudice | Jane Austen   |  7.99 |
+| Brave New World     | Aldous Huxley |  9.49 |
+| 1984                | George Orwell |  9.99 |
++---------------------+---------------+-------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: Long reads for the holidays <span class="step-time">(5 min)</span></h3>
+                    <p>Books of more than 400 pages, longest first.</p>
+                    <pre><code class="language-sql">-- 2. Long reads: more than 400 pages
+SELECT title, author, pages
+FROM books
+WHERE pages &gt; 400
+ORDER BY pages DESC;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+---------------------+----------------+-------+
+| title               | author         | pages |
++---------------------+----------------+-------+
+| Lord of the Rings   | J.R.R. Tolkien |  1178 |
+| Pride and Prejudice | Jane Austen    |   432 |
+| Dune                | Frank Herbert  |   412 |
++---------------------+----------------+-------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: Mid-century shelf <span class="step-time">(5 min)</span></h3>
+                    <p>A display of books published from 1940 through 1959, oldest first. <code>published</code> is a <code>DATE</code>, so <code>BETWEEN</code> with whole dates is safe here.</p>
+                    <pre><code class="language-sql">-- 3. Mid-century shelf: published 1940-1959
+SELECT title, author, published
+FROM books
+WHERE published BETWEEN '1940-01-01' AND '1959-12-31'
+ORDER BY published;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+------------------------+----------------+------------+
+| title                  | author         | published  |
++------------------------+----------------+------------+
+| 1984                   | George Orwell  | 1949-06-08 |
+| The Catcher in the Rye | J.D. Salinger  | 1951-07-16 |
+| Fahrenheit 451         | Ray Bradbury   | 1953-10-19 |
+| Lord of the Rings      | J.R.R. Tolkien | 1954-07-29 |
++------------------------+----------------+------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: Title search <span class="step-time">(5 min)</span></h3>
+                    <p>The staff type part of a title into a search box. Simulate it with a pattern: every title containing "in".</p>
+                    <pre><code class="language-sql">-- 4. Title search: titles containing "in"
+SELECT title, author
+FROM books
+WHERE title LIKE '%in%'
+ORDER BY title;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+------------------------+----------------+
+| title                  | author         |
++------------------------+----------------+
+| Lord of the Rings      | J.R.R. Tolkien |
+| The Catcher in the Rye | J.D. Salinger  |
+| To Kill a Mockingbird  | Harper Lee     |
++------------------------+----------------+</code></pre>
+                    </div>
+                    <p>A contains-pattern matches the letters anywhere, even inside a word: Mock<strong>in</strong>gbird and R<strong>in</strong>gs count, not just the word "in" in <em>The Catcher in the Rye</em>. Change <code>in</code> to another fragment (<code>new</code>, <code>451</code>, <code>the</code>) and rerun. In a real application the search text would come from the user and be passed to MySQL as a <em>parameter</em> of a prepared statement, never pasted into the SQL string, so that nothing a user types can change the query itself.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: Customers missing a city <span class="step-time">(5 min)</span></h3>
+                    <p>Shipping needs a city for every customer. List the ones without, with their email, so someone can follow up.</p>
+                    <pre><code class="language-sql">-- 5. Follow-up list: customers without a city
+SELECT first_name, last_name, email
+FROM customers
+WHERE city IS NULL
+ORDER BY last_name;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+------------+-----------+------------------+
+| first_name | last_name | email            |
++------------+-----------+------------------+
+| Eve        | Davis     | eve@example.com  |
+| Hank       | Taylor    | hank@example.com |
++------------+-----------+------------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 6: The flyer list <span class="step-time">(5 min)</span></h3>
+                    <p>A flyer goes to customers in New York or Chicago who signed up in January. Combine <code>IN</code> with a half-open date range, and put each condition on its own line.</p>
+                    <pre><code class="language-sql">-- 6. Flyer: New York or Chicago, joined in January
+SELECT first_name, last_name, city, created_at
+FROM customers
+WHERE city IN ('New York', 'Chicago')
+  AND created_at &gt;= '2026-01-01'
+  AND created_at &lt;  '2026-02-01'
+ORDER BY created_at;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+------------+-----------+----------+---------------------+
+| first_name | last_name | city     | created_at          |
++------------+-----------+----------+---------------------+
+| Alice      | Johnson   | New York | 2026-01-04 10:15:00 |
+| Bob        | Smith     | Chicago  | 2026-01-06 14:02:00 |
+| Frank      | Miller    | New York | 2026-01-27 13:30:00 |
++------------+-----------+----------+---------------------+</code></pre>
+                    </div>
+                    <p>Grace lives in Chicago but joined on February 2, so she waits for next month's flyer.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 7: Run the whole file <span class="step-time">(5 min)</span></h3>
+                    <p>Save the file and run it from the mysql client (on Windows, use forward slashes: <code>SOURCE C:/Users/you/mysql-course/saved_searches.sql</code>):</p>
+                    <pre data-norun><code class="language-sql">SOURCE ~/mysql-course/saved_searches.sql</code></pre>
+                    <p>Six result tables print one after another. If one search fails, the error message names the line, and the others still run.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>saved_searches.sql</code> starts with <code>USE bookstore;</code> and holds six searches, each with a comment saying what it answers</li>
+                        <li>The gift list shows three books, cheapest first, and none of them is out of stock</li>
+                        <li>The follow-up list uses <code>IS NULL</code> and shows Eve and Hank</li>
+                        <li>The flyer query has one condition per line and returns Alice, Bob and Frank</li>
+                        <li><code>SOURCE</code> runs the whole file without an error</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+                <p>All four use the bookstore from the <a href="#setup">setup script</a>. Write your answer before you open the solution.</p>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: The Middle of the Shelf</h3>
+                    <p>List the title, pages and price of every book with 250 to 350 pages (both included), cheapest first.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>"Both included" is exactly what <code>BETWEEN</code> means.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT title, pages, price
+FROM books
+WHERE pages BETWEEN 250 AND 350
+ORDER BY price;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-----------------------+-------+-------+
+| title                 | pages | price |
++-----------------------+-------+-------+
+| Brave New World       |   311 |  9.49 |
+| 1984                  |   328 |  9.99 |
+| The Hobbit            |   310 | 10.99 |
+| To Kill a Mockingbird |   281 | 11.99 |
++-----------------------+-------+-------+</code></pre>
+                        </div>
                     </details>
                 </div>
 
-                <!-- Quiz -->
+                <div class="card">
+                    <h3>🏋️ Exercise 2: Everyone Outside Houston</h3>
+                    <p>A Houston event needs an "everyone else" mailing list. List the first name and city of every customer who is not known to live in Houston, including the customers without a city. You should get 7 rows.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p><code>city != 'Houston'</code> alone gives 5 rows. What happens to the <code>NULL</code> cities, and how do you invite them back?</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT first_name, city
+FROM customers
+WHERE city != 'Houston' OR city IS NULL
+ORDER BY first_name;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Alice      | New York    |
+| Bob        | Chicago     |
+| Carol      | Los Angeles |
+| Eve        | NULL        |
+| Frank      | New York    |
+| Grace      | Chicago     |
+| Hank       | NULL        |
++------------+-------------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: Authors With Initials</h3>
+                    <p>List each author whose name contains a period (an initial such as "J."), once each, alphabetically.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>A period is an ordinary character for <code>LIKE</code>. Surround it with <code>%</code>, and add <code>DISTINCT</code> because Tolkien wrote two books.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT DISTINCT author
+FROM books
+WHERE author LIKE '%.%'
+ORDER BY author;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+---------------------+
+| author              |
++---------------------+
+| F. Scott Fitzgerald |
+| J.D. Salinger       |
+| J.R.R. Tolkien      |
++---------------------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): The Picky Customer</h3>
+                    <p>A customer wants a book that is in stock, either under $10 or published after 1960, and not by Jane Austen (she has read them all). Write it as one query showing title, author, price and published date. Then remove your parentheses and explain why the result changes.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Three conditions joined by <code>AND</code>; the middle one is itself an <code>OR</code> and needs parentheses. "After 1960" means after December 31, 1960.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT title, author, price, published
+FROM books
+WHERE in_stock = TRUE
+  AND (price &lt; 10 OR published &gt; '1960-12-31')
+  AND author != 'Jane Austen'
+ORDER BY price;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-----------------+---------------+-------+------------+
+| title           | author        | price | published  |
++-----------------+---------------+-------+------------+
+| Brave New World | Aldous Huxley |  9.49 | 1932-01-01 |
+| 1984            | George Orwell |  9.99 | 1949-06-08 |
+| Dune            | Frank Herbert | 14.99 | 1965-08-01 |
++-----------------+---------------+-------+------------+</code></pre>
+                        </div>
+                        <p>Without the parentheses the condition becomes <code>(in_stock = TRUE AND price &lt; 10) OR (published &gt; '1960-12-31' AND author != 'Jane Austen')</code>, because <code>AND</code> binds before <code>OR</code>. The Austen check now only guards the right-hand side, so <em>Pride and Prejudice</em> (in stock, $7.99) sneaks back into the list. Try it and you get four rows instead of three.</p>
+                    </details>
+                </div>
+            </section>
+
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
                 <div class="card quiz-container">
-                    <h3>🎯 Quick Quiz</h3>
+                    <h3>🎯 Check Your Understanding</h3>
 
                     <div class="quiz-question">
-                        <p><strong>Question 1:</strong> How do you check if a column contains NULL?</p>
+                        <p><strong>Question 1:</strong> Eve and Hank have no city. How many rows does this return from the 8 customers?</p>
+                        <pre><code class="language-sql">SELECT first_name FROM customers WHERE city = NULL;</code></pre>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="Comparing with = NULL always returns UNKNOWN, never TRUE.">
-                                A) WHERE column = NULL
+                            <button class="quiz-option" data-correct="false" data-hint="That is what IS NULL would return. What does comparing anything with NULL give?">
+                                A) 2
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! IS NULL is the only way to check for NULL values in SQL. Regular comparison operators don't work with NULL.">
-                                B) WHERE column IS NULL
+                            <button class="quiz-option" data-correct="true" data-explanation="city = NULL is unknown for every row, even for Eve and Hank, and WHERE only keeps rows where the test is true. The query returns an empty set without any error. Use IS NULL instead.">
+                                B) 0
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="NULL is not the same as an empty string.">
-                                C) WHERE column = ''
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL accepts the query without complaint. The problem is the result, not the syntax.">
+                                C) None: it is a syntax error
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 2:</strong> What does the <code>%</code> wildcard match in a LIKE expression?</p>
+                        <p><strong>Question 2:</strong> How does MySQL read <code>WHERE a = 1 OR b = 2 AND c = 3</code>?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="That's what the _ wildcard does — one character only.">
-                                A) Exactly one character
+                            <button class="quiz-option" data-correct="false" data-hint="That is left-to-right reading. One of the two logical operators binds more tightly.">
+                                A) <code>(a = 1 OR b = 2) AND c = 3</code>
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The % wildcard matches any number of characters (including zero), making it ideal for 'starts with', 'ends with', and 'contains' searches.">
-                                B) Any number of characters (including zero)
+                            <button class="quiz-option" data-correct="false" data-hint="AND and OR do not have equal rank, and MySQL never rejects this query.">
+                                B) It refuses to run the query without parentheses
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="% can match zero characters too (e.g., 'Dune' LIKE 'Dune%' is TRUE).">
-                                C) One or more characters
+                            <button class="quiz-option" data-correct="true" data-explanation="AND is evaluated before OR, just as multiplication comes before addition. Add parentheses whenever you mix the two so the meaning is clear.">
+                                C) <code>a = 1 OR (b = 2 AND c = 3)</code>
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 3:</strong> Which operator has higher precedence — AND or OR?</p>
+                        <p><strong>Question 3:</strong> Which prices does <code>WHERE price BETWEEN 9.49 AND 10.99</code> keep?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! AND is evaluated before OR. This means 'A OR B AND C' is read as 'A OR (B AND C)'. Always use parentheses when mixing them!">
-                                A) AND (evaluated first)
+                            <button class="quiz-option" data-correct="true" data-explanation="BETWEEN includes both ends. It is shorthand for: price is at least 9.49 AND price is at most 10.99.">
+                                A) 9.49, 10.99 and everything in between
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="OR has lower precedence — it's evaluated after AND.">
-                                B) OR (evaluated first)
+                            <button class="quiz-option" data-correct="false" data-hint="Look back at the BETWEEN output: were the two end prices in it?">
+                                B) Only the prices strictly between them, without the two ends
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="AND always comes first unless you use parentheses.">
-                                C) They have equal precedence
+                            <button class="quiz-option" data-correct="false" data-hint="BETWEEN treats both ends the same way.">
+                                C) 9.49 and up, but not 10.99
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 4:</strong> Is <code>BETWEEN 5 AND 10</code> inclusive or exclusive of the endpoints?</p>
+                        <p><strong>Question 4:</strong> Which pattern finds the customers whose first name has exactly three letters?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! BETWEEN includes both endpoints. BETWEEN 5 AND 10 matches 5, 6, 7, 8, 9, AND 10.">
-                                A) Inclusive — includes both 5 and 10
+                            <button class="quiz-option" data-correct="false" data-hint="% matches any number of characters, so this matches every name.">
+                                A) <code>LIKE '%%%'</code>
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Both endpoints ARE included with BETWEEN.">
-                                B) Exclusive — excludes both 5 and 10
+                            <button class="quiz-option" data-correct="false" data-hint="Without LIKE, the underscores are just underscores, and no name is literally three underscores.">
+                                B) <code>= '___'</code>
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="BETWEEN treats both endpoints the same — both are included.">
-                                C) Includes the start but excludes the end
+                            <button class="quiz-option" data-correct="true" data-explanation="Each underscore matches exactly one character, so three underscores match exactly three: Bob and Eve.">
+                                C) <code>LIKE '___'</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> MySQL answers <code>ERROR 1054 (42S22): Unknown column 'Austen' in 'where clause'</code>. What is the most likely cause?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Without quotes, Austen is read as a column name. Text values belong in single quotes: WHERE author = 'Jane Austen'.">
+                                A) The text value <code>Austen</code> is missing its quotes
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="A missing row gives an empty result, not an error. Read what the message calls Austen.">
+                                B) No book by Austen exists
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Comparisons are case-insensitive here, so capitalization would not cause any error.">
+                                C) Austen was typed with the wrong capitalization
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
@@ -1019,92 +1299,121 @@ WHERE in_stock = TRUE
                 </div>
             </section>
 
-            <!-- Section 10: Summary -->
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Can I write <code>&amp;&amp;</code> and <code>||</code> instead of AND and OR?</summary>
+                    <p>MySQL still understands them, but both are deprecated and will be removed in a future release. MySQL tells you so with a warning:</p>
+                    <pre><code class="language-sql">SELECT title FROM books WHERE price &gt; 14 &amp;&amp; in_stock;
+SHOW WARNINGS;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------------------+
+| title             |
++-------------------+
+| Dune              |
+| Lord of the Rings |
++-------------------+
++---------+------+------------------------------------------------------------------------------------+
+| Level   | Code | Message                                                                            |
++---------+------+------------------------------------------------------------------------------------+
+| Warning | 1287 | '&amp;&amp;' is deprecated and will be removed in a future release. Please use AND instead |
++---------+------+------------------------------------------------------------------------------------+</code></pre>
+                    </div>
+                    <p>In standard SQL, <code>||</code> means "join two strings", so code that uses it for OR also breaks when moved to another database. MariaDB accepts both without a warning, which is no reason to use them. Write <code>AND</code>, <code>OR</code> and <code>NOT</code>.</p>
+                </details>
+                <details>
+                    <summary>How do I search for a real <code>%</code> or <code>_</code> character?</summary>
+                    <p>Put a backslash in front of it: <code>LIKE '%\_%'</code> finds values containing an underscore, and <code>LIKE '%50\%%'</code> finds "50%". The backslash tells <code>LIKE</code> to treat the next character literally.</p>
+                </details>
+                <details>
+                    <summary>How do I make a search case-sensitive?</summary>
+                    <p>Compare with a binary collation: <code>WHERE author = 'j.r.r. tolkien' COLLATE utf8mb4_bin</code> finds nothing, because <code>utf8mb4_bin</code> compares the exact characters. Most of the time case-insensitive matching is what users expect, so reach for this only when case really matters (passwords are never compared this way; they are hashed).</p>
+                </details>
+                <details>
+                    <summary>Does the order of conditions joined by AND matter for speed?</summary>
+                    <p>No. MySQL's optimizer decides which condition to check first, and it uses indexes where it can (Lesson 6.1). Order your conditions for the human reader.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p><code>LIKE</code> has only two wildcards. For richer patterns MySQL has regular expressions: <code>WHERE title REGEXP '^[0-9]'</code> finds titles that start with a digit, and <code>REGEXP_LIKE(title, 'the$')</code> is the same idea as a function. Find (1) every title that starts with a digit and (2) every author whose last name starts with B or H. Note that MariaDB understands <code>REGEXP</code> but not the <code>REGEXP_LIKE()</code> function, so prefer <code>REGEXP</code> if your code must run on both.</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Four of this lesson's mistakes return wrong rows with no error at all. Write down how you would notice each one if nobody told you, for example by counting the rows you expect before you run the query. What habit will you build so a silent mistake does not slip into a report?</p>
+                </div>
+            </section>
+
             <section id="summary" class="lesson-section">
-                <h2>Summary</h2>
+                <h2>📝 Lesson Summary</h2>
 
                 <div class="card card-success">
-                    <h3>🎉 Key Takeaways</h3>
+                    <h3>🎓 Key Takeaways</h3>
                     <ul>
-                        <li><strong>Comparison operators</strong> (<code>=</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>) filter rows by comparing column values</li>
-                        <li><strong>AND</strong> requires all conditions to be true; <strong>OR</strong> requires at least one; <strong>NOT</strong> reverses</li>
-                        <li><strong>IN</strong> checks membership in a list — cleaner than chaining OR</li>
-                        <li><strong>BETWEEN</strong> filters inclusive ranges — works great with numbers and dates</li>
-                        <li><strong>LIKE</strong> matches patterns: <code>%</code> = any characters, <code>_</code> = one character</li>
-                        <li><strong>IS NULL / IS NOT NULL</strong> is the only way to check for NULL — never use <code>= NULL</code></li>
-                        <li><strong>AND has higher precedence than OR</strong> — always use parentheses when mixing them</li>
-                        <li>String comparisons are <strong>case-insensitive</strong> by default (with utf8mb4_unicode_ci)</li>
+                        <li><code>WHERE</code> tests every row; only rows where the test is <strong>true</strong> are kept (false and unknown are dropped)</li>
+                        <li>Comparison operators work on numbers, dates and text; text comparisons are case-insensitive with <code>_ci</code> collations</li>
+                        <li><code>AND</code> narrows, <code>OR</code> widens, <code>NOT</code> flips; <code>AND</code> is evaluated before <code>OR</code>, so use parentheses when mixing them</li>
+                        <li><code>IN</code> matches a list, <code>BETWEEN</code> an inclusive range, <code>LIKE</code> a pattern (<code>%</code> any characters, <code>_</code> one character)</li>
+                        <li><code>NULL</code> is unknown: test it with <code>IS NULL</code> / <code>IS NOT NULL</code>, never <code>= NULL</code></li>
+                        <li><code>!=</code>, <code>NOT IN</code> and <code>NOT LIKE</code> silently drop <code>NULL</code> rows; add <code>OR col IS NULL</code> when you want them</li>
+                        <li>For date-and-time columns, use a half-open range: <code>&gt;= start AND &lt; next_start</code></li>
                     </ul>
                 </div>
 
-                <h3>WHERE Clause Quick Reference</h3>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Pattern</th>
-                                <th>Syntax</th>
-                            </tr>
+                            <tr><th>You want</th><th>Write</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Exact match</td>
-                                <td><code>WHERE col = value</code></td>
-                            </tr>
-                            <tr>
-                                <td>Not equal</td>
-                                <td><code>WHERE col != value</code></td>
-                            </tr>
-                            <tr>
-                                <td>Range</td>
-                                <td><code>WHERE col BETWEEN a AND b</code></td>
-                            </tr>
-                            <tr>
-                                <td>List membership</td>
-                                <td><code>WHERE col IN (a, b, c)</code></td>
-                            </tr>
-                            <tr>
-                                <td>Starts with</td>
-                                <td><code>WHERE col LIKE 'prefix%'</code></td>
-                            </tr>
-                            <tr>
-                                <td>Contains</td>
-                                <td><code>WHERE col LIKE '%text%'</code></td>
-                            </tr>
-                            <tr>
-                                <td>Ends with</td>
-                                <td><code>WHERE col LIKE '%suffix'</code></td>
-                            </tr>
-                            <tr>
-                                <td>Is missing</td>
-                                <td><code>WHERE col IS NULL</code></td>
-                            </tr>
-                            <tr>
-                                <td>Is present</td>
-                                <td><code>WHERE col IS NOT NULL</code></td>
-                            </tr>
-                            <tr>
-                                <td>Combined</td>
-                                <td><code>WHERE (a OR b) AND c</code></td>
-                            </tr>
+                            <tr><td>An exact match</td><td><code>WHERE col = 'value'</code></td></tr>
+                            <tr><td>One of several values</td><td><code>WHERE col IN ('a', 'b', 'c')</code></td></tr>
+                            <tr><td>An inclusive range</td><td><code>WHERE col BETWEEN low AND high</code></td></tr>
+                            <tr><td>A month of timestamps</td><td><code>WHERE ts &gt;= '2026-01-01' AND ts &lt; '2026-02-01'</code></td></tr>
+                            <tr><td>Starts with / contains</td><td><code>WHERE col LIKE 'text%'</code> / <code>LIKE '%text%'</code></td></tr>
+                            <tr><td>Missing / present</td><td><code>WHERE col IS NULL</code> / <code>IS NOT NULL</code></td></tr>
+                            <tr><td>Not X, missing included</td><td><code>WHERE col != 'X' OR col IS NULL</code></td></tr>
+                            <tr><td>Mixed logic</td><td><code>WHERE a AND (b OR c)</code></td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <h3>📚 Additional Resources</h3>
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You rebuilt the bookstore to a known state you can return to at any time</li>
+                        <li>You filtered by value, list, range, pattern and missing data</li>
+                        <li>You caught five mistakes on purpose, four of which give no error message at all</li>
+                        <li>You wrote <code>saved_searches.sql</code>, six searches the staff can rerun</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>In <a href="lesson_08.html"><strong>Lesson 3.2: Sorting &amp; Limiting Results</strong></a> you will take charge of the <code>ORDER BY</code> lines you have been copying: sorting by several columns, deciding where <code>NULL</code>s go, taking the top three with <code>LIMIT</code>, and splitting a long list into pages the way a store website does.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
                 <ul>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/where-optimization.html" target="_blank" rel="noopener">MySQL Docs — WHERE Clause Optimization</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/comparison-operators.html" target="_blank" rel="noopener">MySQL Docs — Comparison Operators</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/pattern-matching.html" target="_blank" rel="noopener">MySQL Docs — Pattern Matching</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/working-with-null.html" target="_blank" rel="noopener">MySQL Docs — Working with NULL</a></li>
+                    <li>Run <code>saved_searches.sql</code> once more from a fresh mysql session</li>
+                    <li>Write one new search of your own on the <code>customers</code> table that uses <code>LIKE</code> on the email column</li>
+                    <li>Keep the setup script handy: Lessons 3.2 to 3.4 use exactly this data</li>
                 </ul>
 
-                <h3>🚀 What's Next?</h3>
-                <p>Now you can filter down to exactly the rows you need. But what about their <em>order</em>? And what if you only want the first 10 results? In the next lesson, you'll learn to <strong>sort with ORDER BY</strong> and <strong>paginate with LIMIT and OFFSET</strong> — essential tools for building real application features like search results and product listings.</p>
-
-                <div class="card card-accent" style="text-align: center; padding: 2rem;">
-                    <h3>🎉 Congratulations!</h3>
-                    <p>You've unlocked the power of filtering. No more wading through entire tables — now you can ask MySQL for exactly the rows you need, down to the finest detail.</p>
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>Filtering is the skill you will use in nearly every query you ever write, and you now have the full everyday toolkit. The <code>NULL</code> rules feel strange to everyone at first; they become second nature once you start asking "and what about the rows where this is empty?" before you hit Enter. That one question already puts you ahead of a lot of working developers.</p>
                 </div>
             </section>
 
@@ -1117,7 +1426,7 @@ WHERE in_stock = TRUE
     </main>
 
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>

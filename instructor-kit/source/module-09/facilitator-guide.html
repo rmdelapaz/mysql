@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 9</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 9: Indexes and Views</h1>
+    <p class="sub">How to teach indexes and views in one session: measure a slow query on 100,000 rows, add the index the plan points at and measure again, learn the habits that hide a column from its index, then save the best queries as views, make some of them safe to update, and use one as a security boundary. A clinic ties them together: a view is exactly as fast as its query.</p>
+    <div class="meta-row">
+      <span class="chip"><b>2</b> lessons</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lessons <b>6.1–6.2</b></span>
+      <span class="chip">Session <b>9</b> of 14 · Part 2</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Same rhythm as every session: frame → live demo (you type, they follow) → guided lab → start the lesson's own project. Exercises, quizzes, journals and the rest of each project go home.</li>
+  <li>Every SQL block below was run on a freshly loaded bookstore on MySQL 9.7 to produce the output printed under it. EXPLAIN shows ESTIMATES (cost, rows) and EXPLAIN ANALYZE real times: learners' numbers differ; the plan's shape (Table scan, Index lookup, range scan) must not.</li>
+  <li>Keep <code class="inline">lesson_14.html</code> (6.1) and <code class="inline">lesson_15.html</code> (6.2) open for the plan-word table and the updatable-view rules. Labs live in <code class="inline">labs/module-09/</code>.</li>
+  <li><b>Reloads today.</b> Lesson 6.1 starts from a fresh bookstore and adds <code class="inline">sales_log</code>; Lesson 6.2 starts by reloading <code class="inline">bookstore.sql</code>, which removes it. Say so at the break: everyone types <code class="inline">SOURCE bookstore.sql</code> before the 6.2 demo. The labs build and drop their own practice tables.</li>
+  <li>Teal blocks are hands-on, amber blocks are watch-outs. Lesson codes (6.1, 6.2) match the course site.</li>
+</ul>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Files to hand out:</b> <code class="inline">labs/module-09/</code> without the <code class="inline">*_solution.sql</code> files; the workbook.</li>
+  <li>☐ <b>Run the kit check once:</b> <code class="inline">python3 labs/check_labs.py module-09</code> (10 files, a few seconds; two lines show a WARN for warning 1739, which is the point of that lab).</li>
+  <li>☐ <b>Projector machine:</b> a freshly loaded bookstore, the client at 18 pt, <code class="inline">lesson_14.html</code> open at the sales_log setup (you paste the generator from there). Run the generator once beforehand to see it takes about a second on your machine.</li>
+  <li>☐ <b>Board, before learners arrive:</b> the loop "measure → index → measure again"; a three-level B-tree sketch (root, branches, leaf pages); the plan words "Table scan · Index lookup · Index range scan · Covering · Rows fetched before execution"; for 6.2 a window in a wall.</li>
+  <li>☐ <b>Print or share:</b> the workbook; sticky notes for the exit ticket.</li>
+</ul>
+<div class="blk warn"><div class="h">Known traps today</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>EXPLAIN prints a wide box instead of the tree</td><td>The statement ended with <code class="inline">;</code> instead of <code class="inline">\G</code></td><td>End with <code class="inline">\G</code>; or <code class="inline">EXPLAIN FORMAT=TRADITIONAL</code> for the table.</td></tr>
+<tr><td><code class="inline">ERROR 1064</code> near <code class="inline">ANALYZE</code> on MariaDB</td><td>MariaDB has no EXPLAIN ANALYZE (and no FORMAT=TREE)</td><td>Use <code class="inline">ANALYZE SELECT ...</code> there; read the traditional table.</td></tr>
+<tr><td>Learners' costs and times differ from the projector</td><td>Estimates come from sampled statistics; times from the machine</td><td>Compare the shape and the actual row counts, not the numbers.</td></tr>
+<tr><td>The index exists, the plan still says Table scan</td><td>A function or a type conversion around the column, a leading %, or a tiny table</td><td>The lesson's "What stops an index" list, in order; then ANALYZE TABLE.</td></tr>
+<tr><td><code class="inline">ERROR 1050 ... already exists</code> when rerunning a view script</td><td>CREATE VIEW instead of CREATE OR REPLACE VIEW</td><td>CREATE OR REPLACE makes scripts rerunnable.</td></tr>
+<tr><td>Views vanish</td><td><code class="inline">SOURCE bookstore.sql</code> drops the whole database, views included</td><td>Keep them in <code class="inline">reporting_views.sql</code> and rerun it after a reload.</td></tr>
+<tr><td>On MariaDB <code class="inline">ALTER INDEX ... INVISIBLE</code> is a 1064</td><td>MariaDB says <code class="inline">IGNORED</code></td><td><code class="inline">ALTER TABLE t ALTER INDEX i IGNORED;</code> there.</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 9 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">10</td><td>Warm-up</td><td>Five retrieval questions on 5.1 and 5.2; who finished org_report.sql and sales_dashboard.sql.</td></tr>
+      <tr><td class="t">0:10</td><td class="t">10</td><td><b>6.1</b> Frame and mental model</td><td>The textbook index; a B-tree; what an index costs; measure, index, measure again.</td></tr>
+      <tr><td class="t">0:20</td><td class="t">25</td><td><b>6.1</b> Live demo</td><td>Generate sales_log; EXPLAIN ANALYZE before and after; composite and unique indexes; three index killers; invisible indexes.</td></tr>
+      <tr><td class="t">0:45</td><td class="t">15</td><td><b>6.1</b> Guided lab</td><td><code class="inline">labs/module-09/l6_1-indexes/plan_reading_starter.sql</code>: read a plan, add the index, read it again.</td></tr>
+      <tr><td class="t">1:00</td><td class="t">10</td><td><b>6.1</b> Start the lesson project</td><td><code class="inline">tune_sales.sql</code>: Steps 1 to 3 (reports A and B); Steps 4 to 6 go home.</td></tr>
+      <tr><td class="t">1:10</td><td class="t">10</td><td>Break</td><td>Leave the "measure → index → measure" loop on the board.</td></tr>
+      <tr><td class="t">1:20</td><td class="t">10</td><td><b>6.2</b> Frame and mental model</td><td>A window in a wall: a saved SELECT, recomputed every time; three jobs for views.</td></tr>
+      <tr><td class="t">1:30</td><td class="t">20</td><td><b>6.2</b> Live demo</td><td>Your first view; what MySQL saves; views over joins and aggregates; updatable views and WITH CHECK OPTION; a view as a security boundary.</td></tr>
+      <tr><td class="t">1:50</td><td class="t">20</td><td><b>6.2</b> Guided lab</td><td><code class="inline">labs/module-09/l6_2-views/report_views_starter.sql</code>: sales per author and orders by city as views.</td></tr>
+      <tr><td class="t">2:10</td><td class="t">15</td><td><b>6.2</b> Start the lesson project</td><td><code class="inline">reporting_views.sql</code>: Steps 1 to 3; Steps 4 to 6 go home.</td></tr>
+      <tr><td class="t">2:25</td><td class="t">25</td><td>Clinic: a view's plan, and the debug handouts</td><td>EXPLAIN on a merged view and on a grouped view; <code class="inline">debug_indexes.sql</code> and <code class="inline">debug_views.sql</code> in pairs.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up</td><td>Exit ticket (3 questions), homework, bring list for Session 10.</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> The lesson pages estimate 105 + 95 = 200 minutes for a solo learner; after the warm-up, the break, the clinic and the wrap-up the room has 135. Lesson 6.1 gets 60 minutes (reading plans is the hard, visual part, best done together); 6.2 gets 65 including the project start. The 25-minute clinic joins the two lessons: a view is exactly as fast as its query and the indexes under it.</p>
+<p><b>Goes home (about 2 to 3 hours).</b> <code class="inline">tune_sales.sql</code> Steps 4 to 6 (report C's composite index, the redundancy check, the index list); <code class="inline">reporting_views.sql</code> Steps 4 to 6; each lesson's Exercises 1 to 3 (4 is a stretch); both Quick Quizzes; both journal entries; <code class="inline">index_killers_starter.sql</code> and <code class="inline">guarded_views_starter.sql</code> if not reached.</p>
+<p><b>Protect, in this order:</b> the before-and-after EXPLAIN ANALYZE (the session's one unforgettable moment); the composite index and its column order; the plan_reading lab through TODO 2; WITH CHECK OPTION; the report_views lab through TODO 1. <b>Cut first:</b> the clinic's EXPLAIN part (keep the debug handouts as homework), then 6.1 demo steps 10 to 12, then the 6.2 security step (Lesson 7.4 covers accounts).</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Warm-up: CTEs and Window Functions</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Sequence</div>
+<ul class="tick">
+  <li><b>Retrieval (7m).</b> Five questions on the workbook's Warm-up box, no notes, three minutes; then take them one by one. Run W1 and W2 on the projector after the answers.</li>
+  <li><b>Homework check (3m).</b> Hands up: who ran <code class="inline">org_report.sql</code> and <code class="inline">sales_dashboard.sql</code> from a fresh session without an error? One volunteer reads the dashboard's leaderboard: 1984 alone in first place. Collect questions for the break.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Warm-up answers (W1 to W5)</div>
+<ol class="steps">
+  <li><b>W1</b> What does this print? <b>Answer:</b> 1,3,5,7: the round that reads 7 fails n &lt; 7 and stops.</li>
+  <li><b>W2</b> Which price_level do The Catcher in the Rye and The Great Gatsby (both 8.99) get, and Animal Farm after them? <b>Answer:</b> Both 2, Animal Farm 3: DENSE_RANK ties without a gap (RANK would give Animal Farm 4).</li>
+  <li><b>W3</b> Why can't WHERE filter on ROW_NUMBER(), and what do you write instead? <b>Answer:</b> Windows are computed after WHERE (3593): number the rows in a CTE, filter in the outer query.</li>
+  <li><b>W4</b> In a recursive CTE over employees, which join walks UP the hierarchy? <b>Answer:</b> e.id = cte.manager_id ("who is this person's manager?"); e.manager_id = cte.id walks down.</li>
+  <li><b>W5</b> AVG(salary) with GROUP BY department versus AVG(salary) OVER (PARTITION BY department): how many rows from the 10 employees? <b>Answer:</b> 4 versus 10: GROUP BY collapses, OVER keeps every row.</li>
+</ol>
+<p>W1 and W2's real output is in the Answer Key. W3 misses mean the CTE-filter pattern did not stick: it comes back today as a view that filters a window (the 6.2 worked example).</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plans</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">6.1</span><h3>Indexes &amp; Query Optimization</h3><span class="dur">60 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Explain what an index is, what it costs, and which indexes every bookstore table already has</li>
+  <li>Read a query plan from EXPLAIN and measure a query with EXPLAIN ANALYZE</li>
+  <li>Create single-column, composite and unique indexes, and choose the column order of a composite index</li>
+  <li>Spot and rewrite the patterns that stop an index from being used: functions on the column, leading wildcards, type mismatches</li>
+  <li>List, rename, hide and drop indexes, and fix the errors MySQL raises while you do it</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: the textbook index; B-tree; costs; the measure → index → measure loop</td></tr>
+<tr><td class="t">25m</td><td>Live demo: sales_log; before/after; composite; unique; two killers; invisible; a silent duplicate; 1553</td></tr>
+<tr><td class="t">15m</td><td>Guided lab: <code class="inline">plan_reading_starter.sql</code></td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: <code class="inline">tune_sales.sql</code> Steps 1 to 3</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Hold up any textbook: "To find 'foreign keys' you do not read the whole book. You look the term up in a sorted list at the back and jump to the pages. An <b>index</b> is that list: a sorted copy of one or more columns, each value with a pointer to its row. Without it, MySQL has one way to answer WHERE: read every row. That is a <b>full table scan</b>."</p>
+<p>Point at the B-tree sketch: "Sorted pages in a shallow tree: three or four levels for a million values. The primary key is special: the rows themselves are stored in its order."</p>
+<p>Then the price, ticked off on fingers: space, slower writes (every INSERT updates every index), more choices for the optimizer. "The goal is not 'index everything'. It is: measure the slow query, index what the plan points at, measure again."</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>The lesson's own examples on a freshly loaded bookstore; learners generate the same <code class="inline">sales_log</code> and follow. EXPLAIN ANALYZE times are from the run that produced this guide.</p>
+<ol class="steps">
+  <li><b>A table big enough to notice (3m).</b> "Eleven books never make a query slow. This builds the lesson's 100,000-row sales log: a CTE and a cross join, every value computed from a running number, so everyone gets the same rows." Paste it from the lesson page; while it runs (about a second), explain ANALYZE TABLE: fresh statistics for the optimizer.
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> sales_log (
+    id          <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    receipt_no  <span class="k">CHAR</span>(<span class="s">7</span>)     <span class="k">NOT</span> <span class="k">NULL</span>,
+    customer_id <span class="k">INT</span>         <span class="k">NOT</span> <span class="k">NULL</span>,
+    book_id     <span class="k">INT</span>         <span class="k">NOT</span> <span class="k">NULL</span>,
+    sold_on     <span class="k">DATE</span>        <span class="k">NOT</span> <span class="k">NULL</span>,
+    quantity    <span class="k">INT</span>         <span class="k">NOT</span> <span class="k">NULL</span>,
+    channel     <span class="k">VARCHAR</span>(<span class="s">10</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> sales_log (receipt_no, customer_id, book_id, sold_on, quantity, channel)
+<span class="k">WITH</span> digits <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="s">0</span> <span class="k">AS</span> d <span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> <span class="s">1</span> <span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> <span class="s">2</span> <span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> <span class="s">3</span> <span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> <span class="s">4</span>
+    <span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> <span class="s">5</span> <span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> <span class="s">6</span> <span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> <span class="s">7</span> <span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> <span class="s">8</span> <span class="k">UNION</span> <span class="k">ALL</span> <span class="k">SELECT</span> <span class="s">9</span>
+),
+seq <span class="k">AS</span> (
+    <span class="k">SELECT</span> <span class="s">1</span> + a.d + <span class="s">10</span> * b.d + <span class="s">100</span> * c.d + <span class="s">1000</span> * e.d + <span class="s">10000</span> * f.d <span class="k">AS</span> n
+    <span class="k">FROM</span> digits a
+    <span class="k">CROSS</span> <span class="k">JOIN</span> digits b <span class="k">CROSS</span> <span class="k">JOIN</span> digits c <span class="k">CROSS</span> <span class="k">JOIN</span> digits e <span class="k">CROSS</span> <span class="k">JOIN</span> digits f
+)
+<span class="k">SELECT</span>
+    LPAD(n, <span class="s">7</span>, <span class="s">'0'</span>),                               <span class="c">-- receipt 0000001, 0000002, ...</span>
+    <span class="s">1</span> + <span class="k">MOD</span>(n * <span class="s">7</span>, <span class="s">8</span>),                             <span class="c">-- customers 1 to 8</span>
+    <span class="s">1</span> + <span class="k">MOD</span>(n * <span class="s">13</span>, <span class="s">11</span>),                           <span class="c">-- books 1 to 11</span>
+    <span class="k">DATE</span> <span class="s">'2020-01-01'</span> + <span class="k">INTERVAL</span> <span class="k">MOD</span>(n * <span class="s">37</span>, <span class="s">2400</span>) DAY,
+    <span class="s">1</span> + <span class="k">MOD</span>(n, <span class="s">3</span>),                                 <span class="c">-- 1 to 3 copies</span>
+    ELT(<span class="s">1</span> + <span class="k">MOD</span>(n, <span class="s">4</span>), <span class="s">'web'</span>, <span class="s">'store'</span>, <span class="s">'phone'</span>, <span class="s">'web'</span>)
+<span class="k">FROM</span> seq
+<span class="k">ORDER</span> <span class="k">BY</span> n;
+<span class="k">ANALYZE</span> <span class="k">TABLE</span> sales_log;</pre>
+<pre class="out">+---------------------+---------+----------+----------+
+| Table               | Op      | Msg_type | Msg_text |
++---------------------+---------+----------+----------+
+| bookstore.sales_log | analyze | status   | OK       |
++---------------------+---------+----------+----------+</pre></li>
+  <li><b>How big? (1m).</b> 
+<pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> sales, MIN(sold_on) <span class="k">AS</span> first_sale, MAX(sold_on) <span class="k">AS</span> last_sale
+<span class="k">FROM</span> sales_log;</pre>
+<pre class="out">+--------+------------+------------+
+| sales  | first_sale | last_sale  |
++--------+------------+------------+
+| 100000 | 2020-01-01 | 2026-07-27 |
++--------+------------+------------+</pre></li>
+  <li><b>The indexes you already have (2m).</b> "Three automatic sources: every primary key, every UNIQUE, every foreign key." Point at fk_orders_customer: that is why Lesson 4.3's joins were fast.
+<pre class="code"><span class="k">SELECT</span> TABLE_NAME, INDEX_NAME, COLUMN_NAME, NON_UNIQUE
+<span class="k">FROM</span> information_schema.STATISTICS
+<span class="k">WHERE</span> TABLE_SCHEMA = <span class="s">'bookstore'</span>
+  <span class="k">AND</span> TABLE_NAME <span class="k">IN</span> (<span class="s">'books'</span>, <span class="s">'customers'</span>, <span class="s">'orders'</span>, <span class="s">'order_items'</span>)
+<span class="k">ORDER</span> <span class="k">BY</span> TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX;</pre>
+<pre class="out">+-------------+--------------------+-------------+------------+
+| TABLE_NAME  | INDEX_NAME         | COLUMN_NAME | NON_UNIQUE |
++-------------+--------------------+-------------+------------+
+| books       | fk_books_author    | author_id   |          1 |
+| books       | PRIMARY            | id          |          0 |
+| customers   | email              | email       |          0 |
+| customers   | PRIMARY            | id          |          0 |
+| order_items | fk_items_book      | book_id     |          1 |
+| order_items | fk_items_order     | order_id    |          1 |
+| order_items | PRIMARY            | id          |          0 |
+| orders      | fk_orders_customer | customer_id |          1 |
+| orders      | PRIMARY            | id          |          0 |
++-------------+--------------------+-------------+------------+</pre></li>
+  <li><b>Measure (3m).</b> "EXPLAIN ANALYZE runs the query and times every step. Read from the most indented line up: a table scan of 100,000 rows feeds a filter that keeps 42." Write the total time on the board.
+<pre class="code"><span class="k">EXPLAIN</span> <span class="k">ANALYZE</span> <span class="k">SELECT</span> * <span class="k">FROM</span> sales_log <span class="k">WHERE</span> sold_on = <span class="s">'2025-03-15'</span>\G</pre>
+<pre class="out">*************************** 1. row ***************************
+EXPLAIN: -&gt; Filter: (sales_log.sold_on = DATE'2025-03-15')  (cost=10078 rows=9990) (actual time=0.239..16.5 rows=42 loops=1)
+    -&gt; Table scan on sales_log  (cost=10078 rows=99900) (actual time=0.134..13.4 rows=100000 loops=1)</pre>
+On the run that produced this guide the total was 16.5 ms; yours will differ.</li>
+  <li><b>Index, measure again (3m).</b> "One line instead of two: an Index lookup straight to the 42 rows." Compare with the number on the board.
+<pre class="code"><span class="k">CREATE</span> <span class="k">INDEX</span> idx_sales_sold_on <span class="k">ON</span> sales_log (sold_on);
+<span class="k">EXPLAIN</span> <span class="k">ANALYZE</span> <span class="k">SELECT</span> * <span class="k">FROM</span> sales_log <span class="k">WHERE</span> sold_on = <span class="s">'2025-03-15'</span>\G</pre>
+<pre class="out">*************************** 1. row ***************************
+EXPLAIN: -&gt; Index lookup on sales_log using idx_sales_sold_on (sold_on = DATE'2025-03-15')  (cost=14.7 rows=42) (actual time=0.075..0.0779 rows=42 loops=1)</pre>
+Here 0.0779 ms. A drop of a hundred times or more is typical; the estimate (rows=42) is now exact.</li>
+  <li><b>A composite index (3m).</b> "Sorted by customer, then by date within each customer, like a phone book. Customer 3 in March is one slice." Covering: COUNT(*) needs nothing but the indexed columns.
+<pre class="code"><span class="k">CREATE</span> <span class="k">INDEX</span> idx_sales_customer_date <span class="k">ON</span> sales_log (customer_id, sold_on);
+<span class="k">EXPLAIN</span> <span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> sales_log
+<span class="k">WHERE</span> customer_id = <span class="s">3</span>
+  <span class="k">AND</span> sold_on <span class="k">BETWEEN</span> <span class="s">'2025-03-01'</span> <span class="k">AND</span> <span class="s">'2025-03-31'</span>\G</pre>
+<pre class="out">*************************** 1. row ***************************
+EXPLAIN: -&gt; Aggregate: count(0)  (cost=73.1 rows=1)
+    -&gt; Filter: ((sales_log.customer_id = 3) and (sales_log.sold_on between '2025-03-01' and '2025-03-31'))  (cost=34.6 rows=167)
+        -&gt; Covering index range scan on sales_log using idx_sales_customer_date over (customer_id = 3 AND '2025-03-01' &lt;= sold_on &lt;= '2025-03-31')  (cost=34.6 rows=167)</pre></li>
+  <li><b>A unique index (2m).</b> "An index plus a rule. A constant on a unique index is found while planning." Then the rule in action.
+<pre class="code"><span class="k">CREATE</span> <span class="k">UNIQUE</span> <span class="k">INDEX</span> uq_sales_receipt <span class="k">ON</span> sales_log (receipt_no);
+<span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> sales_log <span class="k">WHERE</span> receipt_no = <span class="s">'0004242'</span>\G
+<span class="k">INSERT</span> <span class="k">INTO</span> sales_log (receipt_no, customer_id, book_id, sold_on, quantity, channel)
+<span class="k">VALUES</span> (<span class="s">'0004242'</span>, <span class="s">1</span>, <span class="s">1</span>, <span class="s">'2026-07-28'</span>, <span class="s">1</span>, <span class="s">'web'</span>);</pre>
+<pre class="out">*************************** 1. row ***************************
+EXPLAIN: -&gt; Rows fetched before execution  (cost=0..0 rows=1)
+ERROR 1062 (23000): Duplicate entry '0004242' for key 'sales_log.uq_sales_receipt'</pre></li>
+  <li><b>Killer 1: a function around the column (3m).</b> "The index is sorted by sold_on, not by YEAR(sold_on)." Same question as a range on the bare column.
+<pre class="code"><span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> sales_log
+<span class="k">WHERE</span> <span class="k">YEAR</span>(sold_on) = <span class="s">2025</span> <span class="k">AND</span> MONTH(sold_on) = <span class="s">3</span>\G
+<span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> sales_log
+<span class="k">WHERE</span> sold_on &gt;= <span class="s">'2025-03-01'</span> <span class="k">AND</span> sold_on &lt; <span class="s">'2025-04-01'</span>\G</pre>
+<pre class="out">*************************** 1. row ***************************
+EXPLAIN: -&gt; Filter: ((year(sales_log.sold_on) = 2025) and (month(sales_log.sold_on) = 3))  (cost=10078 rows=99900)
+    -&gt; Table scan on sales_log  (cost=10078 rows=99900)
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Index range scan on sales_log using idx_sales_sold_on over ('2025-03-01' &lt;= sold_on &lt; '2025-04-01'), with index condition: ((sales_log.sold_on &gt;= DATE'2025-03-01') and (sales_log.sold_on &lt; DATE'2025-04-01'))  (cost=581 rows=1291)</pre></li>
+  <li><b>Killer 2: a number for a text column (1m).</b> "receipt_no is CHAR(7). 4242 is a number, so every row is converted." Fix: compare with '0004242'.
+<pre class="code"><span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> sales_log <span class="k">WHERE</span> receipt_no = <span class="s">4242</span>\G</pre>
+<pre class="out">*************************** 1. row ***************************
+EXPLAIN: -&gt; Filter: (sales_log.receipt_no = 4242)  (cost=10078 rows=9990)
+    -&gt; Table scan on sales_log  (cost=10078 rows=99900)</pre></li>
+  <li><b>Test a drop safely (2m).</b> "Before dropping an index on a busy table, hide it. The optimizer ignores it; writes still maintain it, so VISIBLE is instant."
+<pre class="code"><span class="k">ALTER</span> <span class="k">TABLE</span> sales_log <span class="k">ALTER</span> <span class="k">INDEX</span> idx_sales_sold_on INVISIBLE;
+<span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> sales_log <span class="k">WHERE</span> sold_on = <span class="s">'2025-03-15'</span>\G
+<span class="k">ALTER</span> <span class="k">TABLE</span> sales_log <span class="k">ALTER</span> <span class="k">INDEX</span> idx_sales_sold_on VISIBLE;</pre>
+<pre class="out">*************************** 1. row ***************************
+EXPLAIN: -&gt; Filter: (sales_log.sold_on = DATE'2025-03-15')  (cost=10078 rows=41.6)
+    -&gt; Table scan on sales_log  (cost=10078 rows=99900)</pre>
+Back to a table scan: this query does need the index.</li>
+  <li><b>Silent: an index you did not need (1m).</b> "No error, no warning, and pure overhead: the composite index already starts with customer_id."
+<pre class="code"><span class="k">CREATE</span> <span class="k">INDEX</span> idx_sales_customer <span class="k">ON</span> sales_log (customer_id);
+<span class="k">SHOW</span> <span class="k">WARNINGS</span>;
+<span class="k">DROP</span> <span class="k">INDEX</span> idx_sales_customer <span class="k">ON</span> sales_log;</pre>
+<pre class="out">Empty set</pre>
+Then the one MySQL refuses: the foreign key's own index (next step).</li>
+  <li><b>Refused: the foreign key's index (1m).</b> 
+<pre class="code"><span class="k">DROP</span> <span class="k">INDEX</span> fk_orders_customer <span class="k">ON</span> orders;</pre>
+<pre class="out">ERROR 1553 (HY000): Cannot drop index 'fk_orders_customer': needed in a foreign key constraint</pre></li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Reading the plan top down.</b> Learners report "it filters first". Coach: "Which line is indented most? That one runs first and feeds the line above."</li>
+  <li><b>Composite index in the wrong order.</b> <code class="inline">(sold_on, customer_id)</code> for "customer 3 in March". Coach: "Equality first, range last: which column do you compare with <code class="inline">=</code>?" (the lab's TODO 2).</li>
+  <li><b>Comparing numbers instead of shapes.</b> "My cost is 10083, yours is 10078." Coach: "Same shape? Then same plan. Estimates come from sampled statistics."</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-09/l6_1-indexes/plan_reading_starter.sql</code>; reference <code class="inline">labs/module-09/l6_1-indexes/plan_reading_solution.sql</code>. A new 100,000-row <code class="inline">visit_log</code> (website visits), generated like the lesson's sales_log and dropped at the end of every run.</p>
+<ul class="tick">
+  <li><b>SOURCE it as shipped (2m):</b> about a second to build; every plan says Table scan, and the index list shows only PRIMARY.</li>
+  <li><b>TODO 1 with a prediction (4m):</b> before removing the <code class="inline">--</code>, each pair writes what the second plan will say. Then run.</li>
+  <li><b>TODO 2 in pairs (5m):</b> the composite index. Circulate for <code class="inline">(visited_on, customer_id)</code>: run it anyway, and ask why the plan is now an index scan of a different shape.</li>
+  <li><b>Expected:</b> 200 visits on June 1 through an Index lookup; customer 3 in June: 700 visits through a Covering index range scan on <code class="inline">idx_visits_customer_on</code>; TODO 3 Rows fetched before execution; four indexes at the end.</li>
+  <li><b>Debrief (2m):</b> "Which plan words did you see? Which line ran first?"</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-09/l6_1-indexes/index_killers_starter.sql</code>: four slow queries to rewrite, same answers, better plans.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>Tune the Sales Reports</b>, <code class="inline">tune_sales.sql</code>: three slow reports, measured, indexed and measured again, with notes as comments. In the room: Steps 1 to 3 (10 minutes).</p>
+<ul class="tick">
+  <li>Step 1: report A (the ten most recent web sales): already fast, through an index made for another query. Write that conclusion as a comment.</li>
+  <li>Steps 2 and 3: report B with QUARTER() and YEAR() is a table scan; rewrite the dates as a range and compare the two plans.</li>
+  <li><b>Done in the room</b> = the file holds reports A and B, each with its before plan as a comment, and B's fixed plan shows an Index range scan.</li>
+  <li><b>Goes home:</b> Step 4 (report C's composite index on customer, book, date), Step 5 (is the old composite index redundant?), Step 6 (the final index list).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud:</p>
+<ul class="tick">
+  <li>Why does nobody create an index on the primary key? <b>Answer:</b> the table is already stored in primary-key order (the clustered index).</li>
+  <li>What does <code class="inline">Covering index</code> mean? <b>Answer:</b> the index alone holds every column the query needs; the table is never read.</li>
+  <li>When is a table scan the right plan? <b>Answer:</b> small tables, or a condition that matches a big share of the rows.</li>
+  <li>Why INVISIBLE before DROP? <b>Answer:</b> hiding is instant to undo; rebuilding a dropped index on a big table can take a long time.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">B) The primary key: the rows themselves are stored in its order (the clustered index)</span>; <b>Q2</b> <span data-sc="2">D) <code class="inline">WHERE sold_on BETWEEN '2025-03-01' AND '2025-03-31'</code></span>; <b>Q3</b> <span data-sc="3"><code class="inline">WHERE sold_on &gt;= '2024-01-01' AND sold_on &lt; '2025-01-01'</code></span>; <b>Q4</b> <span data-sc="4">A) The text column is converted to a number on every row, so the index order no longer helps</span>; <b>Q5</b> <span data-sc="5">C) It succeeds without an error or a warning, and the new index is pure overhead</span>; <b>Q6</b> <span data-sc="6"><code class="inline">1553</code>: the foreign key from orders to customers needs an index on customer_id, and this is the only one</span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> a printed copy of the lesson's plan-word table next to the keyboard; in the lab, TODO 1 only, then compare plans with a partner.</p>
+<p><b>Stretch:</b> the lesson's Exercise 4 (a functional index on <code class="inline">YEAR(sold_on)</code>) and the FULLTEXT bonus challenge; ask them why <code class="inline">MATCH ... AGAINST('the')</code> returns nothing.</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">6.2</span><h3>Views</h3><span class="dur">65 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Explain what a view stores (a query, not data) and read the definition MySQL saves</li>
+  <li>Create, query, replace and drop views, including views over joins and aggregates</li>
+  <li>Predict whether a view is updatable, and protect it with WITH CHECK OPTION</li>
+  <li>Use a view to hide sensitive columns, and grant access to the view alone</li>
+  <li>Recognize and fix the errors views raise (1050, 1288, 1356, 1369, 1393)</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: a window in a wall; stores a query, not rows; three jobs (reuse, updatable slices, security)</td></tr>
+<tr><td class="t">20m</td><td>Live demo: first view, SHOW CREATE VIEW, join and aggregate views, update through a view, CHECK OPTION, security, frozen SELECT *</td></tr>
+<tr><td class="t">20m</td><td>Guided lab: <code class="inline">report_views_starter.sql</code></td></tr>
+<tr><td class="t">15m</td><td>Start the lesson project: <code class="inline">reporting_views.sql</code> Steps 1 to 3</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Point at the window drawn on the board: "A <b>view</b> is a saved SELECT with a name. It holds no rows. Every time you read it, MySQL runs the saved query against the real tables and hands you the result, like a window that shows part of the room behind it. When the room changes, the view changes."</p>
+<p>Then three jobs, one line each: <b>reuse</b> (a five-table join written once, read in one line), <b>a safe slice to edit</b> (updatable views with WITH CHECK OPTION), <b>a security boundary</b> (an account may read the view and not the table).</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>Everyone types <code class="inline">SOURCE bookstore.sql</code> first (it removes <code class="inline">sales_log</code>). The lesson's own examples follow.</p>
+<ol class="steps">
+  <li><b>Your first view (2m).</b> "A view is a named, saved SELECT. Nobody needs to remember WHERE city = 'Chicago' any more."
+<pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_chicago_customers <span class="k">AS</span>
+<span class="k">SELECT</span> id, first_name, last_name, email
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'Chicago'</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> v_chicago_customers <span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+<pre class="out">+----+------------+-----------+-------------------+
+| id | first_name | last_name | email             |
++----+------------+-----------+-------------------+
+|  2 | Bob        | Smith     | bob@example.com   |
+|  7 | Grace      | Wilson    | grace@example.com |
++----+------------+-----------+-------------------+</pre></li>
+  <li><b>What MySQL saved (2m).</b> "A rewritten copy of the query, plus three settings it filled in: ALGORITHM, DEFINER, SQL SECURITY DEFINER. Remember the last one: it makes the security trick work."
+<pre class="code"><span class="k">SHOW</span> <span class="k">CREATE</span> <span class="k">VIEW</span> v_chicago_customers\G</pre>
+<pre class="out">*************************** 1. row ***************************
+                View: v_chicago_customers
+         Create View: CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_chicago_customers` AS select `customers`.`id` AS `id`,`customers`.`first_name` AS `first_name`,`customers`.`last_name` AS `last_name`,`customers`.`email` AS `email` from `customers` where (`customers`.`city` = 'Chicago')
+character_set_client: utf8mb4
+collation_connection: utf8mb4_0900_ai_ci</pre></li>
+  <li><b>A five-table join, written once (3m).</b> Paste the CREATE VIEW from the lesson; no output on success. Then a question that reads like English.
+<pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_order_details <span class="k">AS</span>
+<span class="k">SELECT</span>
+    o.id                                   <span class="k">AS</span> order_id,
+    o.order_date,
+    CONCAT(c.first_name, <span class="s">' '</span>, c.last_name) <span class="k">AS</span> customer,
+    b.title,
+    a.name                                 <span class="k">AS</span> author,
+    oi.quantity,
+    oi.price_at_time,
+    oi.quantity * oi.price_at_time         <span class="k">AS</span> line_total
+<span class="k">FROM</span> orders <span class="k">AS</span> o
+<span class="k">JOIN</span> customers   <span class="k">AS</span> c  <span class="k">ON</span> c.id = o.customer_id
+<span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.order_id = o.id
+<span class="k">JOIN</span> books       <span class="k">AS</span> b  <span class="k">ON</span> b.id = oi.book_id
+<span class="k">JOIN</span> authors     <span class="k">AS</span> a  <span class="k">ON</span> a.id = b.author_id;
+<span class="k">SELECT</span> author, SUM(quantity) <span class="k">AS</span> copies, SUM(line_total) <span class="k">AS</span> revenue
+<span class="k">FROM</span> v_order_details
+<span class="k">GROUP</span> <span class="k">BY</span> author
+<span class="k">ORDER</span> <span class="k">BY</span> revenue <span class="k">DESC</span>, author;</pre>
+<pre class="out">+----------------+--------+---------+
+| author         | copies | revenue |
++----------------+--------+---------+
+| J.R.R. Tolkien |      5 |   64.95 |
+| George Orwell  |      6 |   56.94 |
+| Frank Herbert  |      3 |   44.97 |
+| Harper Lee     |      2 |   23.98 |
+| Ray Bradbury   |      2 |   20.98 |
+| Jane Austen    |      2 |   15.98 |
+| Aldous Huxley  |      1 |    9.49 |
++----------------+--------+---------+</pre>
+Money uses price_at_time, the price actually paid, never today's books.price.</li>
+  <li><b>A view with aggregates (2m).</b> "LEFT JOIN, COUNT(DISTINCT), COALESCE: everything a report needs. Now a manager who never wrote a join asks one line."
+<pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_customer_summary <span class="k">AS</span>
+<span class="k">SELECT</span>
+    c.id                                       <span class="k">AS</span> customer_id,
+    CONCAT(c.first_name, <span class="s">' '</span>, c.last_name)     <span class="k">AS</span> customer,
+    COUNT(<span class="k">DISTINCT</span> o.id)                       <span class="k">AS</span> orders,
+    COALESCE(SUM(oi.quantity), <span class="s">0</span>)              <span class="k">AS</span> items,
+    COALESCE(SUM(oi.quantity * oi.price_at_time), <span class="s">0</span>) <span class="k">AS</span> total_spent
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders      <span class="k">AS</span> o  <span class="k">ON</span> o.customer_id = c.id
+<span class="k">LEFT</span> <span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.order_id = o.id
+<span class="k">GROUP</span> <span class="k">BY</span> c.id, c.first_name, c.last_name;
+<span class="k">SELECT</span> customer, total_spent
+<span class="k">FROM</span> v_customer_summary
+<span class="k">WHERE</span> total_spent &gt; <span class="s">40</span>
+<span class="k">ORDER</span> <span class="k">BY</span> total_spent <span class="k">DESC</span>;</pre>
+<pre class="out">+---------------+-------------+
+| customer      | total_spent |
++---------------+-------------+
+| Alice Johnson |       58.95 |
+| Dave Brown    |       45.96 |
+| Frank Miller  |       41.96 |
++---------------+-------------+</pre></li>
+  <li><b>Updating through a view (2m).</b> "Each row of this view is one customer row, so MySQL knows which row to change. The change lands in customers." Inside a transaction, rolled back.
+<pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> v_chicago_customers
+<span class="k">SET</span> email = <span class="s">'grace.wilson@example.com'</span>
+<span class="k">WHERE</span> id = <span class="s">7</span>;
+<span class="k">SELECT</span> id, first_name, email <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">7</span>;
+<span class="k">ROLLBACK</span>;</pre>
+<pre class="out">+----+------------+--------------------------+
+| id | first_name | email                    |
++----+------------+--------------------------+
+|  7 | Grace      | grace.wilson@example.com |
++----+------------+--------------------------+</pre></li>
+  <li><b>MySQL's verdict (1m).</b> "Grouping makes a view read-only; a five-table join is still updatable, one table per statement."
+<pre class="code"><span class="k">SELECT</span> TABLE_NAME, IS_UPDATABLE, CHECK_OPTION
+<span class="k">FROM</span> information_schema.VIEWS
+<span class="k">WHERE</span> TABLE_SCHEMA = <span class="s">'bookstore'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> TABLE_NAME;</pre>
+<pre class="out">+---------------------+--------------+--------------+
+| TABLE_NAME          | IS_UPDATABLE | CHECK_OPTION |
++---------------------+--------------+--------------+
+| v_chicago_customers | YES          | NONE         |
+| v_customer_summary  | NO           | NONE         |
+| v_order_details     | YES          | NONE         |
++---------------------+--------------+--------------+</pre></li>
+  <li><b>WITH CHECK OPTION (3m).</b> "Without it, an update could move Bob to Boston and he would vanish from the view that changed him. With it:"
+<pre class="code"><span class="k">CREATE</span> <span class="k">OR</span> <span class="k">REPLACE</span> <span class="k">VIEW</span> v_chicago_customers <span class="k">AS</span>
+<span class="k">SELECT</span> id, first_name, last_name, email, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'Chicago'</span>
+<span class="k">WITH</span> <span class="k">CHECK</span> <span class="k">OPTION</span>;
+<span class="k">UPDATE</span> v_chicago_customers <span class="k">SET</span> city = <span class="s">'Boston'</span> <span class="k">WHERE</span> id = <span class="s">2</span>;</pre>
+<pre class="out">ERROR 1369 (HY000): CHECK OPTION failed 'bookstore.v_chicago_customers'</pre></li>
+  <li><b>A view as a security boundary (3m).</b> "The support team needs a staff directory without salaries. The view hides columns and rows; the account gets SELECT on the view only." The account is dropped again right away; Lesson 7.4 teaches users properly.
+<pre class="code"><span class="k">CREATE</span> <span class="k">VIEW</span> v_staff_directory <span class="k">AS</span>
+<span class="k">SELECT</span> first_name, last_name, email, department
+<span class="k">FROM</span> employees
+<span class="k">WHERE</span> is_active = <span class="k">TRUE</span>;
+<span class="k">CREATE</span> <span class="k">USER</span> <span class="s">'support_demo'</span>@<span class="s">'localhost'</span> <span class="k">IDENTIFIED</span> <span class="k">BY</span> <span class="s">'Replace-With-A-Strong-Passw0rd!'</span>;
+<span class="k">GRANT</span> <span class="k">SELECT</span> <span class="k">ON</span> bookstore.v_staff_directory <span class="k">TO</span> <span class="s">'support_demo'</span>@<span class="s">'localhost'</span>;
+<span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'support_demo'</span>@<span class="s">'localhost'</span>;
+<span class="k">DROP</span> <span class="k">USER</span> <span class="s">'support_demo'</span>@<span class="s">'localhost'</span>;</pre>
+<pre class="out">+-------------------------------------------------------------------------------+
+| Grants for support_demo@localhost                                             |
++-------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `support_demo`@`localhost`                              |
+| GRANT SELECT ON `bookstore`.`v_staff_directory` TO `support_demo`@`localhost` |
++-------------------------------------------------------------------------------+</pre>
+Without a grant on employees, <code class="inline">SELECT salary FROM employees</code> would fail for that account with 1142.</li>
+  <li><b>Silent: SELECT * is frozen (2m).</b> "The table gains in_stock; the view does not, because * was expanded when it was created."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> demo_products (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">50</span>), cost <span class="k">DECIMAL</span>(<span class="s">8</span>, <span class="s">2</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> demo_products <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Bookmark'</span>, <span class="s">1.50</span>), (<span class="s">2</span>, <span class="s">'Tote bag'</span>, <span class="s">12.00</span>);
+<span class="k">CREATE</span> <span class="k">VIEW</span> v_demo_all <span class="k">AS</span> <span class="k">SELECT</span> * <span class="k">FROM</span> demo_products;
+<span class="k">ALTER</span> <span class="k">TABLE</span> demo_products <span class="k">ADD</span> <span class="k">COLUMN</span> in_stock <span class="k">BOOLEAN</span> <span class="k">DEFAULT</span> <span class="k">TRUE</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> v_demo_all <span class="k">ORDER</span> <span class="k">BY</span> id;
+<span class="k">DROP</span> <span class="k">VIEW</span> v_demo_all;
+<span class="k">DROP</span> <span class="k">TABLE</span> demo_products;</pre>
+<pre class="out">+----+----------+-------+
+| id | name     | cost  |
++----+----------+-------+
+|  1 | Bookmark |  1.50 |
+|  2 | Tote bag | 12.00 |
++----+----------+-------+</pre></li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Expecting a view to store data.</b> "Do I need to refresh it?" Coach: "Insert an order, then read the view." (Predict P3 shows it.)</li>
+  <li><b>Updating an aggregate view (1288).</b> Coach: "Which customer row would MySQL change to make orders = 5?" There is none.</li>
+  <li><b>CREATE VIEW in a script that runs twice (1050).</b> Coach: "What should a rerunnable script say?" CREATE OR REPLACE VIEW.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-09/l6_2-views/report_views_starter.sql</code>; reference <code class="inline">labs/module-09/l6_2-views/report_views_solution.sql</code>. Two new views: sales per author (all ten authors, zero included) and every order with its customer's city.</p>
+<ul class="tick">
+  <li><b>TODO 1 together (6m):</b> inner joins drop the authors with no sales. LEFT JOIN plus COALESCE. Ask first: "how many authors come back now, and why?" (seven).</li>
+  <li><b>TODO 2 in pairs (8m):</b> create <code class="inline">v_city_orders</code> with no GROUP BY inside; the grouping happens in the query that reads it.</li>
+  <li><b>Expected:</b> ten authors from J.R.R. Tolkien 64.95 down to three with 0.00 (F. Scott Fitzgerald, Isaac Asimov with 0 books, J.D. Salinger); New York 5 orders, Chicago 4, Houston 2, (no city) 1; <code class="inline">v_author_sales</code> NO, <code class="inline">v_city_orders</code> YES in IS_UPDATABLE.</li>
+  <li><b>Debrief (2m):</b> "Why is one view updatable and the other not?" (grouping).</li>
+  <li><b>Fast finishers:</b> TODO 3, then <code class="inline">labs/module-09/l6_2-views/guarded_views_starter.sql</code> (CHECK OPTION, a read-only window, an account that may read only that window).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>A Reporting Layer</b>, <code class="inline">reporting_views.sql</code>: four views the manager reads with plain SELECTs, in a script that runs twice without an error. In the room: Steps 1 to 3 (15 minutes).</p>
+<ul class="tick">
+  <li>Step 1: <code class="inline">v_book_catalog</code> with GROUP_CONCAT for the categories.</li>
+  <li>Step 2: <code class="inline">v_order_totals</code> (why the bookstore stores no order total: a preview of Session 10).</li>
+  <li>Step 3: <code class="inline">v_book_sales</code>, with The Great Gatsby and The Catcher in the Rye at 0 copies.</li>
+  <li><b>Goes home:</b> Step 4 (a view on a view), Step 5 (IS_UPDATABLE for the layer), Step 6 (run it twice).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud:</p>
+<ul class="tick">
+  <li>Does a view make a query faster? <b>Answer:</b> no; it runs its query. Indexes on the base tables make it fast.</li>
+  <li>Where does ORDER BY go? <b>Answer:</b> in the query that reads the view.</li>
+  <li>What does WITH CHECK OPTION protect against? <b>Answer:</b> writes through the view that would push a row out of it (1369).</li>
+  <li>What happens to your views when you reload bookstore.sql? <b>Answer:</b> they are dropped with the database; keep them in a script.</li>
+</ul>
+<p>Workbook self-check, items Q7 to Q12.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">A) Only the query: the rows are computed every time the view is read</span>; <b>Q8</b> <span data-sc="8"><code class="inline">ERROR 1369 (HY000): CHECK OPTION failed 'bookstore.v_ny'</code></span>; <b>Q9</b> <span data-sc="9">C) <code class="inline">SELECT id, title, price FROM books WHERE price &lt; 10</code></span>; <b>Q10</b> <span data-sc="10">D) The old columns only, without color</span>; <b>Q11</b> <span data-sc="11">MySQL ignores a view's ORDER BY when the outer query has its own, and the SQL standard promises no order from a view: sort where you read</span>; <b>Q12</b> <span data-sc="12">B) Read the directory through the view, but not the employees table itself</span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> keep the table-versus-view comparison from the lesson on screen. In the lab, TODO 1 only, then read the solution's v_city_orders aloud with a partner.</p>
+<p><b>Stretch:</b> the lesson's Exercise 4 (a safe editing view with a check option) and the "fake a materialized view" bonus; then the 6.2 worked example (a view that filters a window function).</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Clinic</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2:25</span><h3>Clinic: A View's Plan, and the Debug Handouts</h3><span class="dur">25 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">8m</td><td>EXPLAIN on a merged view (demo step: v_order_details) and on a grouped view (v_customer_summary)</td></tr>
+<tr><td class="t">12m</td><td><code class="inline">debug_indexes.sql</code> and <code class="inline">debug_views.sql</code> in pairs: eight errors, cause and fix in the workbook table</td></tr>
+<tr><td class="t">5m</td><td>Whole room: one volunteer per error</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">A view is as fast as its query</div>
+<p>Run both on the projector (6.2 demo state). The first view is MERGED into the query: no trace of the view, and the base tables' indexes do the work (fk_items_order, PRIMARY). The second groups rows, so MySQL computes it into a temporary table first (Materialize) and filters after all the grouping. Say: "Views do not have indexes. On big tables, filter in the base query, or keep a summary table."</p>
+<pre class="code"><span class="k">EXPLAIN</span> <span class="k">SELECT</span> customer, title <span class="k">FROM</span> v_order_details <span class="k">WHERE</span> order_id = <span class="s">3</span>\G</pre>
+<pre class="out">*************************** 1. row ***************************
+EXPLAIN: -&gt; Nested loop inner join  (cost=1.05 rows=1)
+    -&gt; Nested loop inner join  (cost=0.7 rows=1)
+        -&gt; Index lookup on oi using fk_items_order (order_id = 3)  (cost=0.35 rows=1)
+        -&gt; Single-row index lookup on b using PRIMARY (id = oi.book_id)  (cost=0.35 rows=1)
+    -&gt; Single-row covering index lookup on a using PRIMARY (id = b.author_id)  (cost=0.35 rows=1)</pre><pre class="code"><span class="k">EXPLAIN</span> <span class="k">SELECT</span> * <span class="k">FROM</span> v_customer_summary <span class="k">WHERE</span> total_spent &gt; <span class="s">40</span>\G</pre>
+<pre class="out">*************************** 1. row ***************************
+EXPLAIN: -&gt; Table scan on v_customer_summary  (cost=2.5..2.5 rows=0)
+    -&gt; Materialize  (cost=0..0 rows=0)
+        -&gt; Filter: (coalesce(sum(tmp_field),0) &gt; 40)
+            -&gt; Group aggregate: sum(tmp_field), sum(order_items.quantity), count(distinct orders.id)
+                -&gt; Sort: c.id, c.first_name, c.last_name
+                    -&gt; Stream results  (cost=29.2 rows=288)
+                        -&gt; Left hash join (oi.order_id = o.id)  (cost=29.2 rows=288)
+                            -&gt; Nested loop left join  (cost=4.65 rows=16)
+                                -&gt; Table scan on c  (cost=1.05 rows=8)
+                                -&gt; Covering index lookup on o using fk_orders_customer (customer_id = c.id)  (cost=0.275 rows=2)
+                            -&gt; Hash
+                                -&gt; Table scan on oi  (cost=0.129 rows=18)</pre></div>
+<div class="blk lab"><div class="h">What the handouts print, and the fixes</div>
+<pre class="out">ERROR 1061 (42000): Duplicate key name 'fk_books_author'
+ERROR 1091 (42000): Can't DROP 'idx_books_price'; check that column/key exists
+ERROR 1553 (HY000): Cannot drop index 'fk_orders_customer': needed in a foreign key constraint
+ERROR 1062 (23000): Duplicate entry 'New York' for key 'customers.uq_customers_city'
++------------+--------------------+-------------+
+| TABLE_NAME | INDEX_NAME         | COLUMN_NAME |
++------------+--------------------+-------------+
+| books      | fk_books_author    | author_id   |
+| books      | PRIMARY            | id          |
+| customers  | email              | email       |
+| customers  | PRIMARY            | id          |
+| orders     | fk_orders_customer | customer_id |
+| orders     | PRIMARY            | id          |
++------------+--------------------+-------------+</pre><ul class="tick">
+  <li><b>1061:</b> the name <code class="inline">fk_books_author</code> is taken (by the foreign key's index). Fix: <code class="inline">idx_books_price</code>.</li>
+  <li><b>1091:</b> there is no index of that name (A failed). Fix: look it up with <code class="inline">SHOW INDEX FROM books</code> first.</li>
+  <li><b>1553:</b> the foreign key needs it. Fix: leave it; create another index starting with customer_id first if you want to replace it.</li>
+  <li><b>1062:</b> two customers already share a city (<code class="inline">New York</code>, the first duplicate found). Fix: a city is not unique; clean data before a UNIQUE index, or drop the idea.</li>
+</ul>
+<pre class="out">ERROR 1050 (42S01): Table 'v_dbg_cheap' already exists
+ERROR 1288 (HY000): The target table v_dbg_counts of the UPDATE is not updatable
+ERROR 1369 (HY000): CHECK OPTION failed 'bookstore.v_dbg_cheap'
+ERROR 1356 (HY000): View 'bookstore.v_dbg_flyer_prices' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them
++----+-------+-------+
+| id | title | price |
++----+-------+-------+
+|  2 | 1984  |  9.99 |
++----+-------+-------+</pre><ul class="tick">
+  <li><b>1050:</b> the view exists. Fix: CREATE OR REPLACE VIEW.</li>
+  <li><b>1288:</b> a grouped view is not updatable. Fix: change the base table.</li>
+  <li><b>1369:</b> 12.99 would push 1984 out of the "under 10" view. Fix: change the price in books, if that is really meant.</li>
+  <li><b>1356:</b> the view still names <code class="inline">cost</code>. Fix: CREATE OR REPLACE VIEW with <code class="inline">unit_cost</code>.</li>
+</ul>
+<p>The checker runs these in a scratch database, so its messages name that database instead of <code class="inline">bookstore</code>.</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 4 minutes)</div>
+<ol class="steps">
+  <li>A query filters <code class="inline">WHERE customer_id = 5 AND book_id = 9 ORDER BY sold_on</code>. Write the one index that serves the filter and the sort. <b>Answer:</b> <code class="inline">CREATE INDEX idx_sales_customer_book_date ON sales_log (customer_id, book_id, sold_on);</code> (equality columns first, the sort column last: the lesson project's Step 4).</li>
+  <li>Name two habits that stop MySQL from using an index on a column. <b>Answer:</b> any two of: a function or arithmetic around the column; a leading % in LIKE; comparing a text column with a number; OR across different columns.</li>
+  <li>Give one reason to create a view and one thing a view does NOT do for you. <b>Answer:</b> reasons: reuse a long query by name, give a safe updatable slice, hide columns and rows from an account. Does not: store rows, have indexes, make the query faster.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours)</div>
+<ul class="tick">
+  <li><b>Finish both lesson projects.</b> <code class="inline">tune_sales.sql</code> Steps 4 to 6; <code class="inline">reporting_views.sql</code> Steps 4 to 6 (run it twice in a row).</li>
+  <li><b>Lesson exercises.</b> 6.1: Exercises 1 to 3 (predict the plan, rewrite for the index, index the staff directory); 4 is a stretch. 6.2: Exercises 1 to 3 (books over $10, customers who never ordered, find the dependents); 4 is a stretch.</li>
+  <li><b>Both Quick Quizzes</b> (answers in the Answer Key) and <b>both journal entries</b>.</li>
+  <li><b>Labs not finished in class:</b> <code class="inline">labs/module-09/l6_1-indexes/index_killers_starter.sql</code>, <code class="inline">labs/module-09/l6_2-views/guarded_views_starter.sql</code>.</li>
+  <li><b>Before the Next Lesson (from 6.2):</b> run <code class="inline">reporting_views.sql</code> on a freshly loaded bookstore; look at a spreadsheet you use and find a value that repeats on many rows: Lesson 6.3 starts there.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Bring list for Session 10</div>
+<ul class="tick">
+  <li>A laptop with a working bookstore (<code class="inline">bookstore.sql</code> in the course folder): Lesson 6.3 builds its own practice database (<code class="inline">normalize_lab</code>) and Lesson 7.1 reloads the bookstore.</li>
+  <li>The spreadsheet value from the homework (a sign-up sheet, an expense list): we normalize one in the warm-up.</li>
+  <li>The course folder with <code class="inline">labs/</code> (<code class="inline">labs/module-10/</code>), both project files, the workbook and the journal.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> the before-and-after EXPLAIN ANALYZE; the composite index; plan_reading through TODO 2; WITH CHECK OPTION; report_views through TODO 1.</li>
+  <li><b>Cut first (saves 8m):</b> the clinic's EXPLAIN part; keep the debug handouts, or send them home with the README's expected errors.</li>
+  <li><b>Cut second (saves 4m):</b> 6.1 demo steps 10 to 12 (self-check Q5 and Q6 cover them).</li>
+  <li><b>Cut third (saves 3m):</b> the 6.2 security step: say "a view can be the only thing an account may read; Lesson 7.4 shows it".</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>The lesson 6.1 project's Step 4 live: report C before and after the three-column index.</li>
+  <li>The lesson 6.2 bonus: fake a materialized view with CREATE TABLE ... AS SELECT, insert an order, compare table and view.</li>
+  <li>The 6.2 worked example: a view that filters a window function (Session 8 meets Session 9).</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 9 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn to create MySQL stored procedures and functions — reusable blocks of SQL logic with parameters that live inside your database and can be called by name.">
-    <meta name="author" content="Ray De La Paz">
+    <meta name="description" content="Save reusable SQL inside the database: stored procedures with IN, OUT and INOUT parameters, stored functions, local variables, IF, CASE and loops, input checks with SIGNAL, and the DELIMITER client command. MySQL Foundations Lesson 7.1.">
+    <meta name="author" content="Ray de la Paz">
     <title>Stored Procedures &amp; Functions - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -42,32 +42,35 @@
     <nav class="breadcrumb" aria-label="Breadcrumb">
         <ul>
             <li><a href="index.html">Home</a></li>
-            <li><a href="index.html#modules">Module 6: Advanced Features</a></li>
-            <li aria-current="page">Lesson 17: Stored Procedures &amp; Functions</li>
+            <li><a href="index.html#modules">Module 7: Advanced Features</a></li>
+            <li aria-current="page">Lesson 7.1: Stored Procedures &amp; Functions</li>
         </ul>
     </nav>
 
     <main id="main-content">
         <div class="container">
             <header>
-                <h1>🔧 Lesson 17: Stored Procedures &amp; Functions</h1>
-                <p class="lead">So far, every SQL statement you've written lives in your head (or a .sql file). When your application needs the same 10-line query in five different places, you copy-paste it — and pray nobody changes the schema without updating all five copies. <strong>Stored procedures</strong> and <strong>functions</strong> solve this: they let you save reusable blocks of SQL logic <em>inside the database itself</em>, call them by name, pass in parameters, and get results back. Think of them as "functions" for your database.</p>
+                <h1>🔧 Lesson 7.1: Stored Procedures &amp; Functions</h1>
+                <p class="lead">Until now every query has lived in your head or in a <code>.sql</code> file. When an app needs the same ten-line query in five places, someone copies it five times, and sooner or later the copies drift apart. Stored procedures and stored functions let you save that logic <em>inside the database</em>, give it a name and parameters, and call it from anywhere. This lesson shows how to write them, and when not to.</p>
 
                 <div class="card card-info">
                     <h2>🎯 Learning Objectives</h2>
                     <p>By the end of this lesson, you will be able to:</p>
                     <ul>
-                        <li>Explain the difference between stored procedures and functions</li>
-                        <li>Use <code>DELIMITER</code> to define multi-statement routines</li>
-                        <li>Create stored procedures with <code>IN</code>, <code>OUT</code>, and <code>INOUT</code> parameters</li>
-                        <li>Create stored functions that return a single value</li>
-                        <li>Use variables, IF/ELSE, and loops inside routines</li>
-                        <li>Call, modify, and drop stored routines</li>
-                        <li>Know when to use procedures vs functions vs application code</li>
+                        <li>Explain what the <code>DELIMITER</code> client command does, and when you do not need it</li>
+                        <li>Create and call stored procedures with <code>IN</code>, <code>OUT</code> and <code>INOUT</code> parameters</li>
+                        <li>Write stored functions with the right characteristic (<code>DETERMINISTIC</code>, <code>READS SQL DATA</code>) and use them inside queries</li>
+                        <li>Use local variables, <code>IF</code>, <code>CASE</code> and <code>WHILE</code> in a routine, and reject bad input with <code>SIGNAL</code></li>
+                        <li>List, inspect, replace and drop routines, and read the errors MySQL raises for broken ones (1064, 1418, 1172, 1304, 1644)</li>
                     </ul>
-                    <p><strong>Estimated Time:</strong> 50 minutes</p>
-                    <p><strong>Prerequisites:</strong> Database Design &amp; Normalization (<a href="lesson_16.html">Lesson 16</a>)</p>
                 </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 105 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_16.html">Lesson 6.3: Database Design &amp; Normalization</a></li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>bookstore_routines.sql</code>: two functions and two procedures the bookstore's app can call</li>
+                    <li><span class="meta-label">🗄️ Database</span> <code>bookstore</code>, freshly loaded from <a href="assets/sql/bookstore.sql" download>bookstore.sql</a></li>
+                </ul>
             </header>
 
             <details class="card toc-card" open>
@@ -78,1076 +81,1379 @@
                 </summary>
                 <nav aria-label="Table of Contents">
                     <ol>
-                        <li><a href="#why-stored" class="toc-link">Why Stored Routines?</a></li>
-                        <li><a href="#delimiter" class="toc-link">The DELIMITER Problem</a></li>
+                        <li><a href="#why-routines" class="toc-link">Why Stored Routines?</a></li>
+                        <li><a href="#delimiter" class="toc-link">DELIMITER: A Client Command</a></li>
                         <li><a href="#first-procedure" class="toc-link">Your First Stored Procedure</a></li>
                         <li><a href="#parameters" class="toc-link">Parameters: IN, OUT, INOUT</a></li>
-                        <li><a href="#variables" class="toc-link">Variables &amp; SET</a></li>
-                        <li><a href="#control-flow" class="toc-link">Control Flow: IF, CASE, Loops</a></li>
+                        <li><a href="#variables" class="toc-link">Local Variables</a></li>
+                        <li><a href="#control-flow" class="toc-link">Control Flow: IF, CASE, WHILE</a></li>
                         <li><a href="#functions" class="toc-link">Stored Functions</a></li>
-                        <li><a href="#proc-vs-func" class="toc-link">Procedures vs Functions</a></li>
-                        <li><a href="#managing" class="toc-link">Managing Stored Routines</a></li>
-                        <li><a href="#best-practices" class="toc-link">Best Practices &amp; When to Use</a></li>
-                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
-                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                        <li><a href="#signal" class="toc-link">Rejecting Bad Input with SIGNAL</a></li>
+                        <li><a href="#managing" class="toc-link">Managing Routines</a></li>
+                        <li><a href="#when-to-use" class="toc-link">Procedure, Function or App Code?</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: The Bookstore Routine Library</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
                     </ol>
                 </nav>
             </details>
 
-            <!-- Section 1: Why Stored Routines? -->
-            <section id="why-stored" class="lesson-section">
-                <h2>Why Stored Routines?</h2>
-                <p>A <strong>stored routine</strong> is a named block of SQL statements saved in the database. There are two types:</p>
+            <section id="why-routines" class="lesson-section">
+                <h2>🧩 Why Stored Routines?</h2>
+                <p>A <strong>stored routine</strong> is a named block of SQL saved in a database, next to its tables. MySQL has two kinds:</p>
                 <ul>
-                    <li><strong>Stored Procedure</strong> — called with <code>CALL</code>, can return multiple result sets, uses OUT parameters</li>
-                    <li><strong>Stored Function</strong> — called inside a SELECT, returns a single value</li>
-                </ul>
-
-                <h3>Benefits</h3>
-                <ul>
-                    <li><strong>Reusability:</strong> Write the logic once, call it from anywhere</li>
-                    <li><strong>Consistency:</strong> Everyone uses the same logic — no copy-paste drift</li>
-                    <li><strong>Security:</strong> Grant users access to the procedure without granting access to the underlying tables</li>
-                    <li><strong>Performance:</strong> Stored routines are parsed and compiled once, then cached</li>
-                    <li><strong>Reduced network traffic:</strong> One CALL replaces sending multiple statements from the application</li>
+                    <li>A <strong>stored procedure</strong> is run with <code>CALL name(...)</code>. It can return result sets, hand values back through <code>OUT</code> parameters, and change data.</li>
+                    <li>A <strong>stored function</strong> returns exactly one value and is used inside an expression, like a built-in function: <code>SELECT title, with_tax(price) FROM books</code>.</li>
                 </ul>
 
                 <div class="mermaid">
-                    graph LR
-                        subgraph app["Application"]
-                            A["CALL get_customer_orders(5)"]
-                        end
-                        subgraph db["MySQL Database"]
-                            P["Stored Procedure:<br/>JOINs, filters, formats<br/>all inside the database"]
-                        end
-                        subgraph result["Result"]
-                            R["Formatted result set<br/>returned to app"]
-                        end
-                        A -->|"one call"| P
-                        P -->|"result"| R
+graph TD
+    A["App or mysql client"] -->|"CALL customer_report(1)"| B["Stored procedure"]
+    B --> C["JOINs, checks, updates"]
+    C --> D["Tables in bookstore"]
+    B -->|"result sets"| A
                 </div>
-            </section>
 
-            <!-- Section 2: The DELIMITER Problem -->
-            <section id="delimiter" class="lesson-section">
-                <h2>The DELIMITER Problem</h2>
-                <p>Here's a quirk you need to understand before writing any procedure. MySQL uses the semicolon (<code>;</code>) as its default statement delimiter. But a stored procedure <em>contains</em> semicolons inside its body. Without intervention, MySQL would try to execute each line individually instead of treating the whole block as one definition.</p>
-
-                <p>The solution: temporarily change the delimiter to something else while creating the procedure.</p>
-
-                <pre><code class="language-sql">
--- Step 1: Change delimiter to //
-DELIMITER //
-
--- Step 2: Create the procedure (semicolons inside are fine now)
-CREATE PROCEDURE my_procedure()
-BEGIN
-    SELECT 'Hello, World!';   -- This semicolon won't end the CREATE
-    SELECT NOW();              -- Neither will this one
-END //
-
--- Step 3: Change delimiter back to ;
-DELIMITER ;
-                </code></pre>
+                <p>What they buy you:</p>
+                <ul>
+                    <li><strong>One copy of the logic.</strong> The PHP site, the Python report and the admin at the <code>mysql&gt;</code> prompt all call the same routine.</li>
+                    <li><strong>Fewer round trips.</strong> One <code>CALL</code> can run ten statements on the server instead of ten requests over the network.</li>
+                    <li><strong>A narrow door.</strong> You can let an account run a procedure (the <code>EXECUTE</code> privilege, <a href="lesson_19.html">Lesson 7.4</a>) without letting it read or change the tables directly.</li>
+                </ul>
+                <p>And what they cost: the logic is now in two places (app and database), it needs its own version control, and MySQL's routine language is small and old-fashioned compared to Python or JavaScript. The last section of the lesson helps you decide.</p>
 
                 <div class="card card-info">
-                    <h4>💡 Common Delimiter Choices</h4>
-                    <p>Most people use <code>//</code> or <code>$$</code> as the temporary delimiter. Both work fine — pick one and be consistent:</p>
-                    <pre><code class="language-sql">
-DELIMITER //    -- Popular choice
-DELIMITER $$    -- Also popular
-                    </code></pre>
-                    <p><strong>phpMyAdmin note:</strong> phpMyAdmin handles delimiters automatically in its "Routines" tab — you often don't need the DELIMITER command there. But in the MySQL CLI, you always need it.</p>
+                    <h4>💡 Follow along</h4>
+                    <p>Every output in this lesson comes from a fresh copy of the bookstore. Reload it now, with the path to your download (on Windows, use forward slashes, for example <code>SOURCE C:/Users/you/mysql-course/bookstore.sql</code>):</p>
+                    <pre><code class="language-sql">SOURCE ~/mysql-course/bookstore.sql</code></pre>
+                    <p>It prints a row count for every table and leaves you in the <code>bookstore</code> database: 11 books, 8 customers, 12 orders.</p>
                 </div>
             </section>
 
-            <!-- Section 3: Your First Stored Procedure -->
-            <section id="first-procedure" class="lesson-section">
-                <h2>Your First Stored Procedure</h2>
+            <section id="delimiter" class="lesson-section">
+                <h2>✂️ DELIMITER: A Client Command</h2>
+                <p>A procedure body holds several statements, each ending in <code>;</code>. That is a problem for the <code>mysql</code> command-line client: it reads your typing, and every time it sees a <code>;</code> it sends what it has collected to the server. It would send the first half of your procedure and the server would answer with a syntax error.</p>
+                <p>The fix is <code>DELIMITER</code>. It tells <strong>the client</strong> (not the server) to wait for a different end marker for a while:</p>
 
-                <h3>Basic Syntax</h3>
+                <pre><code class="language-sql">DELIMITER //
 
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE procedure_name (parameters)
+CREATE PROCEDURE say_hello()
 BEGIN
-    -- SQL statements go here
+    SELECT 'Hello from the bookstore!' AS greeting;
+    SELECT COUNT(*) AS books_in_stock FROM books WHERE in_stock = TRUE;
 END //
 
-DELIMITER ;
-                </code></pre>
+DELIMITER ;</code></pre>
 
-                <h3>A Simple Procedure — No Parameters</h3>
+                <p>Read it as three steps. <code>DELIMITER //</code>: "from now on, a statement ends at <code>//</code>". Then the whole <code>CREATE PROCEDURE ... END</code>, semicolons and all, goes to the server as one statement when the client reaches <code>//</code>. Finally <code>DELIMITER ;</code> switches back. Now run it:</p>
 
-                <pre><code class="language-sql">
-DELIMITER //
+                <pre><code class="language-sql">CALL say_hello();</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------------+
+| greeting                  |
++---------------------------+
+| Hello from the bookstore! |
++---------------------------+
++----------------+
+| books_in_stock |
++----------------+
+|              9 |
++----------------+</code></pre>
+                </div>
+                <p>A procedure may return several result sets: each <code>SELECT</code> in the body that is not stored into a variable sends one back to the caller.</p>
 
-CREATE PROCEDURE get_all_books()
+                <div class="mermaid">
+graph TD
+    A["You type the CREATE"] --> B["mysql client"]
+    B -->|"DELIMITER // : wait for //"| C["One whole statement"]
+    C --> D["MySQL server"]
+    D --> E["Procedure saved"]
+                </div>
+
+                <div class="card card-accent">
+                    <h4>🔑 Who needs DELIMITER?</h4>
+                    <p>Only tools that split your text at semicolons: the <code>mysql</code> client, <code>SOURCE</code> and <code>mysql &lt; file.sql</code>. The server never sees the word <code>DELIMITER</code>, so you do <strong>not</strong> write it when an app sends <code>CREATE PROCEDURE</code> through a driver (PHP's PDO, Python's connector), or in MySQL Workbench, which understands <code>DELIMITER</code> lines in its SQL editor. phpMyAdmin's SQL tab has a <strong>Delimiter</strong> box under the query area; set it to <code>//</code> there instead of typing the command. <code>//</code> and <code>$$</code> are both popular; pick one and use it everywhere.</p>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Always switch back</h4>
+                    <p>If you forget <code>DELIMITER ;</code>, your next ordinary query just sits there: the client prints <code>-&gt;</code> and waits for <code>//</code>. Type <code>//</code> to send it, then <code>DELIMITER ;</code>. In this course every example that changes the delimiter changes it back in the same block, so you can copy any block on its own.</p>
+                </div>
+
+                <p>One shortcut: a routine whose body is a <strong>single statement</strong> needs no <code>BEGIN ... END</code> and no delimiter change at all, because the only <code>;</code> is the one at the very end:</p>
+                <pre><code class="language-sql">CREATE PROCEDURE count_customers()
+    SELECT COUNT(*) AS customers FROM customers;
+
+CALL count_customers();</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+
+| customers |
++-----------+
+|         8 |
++-----------+</code></pre>
+                </div>
+            </section>
+
+            <section id="first-procedure" class="lesson-section">
+                <h2>📦 Your First Stored Procedure</h2>
+                <p>The general shape, with placeholders (not runnable as written):</p>
+                <pre data-norun><code class="language-sql">DELIMITER //
+CREATE PROCEDURE procedure_name(parameter_list)
 BEGIN
-    SELECT b.title, b.price, a.name AS author
-    FROM books b
-    INNER JOIN authors a ON b.author_id = a.id
+    statements;
+END //
+DELIMITER ;</code></pre>
+
+                <p>Here is a real one. The bookstore's website needs "every book with its author" on several pages. Instead of repeating the join in each page's code, wrap it:</p>
+                <pre><code class="language-sql">DELIMITER //
+CREATE PROCEDURE list_books()
+BEGIN
+    SELECT b.id, b.title, a.name AS author, b.price
+    FROM books AS b
+    JOIN authors AS a ON a.id = b.author_id
     ORDER BY b.title;
 END //
-
 DELIMITER ;
-                </code></pre>
 
-                <h3>Calling a Procedure</h3>
-
-                <pre><code class="language-sql">
--- Use CALL to execute a stored procedure
-CALL get_all_books();
-                </code></pre>
-
+CALL list_books();</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+---------------------+-------+---------------+
-| title               | price | author        |
-+---------------------+-------+---------------+
-| 1984                |  9.99 | George Orwell |
-| Animal Farm         |  8.49 | George Orwell |
-| Dune                | 14.99 | Frank Herbert |
-| Pride and Prejudice |  7.99 | Jane Austen   |
-+---------------------+-------+---------------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+----+------------------------+---------------------+-------+
+| id | title                  | author              | price |
++----+------------------------+---------------------+-------+
+|  2 | 1984                   | George Orwell       |  9.99 |
+| 11 | Animal Farm            | George Orwell       |  8.49 |
+|  7 | Brave New World        | Aldous Huxley       |  9.49 |
+|  1 | Dune                   | Frank Herbert       | 14.99 |
+| 10 | Fahrenheit 451         | Ray Bradbury        | 10.49 |
+|  9 | Lord of the Rings      | J.R.R. Tolkien      | 15.99 |
+|  5 | Pride and Prejudice    | Jane Austen         |  7.99 |
+|  8 | The Catcher in the Rye | J.D. Salinger       |  8.99 |
+|  4 | The Great Gatsby       | F. Scott Fitzgerald |  8.99 |
+|  6 | The Hobbit             | J.R.R. Tolkien      | 10.99 |
+|  3 | To Kill a Mockingbird  | Harper Lee          | 11.99 |
++----+------------------------+---------------------+-------+</code></pre>
                 </div>
+                <p>The caller does not need to know that books and authors live in separate tables. If you later rename a column, you fix one procedure, not every page. The empty parentheses are required, both when you create it and when you call it (MySQL also accepts <code>CALL list_books;</code>, but the parentheses make it obvious that it is a call).</p>
 
-                <p>The procedure encapsulates the JOIN query — callers don't need to know about the books/authors relationship. They just <code>CALL get_all_books()</code> and get results.</p>
+                <div class="card card-info">
+                    <h4>💡 A procedure belongs to a database</h4>
+                    <p><code>list_books</code> was created in <code>bookstore</code> because that was the current database. From another database you would call it as <code>CALL bookstore.list_books();</code>. Dropping the database drops its routines too, so reloading <code>bookstore.sql</code> wipes everything you create in this lesson. Keep your routines in a script file (the project does exactly that).</p>
+                </div>
             </section>
 
-            <!-- Section 4: Parameters -->
             <section id="parameters" class="lesson-section">
-                <h2>Parameters: IN, OUT, INOUT</h2>
-                <p>Procedures become much more useful when they accept input and produce output through <strong>parameters</strong>.</p>
-
+                <h2>🎛️ Parameters: IN, OUT, INOUT</h2>
+                <p>Parameters make a procedure flexible. Each one has a direction:</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Direction</th>
-                                <th>Purpose</th>
-                            </tr>
+                            <tr><th>Mode</th><th>Direction</th><th>Use it for</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><code>IN</code></td>
-                                <td>Caller → Procedure</td>
-                                <td>Pass a value in (default if not specified)</td>
-                            </tr>
-                            <tr>
-                                <td><code>OUT</code></td>
-                                <td>Procedure → Caller</td>
-                                <td>Return a value to the caller</td>
-                            </tr>
-                            <tr>
-                                <td><code>INOUT</code></td>
-                                <td>Both directions</td>
-                                <td>Pass a value in, modify it, return the modified value</td>
-                            </tr>
+                            <tr><td><code>IN</code> (the default)</td><td>caller to procedure</td><td>Inputs: an id, a name, a price</td></tr>
+                            <tr><td><code>OUT</code></td><td>procedure to caller</td><td>Answers: a count, a total, a status message</td></tr>
+                            <tr><td><code>INOUT</code></td><td>both ways</td><td>A value the procedure reads and then replaces</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <h3>IN Parameter (Input)</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE get_books_by_author(IN author_name VARCHAR(100))
+                <h3>IN: passing a value in</h3>
+                <pre><code class="language-sql">DELIMITER //
+CREATE PROCEDURE books_by_author(IN p_author VARCHAR(100))
 BEGIN
     SELECT b.title, b.price
-    FROM books b
-    INNER JOIN authors a ON b.author_id = a.id
-    WHERE a.name = author_name;
+    FROM books AS b
+    JOIN authors AS a ON a.id = b.author_id
+    WHERE a.name = p_author
+    ORDER BY b.title;
 END //
-
 DELIMITER ;
 
--- Call it:
-CALL get_books_by_author('George Orwell');
-                </code></pre>
-
+CALL books_by_author('George Orwell');</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-------------+-------+
+                    <h4>Output</h4>
+                    <pre><code>+-------------+-------+
 | title       | price |
 +-------------+-------+
 | 1984        |  9.99 |
 | Animal Farm |  8.49 |
-+-------------+-------+
-                    </code></pre>
++-------------+-------+</code></pre>
+                </div>
+                <p>The <code>p_</code> prefix marks <code>p_author</code> as a parameter. It is a convention, not a rule, but Common Mistake 3 shows the silent bug it prevents.</p>
+
+                <h3>OUT: handing a value back</h3>
+                <p>An <code>OUT</code> parameter needs somewhere to land on the caller's side. At the <code>mysql&gt;</code> prompt that is a <strong>user variable</strong>: a name starting with <code>@</code> that lives until you disconnect.</p>
+                <pre><code class="language-sql">DELIMITER //
+CREATE PROCEDURE count_books_by(IN p_author VARCHAR(100), OUT p_count INT)
+BEGIN
+    SELECT COUNT(*) INTO p_count
+    FROM books AS b
+    JOIN authors AS a ON a.id = b.author_id
+    WHERE a.name = p_author;
+END //
+DELIMITER ;
+
+CALL count_books_by('J.R.R. Tolkien', @tolkien_books);
+SELECT @tolkien_books AS tolkien_books;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------+
+| tolkien_books |
++---------------+
+|             2 |
++---------------+</code></pre>
+                </div>
+                <p><code>SELECT ... INTO</code> stores the query's values in variables instead of sending a result set, which is why the <code>CALL</code> itself prints nothing. The query must return at most one row (Common Mistake 4).</p>
+
+                <h3>INOUT: change a value in place</h3>
+                <pre><code class="language-sql">DELIMITER //
+CREATE PROCEDURE apply_discount(INOUT p_price DECIMAL(8, 2), IN p_percent INT)
+BEGIN
+    SET p_price = ROUND(p_price * (100 - p_percent) / 100, 2);
+END //
+DELIMITER ;
+
+SET @price = 14.99;
+CALL apply_discount(@price, 20);
+SELECT @price AS price_after_20_percent_off;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------------------------+
+| price_after_20_percent_off |
++----------------------------+
+|                      11.99 |
++----------------------------+</code></pre>
                 </div>
 
-                <h3>OUT Parameter (Output)</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE count_books_by_author(
-    IN author_name VARCHAR(100),
-    OUT book_count INT
+                <h3>Several outputs at once</h3>
+                <p>A procedure can fill as many <code>OUT</code> parameters as you like. This one summarizes a customer. It totals <code>quantity * price_at_time</code>, the price the customer actually paid, rather than today's <code>books.price</code> (equal in our data, but prices change).</p>
+                <pre><code class="language-sql">DELIMITER //
+CREATE PROCEDURE customer_stats(
+    IN  p_customer_id INT,
+    OUT p_orders      INT,
+    OUT p_spent       DECIMAL(10, 2)
 )
 BEGIN
-    SELECT COUNT(*) INTO book_count
-    FROM books b
-    INNER JOIN authors a ON b.author_id = a.id
-    WHERE a.name = author_name;
+    SELECT COUNT(DISTINCT o.id),
+           COALESCE(SUM(oi.quantity * oi.price_at_time), 0)
+    INTO p_orders, p_spent
+    FROM orders AS o
+    JOIN order_items AS oi ON oi.order_id = o.id
+    WHERE o.customer_id = p_customer_id;
 END //
-
 DELIMITER ;
 
--- Call it with a user variable to receive the OUT value:
-CALL count_books_by_author('George Orwell', @count);
-SELECT @count AS books_by_orwell;
-                </code></pre>
-
+CALL customer_stats(1, @orders, @spent);
+SELECT @orders AS alice_orders, @spent AS alice_spent;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-----------------+
-| books_by_orwell |
-+-----------------+
-|               2 |
-+-----------------+
-                    </code></pre>
-                </div>
-
-                <div class="card card-info">
-                    <h4>💡 User Variables (@)</h4>
-                    <p>Variables prefixed with <code>@</code> are <strong>user-defined session variables</strong>. They persist for the duration of your connection. Use them to capture OUT parameter values:</p>
-                    <pre><code class="language-sql">
-CALL my_procedure(@result);
-SELECT @result;
-                    </code></pre>
-                </div>
-
-                <h3>INOUT Parameter</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE apply_discount(INOUT price DECIMAL(10,2), IN discount_pct INT)
-BEGIN
-    SET price = price * (1 - discount_pct / 100);
-END //
-
-DELIMITER ;
-
--- Pass in a price, get back the discounted price:
-SET @my_price = 100.00;
-CALL apply_discount(@my_price, 20);
-SELECT @my_price AS discounted_price;
--- Output: 80.00
-                </code></pre>
-
-                <h3>Multiple Parameters</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE get_customer_orders(
-    IN cust_id INT,
-    OUT order_count INT,
-    OUT total_spent DECIMAL(10,2)
-)
-BEGIN
-    SELECT
-        COUNT(DISTINCT o.id),
-        COALESCE(ROUND(SUM(oi.quantity * b.price), 2), 0)
-    INTO order_count, total_spent
-    FROM orders o
-    LEFT JOIN order_items oi ON o.id = oi.order_id
-    LEFT JOIN books b ON oi.book_id = b.id
-    WHERE o.customer_id = cust_id;
-END //
-
-DELIMITER ;
-
--- Get Alice's stats (customer_id = 1):
-CALL get_customer_orders(1, @orders, @spent);
-SELECT @orders AS total_orders, @spent AS total_spent;
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
+                    <h4>Output</h4>
+                    <pre><code>+--------------+-------------+
+| alice_orders | alice_spent |
 +--------------+-------------+
-| total_orders | total_spent |
-+--------------+-------------+
-|            2 |       42.96 |
-+--------------+-------------+
-                    </code></pre>
+|            3 |       58.95 |
++--------------+-------------+</code></pre>
                 </div>
+                <p>Alice placed three orders worth $58.95 in total. Try <code>CALL customer_stats(3, @orders, @spent);</code> for Carol, who never ordered: the <code>COALESCE</code> turns her missing total into 0.00.</p>
             </section>
 
-            <!-- Section 5: Variables & SET -->
             <section id="variables" class="lesson-section">
-                <h2>Variables &amp; SET</h2>
-                <p>Inside a stored procedure, you can declare <strong>local variables</strong> to hold intermediate values:</p>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE calculate_order_total(IN order_id_param INT)
+                <h2>📥 Local Variables</h2>
+                <p>Inside <code>BEGIN ... END</code> you can declare <strong>local variables</strong> for intermediate results. They exist only while the routine runs.</p>
+                <pre><code class="language-sql">DELIMITER //
+CREATE PROCEDURE order_receipt(IN p_order_id INT)
 BEGIN
-    -- Declare local variables
-    DECLARE subtotal DECIMAL(10,2) DEFAULT 0;
-    DECLARE tax_rate DECIMAL(4,2) DEFAULT 0.08;
-    DECLARE tax_amount DECIMAL(10,2);
-    DECLARE grand_total DECIMAL(10,2);
+    DECLARE v_subtotal DECIMAL(10, 2) DEFAULT 0;
+    DECLARE v_tax_rate DECIMAL(4, 3) DEFAULT 0.080;
+    DECLARE v_tax      DECIMAL(10, 2);
 
-    -- Calculate subtotal
-    SELECT ROUND(SUM(oi.quantity * b.price), 2) INTO subtotal
-    FROM order_items oi
-    INNER JOIN books b ON oi.book_id = b.id
-    WHERE oi.order_id = order_id_param;
+    SELECT COALESCE(SUM(quantity * price_at_time), 0) INTO v_subtotal
+    FROM order_items
+    WHERE order_id = p_order_id;
 
-    -- Calculate tax and total
-    SET tax_amount = ROUND(subtotal * tax_rate, 2);
-    SET grand_total = subtotal + tax_amount;
+    SET v_tax = ROUND(v_subtotal * v_tax_rate, 2);
 
-    -- Return results
-    SELECT
-        subtotal,
-        tax_rate * 100 AS tax_pct,
-        tax_amount,
-        grand_total;
+    SELECT p_order_id         AS order_id,
+           v_subtotal         AS subtotal,
+           v_tax              AS tax,
+           v_subtotal + v_tax AS total;
 END //
-
 DELIMITER ;
 
-CALL calculate_order_total(1);
-                </code></pre>
-
+CALL order_receipt(1);</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+----------+---------+------------+-------------+
-| subtotal | tax_pct | tax_amount | grand_total |
-+----------+---------+------------+-------------+
-|    34.97 |    8.00 |       2.80 |       37.77 |
-+----------+---------+------------+-------------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+----------+----------+------+-------+
+| order_id | subtotal | tax  | total |
++----------+----------+------+-------+
+|        1 |    34.97 | 2.80 | 37.77 |
++----------+----------+------+-------+</code></pre>
                 </div>
+                <p>Order 1 is one copy of Dune (14.99) and two of 1984 (2 x 9.99), so 34.97 before an 8% tax.</p>
 
-                <div class="card card-info">
-                    <h4>💡 DECLARE vs SET vs @Variables</h4>
-                    <ul>
-                        <li><code>DECLARE var_name TYPE</code> — local variable, only exists inside the BEGIN...END block</li>
-                        <li><code>SET var_name = value</code> — assign a value to a declared local variable</li>
-                        <li><code>@var_name</code> — session variable, persists outside the procedure (use for OUT params)</li>
-                    </ul>
-                    <p>Best practice: use <code>DECLARE</code> for internal work, <code>@variables</code> for communication with the caller.</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Kind</th><th>Written</th><th>Lives</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Local variable</td><td><code>DECLARE v_total DECIMAL(10,2);</code> then <code>SET v_total = ...</code></td><td>Inside one <code>BEGIN ... END</code>, during one call</td></tr>
+                            <tr><td>Parameter</td><td><code>IN p_id INT</code> in the header</td><td>During one call</td></tr>
+                            <tr><td>User variable</td><td><code>@total</code>, no declaration</td><td>Your whole connection, until you disconnect</td></tr>
+                        </tbody>
+                    </table>
                 </div>
+                <p><code>DECLARE</code> lines must come first in a <code>BEGIN ... END</code> block, before any other statement. Use local variables inside routines and user variables only to talk to the routine from the prompt.</p>
             </section>
 
-            <!-- Section 6: Control Flow -->
             <section id="control-flow" class="lesson-section">
-                <h2>Control Flow: IF, CASE, Loops</h2>
-                <p>Stored procedures support full control flow — branching and looping — making them capable of complex logic.</p>
+                <h2>🔀 Control Flow: IF, CASE, WHILE</h2>
+                <p>Routines can make decisions and repeat work. These statements exist only inside stored programs; you cannot type an <code>IF ... END IF</code> at the prompt.</p>
 
-                <h3>IF ... THEN ... ELSE</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE classify_customer(
-    IN cust_id INT,
-    OUT tier VARCHAR(20)
-)
+                <h3>IF ... ELSEIF ... ELSE</h3>
+                <p>The bookstore rewards its customers by how much they have spent: Gold from $50, Silver from $30, Bronze for anything above zero, and New for customers who have not ordered yet.</p>
+                <pre><code class="language-sql">DELIMITER //
+CREATE PROCEDURE classify_customer(IN p_customer_id INT, OUT p_tier VARCHAR(10))
 BEGIN
-    DECLARE spent DECIMAL(10,2);
+    DECLARE v_spent DECIMAL(10, 2);
 
-    SELECT COALESCE(SUM(oi.quantity * b.price), 0) INTO spent
-    FROM orders o
-    INNER JOIN order_items oi ON o.id = oi.order_id
-    INNER JOIN books b ON oi.book_id = b.id
-    WHERE o.customer_id = cust_id;
+    SELECT COALESCE(SUM(oi.quantity * oi.price_at_time), 0) INTO v_spent
+    FROM orders AS o
+    JOIN order_items AS oi ON oi.order_id = o.id
+    WHERE o.customer_id = p_customer_id;
 
-    IF spent >= 100 THEN
-        SET tier = 'Gold';
-    ELSEIF spent >= 50 THEN
-        SET tier = 'Silver';
-    ELSEIF spent > 0 THEN
-        SET tier = 'Bronze';
+    IF v_spent &gt;= 50 THEN
+        SET p_tier = 'Gold';
+    ELSEIF v_spent &gt;= 30 THEN
+        SET p_tier = 'Silver';
+    ELSEIF v_spent &gt; 0 THEN
+        SET p_tier = 'Bronze';
     ELSE
-        SET tier = 'New';
+        SET p_tier = 'New';
     END IF;
 END //
-
 DELIMITER ;
 
-CALL classify_customer(1, @tier);
-SELECT @tier;  -- 'Bronze' (Alice spent $42.96)
-                </code></pre>
+CALL classify_customer(1, @alice);
+CALL classify_customer(2, @bob);
+CALL classify_customer(3, @carol);
+SELECT @alice AS alice, @bob AS bob, @carol AS carol;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------+--------+-------+
+| alice | bob    | carol |
++-------+--------+-------+
+| Gold  | Silver | New   |
++-------+--------+-------+</code></pre>
+                </div>
+                <p>The <code>IF</code> statement here is not the same thing as the <code>IF(condition, a, b)</code> function from Lesson 3.3: the statement runs whole statements, ends with <code>END IF;</code>, and only works inside routines.</p>
 
-                <h3>CASE Statement</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE get_price_category(
-    IN book_id_param INT,
-    OUT category VARCHAR(20)
-)
+                <h3>CASE</h3>
+                <p>The <code>CASE</code> <em>statement</em> picks one branch, like a chain of <code>ELSEIF</code>s. Unlike the <code>CASE</code> expression you used in <code>SELECT</code>, it raises an error when no branch matches and there is no <code>ELSE</code>, so always write one:</p>
+                <pre><code class="language-sql">DELIMITER //
+CREATE PROCEDURE shelf_for(IN p_book_id INT, OUT p_shelf VARCHAR(20))
 BEGIN
-    DECLARE book_price DECIMAL(10,2);
-
-    SELECT price INTO book_price FROM books WHERE id = book_id_param;
+    DECLARE v_pages INT;
+    SELECT pages INTO v_pages FROM books WHERE id = p_book_id;
 
     CASE
-        WHEN book_price >= 20 THEN SET category = 'Premium';
-        WHEN book_price >= 10 THEN SET category = 'Standard';
-        ELSE SET category = 'Budget';
+        WHEN v_pages &gt;= 500 THEN SET p_shelf = 'Doorstoppers';
+        WHEN v_pages &gt;= 250 THEN SET p_shelf = 'Novels';
+        ELSE SET p_shelf = 'Quick reads';
     END CASE;
 END //
-
 DELIMITER ;
-                </code></pre>
 
-                <h3>WHILE Loop</h3>
+CALL shelf_for(9, @lotr);
+CALL shelf_for(10, @f451);
+SELECT @lotr AS lord_of_the_rings, @f451 AS fahrenheit_451;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+----------------+
+| lord_of_the_rings | fahrenheit_451 |
++-------------------+----------------+
+| Doorstoppers      | Quick reads    |
++-------------------+----------------+</code></pre>
+                </div>
 
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE PROCEDURE generate_sample_dates(IN num_days INT)
+                <h3>WHILE loops</h3>
+                <p>A loop repeats statements while a condition holds. This procedure plans how to read a book at a fixed number of pages per day and stores the plan in a <strong>temporary table</strong>, which only your connection can see and which disappears when you disconnect:</p>
+                <pre><code class="language-sql">DELIMITER //
+CREATE PROCEDURE reading_plan(IN p_book_id INT, IN p_pages_per_day INT)
 BEGIN
-    DECLARE i INT DEFAULT 0;
-    DECLARE sample_date DATE;
+    DECLARE v_pages INT;
+    DECLARE v_day   INT DEFAULT 1;
+    DECLARE v_done  INT DEFAULT 0;
 
-    -- Create a temp table to hold results
-    DROP TEMPORARY TABLE IF EXISTS temp_dates;
-    CREATE TEMPORARY TABLE temp_dates (day_date DATE);
+    SELECT pages INTO v_pages FROM books WHERE id = p_book_id;
 
-    WHILE i < num_days DO
-        SET sample_date = DATE_ADD(CURRENT_DATE, INTERVAL i DAY);
-        INSERT INTO temp_dates (day_date) VALUES (sample_date);
-        SET i = i + 1;
+    DROP TEMPORARY TABLE IF EXISTS plan;
+    CREATE TEMPORARY TABLE plan (day INT, from_page INT, to_page INT);
+
+    WHILE v_done &lt; v_pages DO
+        INSERT INTO plan VALUES (v_day, v_done + 1, LEAST(v_done + p_pages_per_day, v_pages));
+        SET v_done = v_done + p_pages_per_day;
+        SET v_day = v_day + 1;
     END WHILE;
 
-    SELECT * FROM temp_dates;
-    DROP TEMPORARY TABLE temp_dates;
+    SELECT * FROM plan ORDER BY day;
 END //
-
 DELIMITER ;
 
-CALL generate_sample_dates(5);
-                </code></pre>
-
+CALL reading_plan(10, 40);</code></pre>
                 <div class="card card-output">
-                    <h4>Output (if today is 2026-04-16):</h4>
-                    <pre><code>
-+------------+
-| day_date   |
-+------------+
-| 2026-04-16 |
-| 2026-04-17 |
-| 2026-04-18 |
-| 2026-04-19 |
-| 2026-04-20 |
-+------------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+------+-----------+---------+
+| day  | from_page | to_page |
++------+-----------+---------+
+|    1 |         1 |      40 |
+|    2 |        41 |      80 |
+|    3 |        81 |     120 |
+|    4 |       121 |     158 |
++------+-----------+---------+</code></pre>
                 </div>
-
-                <h3>Other Loop Types</h3>
-
-                <pre><code class="language-sql">
--- REPEAT ... UNTIL (runs at least once)
-REPEAT
-    SET i = i + 1;
-UNTIL i >= 10
-END REPEAT;
-
--- LOOP with LEAVE (break)
-my_loop: LOOP
-    SET i = i + 1;
-    IF i >= 10 THEN
-        LEAVE my_loop;
-    END IF;
-END LOOP;
-                </code></pre>
+                <p><em>Fahrenheit 451</em> has 158 pages, so the fourth day is a short one. <code>LEAST()</code> keeps the last range from running past the end of the book.</p>
+                <p>MySQL also has <code>REPEAT ... UNTIL ... END REPEAT</code> (the body runs at least once) and a bare <code>label: LOOP ... END LOOP</code> that you leave with <code>LEAVE label</code>. <code>ITERATE label</code> skips to the next round, like <code>continue</code> in other languages.</p>
 
                 <div class="card card-warning">
-                    <h4>⚠️ Loops in SQL — Use Sparingly</h4>
-                    <p>SQL is designed for <strong>set-based operations</strong> — processing entire result sets at once. Loops that process one row at a time (called "row-by-row" or "RBAR" processing) are almost always slower than a single well-written query. Use loops only when set-based alternatives aren't possible.</p>
+                    <h4>⚠️ Prefer one query to a loop</h4>
+                    <p>SQL is built to work on whole sets of rows at once. A loop that handles one row per round is usually far slower than a single <code>INSERT ... SELECT</code> or <code>UPDATE</code>. The reading plan above could be one recursive CTE from <a href="lesson_ctes.html">Lesson 5.1</a>. Reach for a loop when the steps really depend on each other, not out of habit from other languages.</p>
                 </div>
             </section>
 
-            <!-- Section 7: Stored Functions -->
             <section id="functions" class="lesson-section">
-                <h2>Stored Functions</h2>
-                <p>A <strong>stored function</strong> returns a single value and can be used directly inside SQL expressions — in SELECT lists, WHERE clauses, and ORDER BY.</p>
+                <h2>🧮 Stored Functions</h2>
+                <p>A stored function returns one value through <code>RETURN</code>, and you use it wherever an expression fits: in <code>SELECT</code>, <code>WHERE</code>, <code>ORDER BY</code>, even inside another function. Function parameters are always input, so you write no <code>IN</code>.</p>
 
-                <h3>Basic Syntax</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE FUNCTION function_name (parameters)
-RETURNS data_type
-DETERMINISTIC  -- or NOT DETERMINISTIC
-BEGIN
-    -- logic
-    RETURN value;
-END //
-
-DELIMITER ;
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 DETERMINISTIC vs NOT DETERMINISTIC</h4>
-                    <p>You must declare one of these:</p>
-                    <ul>
-                        <li><code>DETERMINISTIC</code> — same inputs always produce the same output (e.g., a tax calculation)</li>
-                        <li><code>NOT DETERMINISTIC</code> — output may vary (e.g., uses NOW(), RAND(), or reads data that changes)</li>
-                    </ul>
-                    <p>If your function reads from tables, it's typically <code>READS SQL DATA</code> and possibly <code>NOT DETERMINISTIC</code>.</p>
-                </div>
-
-                <h3>Example: Tax Calculator</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE FUNCTION calc_tax(amount DECIMAL(10,2), tax_rate DECIMAL(4,2))
-RETURNS DECIMAL(10,2)
+                <pre><code class="language-sql">DELIMITER //
+CREATE FUNCTION with_tax(p_amount DECIMAL(10, 2))
+RETURNS DECIMAL(10, 2)
 DETERMINISTIC
+NO SQL
 BEGIN
-    RETURN ROUND(amount * tax_rate, 2);
+    RETURN ROUND(p_amount * 1.08, 2);
 END //
-
 DELIMITER ;
 
--- Use it in a SELECT:
-SELECT
-    title,
-    price,
-    calc_tax(price, 0.08) AS tax,
-    price + calc_tax(price, 0.08) AS total
-FROM books;
-                </code></pre>
-
+SELECT title, price, with_tax(price) AS price_with_tax
+FROM books
+WHERE price &gt;= 11
+ORDER BY price DESC;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+---------------------+-------+------+-------+
-| title               | price | tax  | total |
-+---------------------+-------+------+-------+
-| Dune                | 14.99 | 1.20 | 16.19 |
-| 1984                |  9.99 | 0.80 | 10.79 |
-| Pride and Prejudice |  7.99 | 0.64 |  8.63 |
-| Animal Farm         |  8.49 | 0.68 |  9.17 |
-+---------------------+-------+------+-------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+-----------------------+-------+----------------+
+| title                 | price | price_with_tax |
++-----------------------+-------+----------------+
+| Lord of the Rings     | 15.99 |          17.27 |
+| Dune                  | 14.99 |          16.19 |
+| To Kill a Mockingbird | 11.99 |          12.95 |
++-----------------------+-------+----------------+</code></pre>
                 </div>
 
-                <h3>Example: Customer Full Name</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE FUNCTION full_name(first VARCHAR(50), last VARCHAR(50))
-RETURNS VARCHAR(101)
-DETERMINISTIC
-BEGIN
-    RETURN CONCAT(first, ' ', last);
-END //
-
-DELIMITER ;
-
--- Use it anywhere:
-SELECT full_name(first_name, last_name) AS customer
-FROM customers;
-                </code></pre>
-
-                <h3>Example: Function That Reads Data</h3>
-
-                <pre><code class="language-sql">
-DELIMITER //
-
-CREATE FUNCTION get_author_revenue(author_id_param INT)
-RETURNS DECIMAL(10,2)
-READS SQL DATA
-BEGIN
-    DECLARE revenue DECIMAL(10,2);
-
-    SELECT COALESCE(ROUND(SUM(oi.quantity * b.price), 2), 0) INTO revenue
-    FROM books b
-    INNER JOIN order_items oi ON b.id = oi.book_id
-    WHERE b.author_id = author_id_param;
-
-    RETURN revenue;
-END //
-
-DELIMITER ;
-
--- Use it in queries:
-SELECT name, get_author_revenue(id) AS revenue
-FROM authors
-ORDER BY revenue DESC;
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+----------------+---------+
-| name           | revenue |
-+----------------+---------+
-| Frank Herbert  |   29.98 |
-| George Orwell  |   19.98 |
-| Jane Austen    |    7.99 |
-| Isaac Asimov   |    0.00 |
-+----------------+---------+
-                    </code></pre>
-                </div>
-            </section>
-
-            <!-- Section 8: Procedures vs Functions -->
-            <section id="proc-vs-func" class="lesson-section">
-                <h2>Procedures vs Functions</h2>
-
+                <h3>The characteristics line, and why MySQL insists on it</h3>
+                <p>Between <code>RETURNS</code> and <code>BEGIN</code> you describe the function to the server:</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Feature</th>
-                                <th>Stored Procedure</th>
-                                <th>Stored Function</th>
-                            </tr>
+                            <tr><th>Characteristic</th><th>Promise</th><th>Example</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Called with</td>
-                                <td><code>CALL procedure_name()</code></td>
-                                <td>Used in expressions: <code>SELECT func()</code></td>
-                            </tr>
-                            <tr>
-                                <td>Return value</td>
-                                <td>Via OUT parameters or result sets</td>
-                                <td>Single value via <code>RETURN</code></td>
-                            </tr>
-                            <tr>
-                                <td>Can return result sets</td>
-                                <td>✅ Yes (SELECT inside the body)</td>
-                                <td>❌ No</td>
-                            </tr>
-                            <tr>
-                                <td>Used in WHERE, SELECT, etc.</td>
-                                <td>❌ No</td>
-                                <td>✅ Yes</td>
-                            </tr>
-                            <tr>
-                                <td>Can modify data (INSERT/UPDATE)</td>
-                                <td>✅ Yes</td>
-                                <td>⚠️ Possible but generally avoided</td>
-                            </tr>
-                            <tr>
-                                <td>Parameters</td>
-                                <td>IN, OUT, INOUT</td>
-                                <td>IN only</td>
-                            </tr>
+                            <tr><td><code>DETERMINISTIC</code></td><td>The same inputs always give the same result</td><td><code>with_tax(10.00)</code> is always 10.80</td></tr>
+                            <tr><td><code>NOT DETERMINISTIC</code> (default)</td><td>The result can change between calls</td><td>Anything using <code>NOW()</code>, <code>RAND()</code> or table data that changes</td></tr>
+                            <tr><td><code>NO SQL</code></td><td>The body runs no SQL statements on tables</td><td>Pure arithmetic or string work</td></tr>
+                            <tr><td><code>READS SQL DATA</code></td><td>The body reads tables but never changes them</td><td>A total computed with <code>SELECT ... INTO</code></td></tr>
+                            <tr><td><code>MODIFIES SQL DATA</code></td><td>The body changes tables</td><td>Rare in functions; use a procedure</td></tr>
                         </tbody>
                     </table>
                 </div>
+                <p>Why it matters: MySQL 8.0 and later turn on the <strong>binary log</strong> by default. It records every change so the server can be copied to replicas and restored to a point in time. A function the server knows nothing about could produce different results when a replica replays it, so with binary logging on, MySQL refuses to create a function unless it declares at least one of <code>DETERMINISTIC</code>, <code>NO SQL</code> or <code>READS SQL DATA</code> (error 1418, Common Mistake 2). The server cannot check your promise, so make it true: a function that reads tables whose rows change is <code>READS SQL DATA</code>, not <code>DETERMINISTIC</code>.</p>
 
-                <div class="card card-success">
-                    <h4>✅ Quick Decision Guide</h4>
-                    <ul>
-                        <li><strong>Need to return a single computed value?</strong> → Function (use it in SELECT, WHERE, etc.)</li>
-                        <li><strong>Need to return a result set (rows and columns)?</strong> → Procedure</li>
-                        <li><strong>Need to modify data (INSERT/UPDATE/DELETE)?</strong> → Procedure</li>
-                        <li><strong>Need multiple return values?</strong> → Procedure with OUT parameters</li>
-                        <li><strong>Need a reusable calculation in queries?</strong> → Function</li>
-                    </ul>
-                </div>
-            </section>
-
-            <!-- Section 9: Managing Stored Routines -->
-            <section id="managing" class="lesson-section">
-                <h2>Managing Stored Routines</h2>
-
-                <h3>View Existing Routines</h3>
-
-                <pre><code class="language-sql">
--- List all procedures in the current database
-SHOW PROCEDURE STATUS WHERE Db = 'bookstore';
-
--- List all functions in the current database
-SHOW FUNCTION STATUS WHERE Db = 'bookstore';
-
--- See the full definition of a procedure
-SHOW CREATE PROCEDURE get_all_books;
-
--- See the full definition of a function
-SHOW CREATE FUNCTION calc_tax;
-                </code></pre>
-
-                <h3>Drop a Routine</h3>
-
-                <pre><code class="language-sql">
--- Drop a procedure
-DROP PROCEDURE IF EXISTS get_all_books;
-
--- Drop a function
-DROP FUNCTION IF EXISTS calc_tax;
-                </code></pre>
-
-                <h3>Modify a Routine</h3>
-                <p>MySQL doesn't have <code>ALTER PROCEDURE ... AS</code> to change the body. To modify a routine, drop it and recreate it:</p>
-
-                <pre><code class="language-sql">
--- The standard pattern for updating a procedure:
-DROP PROCEDURE IF EXISTS get_all_books;
-
-DELIMITER //
-CREATE PROCEDURE get_all_books()
+                <h3>A function that reads data</h3>
+                <pre><code class="language-sql">DELIMITER //
+CREATE FUNCTION author_revenue(p_author_id INT)
+RETURNS DECIMAL(10, 2)
+READS SQL DATA
 BEGIN
-    -- Updated logic here
-    SELECT b.title, b.price, a.name AS author
-    FROM books b
-    INNER JOIN authors a ON b.author_id = a.id
-    ORDER BY a.name, b.title;
+    DECLARE v_revenue DECIMAL(10, 2);
+
+    SELECT COALESCE(SUM(oi.quantity * oi.price_at_time), 0) INTO v_revenue
+    FROM order_items AS oi
+    JOIN books AS b ON b.id = oi.book_id
+    WHERE b.author_id = p_author_id;
+
+    RETURN v_revenue;
 END //
 DELIMITER ;
-                </code></pre>
 
-                <div class="card card-info">
-                    <h4>💡 Keep Routines in .sql Files</h4>
-                    <p>Store your CREATE PROCEDURE and CREATE FUNCTION statements in version-controlled <code>.sql</code> files. When you need to update a routine, edit the file and re-run it. This gives you history, reviews, and rollback capability — just like application code.</p>
+SELECT name, author_revenue(id) AS revenue
+FROM authors
+ORDER BY revenue DESC, name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------+---------+
+| name                | revenue |
++---------------------+---------+
+| J.R.R. Tolkien      |   64.95 |
+| George Orwell       |   56.94 |
+| Frank Herbert       |   44.97 |
+| Harper Lee          |   23.98 |
+| Ray Bradbury        |   20.98 |
+| Jane Austen         |   15.98 |
+| Aldous Huxley       |    9.49 |
+| F. Scott Fitzgerald |    0.00 |
+| Isaac Asimov        |    0.00 |
+| J.D. Salinger       |    0.00 |
++---------------------+---------+</code></pre>
                 </div>
-            </section>
-
-            <!-- Section 10: Best Practices -->
-            <section id="best-practices" class="lesson-section">
-                <h2>Best Practices &amp; When to Use</h2>
-
-                <h3>Good Uses for Stored Routines</h3>
-                <ul>
-                    <li><strong>Complex business calculations</strong> — tax, discounts, tiered pricing</li>
-                    <li><strong>Data validation logic</strong> — check constraints beyond what CHECK can do</li>
-                    <li><strong>Reporting queries</strong> — encapsulate complex JOINs and aggregates</li>
-                    <li><strong>Admin tasks</strong> — archive old data, clean up orphaned records</li>
-                    <li><strong>Security layer</strong> — grant EXECUTE on the procedure, not SELECT on the tables</li>
-                </ul>
-
-                <h3>When to Keep Logic in Your Application</h3>
-                <ul>
-                    <li><strong>Business rules that change frequently</strong> — deploying application code is usually faster than updating database routines</li>
-                    <li><strong>Complex string manipulation</strong> — Python/JS/PHP have much richer string libraries</li>
-                    <li><strong>HTTP calls, file I/O, external APIs</strong> — the database can't do these</li>
-                    <li><strong>Team doesn't know SQL well</strong> — hidden logic in the database becomes a maintenance nightmare</li>
-                </ul>
-
-                <h3>Naming Conventions</h3>
-                <ul>
-                    <li>Procedures: verb-first — <code>get_customer_orders</code>, <code>calculate_tax</code>, <code>archive_old_orders</code></li>
-                    <li>Functions: describe the return value — <code>calc_tax</code>, <code>full_name</code>, <code>get_author_revenue</code></li>
-                    <li>Prefix parameter names to avoid clashing with column names: <code>p_customer_id</code> or <code>cust_id_param</code></li>
-                </ul>
+                <p>Isaac Asimov has no books, and Fitzgerald and Salinger have books nobody ordered, so their revenue is 0.00 instead of <code>NULL</code> thanks to <code>COALESCE</code>.</p>
 
                 <div class="card card-warning">
-                    <h4>⚠️ Parameter/Column Name Collisions</h4>
-                    <p>If a parameter has the same name as a column, MySQL may use the parameter instead of the column — causing silent bugs. Always use a naming convention that distinguishes them:</p>
-                    <pre><code class="language-sql">
--- ❌ BAD: 'id' could mean the parameter or the column
-CREATE PROCEDURE get_customer(IN id INT) ...
-
--- ✅ GOOD: Clear distinction
-CREATE PROCEDURE get_customer(IN cust_id INT) ...
-CREATE PROCEDURE get_customer(IN p_id INT) ...
-                    </code></pre>
+                    <h4>⚠️ A function in SELECT runs once per row</h4>
+                    <p><code>author_revenue(id)</code> runs its own query for each of the 10 authors. On ten rows nobody notices; on a million it is a million small queries. For big reports a single <code>JOIN ... GROUP BY</code> (Lessons 3.3 and 4.3) is the faster tool. Functions shine for small, reusable calculations.</p>
                 </div>
             </section>
 
-            <!-- Section 11: Exercises -->
-            <section id="exercises" class="lesson-section">
-                <h2>Exercises</h2>
+            <section id="signal" class="lesson-section">
+                <h2>🚦 Rejecting Bad Input with SIGNAL</h2>
+                <p>A procedure that changes data should check its inputs first. <code>SIGNAL</code> raises your own error, which stops the procedure and reaches the caller like any MySQL error. SQLSTATE <code>'45000'</code> means "unhandled user-defined exception"; MySQL reports it as error 1644.</p>
+                <pre><code class="language-sql">DELIMITER //
+CREATE PROCEDURE set_book_price(IN p_book_id INT, IN p_price DECIMAL(8, 2))
+BEGIN
+    IF p_price IS NULL OR p_price &lt;= 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Price must be greater than zero';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM books WHERE id = p_book_id) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'No book with that id';
+    END IF;
+
+    UPDATE books SET price = p_price WHERE id = p_book_id;
+END //
+DELIMITER ;</code></pre>
+
+                <pre data-raises="ERROR 1644"><code class="language-sql">CALL set_book_price(5, -1.00);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1644 (45000): Price must be greater than zero</code></pre>
+                </div>
+                <pre data-raises="ERROR 1644"><code class="language-sql">CALL set_book_price(99, 9.99);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1644 (45000): No book with that id</code></pre>
+                </div>
+                <p>Both checks run before the <code>UPDATE</code>, so a refused call changes nothing. (Checking <code>ROW_COUNT()</code> after the <code>UPDATE</code> is a tempting shortcut, but it counts rows <em>changed</em>: setting a book to the price it already has would count 0 and wrongly report a missing book.) A call with good input goes through:</p>
+                <pre><code class="language-sql">CALL set_book_price(5, 8.49);
+SELECT id, title, price FROM books WHERE id = 5;
+CALL set_book_price(5, 7.99);</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+---------------------+-------+
+| id | title               | price |
++----+---------------------+-------+
+|  5 | Pride and Prejudice |  8.49 |
++----+---------------------+-------+</code></pre>
+                </div>
+                <p>The last line puts the original price back, so the rest of the lesson matches the download.</p>
 
                 <div class="card card-info">
-                    <h3>🏋️ Exercise 1: Basic Procedures</h3>
-                    <p>Write stored procedures to:</p>
-                    <ol>
-                        <li>Create a procedure called <code>get_all_customers</code> that returns all customers sorted by last name</li>
-                        <li>Create a procedure called <code>get_orders_by_customer</code> that takes a customer ID (IN) and returns their orders with dates</li>
-                        <li>Create a procedure called <code>count_orders</code> that takes a customer ID (IN) and returns the count via an OUT parameter</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- 1
-DELIMITER //
-CREATE PROCEDURE get_all_customers()
-BEGIN
-    SELECT id, first_name, last_name, email
-    FROM customers
-    ORDER BY last_name, first_name;
-END //
-DELIMITER ;
-
--- 2
-DELIMITER //
-CREATE PROCEDURE get_orders_by_customer(IN cust_id INT)
-BEGIN
-    SELECT o.id AS order_id, o.order_date
-    FROM orders o
-    WHERE o.customer_id = cust_id
-    ORDER BY o.order_date DESC;
-END //
-DELIMITER ;
-
--- 3
-DELIMITER //
-CREATE PROCEDURE count_orders(IN cust_id INT, OUT order_count INT)
-BEGIN
-    SELECT COUNT(*) INTO order_count
-    FROM orders
-    WHERE customer_id = cust_id;
-END //
-DELIMITER ;
-
--- Test:
-CALL count_orders(1, @cnt);
-SELECT @cnt;  -- 2
-                        </code></pre>
-                    </details>
-                </div>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 2: Stored Functions</h3>
-                    <p>Write stored functions to:</p>
-                    <ol>
-                        <li>Create a function <code>discount_price</code> that takes a price and discount percentage, returns the discounted price</li>
-                        <li>Create a function <code>order_item_total</code> that takes an order_item ID and returns the line total (quantity × price)</li>
-                        <li>Use <code>discount_price</code> in a SELECT to show all books with a 15% discount applied</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- 1
-DELIMITER //
-CREATE FUNCTION discount_price(
-    original DECIMAL(10,2),
-    discount_pct INT
-)
-RETURNS DECIMAL(10,2)
-DETERMINISTIC
-BEGIN
-    RETURN ROUND(original * (1 - discount_pct / 100), 2);
-END //
-DELIMITER ;
-
--- 2
-DELIMITER //
-CREATE FUNCTION order_item_total(item_id INT)
-RETURNS DECIMAL(10,2)
-READS SQL DATA
-BEGIN
-    DECLARE total DECIMAL(10,2);
-    SELECT ROUND(oi.quantity * b.price, 2) INTO total
-    FROM order_items oi
-    INNER JOIN books b ON oi.book_id = b.id
-    WHERE oi.id = item_id;
-    RETURN COALESCE(total, 0);
-END //
-DELIMITER ;
-
--- 3
-SELECT
-    title,
-    price AS original_price,
-    discount_price(price, 15) AS sale_price
-FROM books;
-                        </code></pre>
-                    </details>
-                </div>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 3: Control Flow</h3>
-                    <p>Create a procedure called <code>categorize_books</code> that:</p>
-                    <ul>
-                        <li>Takes no parameters</li>
-                        <li>Returns a result set showing each book's title, price, and a <code>price_tier</code> column</li>
-                        <li>Price tiers: "Premium" ($15+), "Standard" ($10–$14.99), "Budget" (under $10)</li>
-                    </ul>
-                    <p><em>Hint: You can use CASE directly in a SELECT — you don't need a loop.</em></p>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
-DELIMITER //
-CREATE PROCEDURE categorize_books()
-BEGIN
-    SELECT
-        title,
-        price,
-        CASE
-            WHEN price >= 15 THEN 'Premium'
-            WHEN price >= 10 THEN 'Standard'
-            ELSE 'Budget'
-        END AS price_tier
-    FROM books
-    ORDER BY price DESC;
-END //
-DELIMITER ;
-
-CALL categorize_books();
-                        </code></pre>
-                    </details>
-                </div>
-
-                <!-- Quiz -->
-                <div class="card quiz-container">
-                    <h3>🎯 Quick Quiz</h3>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 1:</strong> Why do you need to change the DELIMITER before creating a procedure?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="Delimiter changes are about statement parsing, not security. Any user with CREATE ROUTINE privilege can create procedures.">
-                                A) It's a security requirement
-                            </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The procedure body contains semicolons (which are normally the statement delimiter). Without changing the delimiter, MySQL would try to execute each line inside the body as a separate statement instead of treating the whole CREATE PROCEDURE as one block.">
-                                B) So MySQL doesn't interpret semicolons inside the body as the end of the CREATE statement
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="DELIMITER is about syntax parsing, not performance. The procedure runs the same regardless of what delimiter was used to create it.">
-                                C) It makes the procedure run faster
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 2:</strong> What is the difference between a stored procedure and a stored function?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="Both can accept parameters. The key difference is in how they return values and where they can be used.">
-                                A) Procedures can't accept parameters
-                            </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Functions return a single value via RETURN and can be used inside SQL expressions (SELECT, WHERE, etc.). Procedures are called with CALL, can return result sets, and use OUT parameters for return values.">
-                                B) Functions return a single value and can be used in SQL expressions; procedures return result sets and are called with CALL
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="There's no speed difference inherent to the type. The choice depends on what you need: a single return value (function) or result sets/data modification (procedure).">
-                                C) Functions are faster than procedures
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 3:</strong> What does an OUT parameter do?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="OUT parameters send values FROM the procedure TO the caller. IN parameters go the other direction.">
-                                A) Passes a value from the caller into the procedure
-                            </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! An OUT parameter lets the procedure set a value that the caller can read after the procedure finishes. The caller passes a user variable (@var) that the procedure fills with a result.">
-                                B) Returns a value from the procedure to the caller
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Output to the console would be a SELECT statement inside the procedure. OUT parameters pass values back to the calling code via user variables.">
-                                C) Prints output to the console
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 4:</strong> Why should you avoid naming a parameter the same as a column?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="MySQL won't throw an error — that's what makes it dangerous. It silently uses the parameter instead of the column.">
-                                A) MySQL throws a syntax error
-                            </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! When a parameter and column share the same name, MySQL may resolve ambiguously — often using the parameter value instead of the column. This creates silent bugs where queries return wrong results without any error message.">
-                                B) MySQL may use the parameter value instead of the column value, causing silent bugs
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="The names are just identifiers — they don't affect disk usage. The issue is ambiguity in SQL resolution.">
-                                C) It uses extra database storage
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
+                    <h4>💡 Errors and transactions come next</h4>
+                    <p><code>SIGNAL</code> stops the procedure, but statements that already ran are not undone by it. When a procedure makes several changes that must succeed or fail together, you need a transaction and an error handler (<code>DECLARE ... HANDLER</code>). That is the heart of <a href="lesson_18.html">Lesson 7.2</a>.</p>
                 </div>
             </section>
 
-            <!-- Section 12: Summary -->
-            <section id="summary" class="lesson-section">
-                <h2>Summary</h2>
+            <section id="managing" class="lesson-section">
+                <h2>🗃️ Managing Routines</h2>
 
-                <div class="card card-success">
-                    <h3>🎉 Key Takeaways</h3>
-                    <ul>
-                        <li><strong>Stored procedures</strong> are reusable SQL blocks called with <code>CALL</code> — great for complex operations and result sets</li>
-                        <li><strong>Stored functions</strong> return a single value and can be used inside SQL expressions</li>
-                        <li>Use <code>DELIMITER //</code> before and <code>DELIMITER ;</code> after creating routines in the CLI</li>
-                        <li><code>IN</code> parameters pass values in, <code>OUT</code> passes values back, <code>INOUT</code> does both</li>
-                        <li><code>DECLARE</code> creates local variables; <code>SET</code> assigns values; <code>@var</code> are session variables</li>
-                        <li>Control flow: <code>IF/ELSEIF/ELSE</code>, <code>CASE</code>, <code>WHILE</code>, <code>REPEAT</code>, <code>LOOP</code></li>
-                        <li>Functions must declare <code>DETERMINISTIC</code> or <code>READS SQL DATA</code></li>
-                        <li>To modify a routine, <code>DROP</code> and <code>CREATE</code> again — there's no ALTER for the body</li>
-                        <li>Name parameters differently from columns to avoid silent bugs</li>
-                        <li>Prefer set-based SQL over row-by-row loops</li>
-                    </ul>
+                <h3>List them</h3>
+                <p><code>SHOW PROCEDURE STATUS WHERE Db = 'bookstore';</code> and <code>SHOW FUNCTION STATUS ...</code> work, but print eleven wide columns. The <code>information_schema.ROUTINES</code> table lets you pick the columns you care about:</p>
+                <pre><code class="language-sql">SELECT ROUTINE_NAME, ROUTINE_TYPE, IS_DETERMINISTIC, SQL_DATA_ACCESS
+FROM information_schema.ROUTINES
+WHERE ROUTINE_SCHEMA = 'bookstore'
+ORDER BY ROUTINE_TYPE, ROUTINE_NAME;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+--------------+------------------+-----------------+
+| ROUTINE_NAME      | ROUTINE_TYPE | IS_DETERMINISTIC | SQL_DATA_ACCESS |
++-------------------+--------------+------------------+-----------------+
+| author_revenue    | FUNCTION     | NO               | READS SQL DATA  |
+| with_tax          | FUNCTION     | YES              | NO SQL          |
+| apply_discount    | PROCEDURE    | NO               | CONTAINS SQL    |
+| books_by_author   | PROCEDURE    | NO               | CONTAINS SQL    |
+| classify_customer | PROCEDURE    | NO               | CONTAINS SQL    |
+| count_books_by    | PROCEDURE    | NO               | CONTAINS SQL    |
+| count_customers   | PROCEDURE    | NO               | CONTAINS SQL    |
+| customer_stats    | PROCEDURE    | NO               | CONTAINS SQL    |
+| list_books        | PROCEDURE    | NO               | CONTAINS SQL    |
+| order_receipt     | PROCEDURE    | NO               | CONTAINS SQL    |
+| reading_plan      | PROCEDURE    | NO               | CONTAINS SQL    |
+| say_hello         | PROCEDURE    | NO               | CONTAINS SQL    |
+| set_book_price    | PROCEDURE    | NO               | CONTAINS SQL    |
+| shelf_for         | PROCEDURE    | NO               | CONTAINS SQL    |
++-------------------+--------------+------------------+-----------------+</code></pre>
                 </div>
+                <p>Procedures say <code>CONTAINS SQL</code> unless you declare otherwise: the characteristics are optional for procedures, because the binary log records the statements a procedure runs, not the <code>CALL</code>.</p>
 
-                <h3>Quick Reference</h3>
+                <h3>Read one back</h3>
+                <pre><code class="language-sql">SHOW CREATE FUNCTION with_tax\G</code></pre>
+                <div class="card card-output">
+                    <h4>Output (the character set lines can differ on your machine)</h4>
+                    <pre><code>*************************** 1. row ***************************
+            Function: with_tax
+            sql_mode: ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+     Create Function: CREATE DEFINER=`root`@`localhost` FUNCTION `with_tax`(p_amount DECIMAL(10, 2)) RETURNS decimal(10,2)
+    NO SQL
+    DETERMINISTIC
+BEGIN
+    RETURN ROUND(p_amount * 1.08, 2);
+END
+character_set_client: utf8mb4
+collation_connection: utf8mb4_0900_ai_ci
+  Database Collation: utf8mb4_unicode_ci</code></pre>
+                </div>
+                <p>MySQL saved the <code>sql_mode</code> that was active when you created the function, and runs the function under it. It also added <code>DEFINER=`root`@`localhost`</code>: the account that owns the routine. By default a routine runs with its definer's privileges (<code>SQL SECURITY DEFINER</code>), which is what makes the "narrow door" from the start of the lesson work. <a href="lesson_19.html">Lesson 7.4</a> introduces the <code>EXECUTE</code> privilege, and in <a href="lesson_final_project.html">Lesson 8.2</a> you grant it to an app account.</p>
+
+                <h3>Change or remove one</h3>
+                <p><code>ALTER PROCEDURE</code> only changes characteristics such as the comment; it cannot change the body. To change the body, drop the routine and create it again:</p>
+                <pre><code class="language-sql">DROP PROCEDURE IF EXISTS say_hello;
+
+DELIMITER //
+CREATE PROCEDURE say_hello()
+BEGIN
+    SELECT CONCAT('Hello! We stock ', COUNT(*), ' titles.') AS greeting FROM books;
+END //
+DELIMITER ;
+
+CALL say_hello();</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------------------------+
+| greeting                   |
++----------------------------+
+| Hello! We stock 11 titles. |
++----------------------------+</code></pre>
+                </div>
+                <p><code>DROP FUNCTION IF EXISTS name;</code> works the same way. <code>IF EXISTS</code> turns "it is not there" into a warning instead of an error, so a script can run twice.</p>
+
+                <div class="card card-info">
+                    <h4>🐬 Version note</h4>
+                    <p>MySQL (9.7 and 8.4) has no <code>CREATE OR REPLACE PROCEDURE</code>; it answers with error 1064. It does have <code>CREATE PROCEDURE IF NOT EXISTS</code> and <code>CREATE FUNCTION IF NOT EXISTS</code>, which skip the statement when the routine is already there. MariaDB supports <code>CREATE OR REPLACE</code> as well. "Drop, then create" works on all three, so that is the pattern this course uses.</p>
+                </div>
+            </section>
+
+            <section id="when-to-use" class="lesson-section">
+                <h2>🧭 Procedure, Function or App Code?</h2>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Command</th>
-                                <th>Purpose</th>
-                            </tr>
+                            <tr><th></th><th>Stored procedure</th><th>Stored function</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><code>CREATE PROCEDURE name() BEGIN ... END</code></td>
-                                <td>Create a stored procedure</td>
-                            </tr>
-                            <tr>
-                                <td><code>CALL name()</code></td>
-                                <td>Execute a procedure</td>
-                            </tr>
-                            <tr>
-                                <td><code>CREATE FUNCTION name() RETURNS type</code></td>
-                                <td>Create a stored function</td>
-                            </tr>
-                            <tr>
-                                <td><code>SELECT func_name()</code></td>
-                                <td>Call a function in a query</td>
-                            </tr>
-                            <tr>
-                                <td><code>DROP PROCEDURE IF EXISTS name</code></td>
-                                <td>Remove a procedure</td>
-                            </tr>
-                            <tr>
-                                <td><code>DROP FUNCTION IF EXISTS name</code></td>
-                                <td>Remove a function</td>
-                            </tr>
-                            <tr>
-                                <td><code>SHOW PROCEDURE STATUS WHERE Db = '...'</code></td>
-                                <td>List procedures in a database</td>
-                            </tr>
-                            <tr>
-                                <td><code>SHOW CREATE PROCEDURE name</code></td>
-                                <td>View procedure definition</td>
-                            </tr>
+                            <tr><td>Run with</td><td><code>CALL name(...)</code></td><td>Inside an expression: <code>SELECT name(...)</code></td></tr>
+                            <tr><td>Gives back</td><td>Result sets and <code>OUT</code> parameters</td><td>One value via <code>RETURN</code></td></tr>
+                            <tr><td>Parameters</td><td><code>IN</code>, <code>OUT</code>, <code>INOUT</code></td><td>Input only</td></tr>
+                            <tr><td>Changes data</td><td>Yes, its usual job</td><td>Possible, but avoid it</td></tr>
+                            <tr><td>Transactions inside</td><td>Yes (Lesson 7.2)</td><td>No: <code>COMMIT</code> is not allowed in a function</td></tr>
+                            <tr><td>Characteristics</td><td>Optional</td><td>Required while binary logging is on</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <h3>📚 Additional Resources</h3>
+                <div class="mermaid">
+graph TD
+    A["Need reusable logic"] --> B{"One value, used in a query?"}
+    B -->|"yes"| C["Stored function"]
+    B -->|"no"| D{"Must run in the database?"}
+    D -->|"yes"| E["Stored procedure"]
+    D -->|"no"| F["App code"]
+                </div>
+
+                <div class="card card-success">
+                    <h4>✅ Good jobs for routines</h4>
+                    <ul>
+                        <li>A business rule several programs share: tax, discounts, loyalty tiers</li>
+                        <li>A multi-step change that must happen on the server, close to the data (an order, a transfer)</li>
+                        <li>Admin chores: archiving old rows, cleaning up test data</li>
+                        <li>A security boundary: the app may <code>CALL place_order</code> but not <code>UPDATE books</code></li>
+                    </ul>
+                </div>
+                <div class="card card-warning">
+                    <h4>⚠️ Better in the app</h4>
+                    <ul>
+                        <li>Rules that change every week: shipping an app update is usually easier than migrating routines</li>
+                        <li>Heavy text processing, sending email, calling web APIs: the database cannot or should not</li>
+                        <li>Logic your team cannot read or test: a routine nobody understands becomes a trap</li>
+                    </ul>
+                    <p>Whichever you choose, when an app passes user input to the database (including to <code>CALL</code>), it uses <strong>parameterized queries</strong> (placeholders such as <code>CALL place_order(?, ?, ?)</code>), never strings glued together. A procedure does not make string-built SQL safe.</p>
+                </div>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Forgetting DELIMITER in the mysql client</h3>
+                <pre data-raises="ERROR 1064"><code class="language-sql">CREATE PROCEDURE out_of_stock()
+BEGIN
+    SELECT title FROM books WHERE in_stock = FALSE;
+END;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '' at line 3
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'END' at line 1</code></pre>
+                </div>
+                <p><strong>What it means:</strong> the client sent everything up to the first <code>;</code>, an unfinished <code>CREATE PROCEDURE ... BEGIN SELECT ...</code>, and the server reported a syntax error at the end of it (<code>near ''</code>). Then it sent the leftover <code>END</code> as a statement of its own, which is a second 1064. <strong>Fix:</strong> wrap the definition in <code>DELIMITER //</code> ... <code>END //</code> ... <code>DELIMITER ;</code>, or, for a one-statement body, leave out <code>BEGIN</code> and <code>END</code>.</p>
+
+                <h3>2. A function without its characteristics</h3>
+                <pre data-raises="ERROR 1418"><code class="language-sql">CREATE FUNCTION book_count()
+RETURNS INT
+RETURN (SELECT COUNT(*) FROM books);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1418 (HY000): This function has none of DETERMINISTIC, NO SQL, or READS SQL DATA in its declaration and binary logging is enabled (you *might* want to use the less safe log_bin_trust_function_creators variable)</code></pre>
+                </div>
+                <p><strong>What it means:</strong> binary logging is on (the default since MySQL 8.0) and the function does not say what it does. <strong>Fix:</strong> add the true characteristic, here <code>READS SQL DATA</code> after <code>RETURNS INT</code>. The message mentions <code>log_bin_trust_function_creators</code>; turning that server setting on silences the check for everyone, which is why the manual calls it "less safe". Leave it off and declare your functions properly.</p>
+                <p>On a MariaDB install (XAMPP, many shared hosts) the binary log is usually off, so the same statement succeeds there, and fails later when someone turns on replication:</p>
+                <pre data-server="mariadb"><code class="language-sql">CREATE FUNCTION book_count()
+RETURNS INT
+RETURN (SELECT COUNT(*) FROM books);
+
+SELECT book_count() AS books;</code></pre>
+                <div class="card card-output">
+                    <h4>Output on MariaDB</h4>
+                    <pre><code>+-------+
+| books |
++-------+
+|    11 |
++-------+</code></pre>
+                </div>
+
+                <h3>3. A parameter with the same name as a column (silent)</h3>
+                <pre><code class="language-sql">CREATE PROCEDURE book_by_id(IN id INT)
+    SELECT b.id, b.title FROM books AS b WHERE id = id ORDER BY b.id;
+
+CALL book_by_id(1);</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+------------------------+
+| id | title                  |
++----+------------------------+
+|  1 | Dune                   |
+|  2 | 1984                   |
+|  3 | To Kill a Mockingbird  |
+|  4 | The Great Gatsby       |
+|  5 | Pride and Prejudice    |
+|  6 | The Hobbit             |
+|  7 | Brave New World        |
+|  8 | The Catcher in the Rye |
+|  9 | Lord of the Rings      |
+| 10 | Fahrenheit 451         |
+| 11 | Animal Farm            |
++----+------------------------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> you asked for book 1 and got all eleven. Inside the routine, a bare <code>id</code> means the <em>parameter</em>, not the column, so <code>WHERE id = id</code> compares 1 with 1 on every row, which is always true. (The <code>SELECT</code> list says <code>b.id</code>, so it shows the real column; a bare <code>id</code> there would print 1 eleven times.) No error, no warning. Picture the same mistake in an <code>UPDATE</code> or <code>DELETE</code>. <strong>Fix:</strong> give parameters and variables a prefix that no column uses (<code>p_id</code>, <code>v_total</code>), or qualify columns with the table alias (<code>b.id</code>).</p>
+
+                <h3>4. SELECT ... INTO that finds more than one row</h3>
+                <pre data-raises="ERROR 1172"><code class="language-sql">DELIMITER //
+CREATE PROCEDURE first_book_by(IN p_author_id INT, OUT p_title VARCHAR(200))
+BEGIN
+    SELECT title INTO p_title FROM books WHERE author_id = p_author_id;
+END //
+DELIMITER ;
+
+CALL first_book_by(2, @title);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1172 (42000): Result consisted of more than one row</code></pre>
+                </div>
+                <p><strong>What it means:</strong> George Orwell (author 2) has two books, and one variable cannot hold two titles. The procedure was created without complaint; the error only appears when a call hits the problem, which is why you test routines with awkward inputs. <strong>Fix:</strong> make the query return one row on purpose: <code>ORDER BY published LIMIT 1</code>, or an aggregate such as <code>MIN(title)</code>. (If it finds <em>no</em> row, the variable keeps its old value and MySQL only warns, "No data - zero rows fetched".)</p>
+
+                <h3>5. Creating a routine that already exists</h3>
+                <pre data-raises="ERROR 1304"><code class="language-sql">CREATE PROCEDURE count_customers()
+    SELECT COUNT(*) AS customers FROM customers;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1304 (42000): PROCEDURE count_customers already exists</code></pre>
+                </div>
+                <p><strong>What it means:</strong> you ran your script a second time. <strong>Fix:</strong> start every routine in a script with <code>DROP PROCEDURE IF EXISTS name;</code> (or <code>DROP FUNCTION IF EXISTS name;</code>), so the file can be rerun after every edit. The project below does this.</p>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: The Bookstore Routine Library</h2>
+                <p>The bookstore's developers want the database to own a few rules so the website, the mobile app and the monthly report all agree. You will write them into one rerunnable script, <code>bookstore_routines.sql</code>: two functions, two procedures, each preceded by a <code>DROP ... IF EXISTS</code>. Allow about 45 minutes.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: Order totals <span class="step-time">(8 min)</span></h3>
+                    <p>Create <code>bookstore_routines.sql</code> in your <code>mysql-course</code> folder. Start it with <code>USE bookstore;</code>, then add a function that returns the total of one order. Run each piece in the client as you add it.</p>
+                    <pre><code class="language-sql">USE bookstore;
+
+DROP FUNCTION IF EXISTS order_total;
+DELIMITER //
+CREATE FUNCTION order_total(p_order_id INT)
+RETURNS DECIMAL(10, 2)
+READS SQL DATA
+BEGIN
+    DECLARE v_total DECIMAL(10, 2);
+    SELECT COALESCE(SUM(quantity * price_at_time), 0) INTO v_total
+    FROM order_items
+    WHERE order_id = p_order_id;
+    RETURN v_total;
+END //
+DELIMITER ;
+
+SELECT id, order_date, order_total(id) AS total
+FROM orders
+WHERE customer_id = 1
+ORDER BY order_date;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Database changed
++----+------------+-------+
+| id | order_date | total |
++----+------------+-------+
+|  1 | 2026-01-15 | 34.97 |
+|  2 | 2026-02-20 |  7.99 |
+|  8 | 2026-04-05 | 15.99 |
++----+------------+-------+</code></pre>
+                    </div>
+                    <p>Alice's three orders add up to the $58.95 that <code>customer_stats</code> reported earlier.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: Loyalty tiers as a function <span class="step-time">(8 min)</span></h3>
+                    <p>The <code>classify_customer</code> procedure needed a <code>CALL</code> and a variable per customer. As a function, the tier fits into any query:</p>
+                    <pre><code class="language-sql">DROP FUNCTION IF EXISTS customer_tier;
+DELIMITER //
+CREATE FUNCTION customer_tier(p_customer_id INT)
+RETURNS VARCHAR(10)
+READS SQL DATA
+BEGIN
+    DECLARE v_spent DECIMAL(10, 2);
+    SELECT COALESCE(SUM(oi.quantity * oi.price_at_time), 0) INTO v_spent
+    FROM orders AS o
+    JOIN order_items AS oi ON oi.order_id = o.id
+    WHERE o.customer_id = p_customer_id;
+
+    RETURN CASE
+        WHEN v_spent &gt;= 50 THEN 'Gold'
+        WHEN v_spent &gt;= 30 THEN 'Silver'
+        WHEN v_spent &gt; 0 THEN 'Bronze'
+        ELSE 'New'
+    END;
+END //
+DELIMITER ;
+
+SELECT id, CONCAT(first_name, ' ', last_name) AS customer, customer_tier(id) AS tier
+FROM customers
+ORDER BY id;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+----+----------------+--------+
+| id | customer       | tier   |
++----+----------------+--------+
+|  1 | Alice Johnson  | Gold   |
+|  2 | Bob Smith      | Silver |
+|  3 | Carol Williams | New    |
+|  4 | Dave Brown     | Silver |
+|  5 | Eve Davis      | Bronze |
+|  6 | Frank Miller   | Silver |
+|  7 | Grace Wilson   | Silver |
+|  8 | Hank Taylor    | New    |
++----+----------------+--------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: A customer report procedure <span class="step-time">(8 min)</span></h3>
+                    <p>A procedure that returns two result sets: a header line about the customer, then their orders. It reuses both functions.</p>
+                    <pre><code class="language-sql">DROP PROCEDURE IF EXISTS customer_report;
+DELIMITER //
+CREATE PROCEDURE customer_report(IN p_customer_id INT)
+BEGIN
+    SELECT CONCAT(first_name, ' ', last_name) AS customer,
+           customer_tier(id) AS tier
+    FROM customers
+    WHERE id = p_customer_id;
+
+    SELECT id AS order_id, order_date, order_total(id) AS total
+    FROM orders
+    WHERE customer_id = p_customer_id
+    ORDER BY order_date;
+END //
+DELIMITER ;
+
+CALL customer_report(6);</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+--------------+--------+
+| customer     | tier   |
++--------------+--------+
+| Frank Miller | Silver |
++--------------+--------+
++----------+------------+-------+
+| order_id | order_date | total |
++----------+------------+-------+
+|        5 | 2026-02-03 | 19.98 |
+|       10 | 2026-05-02 | 21.98 |
++----------+------------+-------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: Adding a book safely <span class="step-time">(10 min)</span></h3>
+                    <p>The admin page needs "add this book by this author". The procedure checks the price, looks the author up by name, creates the author if needed, inserts the book, and hands back the new book's id.</p>
+                    <pre><code class="language-sql">DROP PROCEDURE IF EXISTS add_book;
+DELIMITER //
+CREATE PROCEDURE add_book(
+    IN  p_title   VARCHAR(200),
+    IN  p_author  VARCHAR(100),
+    IN  p_price   DECIMAL(8, 2),
+    OUT p_book_id INT
+)
+BEGIN
+    DECLARE v_author_id INT;
+
+    IF p_price IS NULL OR p_price &lt;= 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Price must be greater than zero';
+    END IF;
+
+    SELECT MIN(id) INTO v_author_id FROM authors WHERE name = p_author;
+
+    IF v_author_id IS NULL THEN
+        INSERT INTO authors (name) VALUES (p_author);
+        SET v_author_id = LAST_INSERT_ID();
+    END IF;
+
+    INSERT INTO books (title, author_id, price) VALUES (p_title, v_author_id, p_price);
+    SET p_book_id = LAST_INSERT_ID();
+END //
+DELIMITER ;
+
+CALL add_book('Foundation', 'Isaac Asimov', 9.99, @foundation);
+CALL add_book('The Left Hand of Darkness', 'Ursula K. Le Guin', 10.99, @left_hand);
+
+SELECT b.id, b.title, a.id AS author_id, a.name AS author, b.price
+FROM books AS b
+JOIN authors AS a ON a.id = b.author_id
+WHERE b.id IN (@foundation, @left_hand)
+ORDER BY b.id;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+----+---------------------------+-----------+-------------------+-------+
+| id | title                     | author_id | author            | price |
++----+---------------------------+-----------+-------------------+-------+
+| 12 | Foundation                |        10 | Isaac Asimov      |  9.99 |
+| 13 | The Left Hand of Darkness |        11 | Ursula K. Le Guin | 10.99 |
++----+---------------------------+-----------+-------------------+-------+</code></pre>
+                    </div>
+                    <p>Asimov already existed (author 10), so <em>Foundation</em> reused him; Ursula K. Le Guin was new and got id 11. <code>SELECT MIN(id) INTO</code> always returns exactly one row (<code>NULL</code> when nobody matches), which avoids both error 1172 and the "no data" warning.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: Try to break it <span class="step-time">(5 min)</span></h3>
+                    <p>Good routines are tested with bad input. A free book must be refused, and nothing may be inserted:</p>
+                    <pre data-raises="ERROR 1644"><code class="language-sql">CALL add_book('Free Book', 'Nobody Special', 0, @free);</code></pre>
+                    <div class="card card-output">
+                        <h4>Error</h4>
+                        <pre><code>ERROR 1644 (45000): Price must be greater than zero</code></pre>
+                    </div>
+                    <pre><code class="language-sql">SELECT COUNT(*) AS books, (SELECT COUNT(*) FROM authors) AS authors FROM books;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------+---------+
+| books | authors |
++-------+---------+
+|    13 |      11 |
++-------+---------+</code></pre>
+                    </div>
+                    <p>13 books and 11 authors: the two good calls, and nothing from the refused one, because the check runs before any <code>INSERT</code>. (If the check came after the author insert, "Nobody Special" would be left behind. Lesson 7.2's transactions handle that case.)</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 6: Inventory and rerun <span class="step-time">(6 min)</span></h3>
+                    <p>List what the library holds, then save the file and run it again from the top. Thanks to the <code>DROP ... IF EXISTS</code> lines it runs cleanly a second time.</p>
+                    <pre><code class="language-sql">SELECT ROUTINE_TYPE, ROUTINE_NAME, SQL_DATA_ACCESS
+FROM information_schema.ROUTINES
+WHERE ROUTINE_SCHEMA = 'bookstore'
+  AND ROUTINE_NAME IN ('order_total', 'customer_tier', 'customer_report', 'add_book')
+ORDER BY ROUTINE_TYPE, ROUTINE_NAME;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+--------------+-----------------+-----------------+
+| ROUTINE_TYPE | ROUTINE_NAME    | SQL_DATA_ACCESS |
++--------------+-----------------+-----------------+
+| FUNCTION     | customer_tier   | READS SQL DATA  |
+| FUNCTION     | order_total     | READS SQL DATA  |
+| PROCEDURE    | add_book        | CONTAINS SQL    |
+| PROCEDURE    | customer_report | CONTAINS SQL    |
++--------------+-----------------+-----------------+</code></pre>
+                    </div>
+                    <pre data-norun><code class="language-sql">SOURCE ~/mysql-course/bookstore_routines.sql</code></pre>
+                    <p>Keep the test <code>CALL add_book(...)</code> lines out of the saved file (or the second run adds the books again). Routines go in the script; test calls go at the prompt.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>bookstore_routines.sql</code> creates <code>order_total</code>, <code>customer_tier</code>, <code>customer_report</code> and <code>add_book</code>, each after a <code>DROP ... IF EXISTS</code></li>
+                        <li>Both functions declare <code>READS SQL DATA</code>, and you can say why <code>DETERMINISTIC</code> would be a false promise for them</li>
+                        <li><code>customer_tier</code> returns Gold for Alice, New for Carol and Hank</li>
+                        <li><code>add_book</code> refuses a zero price with your own message and inserts nothing</li>
+                        <li><code>SOURCE</code> runs the whole file twice in a row without an error</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+                <p>These run on the bookstore as the project left it (13 books). Try each one before you open the solution.</p>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: Books in a Category</h3>
+                    <p>Write a procedure <code>books_in_category</code> that takes a category name and lists the titles and prices of the books in it, by title. Call it for <code>'Fantasy'</code>.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>You need three tables: <code>categories</code>, <code>book_categories</code> and <code>books</code>. Name the parameter <code>p_category</code> so it cannot clash with <code>categories.name</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">DROP PROCEDURE IF EXISTS books_in_category;
+DELIMITER //
+CREATE PROCEDURE books_in_category(IN p_category VARCHAR(50))
+BEGIN
+    SELECT b.title, b.price
+    FROM categories AS c
+    JOIN book_categories AS bc ON bc.category_id = c.id
+    JOIN books AS b ON b.id = bc.book_id
+    WHERE c.name = p_category
+    ORDER BY b.title;
+END //
+DELIMITER ;
+
+CALL books_in_category('Fantasy');</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------------------+-------+
+| title             | price |
++-------------------+-------+
+| Lord of the Rings | 15.99 |
+| The Hobbit        | 10.99 |
++-------------------+-------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 2: Sale Prices</h3>
+                    <p>Write a function <code>sale_price(price, percent)</code> that takes a percentage off and rounds to cents. Use it to show the three most expensive books at 15% off.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>The result depends only on the two inputs and reads no table, so the function is <code>DETERMINISTIC</code> and <code>NO SQL</code>. <code>price * (100 - percent) / 100</code> avoids rounding <code>percent / 100</code> too early.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">DROP FUNCTION IF EXISTS sale_price;
+DELIMITER //
+CREATE FUNCTION sale_price(p_price DECIMAL(8, 2), p_percent INT)
+RETURNS DECIMAL(8, 2)
+DETERMINISTIC
+NO SQL
+BEGIN
+    RETURN ROUND(p_price * (100 - p_percent) / 100, 2);
+END //
+DELIMITER ;
+
+SELECT title, price, sale_price(price, 15) AS sale
+FROM books
+ORDER BY price DESC
+LIMIT 3;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-----------------------+-------+-------+
+| title                 | price | sale  |
++-----------------------+-------+-------+
+| Lord of the Rings     | 15.99 | 13.59 |
+| Dune                  | 14.99 | 12.74 |
+| To Kill a Mockingbird | 11.99 | 10.19 |
++-----------------------+-------+-------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: City Statistics</h3>
+                    <p>Write a procedure <code>city_stats</code> with one <code>IN</code> parameter (a city) and two <code>OUT</code> parameters: how many customers live there and how many orders they placed. Call it for Chicago and show both values.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Two <code>SELECT ... INTO</code> statements are easiest: one counts customers, one counts orders joined to customers. Customers without orders must still count, so do not answer both with one inner join.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">DROP PROCEDURE IF EXISTS city_stats;
+DELIMITER //
+CREATE PROCEDURE city_stats(IN p_city VARCHAR(50), OUT p_customers INT, OUT p_orders INT)
+BEGIN
+    SELECT COUNT(*) INTO p_customers
+    FROM customers
+    WHERE city = p_city;
+
+    SELECT COUNT(*) INTO p_orders
+    FROM orders AS o
+    JOIN customers AS c ON c.id = o.customer_id
+    WHERE c.city = p_city;
+END //
+DELIMITER ;
+
+CALL city_stats('Chicago', @customers, @orders);
+SELECT @customers AS chicago_customers, @orders AS chicago_orders;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------------------+----------------+
+| chicago_customers | chicago_orders |
++-------------------+----------------+
+|                 2 |              4 |
++-------------------+----------------+</code></pre>
+                        </div>
+                        <p>Bob and Grace live in Chicago and placed two orders each.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): Chain of Command</h3>
+                    <p>Every employee has a <code>manager_id</code> pointing at another employee (<code>NULL</code> for the owner). Write a procedure <code>chain_of_command(IN p_employee_id INT, OUT p_chain VARCHAR(500))</code> that walks up the managers with a <code>WHILE</code> loop and builds a string like <code>Tom Becker &gt; Priya Nair &gt; ...</code>. Call it for Tom Becker (id 4).</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Keep a variable with the current employee id. In each round, read that employee's name and <code>manager_id</code> into variables, append the name, then move to the manager. Stop when the id becomes <code>NULL</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">DROP PROCEDURE IF EXISTS chain_of_command;
+DELIMITER //
+CREATE PROCEDURE chain_of_command(IN p_employee_id INT, OUT p_chain VARCHAR(500))
+BEGIN
+    DECLARE v_id      INT DEFAULT p_employee_id;
+    DECLARE v_name    VARCHAR(101);
+    DECLARE v_manager INT;
+
+    SET p_chain = NULL;
+    WHILE v_id IS NOT NULL DO
+        SELECT CONCAT(first_name, ' ', last_name), manager_id
+        INTO v_name, v_manager
+        FROM employees
+        WHERE id = v_id;
+
+        SET p_chain = IF(p_chain IS NULL, v_name, CONCAT(p_chain, ' &gt; ', v_name));
+        SET v_id = v_manager;
+    END WHILE;
+END //
+DELIMITER ;
+
+CALL chain_of_command(4, @chain);
+SELECT @chain AS chain;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------------------------------------------------------+
+| chain                                                 |
++-------------------------------------------------------+
+| Tom Becker &gt; Priya Nair &gt; Daniel Reyes &gt; Maria Santos |
++-------------------------------------------------------+</code></pre>
+                        </div>
+                        <p>The loop runs four times and stops after Maria Santos, whose <code>manager_id</code> is <code>NULL</code>. A bad id would loop forever if <code>v_manager</code> kept an old value, which is a real risk with <code>SELECT ... INTO</code> and no matching row: a safer version sets <code>v_manager = NULL</code> at the top of each round. In <a href="lesson_ctes.html">Lesson 5.1</a> the same walk is a single recursive query.</p>
+                    </details>
+                </div>
+            </section>
+
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
+                <div class="card quiz-container">
+                    <h3>🎯 Check Your Understanding</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> Which program actually reads the <code>DELIMITER //</code> line?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="If the server read it, apps would have to send it too. They never do.">
+                                A) The MySQL server
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="DELIMITER is a client command. The mysql client uses it to decide where one statement ends before sending it; the server only ever receives the finished CREATE PROCEDURE statement.">
+                                B) The <code>mysql</code> command-line client
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="The routine is already saved by the time it runs. Think about the moment you type the definition.">
+                                C) The stored procedure, when it runs
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> A procedure is declared as <code>book_by_id(IN id INT)</code> and runs <code>SELECT title FROM books WHERE id = id</code>. What does <code>CALL book_by_id(1)</code> return?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="That is what the author meant. Inside the routine, which id does the name id refer to?">
+                                A) One row: Dune
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL does not complain about this at all. That is what makes it dangerous.">
+                                B) An error about an ambiguous column
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Inside the routine the name id means the parameter, so the condition is 1 = 1 on every row and all the books come back, with no error or warning.">
+                                C) Every book in the table
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> Binary logging is on. Your function sums rows of <code>order_items</code>, which change every day. Which characteristic should it declare?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="The function reads tables and changes nothing, so READS SQL DATA is the honest description. It is also enough to avoid error 1418.">
+                                A) <code>READS SQL DATA</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Would the same order id always give the same total, even after the rows change? That is the promise this word makes.">
+                                B) <code>DETERMINISTIC</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="With binary logging on, MySQL refuses a function that declares nothing: error 1418.">
+                                C) None; MySQL works it out on its own
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> You want <code>SELECT title, loyalty_points(price) FROM books</code> to work. What do you create?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="A procedure is run with CALL. It cannot appear inside a SELECT list.">
+                                A) A stored procedure with an <code>OUT</code> parameter
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="User variables hold values, but they do not take arguments.">
+                                B) A user variable named <code>@loyalty_points</code>
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Only a stored function returns a single value that can be used inside an expression, once per row of the query.">
+                                C) A stored function
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> In the project's <code>add_book</code>, what happens on <code>CALL add_book('Free Book', 'Nobody Special', 0, @id)</code>?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="The IF check runs first and SIGNAL raises error 1644 with the procedure's own message. The procedure stops there, before either INSERT, so no author and no book are added.">
+                                A) Error 1644 with the message from <code>SIGNAL</code>, and nothing is inserted
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Look at the first statement in the procedure body.">
+                                B) The book is inserted with a price of 0.00
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="SIGNAL with SQLSTATE 45000 is an error, and an error stops the procedure.">
+                                C) A warning, and the author is still created
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Are stored procedures faster than sending the same queries from my app?</summary>
+                    <p>Sometimes, mostly because of fewer network round trips: one <code>CALL</code> instead of ten statements. MySQL does not keep a shared, precompiled plan for routines the way some databases do; it caches the parsed routine per connection. Do not move logic into the database for speed alone; measure first.</p>
+                </details>
+                <details>
+                    <summary>Can a function change data, or run a transaction?</summary>
+                    <p>A function may run <code>INSERT</code> or <code>UPDATE</code> (declared <code>MODIFIES SQL DATA</code>), but it cannot <code>COMMIT</code>, <code>ROLLBACK</code> or start a transaction, and it cannot return a result set. A function that changes data whenever a <code>SELECT</code> happens to call it is a surprise for everyone reading the query. Use a procedure.</p>
+                </details>
+                <details>
+                    <summary>How do I see the routines in phpMyAdmin or Workbench?</summary>
+                    <p>phpMyAdmin: select the database, open the <strong>Routines</strong> tab; it lists procedures and functions with Edit, Execute and Drop links. MySQL Workbench: expand the schema in the Navigator and open <strong>Stored Procedures</strong> or <strong>Functions</strong>. Both tools send the <code>CREATE</code> statement for you, so you do not type <code>DELIMITER</code> there.</p>
+                </details>
+                <details>
+                    <summary>Can I write routines in a language other than SQL?</summary>
+                    <p>In the MySQL Community Server you installed, no: routines are written in SQL. MySQL Enterprise Edition and the HeatWave cloud service can also run stored programs written in JavaScript. The SQL routines in this lesson work everywhere, including MariaDB.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>Give <code>add_book</code> a guard against duplicates: if a book with the same title by the same author already exists, raise <code>SIGNAL SQLSTATE '45000'</code> with a message that includes the existing book's id. Build the message in a variable first (<code>SET v_msg = CONCAT('Already stocked as book ', v_id);</code>), then use <code>SET MESSAGE_TEXT = v_msg</code>. Test it by adding <em>Foundation</em> a second time. Bonus: read about <code>SQL SECURITY INVOKER</code> and explain in two sentences when it would be the safer choice.</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Pick one rule from a business you know (a café's loyalty card, a library's late fee, a gym's membership levels). Would you put it in a stored function, a stored procedure, or the app? Write down your choice and two reasons, including one reason against it.</p>
+                </div>
+            </section>
+
+            <section id="summary" class="lesson-section">
+                <h2>📝 Lesson Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎓 Key Takeaways</h3>
+                    <ul>
+                        <li>A <strong>stored procedure</strong> runs with <code>CALL</code> and can return result sets, fill <code>OUT</code> parameters and change data</li>
+                        <li>A <strong>stored function</strong> returns one value with <code>RETURN</code> and is used inside expressions</li>
+                        <li><code>DELIMITER</code> is a <strong>client</strong> command; apps, Workbench and phpMyAdmin's Delimiter box do not need you to type it</li>
+                        <li>With binary logging on (the default), a function must declare <code>DETERMINISTIC</code>, <code>NO SQL</code> or <code>READS SQL DATA</code>, and the promise must be true</li>
+                        <li><code>DECLARE</code> local variables first; use <code>p_</code> and <code>v_</code> prefixes so names never collide with columns</li>
+                        <li><code>SELECT ... INTO</code> must return at most one row; <code>SIGNAL SQLSTATE '45000'</code> rejects bad input with your own message</li>
+                        <li>To change a routine, <code>DROP ... IF EXISTS</code> and create it again; keep routines in a rerunnable script</li>
+                    </ul>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>You want</th><th>Write</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Run a procedure</td><td><code>CALL name(arg, @out);</code></td></tr>
+                            <tr><td>Use a function</td><td><code>SELECT name(col) FROM ...;</code></td></tr>
+                            <tr><td>A function that reads tables</td><td><code>RETURNS type READS SQL DATA BEGIN ... RETURN v; END</code></td></tr>
+                            <tr><td>Refuse bad input</td><td><code>SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '...';</code></td></tr>
+                            <tr><td>List routines</td><td><code>SELECT ... FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '...'</code></td></tr>
+                            <tr><td>Read one back</td><td><code>SHOW CREATE PROCEDURE name\G</code></td></tr>
+                            <tr><td>Replace one</td><td><code>DROP PROCEDURE IF EXISTS name;</code> then <code>CREATE PROCEDURE ...</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You saved queries inside the database and called them with parameters going in and values coming out</li>
+                        <li>You wrote decisions and loops in MySQL's routine language, and know when a single query is the better tool</li>
+                        <li>You met errors 1064, 1418, 1172, 1304 and 1644 on purpose, plus the silent parameter-name bug</li>
+                        <li>You built <code>bookstore_routines.sql</code>, a rerunnable library of rules the whole bookstore can share</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>In <a href="lesson_18.html"><strong>Lesson 7.2: Transactions</strong></a> you will make several changes count as one: all of them, or none. You will open two connections side by side to watch what one session can see of another's work, lock rows on purpose, and give a procedure an error handler that rolls everything back, so an order can never be half placed.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
                 <ul>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/create-procedure.html" target="_blank" rel="noopener">MySQL Docs — CREATE PROCEDURE</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/create-function.html" target="_blank" rel="noopener">MySQL Docs — CREATE FUNCTION</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/flow-control-statements.html" target="_blank" rel="noopener">MySQL Docs — Flow Control Statements</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/declare-local-variable.html" target="_blank" rel="noopener">MySQL Docs — DECLARE Local Variable</a></li>
+                    <li>Run <code>bookstore_routines.sql</code> twice from a fresh session to prove it is rerunnable</li>
+                    <li>Make sure you can open two <code>mysql</code> client windows at once (two terminals, or two Workbench tabs): Lesson 7.2 uses both</li>
+                    <li>Try the bonus challenge's duplicate check if you have not yet</li>
                 </ul>
 
-                <h3>🚀 What's Next?</h3>
-                <p>Stored procedures let you build reusable logic, but what happens when a procedure needs to make <em>multiple changes</em> that must either <strong>all succeed or all fail</strong>? Transferring money between accounts, for example — you can't debit one account without crediting another. In <a href="lesson_18.html">Lesson 18: Transactions</a>, you'll learn to group operations with BEGIN, COMMIT, and ROLLBACK for bulletproof data integrity.</p>
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>You just wrote real programs that live inside a database server. The syntax is fussy (<code>DELIMITER</code>, <code>END IF;</code>, <code>DECLARE</code> first), and everyone trips over it at first. What matters more is the judgment you practiced: which rules belong next to the data, how to make a routine refuse bad input, and why a quiet bug like <code>WHERE id = id</code> is worth a naming habit. That judgment is what separates a working database from a trustworthy one.</p>
+                </div>
             </section>
 
             <nav class="lesson-nav" aria-label="Lesson Navigation">
@@ -1159,7 +1465,7 @@ CALL categorize_books();
     </main>
 
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>

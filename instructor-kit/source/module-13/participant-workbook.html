@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Participant Workbook: Session 13</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Student workbook —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">write in it · bring it to every session</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Participant Workbook</div>
+    <h1>Session 13: Final Project Kickoff and Studio I</h1>
+    <p class="sub">Your workbook for Session 13: the brief in one page, the design table for Milestone 1, the guided lab, a worked constraint test, the milestone tracker, a self-check and your exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Lesson <b>8.2</b> · Milestones 1–3</span>
+      <span class="chip">Session <b>13</b> · 3 hours</span>
+      <span class="chip">Name: ____________________</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Session Goals</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Turn Rosa's brief into tables, keys and relationships, with each of her eight requirements mapped to the place your design enforces or answers it.</li>
+  <li>Build <code class="inline">01_schema.sql</code>: re-runnable, parents first, every constraint named, and a test statement that each constraint must refuse.</li>
+  <li>Build <code class="inline">02_data.sql</code> with test data that plants the edge cases a broken query would hide.</li>
+  <li>Know what goes home (Milestone 4) and what Session 14 adds (logic, security, backup, the showcase).</li>
+</ul>
+
+  <div class="sec"><h2>Warm-up</h2><span class="rule"></span></div>
+<p>Answer from memory, then compare with the class.</p>
+<div class="q"><div class="qn">W1</div><div class="qt">The treasurer's account was granted the reporting role, but every SELECT gives ERROR 1142. What was forgotten? <i>(Lesson 7.4)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Someone types <code class="inline">mysqldump -u root -p bookstore &gt; backup.sql</code> at the <code class="inline">mysql&gt;</code> prompt. What happens? <i>(Lesson 8.1)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">A dump of one database restores perfectly on a new laptop, but the web form cannot log in. Why? <i>(Lesson 8.1)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">Which mysqldump option puts the stored procedures into the dump? <i>(Lesson 8.1)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">From Rosa's brief: name the tables you would build, and one rule that cannot be a CHECK constraint. <i>(the brief)</i></div><div class="write"></div></div>
+
+  <div class="sec"><h2>Lesson</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">8.2</span><h3>Final Project: Design and Build a Database</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Turn a written brief into entities, relationships and business rules, and draw them as a diagram</li>
+  <li>Build a normalized schema in a re-runnable script, with keys, foreign keys and CHECK constraints that you have tested</li>
+  <li>Answer business questions with joins, GROUP BY, CTEs and window functions, using a fixed report date</li>
+  <li>Enforce rules that span several rows in a stored procedure with a transaction</li>
+  <li>Secure the database with roles and least-privilege accounts, then back it up and prove the backup restores</li>
+</ul>
+<p>Today: the first two. Session 14: the other three.</p>
+</div>
+<div class="blk"><div class="h">The brief in one page</div>
+<p>Rosa Delgado's Maple Street Tool Library (full text on the lesson page, "The Brief"). Her eight requirements, in short:</p>
+<ol class="steps">
+  <li>Members: name, email (one account per email), joined date, active or suspended.</li>
+  <li>About a dozen tools: name, one category, condition (good, fair, out for repair), replacement value, date acquired.</li>
+  <li>Safety courses: power tools need Power Tools Basics, the chainsaw needs Chainsaw Safety; who finished which course, and when.</li>
+  <li>A loan: one tool, one member, out, due (normally a week later), back.</li>
+  <li>Rules: one borrower per tool at a time; nothing out while in repair; suspended members cannot borrow; three tools at most; no course, no chainsaw.</li>
+  <li>Every Saturday: what is on the shelf, what is overdue and whom to email, which tools are popular, how busy each month was.</li>
+  <li>Desk volunteers check tools out and in through a web form; the treasurer only reads reports; nobody may delete the loan history.</li>
+  <li>"If the laptop dies, I do not want to start over."</li>
+</ol>
+<p><b>Hand in:</b> <code class="inline">01_schema.sql</code>, <code class="inline">02_data.sql</code>, <code class="inline">03_queries.sql</code>, <code class="inline">04_logic.sql</code>, <code class="inline">05_security.sql</code>, a tested backup file and <code class="inline">README.md</code>. <b>Timeline:</b> Milestones 1 to 3 today, 4 at home, 5 to 7 in Session 14, 8 and the README at home; due one week after Session 14.</p>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>Nouns become tables, verbs become relationships.</b> Ask "one or many?" in both directions. Many-to-many needs a junction table; this one carries its own fact (<code class="inline">completed_on</code>).</li>
+  <li><b>Every rule gets a home.</b> One value: a type or a constraint (NOT NULL, UNIQUE, ENUM, CHECK). Between tables: a foreign key. Looks at other rows: the procedure that writes, inside a transaction.</li>
+  <li><b>No derived data.</b> Overdue, days late, available, times borrowed: compute them in queries.</li>
+  <li><b>A CHECK must give the same answer forever:</b> compare columns of the same row, never <code class="inline">CURDATE()</code> (error 3814).</li>
+  <li><b>Build scripts are re-runnable:</b> <code class="inline">DROP DATABASE IF EXISTS</code> first, parents first, children last, every constraint named.</li>
+  <li><b>A constraint is proven</b> when a statement that breaks it is refused. Test inside a transaction and roll it back.</li>
+  <li><b>Test data is a design tool:</b> plant the edge cases (suspended, never borrowed, in repair, never lent, a tie, overdue, late) so a broken query shows.</li>
+  <li><b>SOURCE looks in the folder the client was started in.</b> Start <code class="inline">mysql</code> inside your <code class="inline">tool-library</code> folder so <code class="inline">SOURCE 01_schema.sql</code> inside <code class="inline">02_data.sql</code> works.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Milestone 1: Design (30 minutes in class)</div>
+<p>Fill in where each requirement lives. Your check-in: point at every row and say why.</p>
+<table class="timing">
+<thead><tr><th>#</th><th>Rosa's requirement</th><th>Where my design enforces or answers it</th><th>Why there</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>members' facts</td><td></td><td></td></tr>
+<tr><td>2</td><td>tools' facts</td><td></td><td></td></tr>
+<tr><td>3</td><td>safety courses and completions</td><td></td><td></td></tr>
+<tr><td>4</td><td>a loan's facts</td><td></td><td></td></tr>
+<tr><td>5</td><td>the five borrowing rules</td><td></td><td></td></tr>
+<tr><td>6</td><td>the Saturday questions</td><td></td><td></td></tr>
+<tr><td>7</td><td>desk, treasurer, no deleting history</td><td></td><td></td></tr>
+<tr><td>8</td><td>the dead laptop</td><td></td><td></td></tr>
+</tbody>
+</table>
+<p>Starter schema checklist (the rubric looks for these):</p>
+<ul class="tick">
+  <li>☐ Every table has a primary key; the junction table's key is the pair of foreign keys</li>
+  <li>☐ Every foreign key is named, has the same type as its target, and a deliberate ON DELETE rule (or none = refuse)</li>
+  <li>☐ Required facts NOT NULL; unique values (email, category name) UNIQUE</li>
+  <li>☐ Closed lists: ENUM or a lookup table, and I can say why</li>
+  <li>☐ Money DECIMAL, dates DATE, searched text a sensible VARCHAR</li>
+  <li>☐ At least two CHECKs for single-row rules</li>
+  <li>☐ Indexes on the columns my Saturday queries filter and join on</li>
+  <li>☐ No derived data; snake_case, plural table names, no reserved words</li>
+</ul>
+<div class="write tall"></div>
+</div>
+<div class="blk lab"><div class="h">Guided lab: gift cards on the bookstore</div>
+<ul class="tick">
+  <li>Reload the bookstore: <code class="inline">SOURCE labs/_states/bookstore.sql</code>. Then <code class="inline">SOURCE labs/module-13/l8_2-final-project/gift_cards_starter.sql</code>.</li>
+  <li>TODOs 1 to 4: one named constraint each. Save, SOURCE again, watch the constraint list grow to nine.</li>
+  <li>Then <code class="inline">debug_gift_card_proofs.sql</code>: write the error number you expect next to each test FIRST, then run it.</li>
+  <li>Copy the test pattern (transaction, one good row, one bad statement per rule, ROLLBACK, a count) into your project.</li>
+</ul>
+<table class="timing">
+<thead><tr><th>Test</th><th>Rule it proves</th><th>Error I expect</th><th>Error I got</th></tr></thead>
+<tbody>
+<tr><td>A</td><td></td><td></td><td></td></tr>
+<tr><td>B</td><td></td><td></td><td></td></tr>
+<tr><td>C</td><td></td><td></td><td></td></tr>
+<tr><td>D</td><td></td><td></td><td></td></tr>
+<tr><td>E</td><td></td><td></td><td></td></tr>
+<tr><td>F</td><td></td><td></td><td></td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Worked example: a constraint test block</div>
+<p>The lesson's pattern, run on the reference schema. The parents need one row each first, inside the transaction:</p>
+<pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+
+<span class="k">INSERT</span> <span class="k">INTO</span> categories (name) <span class="k">VALUES</span> (<span class="s">'Hand Tools'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> members (first_name, last_name, email, joined_on)
+<span class="k">VALUES</span> (<span class="s">'Test'</span>, <span class="s">'Member'</span>, <span class="s">'test@example.org'</span>, <span class="s">'2026-01-01'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> tools (name, category_id, replacement_value, acquired_on)
+<span class="k">VALUES</span> (<span class="s">'Test hammer'</span>, <span class="s">1</span>, <span class="s">15.00</span>, <span class="s">'2026-01-01'</span>);</pre><p>Then one statement per rule; each must be refused:</p>
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> tools (name, category_id, replacement_value, acquired_on)
+<span class="k">VALUES</span> (<span class="s">'Free saw'</span>, <span class="s">1</span>, <span class="s">0</span>, <span class="s">'2026-01-01'</span>);</pre><pre class="out">ERROR 3819 (HY000): Check constraint 'chk_tools_value' is violated.</pre><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> members (first_name, last_name, email, joined_on)
+<span class="k">VALUES</span> (<span class="s">'Second'</span>, <span class="s">'Account'</span>, <span class="s">'test@example.org'</span>, <span class="s">'2026-02-01'</span>);</pre><pre class="out">ERROR 1062 (23000): Duplicate entry 'test@example.org' for key 'members.uq_members_email'</pre><p>Last, ROLLBACK and a count: nothing stays behind.</p>
+<pre class="code"><span class="k">ROLLBACK</span>;
+
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> members_left <span class="k">FROM</span> members;</pre><pre class="out">+--------------+
+| members_left |
++--------------+
+|            0 |
++--------------+</pre></div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>In a practice database (<code class="inline">CREATE DATABASE scratch; USE scratch;</code>, and <code class="inline">DROP DATABASE scratch;</code> afterwards). Write your prediction first.</p>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it. (a team's group name)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> kit_teams (
+    id    <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    group <span class="k">VARCHAR</span>(<span class="s">10</span>)
+);</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it. (community garden plots)</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> plots (
+    id          <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    gardener_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> fk_plots_gardener <span class="k">FOREIGN</span> <span class="k">KEY</span> (gardener_id) <span class="k">REFERENCES</span> gardeners (id)
+);</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Milestones 2 and 3: tracker</div>
+<ul class="tick">
+  <li>☐ M2: <code class="inline">01_schema.sql</code> starts with <code class="inline">DROP DATABASE IF EXISTS</code>; tables parents first; constraints named</li>
+  <li>☐ M2: it runs twice in a row with no ERROR</li>
+  <li>☐ M2: one test per constraint, each refused; ROLLBACK; the count is 0</li>
+  <li>☐ M3: <code class="inline">02_data.sql</code> starts with <code class="inline">SOURCE 01_schema.sql</code> and uses explicit ids</li>
+  <li>☐ M3: edge cases planted: suspended · never borrowed · in repair · never lent · a tie · open · overdue · returned late</li>
+  <li>☐ M3: my counts: members ___ categories ___ courses ___ member_courses ___ tools ___ loans ___</li>
+  <li>☐ At home, M4: six Saturday queries with <code class="inline">@today = '2026-06-15'</code>; two checked by hand: ______________________</li>
+</ul>
+<div class="write"></div>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Rosa's rule "a tool can only be out with one person at a time": where does the reference design enforce it?</div><div class="opts"><div class="opt">A) A <code class="inline">CHECK</code> constraint on <code class="inline">loans</code></div><div class="opt">B) <code class="inline">UNIQUE (tool_id)</code> on <code class="inline">loans</code></div><div class="opt">C) In <code class="inline">checkout_tool</code>, inside a transaction that locks the tool's row</div><div class="opt">D) An <code class="inline">is_available</code> column on <code class="inline">tools</code>, set to 0 on check-out</div></div></div>
+<div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">In the reference design, which fact belongs in the junction table <code class="inline">member_courses</code> and nowhere else?</div><div class="opts"><div class="opt">A) The member's email</div><div class="opt">B) <code class="inline">completed_on</code>, the date the member finished the course</div><div class="opt">C) The course's name</div><div class="opt">D) The member's status</div></div></div>
+<div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">What does the last statement print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> riders (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">20</span>));
+<span class="k">CREATE</span> <span class="k">TABLE</span> rides  (rider_id <span class="k">INT</span>, started_on <span class="k">DATE</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> riders <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Ana'</span>), (<span class="s">2</span>, <span class="s">'Ben'</span>), (<span class="s">3</span>, <span class="s">'Cy'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> rides  <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'2026-06-03'</span>), (<span class="s">1</span>, <span class="s">'2026-06-09'</span>), (<span class="s">2</span>, <span class="s">'2026-05-28'</span>);
+
+<span class="k">SELECT</span> r.name, COUNT(x.rider_id) <span class="k">AS</span> june_rides
+<span class="k">FROM</span> riders <span class="k">AS</span> r
+<span class="k">LEFT</span> <span class="k">JOIN</span> rides <span class="k">AS</span> x <span class="k">ON</span> x.rider_id = r.id
+<span class="k">WHERE</span> x.started_on &gt;= <span class="s">'2026-06-01'</span>
+<span class="k">GROUP</span> <span class="k">BY</span> r.id, r.name
+<span class="k">ORDER</span> <span class="k">BY</span> r.name;</pre><div class="write"></div></div>
+<div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">What happens when this runs?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> tools (id <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">50</span>));
+<span class="k">CREATE</span> <span class="k">TABLE</span> loans (
+    id      <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    tool_id <span class="k">INT</span> <span class="k">UNSIGNED</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> fk_loans_tool <span class="k">FOREIGN</span> <span class="k">KEY</span> (tool_id) <span class="k">REFERENCES</span> tools (id)
+);</pre><div class="opts"><div class="opt">A) Both tables are created</div><div class="opt">B) <code class="inline">ERROR 3780 (HY000): Referencing column 'tool_id' and referenced column 'id' in foreign key constraint 'fk_loans_tool' are incompatible.</code></div><div class="opt">C) <code class="inline">ERROR 1824 (HY000): Failed to open the referenced table 'tools'</code></div><div class="opt">D) <code class="inline">ERROR 1452 (23000): Cannot add or update a child row</code></div></div></div>
+<div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">Why does the reference <code class="inline">01_schema.sql</code> begin with <code class="inline">DROP DATABASE IF EXISTS tool_library;</code>?</div><div class="opts"><div class="opt">A) So the script can be run again from scratch and always gives the same result</div><div class="opt">B) Because MySQL cannot create a table in a database that has data in it</div><div class="opt">C) To delete the test rows the constraint tests left behind</div><div class="opt">D) So that the backup in Milestone 7 is smaller</div></div></div>
+<div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt">Which of these should NOT be a column in the tool library's tables?</div><div class="opts"><div class="opt">A) <code class="inline">tools.replacement_value</code></div><div class="opt">B) <code class="inline">loans.due_on</code></div><div class="opt">C) The number of days a loan is overdue</div><div class="opt">D) <code class="inline">members.joined_on</code></div></div></div>
+<div class="q" data-sc="7" data-kind="short"><div class="qn">Q7</div><div class="qt">What does the last statement print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> courses (
+    id    <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    seats <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> chk_courses_seats <span class="k">CHECK</span> (seats &gt; <span class="s">0</span>)
+);
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">INSERT</span> <span class="k">INTO</span> courses <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">12</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> courses <span class="k">VALUES</span> (<span class="s">2</span>, <span class="s">0</span>);
+<span class="k">ROLLBACK</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> courses_left <span class="k">FROM</span> courses;</pre><div class="write"></div></div>
+<div class="q" data-sc="8"><div class="qn">Q8</div><div class="qt">In which order can 01_schema.sql create these tables without an error?</div><div class="opts"><div class="opt">A) <code class="inline">loans</code>, <code class="inline">tools</code>, <code class="inline">members</code>, <code class="inline">categories</code></div><div class="opt">B) <code class="inline">categories</code>, <code class="inline">members</code>, <code class="inline">tools</code>, <code class="inline">loans</code></div><div class="opt">C) <code class="inline">tools</code>, <code class="inline">categories</code>, <code class="inline">loans</code>, <code class="inline">members</code></div><div class="opt">D) Any order: MySQL checks foreign keys only when rows are inserted</div></div></div>
+<div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">Rosa: "Nobody should be able to delete the loan history." How does the reference solution make sure?</div><div class="opts"><div class="opt">A) The loans foreign keys have no ON DELETE rule (refuse), and no account is granted DELETE</div><div class="opt">B) <code class="inline">ON DELETE CASCADE</code> on both foreign keys of <code class="inline">loans</code></div><div class="opt">C) A <code class="inline">CHECK (deleted = 0)</code> constraint on <code class="inline">loans</code></div><div class="opt">D) The desk volunteers are asked not to delete rows</div></div></div>
+<div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">Your overdue query and your "never borrowed" query both return nothing on your test data. What is the most likely problem?</div><div class="opts"><div class="opt">A) Both queries need ORDER BY</div><div class="opt">B) <code class="inline">@today</code> was set to the wrong year</div><div class="opt">C) MySQL caches empty results</div><div class="opt">D) The test data has no overdue loan and every member has borrowed something</div></div></div>
+<div class="q" data-sc="11" data-kind="short"><div class="qn">Q11</div><div class="qt">The reference uses an ENUM for <code class="inline">tool_condition</code> but a table for categories. Give the reason in one sentence.</div><div class="write"></div></div>
+<div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">What happens when this runs?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> gear (
+    id        <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    condition <span class="k">VARCHAR</span>(<span class="s">10</span>)
+);</pre><div class="opts"><div class="opt">A) <code class="inline">ERROR 1064 (42000): You have an error in your SQL syntax ... near 'condition VARCHAR(10)</code></div><div class="opt">B) The table is created with a column named condition</div><div class="opt">C) <code class="inline">ERROR 3814 (HY000): ... disallowed function</code></div><div class="opt">D) MySQL renames the column to condition_1</div></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Which of Rosa's requirements was hardest to place in your design, where did you put it, and what would break if you had put it somewhere else? (The lesson's own journal prompt comes after Session 14.)</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<p>Three questions, no notes.</p>
+<div class="q"><div class="qn">E1</div><div class="qt">Name one of Rosa's rules that must live in a procedure, and say why it cannot be a CHECK.</div><div class="write"></div></div>
+<div class="q"><div class="qn">E2</div><div class="qt">Your <code class="inline">01_schema.sql</code> ran once. What must be true for it to run a second time without an error?</div><div class="write"></div></div>
+<div class="q"><div class="qn">E3</div><div class="qt">Write one test statement that proves a CHECK on your loans table works. What should MySQL answer?</div><div class="write"></div></div>
+
+  <div class="sec"><h2>Notes</h2><span class="rule"></span></div>
+<div class="notes-lines"></div>
+
+  <div class="sec"><h2>Homework Checklist</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ Milestones 1 to 3 finished (design mapped, schema runs twice with tests, data with edge cases)</li>
+  <li>☐ Milestone 4: <code class="inline">03_queries.sql</code>, six queries, <code class="inline">@today = '2026-06-15'</code>, two hand checks written down</li>
+  <li>☐ Lab: <code class="inline">edge_cases_starter.sql</code> (four queries only edge cases can test)</li>
+  <li>☐ Optional: <code class="inline">debug_build_order.sql</code>; the self-check above</li>
+  <li>☐ Journal: the hardest requirement to place</li>
+  <li>☐ Read Milestones 5 to 7 on the lesson page; Lesson 7.2's EXIT HANDLER</li>
+  <li>☐ Bring: the tool-library folder that rebuilds everything, design notes, the rubric, a laptop with the bookstore loaded</li>
+</ul>
+
+  <div class="sec"><h2>Glossary</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>brief</td><td>The client's description of what they need, in their words; the starting point of a design</td></tr>
+<tr><td>entity</td><td>A thing with its own facts (member, tool, loan): becomes a table</td></tr>
+<tr><td>junction table</td><td>A table that links two others in a many-to-many relationship; its key is the pair of foreign keys</td></tr>
+<tr><td>business rule</td><td>A rule from the brief ("three tools at most"); it needs a home: a constraint, a foreign key or a procedure</td></tr>
+<tr><td>derived data</td><td>A value that can be computed from other data (days overdue); computed in queries, not stored</td></tr>
+<tr><td>re-runnable script</td><td>A script that rebuilds everything from scratch each time it runs (<code class="inline">DROP DATABASE IF EXISTS</code> first)</td></tr>
+<tr><td>constraint test</td><td>A statement that breaks a rule on purpose; the constraint is proven when MySQL refuses it</td></tr>
+<tr><td>edge case</td><td>Test data at the boundary (never borrowed, overdue, a tie) that exposes a broken query</td></tr>
+<tr><td>report date</td><td>A fixed date in <code class="inline">@today</code> so results can be checked; production sets it to <code class="inline">CURDATE()</code></td></tr>
+<tr><td>reserved word</td><td>A word SQL itself uses (<code class="inline">condition</code>, <code class="inline">order</code>, <code class="inline">group</code>, <code class="inline">rank</code>, <code class="inline">key</code>): not a column name</td></tr>
+</tbody>
+</table>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 13 · Participant Workbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

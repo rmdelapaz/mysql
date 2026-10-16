@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Participant Workbook: Session 4</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Student workbook —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">write in it · bring it to every session</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Participant Workbook</div>
+    <h1>Session 4: Filtering, Sorting and Limiting</h1>
+    <p class="sub">Your workbook for Session 4: a warm-up on Session 3, the key ideas of Lessons 3.1 and 3.2, worked examples, the guided labs, predict-then-run practice, a self-check for each lesson, Checkpoint 1 and your exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Lessons <b>3.1–3.2</b></span>
+      <span class="chip">Session <b>4</b> · 3 hours</span>
+      <span class="chip">Name: ____________________</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Session Goals</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Filter rows with comparisons, AND/OR/NOT and parentheses, IN, BETWEEN and LIKE.</li>
+  <li>Find missing values with IS NULL, and keep or drop the NULL rows on purpose.</li>
+  <li>Sort by several columns, expressions and custom orders, with a tie-breaker that makes the order repeatable.</li>
+  <li>Take the top N with LIMIT, page through results with OFFSET, and know when keyset pages are better.</li>
+  <li>Show what you can do with Modules 1 and 2 in Checkpoint 1.</li>
+</ul>
+
+  <div class="sec"><h2>Warm-Up: Session 3</h2><span class="rule"></span></div>
+<p>First load the Module 3 data: <code class="inline">SOURCE labs/_states/flat.sql</code>. Then five questions, four minutes, no notes.</p>
+<div class="q"><div class="qn">W1</div><div class="qt">Which type stores a book's price?</div><div class="opts"><div class="opt">A) <code class="inline">FLOAT</code></div><div class="opt">B) <code class="inline">DECIMAL(8, 2)</code></div><div class="opt">C) <code class="inline">VARCHAR(10)</code></div><div class="opt">D) <code class="inline">INT</code></div></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">An INSERT gives the NOT NULL column email the value NULL. Which error?</div><div class="opts"><div class="opt">A) <code class="inline">1364</code></div><div class="opt">B) <code class="inline">1062</code></div><div class="opt">C) <code class="inline">1048</code></div><div class="opt">D) <code class="inline">3819</code></div></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">What does the second line say after this UPDATE?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> w3 (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, price <span class="k">DECIMAL</span>(<span class="s">6</span>, <span class="s">2</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> w3 <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">9.99</span>);
+<span class="k">UPDATE</span> w3 <span class="k">SET</span> price = <span class="s">9.99</span> <span class="k">WHERE</span> id = <span class="s">1</span>;</pre><div class="opts"><div class="opt">A) <code class="inline">Rows matched: 0  Changed: 0</code></div><div class="opt">B) <code class="inline">Rows matched: 1  Changed: 1</code></div><div class="opt">C) <code class="inline">ERROR 1062</code></div><div class="opt">D) <code class="inline">Rows matched: 1  Changed: 0</code></div></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">What do you run right before an UPDATE that touches several rows?</div><div class="opts"><div class="opt">A) A SELECT with exactly the same WHERE</div><div class="opt">B) <code class="inline">SHOW TABLES;</code></div><div class="opt">C) <code class="inline">SET SQL_SAFE_UPDATES = 0;</code></div><div class="opt">D) Nothing: UPDATE can be undone</div></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">Which statement gives an existing category a NEW id?</div><div class="opts"><div class="opt">A) <code class="inline">INSERT ... AS new ON DUPLICATE KEY UPDATE ...</code></div><div class="opt">B) <code class="inline">INSERT IGNORE ...</code></div><div class="opt">C) <code class="inline">REPLACE INTO ...</code></div><div class="opt">D) <code class="inline">UPDATE ... WHERE id = 3</code></div></div></div>
+
+  <div class="sec"><h2>Lessons</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">3.1</span><h3>WHERE Clauses, Operators &amp; Filtering</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Filter rows by numbers, text and dates with the comparison operators (=, !=, &lt;, &gt;, &lt;=, &gt;=)</li>
+  <li>Combine conditions with AND, OR and NOT, and use parentheses to say exactly what you mean</li>
+  <li>Match lists, ranges and text patterns with IN, BETWEEN and LIKE</li>
+  <li>Find missing values with IS NULL and explain why = NULL finds nothing</li>
+  <li>Spot the silent filtering mistakes (missing NULL rows, AND/OR mix-ups) and fix error 1054</li>
+  <li>Save a set of reusable searches in a .sql script</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>WHERE tests every row;</b> only rows where the test is true are kept. False and unknown (NULL) are dropped.</li>
+  <li><b>Comparisons</b> <code class="inline">= != &lt; &gt; &lt;= &gt;=</code> work on numbers, dates ('YYYY-MM-DD') and text (case-insensitive with _ci collations).</li>
+  <li><b>AND narrows, OR widens, NOT flips.</b> AND is evaluated before OR: when you mix them, add parentheses.</li>
+  <li><b>IN</b> a list · <b>BETWEEN</b> an inclusive range · <b>LIKE</b> a pattern (% any characters, _ exactly one).</li>
+  <li><b>NULL is unknown:</b> test it with IS NULL / IS NOT NULL, never = NULL. <code class="inline">!=</code>, NOT IN and NOT LIKE silently drop NULL rows: add <code class="inline">OR col IS NULL</code> when you want them. Never a NULL inside NOT IN.</li>
+  <li><b>Date-and-time columns:</b> a half-open range, <code class="inline">&gt;= start AND &lt; next_start</code>.</li>
+  <li><b>Count first:</b> say how many rows you expect before you run a filter.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: a flyer list, built and broken</div>
+<p>A flyer for customers who joined in January and live in New York or Chicago, plus anyone whose city is unknown (the shop will ask them). First, every condition as a column, to see each row's answers:</p>
+<pre class="code"><span class="k">SELECT</span> first_name, city, created_at,
+       created_at &lt; <span class="s">'2026-02-01'</span>          <span class="k">AS</span> january,
+       city <span class="k">IN</span> (<span class="s">'New York'</span>, <span class="s">'Chicago'</span>)    <span class="k">AS</span> east_midwest
+<span class="k">FROM</span> customers
+<span class="k">ORDER</span> <span class="k">BY</span> id;</pre>
+<pre class="out">+------------+-------------+---------------------+---------+--------------+
+| first_name | city        | created_at          | january | east_midwest |
++------------+-------------+---------------------+---------+--------------+
+| Alice      | New York    | 2026-01-04 10:15:00 |       1 |            1 |
+| Bob        | Chicago     | 2026-01-06 14:02:00 |       1 |            1 |
+| Carol      | Los Angeles | 2026-01-09 09:40:00 |       1 |            0 |
+| Dave       | Houston     | 2026-01-12 16:25:00 |       1 |            0 |
+| Eve        | NULL        | 2026-01-20 11:08:00 |       1 |         NULL |
+| Frank      | New York    | 2026-01-27 13:30:00 |       1 |            1 |
+| Grace      | Chicago     | 2026-02-02 08:55:00 |       0 |            1 |
+| Hank       | NULL        | 2026-02-10 19:12:00 |       0 |         NULL |
++------------+-------------+---------------------+---------+--------------+</pre><p>Now the filter, with the OR in parentheses:</p>
+<pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> created_at &lt; <span class="s">'2026-02-01'</span>
+  <span class="k">AND</span> (city <span class="k">IN</span> (<span class="s">'New York'</span>, <span class="s">'Chicago'</span>) <span class="k">OR</span> city <span class="k">IS</span> <span class="k">NULL</span>)
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre>
+<pre class="out">+------------+----------+
+| first_name | city     |
++------------+----------+
+| Alice      | New York |
+| Bob        | Chicago  |
+| Eve        | NULL     |
+| Frank      | New York |
++------------+----------+</pre><p>The same conditions without the parentheses. AND runs first, so <code class="inline">OR city IS NULL</code> stands on its own and lets Hank in, although he joined in February:</p>
+<pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> created_at &lt; <span class="s">'2026-02-01'</span>
+  <span class="k">AND</span> city <span class="k">IN</span> (<span class="s">'New York'</span>, <span class="s">'Chicago'</span>) <span class="k">OR</span> city <span class="k">IS</span> <span class="k">NULL</span>
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre>
+<pre class="out">+------------+----------+
+| first_name | city     |
++------------+----------+
+| Alice      | New York |
+| Bob        | Chicago  |
+| Eve        | NULL     |
+| Frank      | New York |
+| Hank       | NULL     |
++------------+----------+</pre></div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li><code class="inline">USE bookstore;</code> (Module 3 data), then SOURCE <code class="inline">labs/module-04/l3_1-where-clauses-operators-filtering/staff_requests_starter.sql</code>. Seven Empty sets.</li>
+  <li>For each request: write how many rows you expect, then replace FALSE with the condition.</li>
+</ul>
+<table class="timing">
+<thead><tr><th>Request</th><th>Rows I expect</th><th>Rows I got</th></tr></thead>
+<tbody>
+<tr><td>1</td><td></td><td></td></tr>
+<tr><td>2</td><td></td><td></td></tr>
+<tr><td>3</td><td></td><td></td></tr>
+<tr><td>4</td><td></td><td></td></tr>
+<tr><td>5</td><td></td><td></td></tr>
+<tr><td>6</td><td></td><td></td></tr>
+<tr><td>7</td><td></td><td></td></tr>
+</tbody>
+</table>
+<ul class="tick">
+  <li>Finished early? <code class="inline">null_detective_starter.sql</code>, then <code class="inline">debug_filters.sql</code>.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction first (a row count at least), then run it inside bookstore with the Module 3 data.</p>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it. (Two cities left out of eight customers.)</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> n
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="s">'Chicago'</span>, <span class="s">'Houston'</span>);</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it. (Two o's somewhere in the title.)</div><pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> title <span class="k">LIKE</span> <span class="s">'%o%o%'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> title;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>Saved Searches</b> (lesson page). In class: Steps 1 to 3. At home: Steps 4 to 7.</p>
+<ul class="tick">
+  <li>☐ Steps 1 to 3: gift ideas, long reads, mid-century shelf</li>
+  <li>☐ Steps 4 to 6: title search, follow-up list (IS NULL), flyer (half-open range)</li>
+  <li>☐ Step 7: SOURCE the whole file</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Two of the 8 customers live in Chicago and two have no city. How many rows does this return?</div><pre class="code"><span class="k">SELECT</span> * <span class="k">FROM</span> customers <span class="k">WHERE</span> city != <span class="s">'Chicago'</span>;</pre><div class="opts"><div class="opt">A) 6</div><div class="opt">B) 4</div><div class="opt">C) 8</div><div class="opt">D) 0</div></div></div>
+<div class="q" data-sc="2" data-kind="short"><div class="qn">Q2</div><div class="qt">On the Module 3 data, what does this print?</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> n
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price <span class="k">BETWEEN</span> <span class="s">8.99</span> <span class="k">AND</span> <span class="s">9.99</span>;</pre><div class="write"></div></div>
+<div class="q" data-sc="3"><div class="qn">Q3</div><div class="qt">Which WHERE keeps every book NOT written by Tolkien or Orwell?</div><div class="opts"><div class="opt">A) <code class="inline">WHERE author NOT IN ('J.R.R. Tolkien', 'George Orwell')</code></div><div class="opt">B) <code class="inline">WHERE author != 'J.R.R. Tolkien' OR author != 'George Orwell'</code></div><div class="opt">C) <code class="inline">WHERE NOT author = 'J.R.R. Tolkien' OR 'George Orwell'</code></div><div class="opt">D) <code class="inline">WHERE author NOT LIKE 'Tolkien, Orwell'</code></div></div></div>
+<div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">created_at is a DATETIME. Which WHERE finds the customers who signed up on January 27, 2026 (Frank, at 13:30)?</div><div class="opts"><div class="opt">A) <code class="inline">WHERE created_at = '2026-01-27'</code></div><div class="opt">B) <code class="inline">WHERE created_at BETWEEN '2026-01-27' AND '2026-01-27'</code></div><div class="opt">C) <code class="inline">WHERE created_at &gt;= '2026-01-27' AND created_at &lt; '2026-01-28'</code></div><div class="opt">D) <code class="inline">WHERE created_at LIKE 2026-01-27</code></div></div></div>
+<div class="q" data-sc="5" data-kind="short"><div class="qn">Q5</div><div class="qt">Which first names does this return, in order?</div><pre class="code"><span class="k">SELECT</span> first_name
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'New York'</span> <span class="k">OR</span> city = <span class="s">'Chicago'</span> <span class="k">AND</span> first_name <span class="k">LIKE</span> <span class="s">'G%'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre><div class="write"></div></div>
+<div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt">Which of these returns no rows at all?</div><div class="opts"><div class="opt">A) <code class="inline">WHERE city IS NULL</code></div><div class="opt">B) <code class="inline">WHERE city &lt;=&gt; NULL</code></div><div class="opt">C) <code class="inline">WHERE city LIKE '%o%'</code></div><div class="opt">D) <code class="inline">WHERE city NOT IN ('Reno', NULL)</code></div></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Four of this lesson's mistakes return wrong rows with no error at all. Write down how you would notice each one if nobody told you, for example by counting the rows you expect before you run the query. What habit will you build so a silent mistake does not slip into a report?</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">3.2</span><h3>Sorting &amp; Limiting Results</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Sort results with ORDER BY on one or more columns or expressions, each ascending or descending</li>
+  <li>Predict where NULL values land in a sort and move them to the end</li>
+  <li>Take the top N rows with LIMIT, and add a tie-breaker so the result is always the same</li>
+  <li>Split a result into pages with LIMIT ... OFFSET, and explain when keyset pagination is better</li>
+  <li>Read and fix the errors MySQL raises for misplaced or malformed ORDER BY and LIMIT clauses</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>A table has no order:</b> without ORDER BY, row order is not guaranteed.</li>
+  <li><b>ORDER BY</b> is ascending by default; DESC belongs only to the column before it. Extra columns break ties.</li>
+  <li><b>Sort by expressions, aliases and CASE ranks;</b> avoid column numbers in saved queries.</li>
+  <li><b>NULLs</b> sort first ascending, last descending; <code class="inline">ORDER BY col IS NULL, col</code> puts them last (MySQL has no NULLS LAST).</li>
+  <li><b>LIMIT n OFFSET m</b> skips m rows and keeps n; it runs last. Page N = OFFSET (N - 1) × size, computed before the query.</li>
+  <li><b>Every ORDER BY that feeds a LIMIT ends with a unique column.</b> Count pages with a separate COUNT(*).</li>
+  <li><b>Keyset pagination</b> (<code class="inline">WHERE id &gt; last_seen ORDER BY id LIMIT n</code>) stays fast on huge tables.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: pages of recent books, two ways</div>
+<p>"Recently published" in pages of three, newest first, with id as the tie-breaker. Page 1:</p>
+<pre class="code"><span class="k">SELECT</span> title, published
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> published <span class="k">DESC</span>, id
+<span class="k">LIMIT</span> <span class="s">3</span>;</pre>
+<pre class="out">+-----------------------+------------+
+| title                 | published  |
++-----------------------+------------+
+| Dune                  | 1965-08-01 |
+| To Kill a Mockingbird | 1960-07-11 |
+| Lord of the Rings     | 1954-07-29 |
++-----------------------+------------+</pre><p>Page 2 the keyset way: the rows published before the last one we showed (Lord of the Rings, 1954-07-29):</p>
+<pre class="code"><span class="k">SELECT</span> title, published
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> published &lt; <span class="s">'1954-07-29'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> published <span class="k">DESC</span>, id
+<span class="k">LIMIT</span> <span class="s">3</span>;</pre>
+<pre class="out">+------------------------+------------+
+| title                  | published  |
++------------------------+------------+
+| Fahrenheit 451         | 1953-10-19 |
+| The Catcher in the Rye | 1951-07-16 |
+| 1984                   | 1949-06-08 |
++------------------------+------------+</pre><p>And the OFFSET way. Same rows; the keyset version stays fast however deep the pages go:</p>
+<pre class="code"><span class="k">SELECT</span> title, published
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> published <span class="k">DESC</span>, id
+<span class="k">LIMIT</span> <span class="s">3</span> <span class="k">OFFSET</span> <span class="s">3</span>;</pre>
+<pre class="out">+------------------------+------------+
+| title                  | published  |
++------------------------+------------+
+| Fahrenheit 451         | 1953-10-19 |
+| The Catcher in the Rye | 1951-07-16 |
+| 1984                   | 1949-06-08 |
++------------------------+------------+</pre></div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>SOURCE <code class="inline">labs/module-04/l3_2-sorting-limiting-results/bestseller_board_starter.sql</code>. Every list is in id order.</li>
+  <li>Replace each <code class="inline">ORDER BY id</code> with the order the comment asks for. Could two rows tie? Add a tie-breaker.</li>
+  <li>Finished early? <code class="inline">paging_starter.sql</code>, then <code class="inline">debug_sorting.sql</code>.</li>
+</ul>
+<div class="write"></div>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction first (a row count at least), then run it inside bookstore with the Module 3 data.</p>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it. (Z to A, then three rows.)</div><pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">ORDER</span> <span class="k">BY</span> city <span class="k">DESC</span>, first_name
+<span class="k">LIMIT</span> <span class="s">3</span>;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it. (Shortest first, skip eight.)</div><pre class="code"><span class="k">SELECT</span> title, pages
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> pages
+<span class="k">LIMIT</span> <span class="s">2</span> <span class="k">OFFSET</span> <span class="s">8</span>;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>The Storefront Queries</b> (lesson page). In class: Steps 1 and 2. At home: Steps 3 to 6.</p>
+<ul class="tick">
+  <li>☐ Steps 1 and 2: new and notable (with a tie-breaker), bargain shelf</li>
+  <li>☐ Steps 3 and 4: catalog pages 1 to 3 and the page count</li>
+  <li>☐ Step 5: customer directory, missing cities last</li>
+  <li>☐ Step 6: run it; every LIMIT has an ORDER BY that cannot tie</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">What does <code class="inline">ORDER BY in_stock, price DESC</code> do?</div><div class="opts"><div class="opt">A) in_stock ascending (0 first), then price descending within each group</div><div class="opt">B) Both columns descending</div><div class="opt">C) <code class="inline">ERROR 1064</code>: DESC must come after every column</div><div class="opt">D) price first, then in_stock</div></div></div>
+<div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">What does this print?</div><pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> pages <span class="k">DESC</span>
+<span class="k">LIMIT</span> <span class="s">1</span> <span class="k">OFFSET</span> <span class="s">2</span>;</pre><div class="write"></div></div>
+<div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">What happens with <code class="inline">'price'</code> in quotes: <code class="inline">ORDER BY 'price' DESC LIMIT 3</code>?</div><div class="opts"><div class="opt">A) The three most expensive books, as intended</div><div class="opt">B) <code class="inline">ERROR 1054</code>: Unknown column</div><div class="opt">C) No error, but the rows come in no particular order: 'price' is a fixed piece of text</div><div class="opt">D) The rows are sorted alphabetically by title</div></div></div>
+<div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">Where do Eve and Hank (no city) appear with <code class="inline">ORDER BY city DESC, first_name</code>?</div><div class="opts"><div class="opt">A) First</div><div class="opt">B) They are left out</div><div class="opt">C) <code class="inline">ERROR 1064</code></div><div class="opt">D) Last</div></div></div>
+<div class="q" data-sc="11"><div class="qn">Q11</div><div class="qt">A list sorted by id shows 20 rows per page, and page 1 ended at id 57. Which query gets the next page fast, even on a huge table?</div><div class="opts"><div class="opt">A) <code class="inline">... ORDER BY id LIMIT 20 OFFSET 57</code></div><div class="opt">B) <code class="inline">... WHERE id &gt; 57 ORDER BY id LIMIT 20</code></div><div class="opt">C) <code class="inline">... WHERE id &gt;= 57 LIMIT 20</code></div><div class="opt">D) <code class="inline">... ORDER BY id LIMIT 57, 20</code></div></div></div>
+<div class="q" data-sc="12" data-kind="short"><div class="qn">Q12</div><div class="qt">With 3 books per page, how many pages? What does this print?</div><pre class="code"><span class="k">SELECT</span> CEILING(COUNT(*) / <span class="s">3</span>) <span class="k">AS</span> pages <span class="k">FROM</span> books;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Think of a website or app you use every day (a shop, a news feed, your email). Describe one of its lists as SQL in plain words: what is it sorted by, what breaks ties, how many rows per page, and does it look like OFFSET pages or "load more" keyset pages? What would go wrong for users if it had no tie-breaker?</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Checkpoint 1: Modules 1 and 2</h2><span class="rule"></span></div>
+<p>30 minutes, open notes (this workbook, your scripts, the lesson pages), on your own. Parts A to C go into <code class="inline">labs/module-04/checkpoint-1/checkpoint_starter.sql</code>; SOURCE it after each part. Part D is answered on this page.</p>
+<p><b>The task.</b> The bookstore is opening a used-book trade-in desk: people bring books, the desk makes an offer, and pays later.</p>
+<div class="blk"><div class="h">Part A · Build (rerunnable)</div>
+<ul class="tick">
+  <li>The file already drops and creates <code class="inline">kit_cp1_tradein</code> with utf8mb4 and utf8mb4_unicode_ci, and USEs it.</li>
+  <li><b>sellers:</b> an id MySQL numbers; a name (up to 80 characters, required); an email (up to 100, required, never shared by two sellers); a city (up to 50, may be unknown).</li>
+  <li><b>trade_ins:</b> an id MySQL numbers; <code class="inline">seller_id</code> (a whole number, required); a title (up to 200, required); <code class="inline">book_condition</code>: like new, good or worn, good unless given; an offer (money, required, from 0.50 to 20.00, enforced by a CHECK named <code class="inline">chk_offer</code>); <code class="inline">received</code> (a date, required); <code class="inline">paid</code> (yes/no, no unless given).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Part B · Fill and change</div>
+<table class="timing">
+<thead><tr><th>name</th><th>email</th><th>city</th></tr></thead>
+<tbody>
+<tr><td>Mo Rahman</td><td>mo@example.com</td><td>Reno</td></tr>
+<tr><td>Ivy Chen</td><td>ivy@example.com</td><td>(unknown)</td></tr>
+<tr><td>Sam Okoro</td><td>sam@example.com</td><td>Sparks</td></tr>
+</tbody>
+</table>
+<table class="timing">
+<thead><tr><th>seller_id</th><th>title</th><th>condition</th><th>offer</th><th>received</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Dune</td><td>good</td><td>4.00</td><td>2026-05-01</td></tr>
+<tr><td>1</td><td>Emma</td><td>worn</td><td>1.50</td><td>2026-05-01</td></tr>
+<tr><td>2</td><td>The Hobbit</td><td>like new</td><td>6.00</td><td>2026-05-03</td></tr>
+<tr><td>3</td><td>1984</td><td>good</td><td>3.50</td><td>2026-05-04</td></tr>
+<tr><td>3</td><td>Dracula</td><td>worn</td><td>1.00</td><td>2026-05-04</td></tr>
+</tbody>
+</table>
+<ol class="steps">
+  <li>B1 and B2: insert the sellers and the trade-ins above (one INSERT each; leave <code class="inline">paid</code> out).</li>
+  <li>B3: Dune's offer (trade-in 1) goes up by one dollar.</li>
+  <li>B4: Mo (seller 1) is paid for all his books: preview, update, then show how many rows changed.</li>
+  <li>B5: Dracula (trade-in 5) was turned down: remove it.</li>
+  <li>B6: Ivy sends her details again (Ivy Chen, ivy@example.com, Henderson): ONE statement that inserts her, or updates her city if her email is already there.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Part C · Read</div>
+<ol class="steps">
+  <li>C1: every trade-in by id: id, title, condition, offer, a column <code class="inline">store_credit</code> (the offer plus 10%, rounded to cents) and paid.</li>
+  <li>C2: the conditions that occur, each once.</li>
+  <li>C3: the sellers by id: id, name, city.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Part D · On paper: what does MySQL answer, and why?</div>
+<p>Each statement below is run after your finished Parts A and B. Write the error number, the rule it protects, and a fix.</p>
+<div class="q"><div class="qn">D1</div><div class="qt">The desk offers 25.00 for a rare copy of Emma.</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> trade_ins (seller_id, title, offer, received)
+<span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Emma'</span>, <span class="s">25.00</span>, <span class="s">'2026-05-02'</span>);</pre><div class="write"></div></div>
+<div class="q"><div class="qn">D2</div><div class="qt">Mo comes back with a new name on his card, same email.</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> sellers (name, email)
+<span class="k">VALUES</span> (<span class="s">'Mo R.'</span>, <span class="s">'mo@example.com'</span>);</pre><div class="write"></div></div>
+<div class="q"><div class="qn">D3</div><div class="qt">Ivy's Emma is in "mint" condition.</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> trade_ins (seller_id, title, book_condition, offer, received)
+<span class="k">VALUES</span> (<span class="s">2</span>, <span class="s">'Emma'</span>, <span class="s">'mint'</span>, <span class="s">3.00</span>, <span class="s">'2026-05-02'</span>);</pre><div class="write"></div></div>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<p>Three questions, no notes.</p>
+<div class="q"><div class="qn">E1</div><div class="qt">Why does <code class="inline">WHERE city != 'Chicago'</code> skip Eve and Hank, and how do you include them?</div><div class="write"></div></div>
+<div class="q"><div class="qn">E2</div><div class="qt">Write the WHERE clause for: books from $9 to $11, both ends included, that are not by Tolkien.</div><div class="write"></div></div>
+<div class="q"><div class="qn">E3</div><div class="qt">Why should every ORDER BY that feeds a LIMIT end with a unique column?</div><div class="write"></div></div>
+
+  <div class="sec"><h2>Notes</h2><span class="rule"></span></div>
+<div class="notes-lines"></div>
+
+  <div class="sec"><h2>Homework Checklist</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ saved_searches.sql Steps 4 to 7</li>
+  <li>☐ storefront.sql Steps 3 to 6</li>
+  <li>☐ Lesson 3.1 Hands-on Exercises 1 to 3 (Exercise 4 is a stretch)</li>
+  <li>☐ Lesson 3.2 Hands-on Exercises 1 to 3 (Exercise 4 is a stretch)</li>
+  <li>☐ Both Quick Quizzes; both journal entries</li>
+  <li>☐ Optional: <code class="inline">null_detective_starter.sql</code>, <code class="inline">paging_starter.sql</code>, the two debug files</li>
+  <li>☐ Bring to Session 5: bookstore with the Module 3 data, my two scripts, this workbook</li>
+</ul>
+
+  <div class="sec"><h2>Glossary</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>WHERE</td><td>A test run on every row; only rows where it is true are kept</td></tr>
+<tr><td>three-valued logic</td><td>A condition is true, false or unknown (NULL); unknown is dropped</td></tr>
+<tr><td>IN / BETWEEN / LIKE</td><td>A list / an inclusive range / a pattern (% any characters, _ one)</td></tr>
+<tr><td>IS NULL</td><td>The only correct test for a missing value</td></tr>
+<tr><td>&lt;=&gt;</td><td>MySQL's NULL-safe equals: two NULLs count as equal</td></tr>
+<tr><td>half-open range</td><td><code class="inline">&gt;= start AND &lt; next_start</code>: never misses or double-counts a timestamp</td></tr>
+<tr><td>precedence</td><td>The order operators are evaluated: comparisons, NOT, AND, then OR</td></tr>
+<tr><td>sort key / tie-breaker</td><td>A column in ORDER BY / an extra, unique one that decides ties</td></tr>
+<tr><td>LIMIT / OFFSET</td><td>How many rows to keep / how many to skip first</td></tr>
+<tr><td>keyset pagination</td><td>Ask for the rows after the last one seen (<code class="inline">WHERE id &gt; 57</code>) instead of skipping</td></tr>
+</tbody>
+</table>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 4 · Participant Workbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

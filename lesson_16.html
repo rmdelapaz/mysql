@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn database design principles and normalization — First, Second, and Third Normal Form (1NF, 2NF, 3NF) — to build efficient, duplication-free schemas from scratch.">
-    <meta name="author" content="Ray De La Paz">
+    <meta name="description" content="Design MySQL tables that stay correct: spot update, insert and delete anomalies, reason with functional dependencies, normalize a flat table to 1NF, 2NF and 3NF, prove the split loses nothing, read ER diagrams, and know when to denormalize. MySQL Foundations Lesson 6.3.">
+    <meta name="author" content="Ray de la Paz">
     <title>Database Design &amp; Normalization - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -42,32 +42,35 @@
     <nav class="breadcrumb" aria-label="Breadcrumb">
         <ul>
             <li><a href="index.html">Home</a></li>
-            <li><a href="index.html#modules">Module 5: Database Design</a></li>
-            <li aria-current="page">Lesson 16: Database Design &amp; Normalization</li>
+            <li><a href="index.html#modules">Module 6: Database Design</a></li>
+            <li aria-current="page">Lesson 6.3: Database Design &amp; Normalization</li>
         </ul>
     </nav>
 
     <main id="main-content">
         <div class="container">
             <header>
-                <h1>🏗️ Lesson 16: Database Design &amp; Normalization</h1>
-                <p class="lead">You've learned to create tables, define relationships, write JOINs, optimize with indexes, and simplify with views. But how do you design the tables <em>correctly</em> in the first place? A poorly designed schema leads to duplicated data, update headaches, and mysterious bugs. Normalization is the systematic process of organizing tables so that data is stored once, in the right place, with clear relationships. It's the difference between a database that <em>works</em> and one that works <em>well</em>.</p>
+                <h1>🏗️ Lesson 6.3: Database Design &amp; Normalization</h1>
+                <p class="lead">Why is the bookstore split into customers, orders, order items, books and authors, instead of one big sheet with everything on it? Because one big sheet quietly corrupts itself: the same email stored twice drifts apart, a customer cannot exist without an order, deleting an order deletes a person. Normalization is the step-by-step method for splitting data so that each fact is stored once, in the right place. In this lesson you do it for real, on a flat order sheet, and prove that the split loses nothing.</p>
 
                 <div class="card card-info">
                     <h2>🎯 Learning Objectives</h2>
                     <p>By the end of this lesson, you will be able to:</p>
                     <ul>
-                        <li>Identify the problems caused by poorly designed tables</li>
-                        <li>Apply First Normal Form (1NF) to eliminate repeating groups</li>
-                        <li>Apply Second Normal Form (2NF) to remove partial dependencies</li>
-                        <li>Apply Third Normal Form (3NF) to remove transitive dependencies</li>
-                        <li>Read and create Entity-Relationship (ER) diagrams</li>
-                        <li>Design a normalized schema from requirements</li>
-                        <li>Know when denormalization is the right trade-off</li>
+                        <li>Recognize update, insert and delete anomalies, and show each one with a query</li>
+                        <li>Find the functional dependencies and the key of a table</li>
+                        <li>Normalize a flat table to first, second and third normal form (1NF, 2NF, 3NF)</li>
+                        <li>Build the normalized tables with <code>INSERT ... SELECT DISTINCT</code> and prove with <code>EXCEPT</code> that no data was lost</li>
+                        <li>Read an ER diagram, and decide when storing derived or duplicated data is worth the risk</li>
                     </ul>
-                    <p><strong>Estimated Time:</strong> 50 minutes</p>
-                    <p><strong>Prerequisites:</strong> Views (<a href="lesson_15.html">Lesson 15</a>)</p>
                 </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 105 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_15.html">Lesson 6.2: Views</a></li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>book_club.sql</code>: a messy book-club sign-up sheet turned into four normalized tables, with a proof that nothing was lost</li>
+                    <li><span class="meta-label">🗄️ Database</span> a new practice database, <code>normalize_lab</code>, created in this lesson; <code>bookstore</code> (from <a href="assets/sql/bookstore.sql" download>bookstore.sql</a>) is used as the finished example and is not changed</li>
+                </ul>
             </header>
 
             <details class="card toc-card" open>
@@ -79,910 +82,1124 @@
                 <nav aria-label="Table of Contents">
                     <ol>
                         <li><a href="#why-design" class="toc-link">Why Design Matters</a></li>
-                        <li><a href="#bad-table" class="toc-link">The Problem: A Badly Designed Table</a></li>
-                        <li><a href="#anomalies" class="toc-link">Update, Insert, &amp; Delete Anomalies</a></li>
-                        <li><a href="#1nf" class="toc-link">First Normal Form (1NF)</a></li>
-                        <li><a href="#functional-deps" class="toc-link">Functional Dependencies</a></li>
-                        <li><a href="#2nf" class="toc-link">Second Normal Form (2NF)</a></li>
-                        <li><a href="#3nf" class="toc-link">Third Normal Form (3NF)</a></li>
-                        <li><a href="#normalization-summary" class="toc-link">Normalization at a Glance</a></li>
-                        <li><a href="#er-diagrams" class="toc-link">Entity-Relationship Diagrams</a></li>
-                        <li><a href="#design-walkthrough" class="toc-link">Design Walkthrough: From Requirements to Tables</a></li>
-                        <li><a href="#denormalization" class="toc-link">When to Denormalize</a></li>
-                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
-                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                        <li><a href="#flat-table" class="toc-link">The Problem: One Big Sheet</a></li>
+                        <li><a href="#anomalies" class="toc-link">Update, Insert and Delete Anomalies</a></li>
+                        <li><a href="#first-nf" class="toc-link">First Normal Form: One Value per Cell</a></li>
+                        <li><a href="#dependencies" class="toc-link">Functional Dependencies and Keys</a></li>
+                        <li><a href="#second-nf" class="toc-link">Second Normal Form: The Whole Key</a></li>
+                        <li><a href="#third-nf" class="toc-link">Third Normal Form: Nothing but the Key</a></li>
+                        <li><a href="#build" class="toc-link">Building and Checking the Normalized Tables</a></li>
+                        <li><a href="#er-diagrams" class="toc-link">ER Diagrams</a></li>
+                        <li><a href="#design-process" class="toc-link">From Requirements to Tables</a></li>
+                        <li><a href="#denormalize" class="toc-link">When to Denormalize</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: Normalize the Book Club Sheet</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
                     </ol>
                 </nav>
             </details>
 
-            <!-- Section 1: Why Design Matters -->
             <section id="why-design" class="lesson-section">
-                <h2>Why Design Matters</h2>
-                <p>Imagine a spreadsheet where one column is "Customer Name," another is "Customer Email," another is "Customer Phone" — and these same values are repeated on every single order row. Change a customer's email? You'd have to update it in 50 different rows. Miss one, and now you have two conflicting emails for the same person.</p>
-
-                <p>That's what happens in an <strong>unnormalized</strong> database. Normalization fixes these problems by organizing data into well-structured tables where each fact is stored <strong>exactly once</strong>.</p>
+                <h2>🧭 Why Design Matters</h2>
+                <p>Picture the bookstore's first year, run from a spreadsheet: one row per order, with the customer's name, email and city typed on every row, and the books squeezed into one cell. It works until Alice changes her email and someone updates three of her eleven rows. Now the store has two emails for Alice, and no query can tell which one is right.</p>
+                <p>A database cannot stop people from typing wrong values, but a good design can make sure each fact is typed <strong>once</strong>. Then there is nothing to keep in sync. <strong>Normalization</strong> is the classic method for getting there, defined as a series of <strong>normal forms</strong>, each removing one kind of duplication.</p>
 
                 <div class="mermaid">
-                    graph LR
-                        subgraph bad["❌ Unnormalized"]
-                            B["Everything in one giant table<br/>→ Duplicated data everywhere"]
-                        end
-                        subgraph good["✅ Normalized"]
-                            G1["customers"]
-                            G2["orders"]
-                            G3["books"]
-                            G1 --- G2
-                            G2 --- G3
-                        end
-                        bad -->|"Normalization"| good
+graph TD
+    A["one big sheet"] --> B["the same fact on many rows"]
+    B --> C["copies drift apart"]
+    A --> D["normalize"]
+    D --> E["each fact stored once"]
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 Follow along in a practice database</h4>
+                    <p>This lesson builds its own small tables in a new database, <code>normalize_lab</code>, so you can break things freely without touching <code>bookstore</code>. If your <code>bookstore</code> was changed by earlier lessons, it does not matter today. When you are done you can delete the whole lab with <code>DROP DATABASE normalize_lab;</code>.</p>
                 </div>
             </section>
 
-            <!-- Section 2: A Badly Designed Table -->
-            <section id="bad-table" class="lesson-section">
-                <h2>The Problem: A Badly Designed Table</h2>
-                <p>Let's start with a table that stores <em>everything</em> about orders in one flat structure — the kind of thing you might see in a spreadsheet export:</p>
+            <section id="flat-table" class="lesson-section">
+                <h2>📄 The Problem: One Big Sheet</h2>
+                <p>Here are five of the bookstore's real orders as that first-year spreadsheet would hold them, imported into one table:</p>
+                <pre><code class="language-sql">CREATE DATABASE normalize_lab CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE normalize_lab;
 
-                <h3>The "Everything" Table</h3>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>order_id</th>
-                                <th>order_date</th>
-                                <th>cust_name</th>
-                                <th>cust_email</th>
-                                <th>cust_city</th>
-                                <th>book_titles</th>
-                                <th>book_prices</th>
-                                <th>quantities</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>1</td>
-                                <td>2026-01-15</td>
-                                <td>Alice Johnson</td>
-                                <td>alice@example.com</td>
-                                <td>Las Vegas</td>
-                                <td>Dune, 1984</td>
-                                <td>14.99, 9.99</td>
-                                <td>1, 2</td>
-                            </tr>
-                            <tr>
-                                <td>2</td>
-                                <td>2026-02-20</td>
-                                <td>Alice Johnson</td>
-                                <td>alice@example.com</td>
-                                <td>Las Vegas</td>
-                                <td>Pride and Prejudice</td>
-                                <td>7.99</td>
-                                <td>1</td>
-                            </tr>
-                            <tr>
-                                <td>3</td>
-                                <td>2026-03-10</td>
-                                <td>Bob Smith</td>
-                                <td>bob@example.com</td>
-                                <td>Denver</td>
-                                <td>Dune</td>
-                                <td>14.99</td>
-                                <td>1</td>
-                            </tr>
-                        </tbody>
-                    </table>
+CREATE TABLE order_sheet (
+    order_id     INT PRIMARY KEY,
+    order_date   DATE NOT NULL,
+    cust_name    VARCHAR(100) NOT NULL,
+    cust_email   VARCHAR(100) NOT NULL,
+    cust_city    VARCHAR(50),
+    book_titles  VARCHAR(255) NOT NULL,
+    book_prices  VARCHAR(100) NOT NULL,
+    quantities   VARCHAR(50)  NOT NULL,
+    order_total  DECIMAL(8, 2) NOT NULL
+);
+
+INSERT INTO order_sheet VALUES
+    (1, '2026-01-15', 'Alice Johnson', 'alice@example.com', 'New York', 'Dune, 1984', '14.99, 9.99', '1, 2', 34.97),
+    (2, '2026-02-20', 'Alice Johnson', 'alice@example.com', 'New York', 'Pride and Prejudice', '7.99', '1', 7.99),
+    (3, '2026-03-10', 'Bob Smith', 'bob@example.com', 'Chicago', 'Dune', '14.99', '1', 14.99),
+    (4, '2026-01-22', 'Dave Brown', 'dave@example.com', 'Houston', 'The Hobbit, Lord of the Rings', '10.99, 15.99', '1, 1', 26.98),
+    (7, '2026-03-28', 'Bob Smith', 'bob@example.com', 'Chicago', '1984, Animal Farm', '9.99, 8.49', '1, 1', 18.48);
+
+SELECT order_id, cust_name, cust_email, book_titles, quantities, order_total
+FROM order_sheet
+ORDER BY order_id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Database changed
++----------+---------------+-------------------+-------------------------------+------------+-------------+
+| order_id | cust_name     | cust_email        | book_titles                   | quantities | order_total |
++----------+---------------+-------------------+-------------------------------+------------+-------------+
+|        1 | Alice Johnson | alice@example.com | Dune, 1984                    | 1, 2       |       34.97 |
+|        2 | Alice Johnson | alice@example.com | Pride and Prejudice           | 1          |        7.99 |
+|        3 | Bob Smith     | bob@example.com   | Dune                          | 1          |       14.99 |
+|        4 | Dave Brown    | dave@example.com  | The Hobbit, Lord of the Rings | 1, 1       |       26.98 |
+|        7 | Bob Smith     | bob@example.com   | 1984, Animal Farm             | 1, 1       |       18.48 |
++----------+---------------+-------------------+-------------------------------+------------+-------------+</code></pre>
                 </div>
-
-                <p>At first glance it looks fine. But look closer — there are serious problems hiding in this design.</p>
+                <p>It looks tidy. Now ask it a simple question: how many copies of <em>1984</em> did the store sell? The answer (3) is in there, spread over two cells of comma-separated text, and no aggregate can add up "the second number in a list". The best SQL can do is find the rows that mention the title somewhere:</p>
+                <pre><code class="language-sql">SELECT order_id, book_titles, quantities
+FROM order_sheet
+WHERE book_titles LIKE '%1984%'
+ORDER BY order_id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------+-------------------+------------+
+| order_id | book_titles       | quantities |
++----------+-------------------+------------+
+|        1 | Dune, 1984        | 1, 2       |
+|        7 | 1984, Animal Farm | 1, 1       |
++----------+-------------------+------------+</code></pre>
+                </div>
+                <p>You would now have to work out by hand which quantity belongs to <em>1984</em> on each row. And <code>LIKE '%Dune%'</code> would also match a later book called "Dune Messiah". The sheet holds the data but hides it from SQL.</p>
             </section>
 
-            <!-- Section 3: Anomalies -->
             <section id="anomalies" class="lesson-section">
-                <h2>Update, Insert, &amp; Delete Anomalies</h2>
-                <p>The "everything" table suffers from three classic problems:</p>
+                <h2>💥 Update, Insert and Delete Anomalies</h2>
+                <p>Mixing several kinds of facts in one table (facts about customers, about books, about orders) causes three classic problems, called <strong>anomalies</strong>. Each one is easy to show.</p>
 
-                <h3>1. Update Anomaly</h3>
-                <p>Alice's email appears in <strong>both rows</strong>. If she changes her email, you must update every single row containing her data. Miss one? Now you have two different emails for the same customer. Which is correct?</p>
+                <h3>1. Update anomaly: copies drift apart</h3>
+                <p>Alice's email is stored on two rows. Someone updates the one in front of them (inside a transaction, so you can undo it):</p>
+                <pre><code class="language-sql">START TRANSACTION;
 
-                <div class="card card-warning">
-                    <h4>⚠️ The Real Danger</h4>
-                    <p>With 1,000 orders from Alice, you'd need to update 1,000 rows — and they must all succeed. One failure creates an inconsistency that's hard to detect and harder to fix.</p>
+UPDATE order_sheet SET cust_email = 'alice.j@example.com' WHERE order_id = 2;
+
+SELECT DISTINCT cust_name, cust_email
+FROM order_sheet
+WHERE cust_name = 'Alice Johnson';
+
+ROLLBACK;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------+---------------------+
+| cust_name     | cust_email          |
++---------------+---------------------+
+| Alice Johnson | alice@example.com   |
+| Alice Johnson | alice.j@example.com |
++---------------+---------------------+</code></pre>
                 </div>
+                <p>No error, and now the table holds two emails for one person. Which one gets the receipt? The database cannot know: a fact stored twice can disagree with itself.</p>
 
-                <h3>2. Insert Anomaly</h3>
-                <p>You want to add a new customer (Carol) who hasn't placed an order yet. But every row requires an <code>order_id</code> and <code>order_date</code>. You can't add a customer without faking an order — or leaving required fields NULL.</p>
-
-                <h3>3. Delete Anomaly</h3>
-                <p>If you delete Bob's only order (order 3), you lose <em>all</em> information about Bob — his name, email, and city are gone. Deleting an order shouldn't erase a customer.</p>
-
-                <div class="mermaid">
-                    graph TD
-                        A["One Big Table"] --> B["Update Anomaly<br/>Change email in 50 rows?"]
-                        A --> C["Insert Anomaly<br/>Can't add customer without order"]
-                        A --> D["Delete Anomaly<br/>Deleting order erases customer"]
-                        B --> E["Solution: Normalization"]
-                        C --> E
-                        D --> E
+                <h3>2. Insert anomaly: a customer needs an order</h3>
+                <p>Carol Williams signs up for the newsletter but has not ordered yet. There is nowhere to put her:</p>
+                <pre data-raises="ERROR 1364"><code class="language-sql">INSERT INTO order_sheet (cust_name, cust_email, cust_city)
+VALUES ('Carol Williams', 'carol@example.com', 'Los Angeles');</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1364 (HY000): Field 'order_id' doesn't have a default value</code></pre>
                 </div>
+                <p>Every row is an order, so every row needs an order id, a date and books. The only ways around it are inventing a fake order or making those columns nullable, and both make the data lie.</p>
 
-                <p>These problems exist because <strong>different facts are mixed together</strong> in one table. Customer data, order data, and book data should live in separate tables. That's what normalization achieves.</p>
-            </section>
+                <h3>3. Delete anomaly: deleting an order deletes a person</h3>
+                <pre><code class="language-sql">START TRANSACTION;
 
-            <!-- Section 4: 1NF -->
-            <section id="1nf" class="lesson-section">
-                <h2>First Normal Form (1NF)</h2>
+DELETE FROM order_sheet WHERE order_id = 4;
+
+SELECT COUNT(*) AS rows_about_dave
+FROM order_sheet
+WHERE cust_name = 'Dave Brown';
+
+ROLLBACK;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------+
+| rows_about_dave |
++-----------------+
+|               0 |
++-----------------+</code></pre>
+                </div>
+                <p>Order 4 was Dave's only order in this sheet. Cancel it, and the store forgets Dave's email and city too, along with the fact that <em>Lord of the Rings</em> costs 15.99.</p>
 
                 <div class="card card-accent">
-                    <h3>📜 1NF Rule</h3>
-                    <p>A table is in <strong>First Normal Form</strong> if:</p>
-                    <ul>
-                        <li>Every column contains only <strong>atomic</strong> (single, indivisible) values</li>
-                        <li>There are no repeating groups or arrays in a single cell</li>
-                        <li>Each row is unique (has a primary key)</li>
-                    </ul>
-                </div>
-
-                <h3>The Violation</h3>
-                <p>Look at our "everything" table — the <code>book_titles</code>, <code>book_prices</code>, and <code>quantities</code> columns contain <strong>comma-separated lists</strong>:</p>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr><th>order_id</th><th>book_titles</th><th>book_prices</th><th>quantities</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>1</td><td><span style="color: var(--color-danger);">Dune, 1984</span></td><td><span style="color: var(--color-danger);">14.99, 9.99</span></td><td><span style="color: var(--color-danger);">1, 2</span></td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <p>"Dune, 1984" in one cell is <strong>not atomic</strong> — it's two values crammed together. You can't easily query "find all orders containing 1984" without messy string parsing.</p>
-
-                <h3>The Fix: One Fact Per Cell</h3>
-                <p>Split each item into its own row:</p>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr><th>order_id</th><th>order_date</th><th>cust_name</th><th>cust_email</th><th>cust_city</th><th>book_title</th><th>book_price</th><th>quantity</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>1</td><td>2026-01-15</td><td>Alice Johnson</td><td>alice@example.com</td><td>Las Vegas</td><td>Dune</td><td>14.99</td><td>1</td></tr>
-                            <tr><td>1</td><td>2026-01-15</td><td>Alice Johnson</td><td>alice@example.com</td><td>Las Vegas</td><td>1984</td><td>9.99</td><td>2</td></tr>
-                            <tr><td>2</td><td>2026-02-20</td><td>Alice Johnson</td><td>alice@example.com</td><td>Las Vegas</td><td>Pride and Prejudice</td><td>7.99</td><td>1</td></tr>
-                            <tr><td>3</td><td>2026-03-10</td><td>Bob Smith</td><td>bob@example.com</td><td>Denver</td><td>Dune</td><td>14.99</td><td>1</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <p>Now every cell has exactly one value. The primary key would be <code>(order_id, book_title)</code> — a composite key identifying each unique order-item combination.</p>
-
-                <div class="card card-success">
-                    <h4>✅ 1NF Achieved</h4>
-                    <p>No more comma-separated values. Each cell is atomic, each row is unique. But we still have massive redundancy — Alice's name, email, and city are repeated on every row. That's what 2NF addresses.</p>
+                    <h4>🔑 The cause of all three</h4>
+                    <p>Each anomaly comes from storing facts about different things (a customer, a book, an order) in the same row. The fix is always the same: give each kind of thing its own table, and connect the tables with keys.</p>
                 </div>
             </section>
 
-            <!-- Section 5: Functional Dependencies -->
-            <section id="functional-deps" class="lesson-section">
-                <h2>Functional Dependencies</h2>
-                <p>Before tackling 2NF and 3NF, you need to understand <strong>functional dependencies</strong> — they're the reasoning tool behind normalization.</p>
+            <section id="first-nf" class="lesson-section">
+                <h2>1️⃣ First Normal Form: One Value per Cell</h2>
+                <div class="card card-info">
+                    <h4>📜 The 1NF rule</h4>
+                    <p>A table is in first normal form when every cell holds a single value (no lists, no "Dune, 1984"), there are no repeating column groups (<code>book1</code>, <code>book2</code>, <code>book3</code>), and every row can be identified by a key.</p>
+                </div>
+                <p>The fix for the comma lists: one row per book per order. The <code>order_total</code> column goes too, for a reason you will see at the end of the lesson: it can always be computed from the lines.</p>
+                <pre><code class="language-sql">CREATE TABLE order_lines_1nf (
+    order_id    INT NOT NULL,
+    order_date  DATE NOT NULL,
+    cust_name   VARCHAR(100) NOT NULL,
+    cust_email  VARCHAR(100) NOT NULL,
+    cust_city   VARCHAR(50),
+    book_title  VARCHAR(200) NOT NULL,
+    book_price  DECIMAL(8, 2) NOT NULL,
+    quantity    INT NOT NULL,
+    PRIMARY KEY (order_id, book_title)
+);
 
-                <p>A <strong>functional dependency</strong> means: if you know the value of column A, you can determine the value of column B. We write this as:</p>
+INSERT INTO order_lines_1nf VALUES
+    (1, '2026-01-15', 'Alice Johnson', 'alice@example.com', 'New York', 'Dune', 14.99, 1),
+    (1, '2026-01-15', 'Alice Johnson', 'alice@example.com', 'New York', '1984', 9.99, 2),
+    (2, '2026-02-20', 'Alice Johnson', 'alice@example.com', 'New York', 'Pride and Prejudice', 7.99, 1),
+    (3, '2026-03-10', 'Bob Smith', 'bob@example.com', 'Chicago', 'Dune', 14.99, 1),
+    (4, '2026-01-22', 'Dave Brown', 'dave@example.com', 'Houston', 'The Hobbit', 10.99, 1),
+    (4, '2026-01-22', 'Dave Brown', 'dave@example.com', 'Houston', 'Lord of the Rings', 15.99, 1),
+    (7, '2026-03-28', 'Bob Smith', 'bob@example.com', 'Chicago', '1984', 9.99, 1),
+    (7, '2026-03-28', 'Bob Smith', 'bob@example.com', 'Chicago', 'Animal Farm', 8.49, 1);
 
-                <pre><code>A → B    (A determines B)</code></pre>
+SELECT book_title, SUM(quantity) AS copies
+FROM order_lines_1nf
+GROUP BY book_title
+ORDER BY copies DESC, book_title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------+--------+
+| book_title          | copies |
++---------------------+--------+
+| 1984                |      3 |
+| Dune                |      2 |
+| Animal Farm         |      1 |
+| Lord of the Rings   |      1 |
+| Pride and Prejudice |      1 |
+| The Hobbit          |      1 |
++---------------------+--------+</code></pre>
+                </div>
+                <p>Every cell holds one value, and the question that defeated the sheet is now an ordinary <code>GROUP BY</code>. The primary key is <code>(order_id, book_title)</code>: one order can contain many books and one book many orders, but each book appears once per order.</p>
+                <p>1NF fixed querying, not duplication. Alice's name, email and city are now on <strong>three</strong> rows instead of two, and every anomaly from the previous section is still there. The next two normal forms deal with that, and they need one new idea.</p>
+            </section>
 
-                <h3>Examples from Our Table</h3>
-
+            <section id="dependencies" class="lesson-section">
+                <h2>🧩 Functional Dependencies and Keys</h2>
+                <p>A <strong>functional dependency</strong>, written <code>A → B</code> ("A determines B"), means: whenever two rows have the same value of A, they must have the same value of B. Knowing A tells you B. Dependencies come from the rules of the business, not from the current rows: "every order has one date" is a rule, so <code>order_id → order_date</code>.</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr><th>Dependency</th><th>Meaning</th></tr>
+                            <tr><th>Dependency in <code>order_lines_1nf</code></th><th>The business rule behind it</th></tr>
                         </thead>
                         <tbody>
-                            <tr><td><code>order_id → order_date</code></td><td>Knowing the order ID tells you the date</td></tr>
-                            <tr><td><code>order_id → cust_name, cust_email, cust_city</code></td><td>Knowing the order ID tells you which customer</td></tr>
-                            <tr><td><code>book_title → book_price</code></td><td>Knowing the book tells you its price</td></tr>
-                            <tr><td><code>(order_id, book_title) → quantity</code></td><td>Knowing the order AND book tells you the quantity</td></tr>
+                            <tr><td><code>order_id → order_date, cust_email</code></td><td>An order has one date and is placed by one customer</td></tr>
+                            <tr><td><code>cust_email → cust_name, cust_city</code></td><td>An email address belongs to one customer, who has one name and city</td></tr>
+                            <tr><td><code>book_title → book_price</code></td><td>A book has one price (here, the title identifies the book)</td></tr>
+                            <tr><td><code>(order_id, book_title) → quantity</code></td><td>The quantity belongs to one line: this book in this order</td></tr>
                         </tbody>
                     </table>
                 </div>
-
-                <p>The composite primary key is <code>(order_id, book_title)</code>. Notice that some columns depend on the <strong>whole</strong> key (quantity), while others depend on only <strong>part</strong> of it (order_date depends only on order_id). That partial dependency is exactly what 2NF eliminates.</p>
-            </section>
-
-            <!-- Section 6: 2NF -->
-            <section id="2nf" class="lesson-section">
-                <h2>Second Normal Form (2NF)</h2>
-
-                <div class="card card-accent">
-                    <h3>📜 2NF Rule</h3>
-                    <p>A table is in <strong>Second Normal Form</strong> if:</p>
-                    <ul>
-                        <li>It's already in 1NF</li>
-                        <li>Every non-key column depends on the <strong>entire</strong> primary key, not just part of it</li>
-                    </ul>
-                    <p><em>2NF only applies to tables with composite primary keys. A table with a single-column PK is automatically in 2NF if it's in 1NF.</em></p>
-                </div>
-
-                <h3>The Violation</h3>
-                <p>Our 1NF table has primary key <code>(order_id, book_title)</code>. But several columns depend on only <em>part</em> of that key:</p>
-
-                <ul>
-                    <li><code>order_date</code>, <code>cust_name</code>, <code>cust_email</code>, <code>cust_city</code> depend on <code>order_id</code> alone</li>
-                    <li><code>book_price</code> depends on <code>book_title</code> alone</li>
-                </ul>
-
-                <p>Only <code>quantity</code> depends on the <em>full</em> composite key (order_id + book_title).</p>
-
-                <h3>The Fix: Split Into Separate Tables</h3>
-                <p>Move each group of columns to its own table, keyed by the column they actually depend on:</p>
+                <p>A <strong>key</strong> is a set of columns that determines every other column, with nothing unnecessary in it. Here only <code>(order_id, book_title)</code> does: <code>order_id</code> alone does not tell you the book, <code>book_title</code> alone does not tell you the order.</p>
 
                 <div class="mermaid">
-                    erDiagram
-                        orders {
-                            int order_id PK
-                            date order_date
-                            varchar cust_name
-                            varchar cust_email
-                            varchar cust_city
-                        }
-                        books {
-                            varchar title PK
-                            decimal price
-                        }
-                        order_items {
-                            int order_id FK
-                            varchar book_title FK
-                            int quantity
-                        }
-                        orders ||--o{ order_items : "has"
-                        books ||--o{ order_items : "in"
+graph TD
+    K["whole key"] --> Q["quantity"]
+    K --> H["part of the key"]
+    H --> O["order_id: date, email"]
+    H --> T["book_title: price"]
+    O --> E["cust_email: name, city"]
                 </div>
 
-                <p><strong>orders</strong> — columns that depend on <code>order_id</code></p>
-                <div class="table-wrap">
-                    <table>
-                        <thead><tr><th>order_id</th><th>order_date</th><th>cust_name</th><th>cust_email</th><th>cust_city</th></tr></thead>
-                        <tbody>
-                            <tr><td>1</td><td>2026-01-15</td><td>Alice Johnson</td><td>alice@example.com</td><td>Las Vegas</td></tr>
-                            <tr><td>2</td><td>2026-02-20</td><td>Alice Johnson</td><td>alice@example.com</td><td>Las Vegas</td></tr>
-                            <tr><td>3</td><td>2026-03-10</td><td>Bob Smith</td><td>bob@example.com</td><td>Denver</td></tr>
-                        </tbody>
-                    </table>
+                <p>You can test a dependency against the data with a query: if <code>book_title → book_price</code> holds, no title may have two different prices.</p>
+                <pre><code class="language-sql">SELECT book_title, COUNT(DISTINCT book_price) AS prices
+FROM order_lines_1nf
+GROUP BY book_title
+HAVING COUNT(DISTINCT book_price) &gt; 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Empty set</code></pre>
                 </div>
-
-                <p><strong>books</strong> — columns that depend on <code>book_title</code></p>
-                <div class="table-wrap">
-                    <table>
-                        <thead><tr><th>title</th><th>price</th></tr></thead>
-                        <tbody>
-                            <tr><td>Dune</td><td>14.99</td></tr>
-                            <tr><td>1984</td><td>9.99</td></tr>
-                            <tr><td>Pride and Prejudice</td><td>7.99</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <p><strong>order_items</strong> — columns that depend on the full key <code>(order_id, book_title)</code></p>
-                <div class="table-wrap">
-                    <table>
-                        <thead><tr><th>order_id</th><th>book_title</th><th>quantity</th></tr></thead>
-                        <tbody>
-                            <tr><td>1</td><td>Dune</td><td>1</td></tr>
-                            <tr><td>1</td><td>1984</td><td>2</td></tr>
-                            <tr><td>2</td><td>Pride and Prejudice</td><td>1</td></tr>
-                            <tr><td>3</td><td>Dune</td><td>1</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="card card-success">
-                    <h4>✅ 2NF Achieved</h4>
-                    <p>No partial dependencies — every non-key column depends on the entire primary key in its table. Book prices are stored once (in books), not repeated per order. But notice: the orders table still has Alice's name, email, and city repeated across two rows. That's a transitive dependency — and 3NF will fix it.</p>
-                </div>
+                <p>No violations. Remember the direction of the evidence, though: data can <em>disprove</em> a dependency (one counterexample is enough), but it can never prove one. Five orders happen to show one customer per city; that does not make <code>cust_city → cust_name</code> a rule.</p>
+                <p>With dependencies in hand, the next two normal forms are easy to state: they say which dependencies a table must not contain.</p>
             </section>
 
-            <!-- Section 7: 3NF -->
-            <section id="3nf" class="lesson-section">
-                <h2>Third Normal Form (3NF)</h2>
-
-                <div class="card card-accent">
-                    <h3>📜 3NF Rule</h3>
-                    <p>A table is in <strong>Third Normal Form</strong> if:</p>
-                    <ul>
-                        <li>It's already in 2NF</li>
-                        <li>No non-key column depends on another non-key column (no <strong>transitive dependencies</strong>)</li>
-                    </ul>
-                    <p>Or informally: <em>"Every non-key column must depend on the key, the whole key, and nothing but the key."</em></p>
+            <section id="second-nf" class="lesson-section">
+                <h2>2️⃣ Second Normal Form: The Whole Key</h2>
+                <div class="card card-info">
+                    <h4>📜 The 2NF rule</h4>
+                    <p>A table is in second normal form when it is in 1NF and no non-key column depends on only <strong>part</strong> of a composite key. (A table whose key is a single column is automatically in 2NF.)</p>
                 </div>
+                <p>The key is <code>(order_id, book_title)</code>, and the dependency diagram shows the trouble: <code>order_date</code> and the customer columns depend on <code>order_id</code> alone, and <code>book_price</code> on <code>book_title</code> alone. Only <code>quantity</code> needs the whole key. Those <strong>partial dependencies</strong> are why the same order date and the same price are repeated on several rows.</p>
+                <p>The fix: move each group of columns into a table keyed by the column it really depends on. <code>SELECT DISTINCT</code> shows what each new table would hold:</p>
+                <pre><code class="language-sql">-- what depends on order_id alone: one row per order
+SELECT DISTINCT order_id, order_date, cust_name, cust_email, cust_city
+FROM order_lines_1nf
+ORDER BY order_id;
 
-                <h3>The Violation</h3>
-                <p>In our orders table:</p>
-
-                <pre><code>order_id → cust_name → cust_email, cust_city</code></pre>
-
-                <p>The customer's email and city don't depend on the order — they depend on the <em>customer</em>. If Alice changes her email, you still have to update every order row that mentions her. That's a <strong>transitive dependency</strong>: order_id determines cust_name, and cust_name determines cust_email.</p>
-
-                <h3>The Fix: Extract the Customer</h3>
-                <p>Move customer data into its own table and reference it with a foreign key:</p>
-
-                <div class="mermaid">
-                    erDiagram
-                        customers {
-                            int id PK
-                            varchar name
-                            varchar email
-                            varchar city
-                        }
-                        orders {
-                            int id PK
-                            date order_date
-                            int customer_id FK
-                        }
-                        books {
-                            int id PK
-                            varchar title
-                            decimal price
-                        }
-                        order_items {
-                            int id PK
-                            int order_id FK
-                            int book_id FK
-                            int quantity
-                        }
-                        customers ||--o{ orders : "places"
-                        orders ||--o{ order_items : "contains"
-                        books ||--o{ order_items : "included in"
+-- what depends on book_title alone: one row per book
+SELECT DISTINCT book_title, book_price
+FROM order_lines_1nf
+ORDER BY book_title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------+------------+---------------+-------------------+-----------+
+| order_id | order_date | cust_name     | cust_email        | cust_city |
++----------+------------+---------------+-------------------+-----------+
+|        1 | 2026-01-15 | Alice Johnson | alice@example.com | New York  |
+|        2 | 2026-02-20 | Alice Johnson | alice@example.com | New York  |
+|        3 | 2026-03-10 | Bob Smith     | bob@example.com   | Chicago   |
+|        4 | 2026-01-22 | Dave Brown    | dave@example.com  | Houston   |
+|        7 | 2026-03-28 | Bob Smith     | bob@example.com   | Chicago   |
++----------+------------+---------------+-------------------+-----------+
++---------------------+------------+
+| book_title          | book_price |
++---------------------+------------+
+| 1984                |       9.99 |
+| Animal Farm         |       8.49 |
+| Dune                |      14.99 |
+| Lord of the Rings   |      15.99 |
+| Pride and Prejudice |       7.99 |
+| The Hobbit          |      10.99 |
++---------------------+------------+</code></pre>
                 </div>
-
-                <p><strong>customers</strong></p>
-                <div class="table-wrap">
-                    <table>
-                        <thead><tr><th>id</th><th>name</th><th>email</th><th>city</th></tr></thead>
-                        <tbody>
-                            <tr><td>1</td><td>Alice Johnson</td><td>alice@example.com</td><td>Las Vegas</td></tr>
-                            <tr><td>2</td><td>Bob Smith</td><td>bob@example.com</td><td>Denver</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <p><strong>orders</strong> — now just stores the order itself and a reference to the customer</p>
-                <div class="table-wrap">
-                    <table>
-                        <thead><tr><th>id</th><th>order_date</th><th>customer_id</th></tr></thead>
-                        <tbody>
-                            <tr><td>1</td><td>2026-01-15</td><td>1</td></tr>
-                            <tr><td>2</td><td>2026-02-20</td><td>1</td></tr>
-                            <tr><td>3</td><td>2026-03-10</td><td>2</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="card card-success">
-                    <h4>✅ 3NF Achieved</h4>
-                    <p>Alice's email is stored <strong>exactly once</strong> — in the customers table. Change it there and it's updated everywhere. No update anomalies. No transitive dependencies. Every non-key column depends on the key, the whole key, and nothing but the key.</p>
-                </div>
-
-                <p>This final schema is exactly the bookstore design we've been using throughout this course — customers, orders, order_items, books, authors. Now you know <em>why</em> it's structured that way.</p>
+                <p>Eight lines become five orders and six books, plus a lines table that keeps only <code>(order_id, book_title, quantity)</code>. Each price is now stored once. But look at the orders: Alice's name, email and city still appear twice, and so do Bob's. There is a dependency left that 2NF does not cover.</p>
             </section>
 
-            <!-- Section 8: Normalization at a Glance -->
-            <section id="normalization-summary" class="lesson-section">
-                <h2>Normalization at a Glance</h2>
+            <section id="third-nf" class="lesson-section">
+                <h2>3️⃣ Third Normal Form: Nothing but the Key</h2>
+                <div class="card card-info">
+                    <h4>📜 The 3NF rule</h4>
+                    <p>A table is in third normal form when it is in 2NF and no non-key column depends on another non-key column. Such a chain (<code>order_id → cust_email → cust_city</code>) is called a <strong>transitive dependency</strong>.</p>
+                </div>
+                <p>In the orders table the key is <code>order_id</code>, but <code>cust_name</code> and <code>cust_city</code> are not facts about the order. They are facts about the customer, reached through <code>cust_email</code>. As long as they live in the orders table, they are copied onto every order the customer places. The fix: a customers table, and a reference to it from each order.</p>
+                <pre><code class="language-sql">SELECT DISTINCT cust_email, cust_name, cust_city
+FROM order_lines_1nf
+ORDER BY cust_email;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+---------------+-----------+
+| cust_email        | cust_name     | cust_city |
++-------------------+---------------+-----------+
+| alice@example.com | Alice Johnson | New York  |
+| bob@example.com   | Bob Smith     | Chicago   |
+| dave@example.com  | Dave Brown    | Houston   |
++-------------------+---------------+-----------+</code></pre>
+                </div>
+                <p>Three customers, each stored once. The design is now four tables, and every non-key column depends on <strong>the key, the whole key, and nothing but the key</strong> (the classic summary, often finished with "so help me Codd", after Edgar F. Codd, who invented the relational model).</p>
 
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Normal Form</th>
-                                <th>Rule</th>
-                                <th>What It Eliminates</th>
-                                <th>How to Fix</th>
-                            </tr>
+                            <tr><th>Form</th><th>Rule</th><th>Removes</th><th>Fix</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><strong>1NF</strong></td>
-                                <td>Atomic values, no repeating groups</td>
-                                <td>Comma-separated values, arrays in cells</td>
-                                <td>One value per cell, one row per item</td>
-                            </tr>
-                            <tr>
-                                <td><strong>2NF</strong></td>
-                                <td>No partial dependencies (on part of composite key)</td>
-                                <td>Columns that depend on only part of the PK</td>
-                                <td>Move them to a table keyed by what they depend on</td>
-                            </tr>
-                            <tr>
-                                <td><strong>3NF</strong></td>
-                                <td>No transitive dependencies (non-key → non-key)</td>
-                                <td>Columns that depend on another non-key column</td>
-                                <td>Extract into a new table with its own PK</td>
-                            </tr>
+                            <tr><td>1NF</td><td>One value per cell, a key for every row</td><td>Lists and repeating columns</td><td>One row per item</td></tr>
+                            <tr><td>2NF</td><td>No column depends on part of the key</td><td>Partial dependencies</td><td>A table per part of the key</td></tr>
+                            <tr><td>3NF</td><td>No column depends on a non-key column</td><td>Transitive dependencies</td><td>A table per "hidden" thing</td></tr>
                         </tbody>
                     </table>
                 </div>
 
                 <div class="mermaid">
-                    graph LR
-                        U["Unnormalized"] -->|"Atomic values"| N1["1NF"]
-                        N1 -->|"Remove partial deps"| N2["2NF"]
-                        N2 -->|"Remove transitive deps"| N3["3NF"]
+graph TD
+    U["order sheet: lists in cells"] -->|"one value per cell"| N1["1NF: order lines"]
+    N1 -->|"split off orders and books"| N2["2NF"]
+    N2 -->|"split off customers"| N3["3NF: four tables"]
+                </div>
+            </section>
+
+            <section id="build" class="lesson-section">
+                <h2>🔨 Building and Checking the Normalized Tables</h2>
+                <p>Now build the four tables and fill them from <code>order_lines_1nf</code> with <code>INSERT ... SELECT</code>, the same technique Lesson 4.1 used to move the bookstore from a text <code>author</code> column to an <code>authors</code> table. Customers and books get their own <code>id</code> (a <strong>surrogate key</strong>), and the natural identifiers (email, title) get <code>UNIQUE</code> so they cannot be duplicated.</p>
+                <pre><code class="language-sql">CREATE TABLE customers (
+    id     INT AUTO_INCREMENT PRIMARY KEY,
+    name   VARCHAR(100) NOT NULL,
+    email  VARCHAR(100) NOT NULL UNIQUE,
+    city   VARCHAR(50)
+);
+
+INSERT INTO customers (name, email, city)
+SELECT DISTINCT cust_name, cust_email, cust_city
+FROM order_lines_1nf
+ORDER BY cust_email;
+
+CREATE TABLE books (
+    id     INT AUTO_INCREMENT PRIMARY KEY,
+    title  VARCHAR(200) NOT NULL UNIQUE,
+    price  DECIMAL(8, 2) NOT NULL
+);
+
+INSERT INTO books (title, price)
+SELECT DISTINCT book_title, book_price
+FROM order_lines_1nf
+ORDER BY book_title;
+
+SELECT * FROM customers ORDER BY id;
+SELECT * FROM books ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+---------------+-------------------+----------+
+| id | name          | email             | city     |
++----+---------------+-------------------+----------+
+|  1 | Alice Johnson | alice@example.com | New York |
+|  2 | Bob Smith     | bob@example.com   | Chicago  |
+|  3 | Dave Brown    | dave@example.com  | Houston  |
++----+---------------+-------------------+----------+
++----+---------------------+-------+
+| id | title               | price |
++----+---------------------+-------+
+|  1 | 1984                |  9.99 |
+|  2 | Animal Farm         |  8.49 |
+|  3 | Dune                | 14.99 |
+|  4 | Lord of the Rings   | 15.99 |
+|  5 | Pride and Prejudice |  7.99 |
+|  6 | The Hobbit          | 10.99 |
++----+---------------------+-------+</code></pre>
+                </div>
+                <p>The <code>ORDER BY</code> in each <code>INSERT ... SELECT</code> makes the new ids come out the same every time. Now the two tables that point at them. To fill in each foreign key, join the old rows to the new table on the natural identifier:</p>
+                <pre><code class="language-sql">CREATE TABLE orders (
+    id           INT PRIMARY KEY,
+    customer_id  INT NOT NULL,
+    order_date   DATE NOT NULL,
+    CONSTRAINT fk_lab_orders_customer
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
+
+INSERT INTO orders (id, customer_id, order_date)
+SELECT DISTINCT l.order_id, c.id, l.order_date
+FROM order_lines_1nf AS l
+JOIN customers AS c ON c.email = l.cust_email;
+
+CREATE TABLE order_items (
+    order_id       INT NOT NULL,
+    book_id        INT NOT NULL,
+    quantity       INT NOT NULL,
+    price_at_time  DECIMAL(8, 2) NOT NULL,
+    PRIMARY KEY (order_id, book_id),
+    CONSTRAINT fk_lab_items_order FOREIGN KEY (order_id) REFERENCES orders(id),
+    CONSTRAINT fk_lab_items_book  FOREIGN KEY (book_id)  REFERENCES books(id)
+);
+
+INSERT INTO order_items (order_id, book_id, quantity, price_at_time)
+SELECT l.order_id, b.id, l.quantity, l.book_price
+FROM order_lines_1nf AS l
+JOIN books AS b ON b.title = l.book_title;
+
+SELECT * FROM orders ORDER BY id;
+SELECT * FROM order_items ORDER BY order_id, book_id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+-------------+------------+
+| id | customer_id | order_date |
++----+-------------+------------+
+|  1 |           1 | 2026-01-15 |
+|  2 |           1 | 2026-02-20 |
+|  3 |           2 | 2026-03-10 |
+|  4 |           3 | 2026-01-22 |
+|  7 |           2 | 2026-03-28 |
++----+-------------+------------+
++----------+---------+----------+---------------+
+| order_id | book_id | quantity | price_at_time |
++----------+---------+----------+---------------+
+|        1 |       1 |        2 |          9.99 |
+|        1 |       3 |        1 |         14.99 |
+|        2 |       5 |        1 |          7.99 |
+|        3 |       3 |        1 |         14.99 |
+|        4 |       4 |        1 |         15.99 |
+|        4 |       6 |        1 |         10.99 |
+|        7 |       1 |        1 |          9.99 |
+|        7 |       2 |        1 |          8.49 |
++----------+---------+----------+---------------+</code></pre>
                 </div>
 
                 <div class="card card-info">
-                    <h4>💡 The Informal Mnemonic</h4>
-                    <p>Every non-key column must depend on:</p>
-                    <ul>
-                        <li><strong>The key</strong> (1NF — data is properly atomic and has a key)</li>
-                        <li><strong>The whole key</strong> (2NF — not just part of a composite key)</li>
-                        <li><strong>And nothing but the key</strong> (3NF — not on some other non-key column)</li>
-                    </ul>
-                    <p><em>"So help me Codd."</em> (A nod to Edgar F. Codd, who invented relational database theory.)</p>
+                    <h4>💡 Is price_at_time a duplicate of books.price?</h4>
+                    <p>No, and the difference matters. <code>books.price</code> is what a book costs <em>today</em>; <code>price_at_time</code> is what this customer paid on this order, a fact determined by <code>(order_id, book_id)</code>, the full key of <code>order_items</code>. When the price of <em>Dune</em> goes up next year, old orders must not change. They happen to be equal right now, but they answer different questions, so storing both is not redundancy. The real bookstore makes the same choice.</p>
                 </div>
+
+                <h3>Prove that nothing was lost</h3>
+                <p>A split is only correct if joining the tables back together gives exactly the rows you started with (a <strong>lossless</strong> decomposition). <code>EXCEPT</code> returns the rows of the first query that are missing from the second, so two <code>EXCEPT</code>s in opposite directions that both come back empty prove the two sides hold the same rows:</p>
+                <pre><code class="language-sql">SELECT order_id, order_date, cust_name, cust_email, cust_city, book_title, book_price, quantity
+FROM order_lines_1nf
+EXCEPT
+SELECT o.id, o.order_date, c.name, c.email, c.city, b.title, oi.price_at_time, oi.quantity
+FROM orders AS o
+JOIN customers   AS c  ON c.id = o.customer_id
+JOIN order_items AS oi ON oi.order_id = o.id
+JOIN books       AS b  ON b.id = oi.book_id;
+
+SELECT o.id, o.order_date, c.name, c.email, c.city, b.title, oi.price_at_time, oi.quantity
+FROM orders AS o
+JOIN customers   AS c  ON c.id = o.customer_id
+JOIN order_items AS oi ON oi.order_id = o.id
+JOIN books       AS b  ON b.id = oi.book_id
+EXCEPT
+SELECT order_id, order_date, cust_name, cust_email, cust_city, book_title, book_price, quantity
+FROM order_lines_1nf;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Empty set
+Empty set</code></pre>
+                </div>
+                <p>Two empty sets: the four tables hold exactly the eight lines, no more, no fewer. (<code>EXCEPT</code> works on MySQL 8.0.31 and later, including 8.4 and 9.7, and on MariaDB.)</p>
+
+                <h3>The anomalies are gone</h3>
+                <p>Alice's email change is now one row in one table, and every order sees it, because orders only point at her:</p>
+                <pre><code class="language-sql">START TRANSACTION;
+
+UPDATE customers SET email = 'alice.j@example.com' WHERE id = 1;
+
+SELECT o.id AS order_id, c.name, c.email
+FROM orders AS o
+JOIN customers AS c ON c.id = o.customer_id
+WHERE c.name = 'Alice Johnson'
+ORDER BY o.id;
+
+ROLLBACK;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------+---------------+---------------------+
+| order_id | name          | email               |
++----------+---------------+---------------------+
+|        1 | Alice Johnson | alice.j@example.com |
+|        2 | Alice Johnson | alice.j@example.com |
++----------+---------------+---------------------+</code></pre>
+                </div>
+                <p>Likewise, Carol can be inserted into <code>customers</code> without an order, and deleting order 4 removes only the order, not Dave or the price of <em>Lord of the Rings</em>. This four-table shape is exactly the core of the bookstore you have used since Module 4.</p>
             </section>
 
-            <!-- Section 9: ER Diagrams -->
             <section id="er-diagrams" class="lesson-section">
-                <h2>Entity-Relationship Diagrams</h2>
-                <p>An <strong>ER diagram</strong> is a visual blueprint of your database. It shows tables (entities), their columns (attributes), and the relationships between them. ER diagrams are the standard tool for planning and communicating database designs.</p>
+                <h2>🗺️ ER Diagrams</h2>
+                <p>An <strong>entity-relationship (ER) diagram</strong> draws a design: each box is a table (an entity) with its columns, and each line is a relationship labeled with how many rows can sit at each end. Here is the sales side of the real <code>bookstore</code>:</p>
 
-                <h3>Reading ER Diagrams</h3>
-                <p>The relationship lines tell you how tables connect:</p>
+                <div class="mermaid">
+erDiagram
+    customers ||--o{ orders : "places"
+    orders ||--|{ order_items : "contains"
+    books ||--o{ order_items : "sold as"
+                </div>
 
+                <p>The keys behind each line: <code>orders.customer_id</code> points at <code>customers.id</code>, and <code>order_items</code> holds both <code>order_id</code> and <code>book_id</code>. (Mermaid and most tools can also list every column inside the boxes; on a small screen the lines alone are easier to read.) And the catalog side, where a many-to-many relationship (a book has several categories, a category has many books) becomes two one-to-many relationships through the <strong>junction table</strong> <code>book_categories</code>:</p>
+
+                <div class="mermaid">
+erDiagram
+    authors ||--o{ books : "writes"
+    books ||--o{ book_categories : "is in"
+    categories ||--o{ book_categories : "groups"
+                </div>
+
+                <h3>Reading the line ends</h3>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr><th>Symbol</th><th>Meaning</th><th>Example</th></tr>
+                            <tr><th>Symbol at a line end</th><th>Means</th><th>Bookstore example</th></tr>
                         </thead>
                         <tbody>
-                            <tr><td><code>||--||</code></td><td>One-to-one</td><td>User has one profile</td></tr>
-                            <tr><td><code>||--o{</code></td><td>One-to-many</td><td>Customer places many orders</td></tr>
-                            <tr><td><code>}o--o{</code></td><td>Many-to-many</td><td>Students enroll in courses (via junction table)</td></tr>
+                            <tr><td><code>||</code></td><td>exactly one</td><td>an order belongs to exactly one customer</td></tr>
+                            <tr><td><code>o{</code></td><td>zero or more</td><td>a customer places zero or more orders (Carol: zero)</td></tr>
+                            <tr><td><code>|{</code></td><td>one or more</td><td>an order contains at least one item</td></tr>
+                            <tr><td><code>o|</code></td><td>zero or one</td><td>an employee has at most one manager</td></tr>
                         </tbody>
                     </table>
                 </div>
-
-                <h3>Our Bookstore ER Diagram</h3>
-
-                <div class="mermaid">
-                    erDiagram
-                        customers {
-                            int id PK
-                            varchar first_name
-                            varchar last_name
-                            varchar email
-                            varchar city
-                        }
-                        orders {
-                            int id PK
-                            date order_date
-                            int customer_id FK
-                        }
-                        order_items {
-                            int id PK
-                            int order_id FK
-                            int book_id FK
-                            int quantity
-                        }
-                        books {
-                            int id PK
-                            varchar title
-                            decimal price
-                            int author_id FK
-                        }
-                        authors {
-                            int id PK
-                            varchar name
-                        }
-                        customers ||--o{ orders : "places"
-                        orders ||--o{ order_items : "contains"
-                        books ||--o{ order_items : "listed in"
-                        authors ||--o{ books : "writes"
-                </div>
-
-                <p>This diagram tells the whole story at a glance: an author writes many books, a customer places many orders, each order contains many items, and each item refers to one book.</p>
-
-                <div class="card card-info">
-                    <h4>💡 Design Before You Code</h4>
-                    <p>Always draw an ER diagram before writing CREATE TABLE statements. It's much easier to spot missing relationships, redundant data, or awkward structures in a diagram than in SQL code. Tools like <a href="https://dbdiagram.io/" target="_blank" rel="noopener">dbdiagram.io</a>, <a href="https://www.draw.io/" target="_blank" rel="noopener">draw.io</a>, or even pen and paper work great.</p>
-                </div>
-            </section>
-
-            <!-- Section 10: Design Walkthrough -->
-            <section id="design-walkthrough" class="lesson-section">
-                <h2>Design Walkthrough: From Requirements to Tables</h2>
-                <p>Let's design a database from scratch. Here are the requirements for a <strong>music streaming service</strong>:</p>
-
-                <div class="card card-info">
-                    <h4>📋 Requirements</h4>
-                    <ul>
-                        <li>Users have a name, email, and signup date</li>
-                        <li>Artists have a name and genre</li>
-                        <li>Albums have a title, release year, and belong to one artist</li>
-                        <li>Songs have a title, duration, and belong to one album</li>
-                        <li>Users can create playlists with a name and description</li>
-                        <li>Playlists contain songs (in a specific order)</li>
-                    </ul>
-                </div>
-
-                <h3>Step 1: Identify Entities</h3>
-                <p>Nouns in the requirements become tables: <strong>users</strong>, <strong>artists</strong>, <strong>albums</strong>, <strong>songs</strong>, <strong>playlists</strong>.</p>
-
-                <h3>Step 2: Identify Relationships</h3>
-                <ul>
-                    <li>Artist → Albums: one-to-many (one artist has many albums)</li>
-                    <li>Album → Songs: one-to-many (one album has many songs)</li>
-                    <li>User → Playlists: one-to-many (one user creates many playlists)</li>
-                    <li>Playlist ↔ Songs: many-to-many (a playlist has many songs, a song can be in many playlists) → needs a <strong>junction table</strong></li>
-                </ul>
-
-                <h3>Step 3: Draw the ER Diagram</h3>
-
-                <div class="mermaid">
-                    erDiagram
-                        users {
-                            int id PK
-                            varchar name
-                            varchar email
-                            date signup_date
-                        }
-                        artists {
-                            int id PK
-                            varchar name
-                            varchar genre
-                        }
-                        albums {
-                            int id PK
-                            varchar title
-                            int release_year
-                            int artist_id FK
-                        }
-                        songs {
-                            int id PK
-                            varchar title
-                            int duration_seconds
-                            int album_id FK
-                        }
-                        playlists {
-                            int id PK
-                            varchar name
-                            varchar description
-                            int user_id FK
-                        }
-                        playlist_songs {
-                            int id PK
-                            int playlist_id FK
-                            int song_id FK
-                            int position
-                        }
-                        artists ||--o{ albums : "releases"
-                        albums ||--o{ songs : "contains"
-                        users ||--o{ playlists : "creates"
-                        playlists ||--o{ playlist_songs : "includes"
-                        songs ||--o{ playlist_songs : "appears in"
-                </div>
-
-                <h3>Step 4: Write the SQL</h3>
-
-                <pre><code class="language-sql">
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
-    signup_date DATE NOT NULL DEFAULT (CURRENT_DATE)
-);
-
-CREATE TABLE artists (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    genre VARCHAR(50)
-);
-
-CREATE TABLE albums (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    release_year YEAR,
-    artist_id INT NOT NULL,
-    FOREIGN KEY (artist_id) REFERENCES artists(id)
-);
-
-CREATE TABLE songs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    duration_seconds INT NOT NULL,
-    album_id INT NOT NULL,
-    FOREIGN KEY (album_id) REFERENCES albums(id)
-);
-
-CREATE TABLE playlists (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    user_id INT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
-CREATE TABLE playlist_songs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    playlist_id INT NOT NULL,
-    song_id INT NOT NULL,
-    position INT NOT NULL,
-    FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
-    FOREIGN KEY (song_id) REFERENCES songs(id),
-    UNIQUE (playlist_id, position)
-);
-                </code></pre>
-
-                <h3>Step 5: Verify Normalization</h3>
-                <ul>
-                    <li><strong>1NF</strong> — all values are atomic, every table has a primary key ✅</li>
-                    <li><strong>2NF</strong> — no composite PKs with partial dependencies (we used auto-increment IDs) ✅</li>
-                    <li><strong>3NF</strong> — no non-key column depends on another non-key column (artist genre depends on artist ID, not on album; user email depends on user ID, not on playlist) ✅</li>
-                </ul>
+                <p>The "one" side of each line holds the primary key; the "many" side holds the foreign key. If you ever find a line with "many" at both ends, you have found a missing junction table.</p>
 
                 <div class="card card-success">
-                    <h4>✅ Clean, Normalized Design</h4>
-                    <p>Each fact is stored once: an artist's genre lives in the artists table, a song's duration lives in the songs table. No redundancy, no anomalies. You can add users without playlists, delete playlists without losing songs, and update an artist's genre in one place.</p>
+                    <h4>✅ Draw before you code</h4>
+                    <p>It is far easier to spot a missing table or a misplaced column in a sketch than in twenty <code>CREATE TABLE</code> statements. Pen and paper is fine; tools like MySQL Workbench (its EER diagram editor), dbdiagram.io or draw.io help when you share the design. Workbench can also draw the diagram of an existing database for you (Database, Reverse Engineer).</p>
                 </div>
             </section>
 
-            <!-- Section 11: Denormalization -->
-            <section id="denormalization" class="lesson-section">
-                <h2>When to Denormalize</h2>
-                <p>Normalization is the default — but sometimes you intentionally <strong>denormalize</strong> (add controlled redundancy) for performance or simplicity.</p>
+            <section id="design-process" class="lesson-section">
+                <h2>📐 From Requirements to Tables</h2>
+                <p>Normalizing an existing sheet is one way in. Designing from a description is the other, and it uses the same ideas in a different order:</p>
+                <ol>
+                    <li><strong>Find the things (entities).</strong> The nouns the business keeps track of: customers, books, orders. Each becomes a table.</li>
+                    <li><strong>Find their facts (attributes).</strong> Put each fact in the table of the thing it describes: the city describes the customer, not the order.</li>
+                    <li><strong>Choose keys.</strong> Usually an <code>AUTO_INCREMENT</code> id, plus <code>UNIQUE</code> on natural identifiers (email).</li>
+                    <li><strong>Find the relationships and their counts.</strong> One-to-many: a foreign key on the "many" side. Many-to-many: a junction table with a composite primary key. One-to-one: a foreign key with <code>UNIQUE</code>.</li>
+                    <li><strong>Check each table against 1NF, 2NF and 3NF</strong>, asking "what does this column depend on?" for every column.</li>
+                    <li><strong>Write it down</strong>: an ER sketch first, then the SQL, with foreign keys, <code>NOT NULL</code> and <code>CHECK</code> constraints doing the guarding.</li>
+                </ol>
+                <p>You will practice this in the stretch exercise below, and do it end to end in <a href="lesson_final_project.html">Lesson 8.2: Final Project</a>, where you design and build a database of your own.</p>
+            </section>
 
-                <h3>Why Denormalize?</h3>
-                <ul>
-                    <li><strong>Performance:</strong> A dashboard query that JOINs 8 tables on every page load might be too slow. Storing a pre-computed <code>total_spent</code> column on the customer row eliminates the JOINs.</li>
-                    <li><strong>Read-heavy systems:</strong> If you read data 10,000 times for every 1 write, optimizing for reads (even at the cost of write complexity) makes sense.</li>
-                    <li><strong>Reporting tables:</strong> Analytics and warehousing often use "flat" denormalized tables because analysts need fast, simple queries — not normalized schemas.</li>
-                </ul>
-
-                <h3>Common Denormalization Strategies</h3>
-
+            <section id="denormalize" class="lesson-section">
+                <h2>⚖️ When to Denormalize</h2>
+                <p>Normalization is the default, not a law. Sometimes a design deliberately stores a fact twice, or stores a value it could compute, to make an important read cheaper. That is <strong>denormalization</strong>, and it always trades read speed for the duty to keep the copies in sync.</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr><th>Strategy</th><th>Example</th><th>Trade-Off</th></tr>
+                            <tr><th>Technique</th><th>Example</th><th>The price you pay</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Cached computed column</td>
-                                <td><code>total_spent DECIMAL</code> on customers</td>
-                                <td>Must update on every order change</td>
-                            </tr>
-                            <tr>
-                                <td>Duplicated column</td>
-                                <td>Store <code>customer_name</code> on orders</td>
-                                <td>Must sync when name changes</td>
-                            </tr>
-                            <tr>
-                                <td>Summary/reporting table</td>
-                                <td><code>monthly_sales</code> table refreshed nightly</td>
-                                <td>Data is slightly stale</td>
-                            </tr>
+                            <tr><td>Stored derived value</td><td><code>orders.total</code> instead of summing the items</td><td>Every change to an item must update the total (Common Mistake 4)</td></tr>
+                            <tr><td>Copied column</td><td>The customer's name stored on each order</td><td>A rename must update every order, or the copies drift</td></tr>
+                            <tr><td>Summary table</td><td><code>sales_by_month</code>, refreshed every night</td><td>The numbers are up to a day old</td></tr>
                         </tbody>
                     </table>
                 </div>
-
                 <div class="card card-warning">
-                    <h4>⚠️ The Golden Rule</h4>
-                    <p><strong>Normalize first, denormalize only when you have a proven performance problem.</strong> Don't skip normalization because you <em>think</em> it might be slow. Measure first, then denormalize the specific bottleneck. Premature denormalization creates the exact anomalies normalization was designed to prevent.</p>
+                    <h4>⚠️ The golden rule</h4>
+                    <p>Normalize first. Denormalize one specific thing only when a measured query is too slow (Lesson 6.1 showed how to measure), indexes and a better query did not fix it, and you have a plan for keeping the copy correct: a transaction (Lesson 7.2), a trigger, or a scheduled refresh. A view (Lesson 6.2) often gives you the convenience of a "flat" table with no copies at all.</p>
+                </div>
+                <p>The bookstore makes exactly this choice: there is no stored <code>total</code> column on <code>orders</code>, because <code>SUM(quantity * price_at_time)</code> is cheap for an order with a handful of lines, and a total that can never be wrong is worth more than a few microseconds.</p>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Loading a lookup table twice</h3>
+                <p>You rerun your migration script, and the customers <code>INSERT ... SELECT</code> runs a second time:</p>
+                <pre data-raises="ERROR 1062"><code class="language-sql">INSERT INTO customers (name, email, city)
+SELECT DISTINCT cust_name, cust_email, cust_city
+FROM order_lines_1nf;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1062 (23000): Duplicate entry 'alice@example.com' for key 'customers.email'</code></pre>
+                </div>
+                <p><strong>What it means:</strong> the <code>UNIQUE</code> on <code>email</code> refused a second Alice. That error is the design working. Without <code>UNIQUE</code>, the statement would have succeeded silently, every customer would exist twice with two ids, and later joins on email would double every order. <strong>Fix:</strong> always put <code>UNIQUE</code> on the natural identifier of a lookup table, and make migration scripts start from a clean state (or insert only rows that are not there yet, with <code>WHERE NOT EXISTS</code>).</p>
+
+                <h3>2. A foreign key whose type does not match</h3>
+                <pre data-raises="ERROR 3780"><code class="language-sql">CREATE TABLE reviews (
+    id       INT AUTO_INCREMENT PRIMARY KEY,
+    book_id  BIGINT NOT NULL,
+    stars    TINYINT NOT NULL,
+    CONSTRAINT fk_lab_reviews_book FOREIGN KEY (book_id) REFERENCES books(id)
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3780 (HY000): Referencing column 'book_id' and referenced column 'id' in foreign key constraint 'fk_lab_reviews_book' are incompatible.</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>books.id</code> is <code>INT</code>, and a foreign key column must have the same type (and the same signedness: <code>INT</code> and <code>INT UNSIGNED</code> do not match either). <strong>Fix:</strong> declare <code>book_id INT NOT NULL</code>. Decide on one id type for the whole design and use it everywhere. (MariaDB reports the same mistake less helpfully, as error 1005: "Foreign key constraint is incorrectly formed".)</p>
+
+                <h3>3. Deleting a row that others still point to</h3>
+                <pre data-raises="ERROR 1451"><code class="language-sql">DELETE FROM customers WHERE email = 'bob@example.com';</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`normalize_lab`.`orders`, CONSTRAINT `fk_lab_orders_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`))</code></pre>
+                </div>
+                <p><strong>What it means:</strong> Bob has two orders that reference him. In the flat sheet, deleting rows silently destroyed facts; now the foreign key (from <a href="lesson_12.html">Lesson 4.2</a>) refuses to leave orders pointing at nobody. <strong>Fix:</strong> decide what should happen to the orders first, and if the answer is "keep them", keep the customer too (many systems mark customers inactive instead of deleting them).</p>
+
+                <h3>4. Storing a total that can drift (silent)</h3>
+                <p>It is tempting to add the order total back "for speed". Watch what happens after one ordinary update:</p>
+                <pre><code class="language-sql">ALTER TABLE orders ADD COLUMN total DECIMAL(8, 2);
+
+UPDATE orders AS o
+SET total = (SELECT SUM(quantity * price_at_time) FROM order_items WHERE order_id = o.id);
+
+-- later, a customer service agent fixes a quantity
+UPDATE order_items SET quantity = 3
+WHERE order_id = 1 AND book_id = (SELECT id FROM books WHERE title = '1984');
+
+SELECT o.id, o.total AS stored_total, SUM(oi.quantity * oi.price_at_time) AS real_total
+FROM orders AS o
+JOIN order_items AS oi ON oi.order_id = o.id
+GROUP BY o.id, o.total
+ORDER BY o.id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+--------------+------------+
+| id | stored_total | real_total |
++----+--------------+------------+
+|  1 |        34.97 |      44.96 |
+|  2 |         7.99 |       7.99 |
+|  3 |        14.99 |      14.99 |
+|  4 |        26.98 |      26.98 |
+|  7 |        18.48 |      18.48 |
++----+--------------+------------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> no error anywhere, and order 1 now has two totals that disagree. Every report that reads <code>total</code> is wrong by 9.99, and nothing will ever tell you. <strong>Fix:</strong> do not store what you can compute; use a view such as <code>v_order_totals</code> from Lesson 6.2. If you truly must store it, update it in the same transaction as every change to the items. Undo the experiment:</p>
+                <pre><code class="language-sql">ALTER TABLE orders DROP COLUMN total;
+UPDATE order_items SET quantity = 2
+WHERE order_id = 1 AND book_id = (SELECT id FROM books WHERE title = '1984');</code></pre>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: Normalize the Book Club Sheet</h2>
+                <p>The bookstore runs reading clubs, and the sign-ups live in a spreadsheet that staff copy from row to row. Your job: find its dependencies, design 3NF tables, migrate the data, and prove nothing was lost. Save every statement in <code>book_club.sql</code>. Allow about 30 minutes.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: Import the sheet <span class="step-time">(4 min)</span></h3>
+                    <p>Each row says that a member signed up for a club. The club meets on one day, has one leader (a staff member) and reads one current book.</p>
+                    <pre><code class="language-sql">USE normalize_lab;
+
+CREATE TABLE club_signups (
+    member_name   VARCHAR(100) NOT NULL,
+    member_email  VARCHAR(100) NOT NULL,
+    club_name     VARCHAR(50)  NOT NULL,
+    meeting_day   VARCHAR(10)  NOT NULL,
+    leader_name   VARCHAR(100) NOT NULL,
+    leader_email  VARCHAR(100) NOT NULL,
+    current_book  VARCHAR(200) NOT NULL
+);
+
+INSERT INTO club_signups VALUES
+    ('Alice Johnson', 'alice@example.com', 'Sci-Fi Circle', 'Tuesday', 'Priya Nair', 'priya.nair@bookstore.example', 'Dune'),
+    ('Bob Smith', 'bob@example.com', 'Sci-Fi Circle', 'Tuesday', 'Priya Nair', 'priya.nair@bookstore.example', 'Dune'),
+    ('Eve Davis', 'eve@example.com', 'Sci-Fi Circle', 'Tuesday', 'Priya Nair', 'priya.nair@bookstore.example', 'Dune'),
+    ('Alice Johnson', 'alice@example.com', 'Classics Club', 'Thursday', 'Marcus Hill', 'marcus.hill@bookstore.example', 'Pride and Prejudice'),
+    ('Grace Wilson', 'grace@example.com', 'Classics Club', 'Thursday', 'Marcus Hill', 'marcus.hill@bookstore.example', 'Pride and Prejudice'),
+    ('Grace Wilson', 'grace@example.com', 'Fantasy Guild', 'Saturday', 'Priya Nair', 'priya.nair@bookstore.example', 'The Hobbit');
+
+SELECT COUNT(*) AS signups FROM club_signups;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Database changed
++---------+
+| signups |
++---------+
+|       6 |
++---------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: Write down the dependencies <span class="step-time">(5 min)</span></h3>
+                    <p>Before reading on, write the dependencies yourself as comments in <code>book_club.sql</code>. Then compare: <code>member_email → member_name</code>; <code>club_name → meeting_day, leader_email, current_book</code>; <code>leader_email → leader_name</code>. The key is <code>(member_email, club_name)</code>: a member can join several clubs, and a club has several members. Check that the data does not contradict the club rule:</p>
+                    <pre><code class="language-sql">SELECT club_name,
+       COUNT(DISTINCT meeting_day)  AS days,
+       COUNT(DISTINCT leader_email) AS leaders,
+       COUNT(DISTINCT current_book) AS books
+FROM club_signups
+GROUP BY club_name
+ORDER BY club_name;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+---------------+------+---------+-------+
+| club_name     | days | leaders | books |
++---------------+------+---------+-------+
+| Classics Club |    1 |       1 |     1 |
+| Fantasy Guild |    1 |       1 |     1 |
+| Sci-Fi Circle |    1 |       1 |     1 |
++---------------+------+---------+-------+</code></pre>
+                    </div>
+                    <p>One value per club everywhere. So <code>club_name</code>, part of the key, determines three columns: a 2NF violation. <code>leader_email → leader_name</code> is a transitive dependency through the club: a 3NF violation (Priya's name is stored on four rows).</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: Create the 3NF tables <span class="step-time">(7 min)</span></h3>
+                    <p>Four tables: members, leaders, clubs (pointing at their leader), and a junction table for the many-to-many sign-ups.</p>
+                    <pre><code class="language-sql">CREATE TABLE members (
+    id     INT AUTO_INCREMENT PRIMARY KEY,
+    name   VARCHAR(100) NOT NULL,
+    email  VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE leaders (
+    id     INT AUTO_INCREMENT PRIMARY KEY,
+    name   VARCHAR(100) NOT NULL,
+    email  VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE clubs (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    name          VARCHAR(50)  NOT NULL UNIQUE,
+    meeting_day   VARCHAR(10)  NOT NULL,
+    current_book  VARCHAR(200) NOT NULL,
+    leader_id     INT NOT NULL,
+    CONSTRAINT fk_clubs_leader FOREIGN KEY (leader_id) REFERENCES leaders(id)
+);
+
+CREATE TABLE memberships (
+    member_id  INT NOT NULL,
+    club_id    INT NOT NULL,
+    PRIMARY KEY (member_id, club_id),
+    CONSTRAINT fk_memberships_member FOREIGN KEY (member_id) REFERENCES members(id),
+    CONSTRAINT fk_memberships_club   FOREIGN KEY (club_id)   REFERENCES clubs(id)
+);
+
+SHOW TABLES;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------------------------+
+| Tables_in_normalize_lab |
++-------------------------+
+| books                   |
+| club_signups            |
+| clubs                   |
+| customers               |
+| leaders                 |
+| members                 |
+| memberships             |
+| order_items             |
+| order_lines_1nf         |
+| order_sheet             |
+| orders                  |
++-------------------------+</code></pre>
+                    </div>
+                    <p>(<code>SHOW TABLES</code> lists the lesson's other tables too.) In the real bookstore, <code>leaders</code> would simply be <code>employees</code>, and <code>current_book</code> a foreign key to <code>books</code>; the lab keeps them separate so it stands on its own.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: Migrate the data <span class="step-time">(7 min)</span></h3>
+                    <p>Parents first, children last, joining on the natural identifiers to find the new ids:</p>
+                    <pre><code class="language-sql">INSERT INTO members (name, email)
+SELECT DISTINCT member_name, member_email FROM club_signups ORDER BY member_email;
+
+INSERT INTO leaders (name, email)
+SELECT DISTINCT leader_name, leader_email FROM club_signups ORDER BY leader_email;
+
+INSERT INTO clubs (name, meeting_day, current_book, leader_id)
+SELECT DISTINCT s.club_name, s.meeting_day, s.current_book, l.id
+FROM club_signups AS s
+JOIN leaders AS l ON l.email = s.leader_email
+ORDER BY s.club_name;
+
+INSERT INTO memberships (member_id, club_id)
+SELECT m.id, c.id
+FROM club_signups AS s
+JOIN members AS m ON m.email = s.member_email
+JOIN clubs   AS c ON c.name = s.club_name;
+
+SELECT (SELECT COUNT(*) FROM members)     AS members,
+       (SELECT COUNT(*) FROM leaders)     AS leaders,
+       (SELECT COUNT(*) FROM clubs)       AS clubs,
+       (SELECT COUNT(*) FROM memberships) AS memberships;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+---------+---------+-------+-------------+
+| members | leaders | clubs | memberships |
++---------+---------+-------+-------------+
+|       4 |       2 |     3 |           6 |
++---------+---------+-------+-------------+</code></pre>
+                    </div>
+                    <p>Six rows of repeated text became four members, two leaders, three clubs and six sign-ups, and each name, email and day is now stored exactly once.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: Prove the migration is lossless <span class="step-time">(5 min)</span></h3>
+                    <p>Rebuild the sheet from the new tables and compare in both directions:</p>
+                    <pre><code class="language-sql">SELECT member_name, member_email, club_name, meeting_day, leader_name, leader_email, current_book
+FROM club_signups
+EXCEPT
+SELECT m.name, m.email, c.name, c.meeting_day, l.name, l.email, c.current_book
+FROM memberships AS ms
+JOIN members AS m ON m.id = ms.member_id
+JOIN clubs   AS c ON c.id = ms.club_id
+JOIN leaders AS l ON l.id = c.leader_id;
+
+SELECT m.name, m.email, c.name, c.meeting_day, l.name, l.email, c.current_book
+FROM memberships AS ms
+JOIN members AS m ON m.id = ms.member_id
+JOIN clubs   AS c ON c.id = ms.club_id
+JOIN leaders AS l ON l.id = c.leader_id
+EXCEPT
+SELECT member_name, member_email, club_name, meeting_day, leader_name, leader_email, current_book
+FROM club_signups;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Empty set
+Empty set</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 6: Show that the update anomaly is gone <span class="step-time">(2 min)</span></h3>
+                    <p>The Sci-Fi Circle moves to Wednesday. In the sheet that meant editing three rows; now it is one:</p>
+                    <pre><code class="language-sql">UPDATE clubs SET meeting_day = 'Wednesday' WHERE name = 'Sci-Fi Circle';
+
+SELECT m.name AS member, c.name AS club, c.meeting_day
+FROM memberships AS ms
+JOIN members AS m ON m.id = ms.member_id
+JOIN clubs   AS c ON c.id = ms.club_id
+ORDER BY c.name, m.name;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
++---------------+---------------+-------------+
+| member        | club          | meeting_day |
++---------------+---------------+-------------+
+| Alice Johnson | Classics Club | Thursday    |
+| Grace Wilson  | Classics Club | Thursday    |
+| Grace Wilson  | Fantasy Guild | Saturday    |
+| Alice Johnson | Sci-Fi Circle | Wednesday   |
+| Bob Smith     | Sci-Fi Circle | Wednesday   |
+| Eve Davis     | Sci-Fi Circle | Wednesday   |
++---------------+---------------+-------------+
+6 rows in set</code></pre>
+                    </div>
+                    <p><code>Rows matched: 1</code>: one row changed, and all three Sci-Fi members see Wednesday.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>book_club.sql</code> lists the dependencies and the key as comments before any <code>CREATE TABLE</code></li>
+                        <li>Members, leaders and clubs each have a surrogate key and a <code>UNIQUE</code> natural identifier</li>
+                        <li><code>memberships</code> has the composite primary key <code>(member_id, club_id)</code> and two foreign keys</li>
+                        <li>Both <code>EXCEPT</code> queries return an empty set</li>
+                        <li>Changing a club's meeting day updates exactly one row</li>
+                    </ul>
                 </div>
             </section>
 
-            <!-- Section 12: Exercises -->
             <section id="exercises" class="lesson-section">
-                <h2>Exercises</h2>
+                <h2>🏋️ Hands-on Exercises</h2>
+                <p>These continue in <code>normalize_lab</code>. Try each one before opening the solution.</p>
 
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 1: Identify Normal Form Violations</h3>
-                    <p>Look at this table and identify which normal form(s) it violates:</p>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr><th>student_id</th><th>student_name</th><th>courses</th><th>advisor_name</th><th>advisor_email</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr><td>1</td><td>Alice</td><td>Math, Physics, CS</td><td>Dr. Lee</td><td>lee@uni.edu</td></tr>
-                                <tr><td>2</td><td>Bob</td><td>CS, History</td><td>Dr. Lee</td><td>lee@uni.edu</td></tr>
-                                <tr><td>3</td><td>Carol</td><td>Math</td><td>Dr. Patel</td><td>patel@uni.edu</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-
+                <div class="card">
+                    <h3>🏋️ Exercise 1: Name the Violations</h3>
+                    <p>A school keeps this table, with key <code>(student_id, course)</code>: <code>student_id, student_name, course, course_room, grade, advisor_name, advisor_office</code>. Each student has one advisor; each advisor has one office; each course meets in one room. List every functional dependency and say which normal form each one breaks.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>For each non-key column ask: does it need the whole key, part of the key, or another non-key column?</p>
+                    </details>
                     <details>
                         <summary>✅ Solution</summary>
-                        <p><strong>1NF violation:</strong> The <code>courses</code> column contains comma-separated values (not atomic).</p>
-                        <p><strong>3NF violation:</strong> <code>advisor_email</code> depends on <code>advisor_name</code> (a non-key column), not on <code>student_id</code>. Dr. Lee's email is duplicated — a transitive dependency.</p>
-                        <p><strong>Fix:</strong> Create separate tables for students, courses, advisors, and a junction table for student-course enrollment.</p>
+                        <p><code>(student_id, course) → grade</code> is fine: the whole key. <code>student_id → student_name, advisor_name</code> and <code>course → course_room</code> depend on part of the key: 2NF violations. <code>advisor_name → advisor_office</code> is a non-key column determining another: a 3NF violation (transitive through <code>student_id → advisor_name</code>). Fix: <code>students(id, name, advisor_id)</code>, <code>advisors(id, name, office)</code>, <code>courses(id, name, room)</code>, <code>enrollments(student_id, course_id, grade)</code>.</p>
                     </details>
                 </div>
 
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 2: Normalize to 3NF</h3>
-                    <p>Take this unnormalized table and normalize it to 3NF. Show the resulting tables with columns and primary/foreign keys.</p>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr><th>invoice_id</th><th>invoice_date</th><th>vendor_name</th><th>vendor_city</th><th>items</th><th>amounts</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr><td>101</td><td>2026-03-01</td><td>Acme Corp</td><td>Phoenix</td><td>Widgets, Bolts</td><td>500, 120</td></tr>
-                                <tr><td>102</td><td>2026-03-05</td><td>Acme Corp</td><td>Phoenix</td><td>Widgets</td><td>250</td></tr>
-                                <tr><td>103</td><td>2026-03-10</td><td>Beta LLC</td><td>Tucson</td><td>Gears, Bolts, Springs</td><td>300, 80, 150</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-
+                <div class="card">
+                    <h3>🏋️ Exercise 2: Test a Dependency with Data</h3>
+                    <p>Using <code>club_signups</code>, write one query that checks whether <code>member_email → member_name</code> is contradicted by the data, and one that checks <code>leader_email → club_name</code>. What does each result mean?</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Group by the left side and count the distinct values of the right side; any group with more than one value is a counterexample.</p>
+                    </details>
                     <details>
                         <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- vendors (extracted to remove transitive dependency)
-CREATE TABLE vendors (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    city VARCHAR(100)
+                        <pre><code class="language-sql">SELECT member_email, COUNT(DISTINCT member_name) AS names
+FROM club_signups
+GROUP BY member_email
+HAVING COUNT(DISTINCT member_name) &gt; 1;
+
+SELECT leader_email, COUNT(DISTINCT club_name) AS clubs
+FROM club_signups
+GROUP BY leader_email
+HAVING COUNT(DISTINCT club_name) &gt; 1;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>Empty set
++------------------------------+-------+
+| leader_email                 | clubs |
++------------------------------+-------+
+| priya.nair@bookstore.example |     2 |
++------------------------------+-------+</code></pre>
+                        </div>
+                        <p>The first query finds no counterexample, which is consistent with the rule (but does not prove it). The second finds Priya leading two clubs, which proves <code>leader_email → club_name</code> is <em>not</em> a dependency, and is exactly why <code>clubs</code> points at <code>leaders</code> and not the other way around.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: Normalize the Invoices</h3>
+                    <p>A supplier's invoices arrive as rows of <code>invoice_no, invoice_date, vendor_name, vendor_city, items, amounts</code>, where <code>items</code> and <code>amounts</code> are comma lists ("Paper, Ink" and "120.00, 45.50"). Design and create the 3NF tables in <code>normalize_lab</code>, with keys and foreign keys.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>1NF: one row per item. Then ask what <code>vendor_city</code> depends on.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">CREATE TABLE vendors (
+    id    INT AUTO_INCREMENT PRIMARY KEY,
+    name  VARCHAR(100) NOT NULL UNIQUE,
+    city  VARCHAR(50)
 );
 
--- invoices (references vendor)
 CREATE TABLE invoices (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    invoice_date DATE NOT NULL,
-    vendor_id INT NOT NULL,
-    FOREIGN KEY (vendor_id) REFERENCES vendors(id)
+    invoice_no    INT PRIMARY KEY,
+    invoice_date  DATE NOT NULL,
+    vendor_id     INT NOT NULL,
+    CONSTRAINT fk_invoices_vendor FOREIGN KEY (vendor_id) REFERENCES vendors(id)
 );
 
--- invoice_items (atomic values, full key dependency)
 CREATE TABLE invoice_items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    invoice_id INT NOT NULL,
-    item_name VARCHAR(100) NOT NULL,
-    amount DECIMAL(10,2) NOT NULL,
-    FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+    invoice_no  INT NOT NULL,
+    line_no     INT NOT NULL,
+    item        VARCHAR(100) NOT NULL,
+    amount      DECIMAL(10, 2) NOT NULL,
+    PRIMARY KEY (invoice_no, line_no),
+    CONSTRAINT fk_invoice_items_invoice FOREIGN KEY (invoice_no) REFERENCES invoices(invoice_no)
 );
-                        </code></pre>
-                        <p><strong>1NF:</strong> Comma-separated items/amounts split into individual rows in invoice_items.</p>
-                        <p><strong>2NF:</strong> With single-column auto-increment PKs, partial dependencies are eliminated.</p>
-                        <p><strong>3NF:</strong> Vendor name and city moved to vendors table — no transitive dependencies.</p>
+
+SHOW TABLES LIKE 'invoice%';</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------------------------------+
+| Tables_in_normalize_lab (invoice%) |
++------------------------------------+
+| invoice_items                      |
+| invoices                           |
++------------------------------------+</code></pre>
+                        </div>
+                        <p>1NF: each item is its own row in <code>invoice_items</code>, numbered by <code>line_no</code>. 2NF: <code>invoice_date</code> and the vendor depend on the invoice alone, so they live in <code>invoices</code>. 3NF: <code>vendor_city</code> depends on the vendor, not the invoice, so it lives in <code>vendors</code>.</p>
                     </details>
                 </div>
 
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 3: Design from Requirements</h3>
-                    <p>Design a normalized database for a <strong>recipe website</strong> with these requirements:</p>
-                    <ul>
-                        <li>Users have a name, email, and join date</li>
-                        <li>Recipes have a title, description, prep time, and cook time</li>
-                        <li>Each recipe is submitted by one user</li>
-                        <li>Recipes have ingredients with quantities and units (e.g., "2 cups flour")</li>
-                        <li>Recipes belong to one or more categories (e.g., "Dessert," "Vegetarian")</li>
-                        <li>Users can save (bookmark) recipes</li>
-                    </ul>
-                    <p>Draw the ER diagram (or write it as text) and write the CREATE TABLE statements.</p>
-
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): Design a Recipe Site</h3>
+                    <p>Requirements: users have a name, a unique email and a join date. A user submits recipes (title, prep minutes). A recipe has ingredients, each with a quantity and a unit ("2 cups flour"), and the same ingredient (flour) appears in many recipes. Recipes belong to one or more categories. Users can bookmark recipes. Sketch the ER diagram, then write the <code>CREATE TABLE</code> statements in <code>normalize_lab</code>.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Look for every "many" at both ends: recipes and ingredients, recipes and categories, users and bookmarked recipes. Each needs a junction table, and the quantity belongs on the recipe-ingredient junction. Name the tables so they do not clash with this lesson's <code>books</code> and <code>customers</code>.</p>
+                    </details>
                     <details>
                         <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
-    join_date DATE NOT NULL DEFAULT (CURRENT_DATE)
-);
-
-CREATE TABLE categories (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE
+                        <pre><code class="language-sql">CREATE TABLE site_users (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(100) NOT NULL,
+    email      VARCHAR(100) NOT NULL UNIQUE,
+    joined_on  DATE NOT NULL DEFAULT (CURRENT_DATE)
 );
 
 CREATE TABLE recipes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    description TEXT,
-    prep_time_minutes INT,
-    cook_time_minutes INT,
-    user_id INT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    title         VARCHAR(200) NOT NULL,
+    prep_minutes  INT,
+    user_id       INT NOT NULL,
+    CONSTRAINT fk_recipes_user FOREIGN KEY (user_id) REFERENCES site_users(id)
+);
+
+CREATE TABLE ingredients (
+    id    INT AUTO_INCREMENT PRIMARY KEY,
+    name  VARCHAR(100) NOT NULL UNIQUE
 );
 
 CREATE TABLE recipe_ingredients (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    recipe_id INT NOT NULL,
-    ingredient_name VARCHAR(100) NOT NULL,
-    quantity DECIMAL(8,2),
-    unit VARCHAR(30),
-    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+    recipe_id      INT NOT NULL,
+    ingredient_id  INT NOT NULL,
+    quantity       DECIMAL(8, 2) NOT NULL,
+    unit           VARCHAR(20) NOT NULL,
+    PRIMARY KEY (recipe_id, ingredient_id),
+    CONSTRAINT fk_ri_recipe FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ri_ingredient FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)
 );
 
--- Junction table: recipes ↔ categories (M:M)
 CREATE TABLE recipe_categories (
-    recipe_id INT NOT NULL,
-    category_id INT NOT NULL,
-    PRIMARY KEY (recipe_id, category_id),
-    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
-    FOREIGN KEY (category_id) REFERENCES categories(id)
+    id    INT AUTO_INCREMENT PRIMARY KEY,
+    name  VARCHAR(50) NOT NULL UNIQUE
 );
 
--- Junction table: users ↔ recipes bookmarks (M:M)
-CREATE TABLE bookmarks (
-    user_id INT NOT NULL,
-    recipe_id INT NOT NULL,
-    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, recipe_id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+CREATE TABLE recipe_in_category (
+    recipe_id    INT NOT NULL,
+    category_id  INT NOT NULL,
+    PRIMARY KEY (recipe_id, category_id),
+    CONSTRAINT fk_ric_recipe FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ric_category FOREIGN KEY (category_id) REFERENCES recipe_categories(id)
 );
-                        </code></pre>
-                        <p>Key relationships: users → recipes (1:M), recipes ↔ categories (M:M via junction), users ↔ recipes bookmarks (M:M via junction), recipes → ingredients (1:M).</p>
+
+CREATE TABLE bookmarks (
+    user_id    INT NOT NULL,
+    recipe_id  INT NOT NULL,
+    saved_on   DATE NOT NULL DEFAULT (CURRENT_DATE),
+    PRIMARY KEY (user_id, recipe_id),
+    CONSTRAINT fk_bookmarks_user FOREIGN KEY (user_id) REFERENCES site_users(id),
+    CONSTRAINT fk_bookmarks_recipe FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+);
+
+SELECT TABLE_NAME, COUNT(*) AS foreign_keys
+FROM information_schema.REFERENTIAL_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = 'normalize_lab'
+  AND TABLE_NAME IN ('recipes', 'recipe_ingredients', 'recipe_in_category', 'bookmarks')
+GROUP BY TABLE_NAME
+ORDER BY TABLE_NAME;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+--------------------+--------------+
+| TABLE_NAME         | foreign_keys |
++--------------------+--------------+
+| bookmarks          |            2 |
+| recipe_in_category |            2 |
+| recipe_ingredients |            2 |
+| recipes            |            1 |
++--------------------+--------------+</code></pre>
+                        </div>
+                        <p>Three junction tables, each with a composite primary key, carry the three many-to-many relationships; the quantity and unit live on <code>recipe_ingredients</code>, because they depend on the pair (this ingredient in this recipe). <code>DEFAULT (CURRENT_DATE)</code>, an expression default in parentheses, works on MySQL 8.0.13 and later and on MariaDB.</p>
                     </details>
                 </div>
+            </section>
 
-                <!-- Quiz -->
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
                 <div class="card quiz-container">
-                    <h3>🎯 Quick Quiz</h3>
+                    <h3>🎯 Check Your Understanding</h3>
 
                     <div class="quiz-question">
-                        <p><strong>Question 1:</strong> What does "atomic" mean in the context of 1NF?</p>
+                        <p><strong>Question 1:</strong> A <code>book_titles</code> cell contains <code>'Dune, 1984'</code>. Which normal form does that break?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="Atomic doesn't refer to size — a long paragraph in a TEXT column is still atomic if it represents one value.">
-                                A) Each value must be as small as possible
+                            <button class="quiz-option" data-correct="true" data-explanation="1NF requires one value per cell. A comma list puts two values in one cell, which is why SQL cannot sum or join on them.">
+                                A) First normal form
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Atomic means indivisible — each cell contains exactly one value, not a list, set, or comma-separated group. 'Dune, 1984' in one cell is NOT atomic; each should be in its own row.">
-                                B) Each cell contains exactly one indivisible value
+                            <button class="quiz-option" data-correct="false" data-hint="2NF is about columns that depend on part of a composite key. What is wrong inside this single cell?">
+                                B) Second normal form
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Data types matter, but 1NF's atomicity rule is about having single values per cell, not about choosing the right type.">
-                                C) Each column must use the smallest data type
+                            <button class="quiz-option" data-correct="false" data-hint="3NF is about non-key columns depending on other non-key columns. Look at the cell itself.">
+                                C) Third normal form
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 2:</strong> When does 2NF apply?</p>
+                        <p><strong>Question 2:</strong> What is a transitive dependency?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="2NF applies to ALL tables in principle, but it only finds violations in tables with composite keys.">
-                                A) Only to tables with more than 100 rows
+                            <button class="quiz-option" data-correct="false" data-hint="A foreign key is how you fix a transitive dependency, not what one is.">
+                                A) A foreign key that points to another table
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! 2NF violations (partial dependencies) can only occur when the primary key consists of multiple columns. If a column depends on only PART of the composite key, it violates 2NF. Tables with single-column PKs are automatically in 2NF if they're in 1NF.">
-                                B) To tables with composite (multi-column) primary keys
+                            <button class="quiz-option" data-correct="false" data-hint="That describes a partial dependency, which 2NF removes.">
+                                B) A column that depends on only part of a composite key
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="2NF doesn't depend on having foreign keys — it's about dependencies on the primary key.">
-                                C) Only to tables with foreign keys
+                            <button class="quiz-option" data-correct="true" data-explanation="A non-key column determined by another non-key column, like order_id determining cust_email and cust_email determining cust_city. 3NF removes it by moving the customer columns to their own table.">
+                                C) A non-key column that depends on another non-key column
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 3:</strong> What is a transitive dependency?</p>
+                        <p><strong>Question 3:</strong> In <code>order_lines_1nf</code>, with key <code>(order_id, book_title)</code>, the dependency <code>order_id → order_date</code> breaks which rule?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! A transitive dependency is when a non-key column depends on another non-key column: A → B → C, where A is the key, B is non-key, and C depends on B rather than directly on A. Example: order_id → customer_name → customer_email.">
-                                A) A non-key column that depends on another non-key column instead of the primary key
+                            <button class="quiz-option" data-correct="false" data-hint="Every cell still holds one value. The problem is about which columns order_date depends on.">
+                                A) 1NF: the date is not atomic
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Foreign key relationships between tables are proper design — they're not transitive dependencies. Transitive dependencies happen WITHIN a single table.">
-                                B) A foreign key that references another table
+                            <button class="quiz-option" data-correct="true" data-explanation="order_date depends on order_id, which is only part of the composite key: a partial dependency, so the table is not in 2NF. That is why the date repeats on every line of an order.">
+                                B) 2NF: it depends on part of the key
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Circular references are a relationship design issue, not a normalization concept. Transitive dependencies are about column-to-column dependencies within a table.">
-                                C) A circular reference between two tables
+                            <button class="quiz-option" data-correct="false" data-hint="order_id is part of the key, not a non-key column, so this is not a transitive dependency.">
+                                C) 3NF: it is a transitive dependency
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 4:</strong> When is denormalization appropriate?</p>
+                        <p><strong>Question 4:</strong> <code>order_items.price_at_time</code> and <code>books.price</code> hold the same numbers today. Is <code>price_at_time</code> redundant?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="Denormalization adds redundancy, which makes writes MORE complex (you must keep copies in sync). It helps reads, not writes.">
-                                A) When you want to simplify INSERT and UPDATE operations
+                            <button class="quiz-option" data-correct="true" data-explanation="price_at_time is a fact about the sale, determined by (order_id, book_id). books.price is the current price. They only coincide until the first price change, and then old orders must keep what was actually paid.">
+                                A) No: it records what was paid on that order, a different fact from today's price
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Adding more tables is the result of normalization, not denormalization. Denormalization combines or duplicates data.">
-                                A) Whenever you have more than 5 tables
+                            <button class="quiz-option" data-correct="false" data-hint="Think about what should happen to last year's orders when a book's price changes next month.">
+                                B) Yes: it should be dropped and computed from <code>books.price</code>
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Denormalization is a deliberate trade-off: you add controlled redundancy to speed up specific read-heavy queries. But only after normalizing first and identifying a real, measured performance bottleneck.">
-                                C) When you have a proven read-performance bottleneck that normalization can't solve
+                            <button class="quiz-option" data-correct="false" data-hint="Whether a fact is redundant depends on what it means, not on whether it is a key.">
+                                C) Yes, unless it is part of the primary key
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> When is adding a stored <code>orders.total</code> column a reasonable decision?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Denormalizing in advance creates exactly the drift you saw in Common Mistake 4, with no proven benefit.">
+                                A) Always, because reading one column is faster than summing
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Denormalize only for a measured problem that indexes and better queries did not solve, and only with a plan (a transaction, a trigger or a refresh) that keeps the stored value correct.">
+                                B) When a measured query is too slow and you have a plan to keep the total in sync
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="The number of tables says nothing about whether a computed value is worth storing.">
+                                C) Whenever the database has more than five tables
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
@@ -990,77 +1207,101 @@ CREATE TABLE bookmarks (
                 </div>
             </section>
 
-            <!-- Section 13: Summary -->
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Are there normal forms beyond 3NF?</summary>
+                    <p>Yes: Boyce-Codd normal form (BCNF) tightens 3NF for tables with several overlapping candidate keys, and 4NF and 5NF deal with independent multi-valued facts stored in one table. A careful 3NF design is in BCNF almost every time, and the higher forms rarely come up in everyday business databases. Learn 3NF thoroughly first; it does nearly all the work.</p>
+                </details>
+                <details>
+                    <summary>Should I use surrogate keys (id) or natural keys (email)?</summary>
+                    <p>This course uses <code>AUTO_INCREMENT</code> ids as primary keys and puts <code>UNIQUE</code> on natural identifiers. Natural values change (people change emails) and are often long; an id never needs to change, so foreign keys stay stable. Junction tables are the exception: their natural composite key, such as <code>(member_id, club_id)</code>, is the perfect primary key.</p>
+                </details>
+                <details>
+                    <summary>Is a JSON column a 1NF violation?</summary>
+                    <p>A JSON column holding a list is, in spirit, a list in a cell: you lose foreign keys and simple joins on its contents. That is fine for data you only store and display (a book's optional attributes), and wrong for data you join, sum or constrain (order lines). <a href="lesson_json.html">Lesson 7.3</a> shows where JSON columns fit.</p>
+                </details>
+                <details>
+                    <summary>Is normalization bad for performance?</summary>
+                    <p>Rarely, at the sizes most applications reach. Joins on indexed keys are what relational databases are built for, and a normalized design writes less data and keeps indexes small. Measure before you denormalize, as Lesson 6.1 showed.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>The <code>clubs.current_book</code> column stores a title as text. Connect the lab to the real catalog: add a <code>book_id</code> column, fill it by joining <code>clubs</code> to <code>bookstore.books</code> on the title (a query can read another database with <code>database.table</code>), check that every club found its book, then drop <code>current_book</code>. Can you add a foreign key from <code>normalize_lab.clubs</code> to <code>bookstore.books</code>? Try it, and think about what happens to the club when <code>bookstore.sql</code> is reloaded.</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Find a spreadsheet in your own life (a sign-up sheet, a budget, a contact list, a game log). Write down one value that repeats on many rows, the update anomaly it could cause, and the table you would move it to. Which column would be the key of that new table?</p>
+                </div>
+            </section>
+
             <section id="summary" class="lesson-section">
-                <h2>Summary</h2>
+                <h2>📝 Lesson Summary</h2>
 
                 <div class="card card-success">
-                    <h3>🎉 Key Takeaways</h3>
+                    <h3>🎓 Key Takeaways</h3>
                     <ul>
-                        <li>Poorly designed tables cause <strong>update, insert, and delete anomalies</strong></li>
-                        <li><strong>1NF:</strong> Every cell has one atomic value — no comma-separated lists or arrays</li>
-                        <li><strong>2NF:</strong> Every non-key column depends on the <em>entire</em> primary key (no partial dependencies)</li>
-                        <li><strong>3NF:</strong> No non-key column depends on another non-key column (no transitive dependencies)</li>
-                        <li>The mnemonic: <em>"the key, the whole key, and nothing but the key"</em></li>
-                        <li><strong>Functional dependencies</strong> (A → B) are the reasoning tool for normalization</li>
-                        <li><strong>ER diagrams</strong> visualize tables, columns, and relationships — draw them before coding</li>
-                        <li>Design process: identify entities → identify relationships → draw ER diagram → write SQL → verify normalization</li>
-                        <li><strong>Denormalization</strong> is a deliberate trade-off for performance — normalize first, measure, then denormalize specific bottlenecks</li>
-                        <li>3NF is sufficient for most applications — higher normal forms (BCNF, 4NF, 5NF) exist but are rarely needed</li>
+                        <li>Storing facts about different things in one table causes <strong>update, insert and delete anomalies</strong></li>
+                        <li>A <strong>functional dependency</strong> <code>A → B</code> is a business rule: same A, same B; data can disprove one but never prove it</li>
+                        <li><strong>1NF</strong>: one value per cell and a key. <strong>2NF</strong>: no dependency on part of the key. <strong>3NF</strong>: no dependency on a non-key column</li>
+                        <li>"The key, the whole key, and nothing but the key"</li>
+                        <li>Migrate with <code>INSERT ... SELECT DISTINCT</code>, parents first; prove the split with <code>EXCEPT</code> in both directions</li>
+                        <li>ER diagrams show tables and relationship counts; many-to-many always means a junction table</li>
+                        <li>Do not store what you can compute; denormalize only for a measured problem, with a plan to keep copies in sync</li>
                     </ul>
                 </div>
 
-                <h3>Quick Reference</h3>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Concept</th>
-                                <th>Rule</th>
-                            </tr>
+                            <tr><th>You see</th><th>It breaks</th><th>Do this</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>1NF</td>
-                                <td>Atomic values, unique rows, no repeating groups</td>
-                            </tr>
-                            <tr>
-                                <td>2NF</td>
-                                <td>1NF + no partial dependencies on composite keys</td>
-                            </tr>
-                            <tr>
-                                <td>3NF</td>
-                                <td>2NF + no transitive dependencies (non-key → non-key)</td>
-                            </tr>
-                            <tr>
-                                <td>Functional dependency</td>
-                                <td>A → B means knowing A determines B</td>
-                            </tr>
-                            <tr>
-                                <td>Junction table</td>
-                                <td>Resolves many-to-many relationships with FKs to both sides</td>
-                            </tr>
-                            <tr>
-                                <td>Denormalization</td>
-                                <td>Controlled redundancy for proven read-performance needs</td>
-                            </tr>
+                            <tr><td>Lists or <code>col1, col2, col3</code> columns</td><td>1NF</td><td>One row per item, in a child table</td></tr>
+                            <tr><td>A column that needs only part of a composite key</td><td>2NF</td><td>Move it to the table of that part</td></tr>
+                            <tr><td>A column that describes another non-key column</td><td>3NF</td><td>Give that thing its own table and a foreign key</td></tr>
+                            <tr><td>"Many" at both ends of a relationship</td><td>(a missing table)</td><td>A junction table with a composite primary key</td></tr>
+                            <tr><td>A stored value you could compute</td><td>(a drift risk)</td><td>Compute it, or use a view</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <h3>📚 Additional Resources</h3>
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You made all three anomalies happen on purpose, then designed them away</li>
+                        <li>You normalized a flat order sheet to 3NF and proved with <code>EXCEPT</code> that not one row was lost</li>
+                        <li>You now know why the bookstore has <code>price_at_time</code> but no stored order total</li>
+                        <li>You turned the book club's sign-up sheet into four clean tables in <code>book_club.sql</code></li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>Module 6 is complete: fast queries, saved queries, and well-shaped tables. In <a href="lesson_17.html"><strong>Lesson 7.1: Stored Procedures &amp; Functions</strong></a> you start Module 7 by putting logic inside the database: named routines that take parameters, such as "place an order for this customer", so every application performs the same steps the same way.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
                 <ul>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/database-use.html" target="_blank" rel="noopener">MySQL Docs — Using Databases</a></li>
-                    <li><a href="https://en.wikipedia.org/wiki/Database_normalization" target="_blank" rel="noopener">Wikipedia — Database Normalization</a></li>
-                    <li><a href="https://en.wikipedia.org/wiki/Entity%E2%80%93relationship_model" target="_blank" rel="noopener">Wikipedia — Entity-Relationship Model</a></li>
+                    <li>Run <code>book_club.sql</code> from top to bottom on a fresh lab (<code>DROP DATABASE normalize_lab;</code>, then recreate it) to prove it stands on its own</li>
+                    <li>Draw the ER diagram of the whole <code>bookstore</code>, including <code>employees</code> and its manager relationship</li>
+                    <li>Reload <code>bookstore.sql</code>: Lesson 7.1 starts from the standard database</li>
                 </ul>
 
-                <h3>🚀 What's Next?</h3>
-                <p>That completes <strong>Module 5: Database Design!</strong> You now know how to make queries fast (indexes), simplify complex queries (views), and design clean schemas from scratch (normalization). In <strong>Module 6: Advanced Features</strong>, you'll learn to build <strong>stored procedures and functions</strong> — reusable blocks of SQL logic that live inside the database and can be called by name.</p>
-
-                <div class="card card-accent" style="text-align: center; padding: 2rem;">
-                    <h3>🎉 Module 5 Complete!</h3>
-                    <p>You've mastered the design side of MySQL — indexes for speed, views for simplicity, and normalization for correctness. Your databases won't just work — they'll be fast, clean, and maintainable.</p>
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>Design is where database work stops being about syntax and starts being about judgment. The normal forms give that judgment a vocabulary: when something feels off about a table, you can now say exactly what depends on what, and fix it. Every schema you meet from here on, including the one you will build in the final project, will read differently to you.</p>
                 </div>
             </section>
 
@@ -1073,7 +1314,7 @@ CREATE TABLE bookmarks (
     </main>
 
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>

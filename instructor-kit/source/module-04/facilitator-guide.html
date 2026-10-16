@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 4</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 4: Filtering, Sorting and Limiting</h1>
+    <p class="sub">How to teach the fourth session of MySQL Foundations. Learners filter rows precisely (comparisons, AND/OR with parentheses, IN, BETWEEN, LIKE and the rules for NULL), sort and page results so they come out the same every time, and close Modules 1 and 2 with Checkpoint 1, a scored 30-minute task: build, fill and read a small database from nothing.</p>
+    <div class="meta-row">
+      <span class="chip"><b>2</b> lessons</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lessons <b>3.1–3.2</b></span>
+      <span class="chip"><b>Checkpoint 1</b></span>
+      <span class="chip">Session <b>4</b> of 14 · Part 1</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Two lessons in shorter blocks (65 and 55 minutes) because the 30 minutes before the wrap-up are <b>Checkpoint 1</b>, a scored open-notes task on Modules 1 and 2 (Lessons 1.1 to 2.3).</li>
+  <li>Every SQL block below was run to produce the output under it, on MySQL 9.7.2, on the Module 3 data (Lesson 3.1's setup script = <code class="inline">labs/_states/flat.sql</code>). Ask for a row count before every query: counting first is how silent filter mistakes get caught.</li>
+  <li>Keep <code class="inline">lesson_07.html</code> and <code class="inline">lesson_08.html</code> open. Labs live in <code class="inline">labs/module-04/</code>; the lesson labs are read-only and run inside <code class="inline">bookstore</code>.</li>
+  <li>Part 1 (Sessions 1 to 7) can run on its own. Teal blocks are hands-on, amber blocks are watch-outs.</li>
+</ul>
+<div class="note warn"><div class="t">The #1 risk of Session 4: running out of time for the checkpoint</div>
+<p>Both lessons are dense, and a room of laptops is slower than your demo. <b>Protect the 2:20 start of Checkpoint 1.</b> If 3.1 runs over, cut its project start (send all seven steps home); if 3.2 runs over, cut the lab to TODOs 1 to 4 and the project start. The second risk is data: anyone whose <code class="inline">bookstore</code> is not the Module 3 data gets different rows all session. The warm-up loads it on every laptop.</p>
+</div>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Sort the Session 3 exit tickets.</b> Question 3 (the preview habit) tells you who needs Part B's preview in the checkpoint pointed out.</li>
+  <li>☐ <b>Files to hand out:</b> the <code class="inline">labs/module-04/</code> starters and debug files; <b>hold back</b> <code class="inline">checkpoint-1/checkpoint_starter.sql</code> until 2:20 (print the workbook's Checkpoint 1 page or share it at that moment). Keep <code class="inline">checkpoint_solution.sql</code> and the rubric (Answer Key) to yourself.</li>
+  <li>☐ <b>Run the kit check once:</b> <code class="inline">python3 labs/check_labs.py module-04</code>. Every line should say PASS (12 files).</li>
+  <li>☐ <b>Projector machine:</b> <code class="inline">SOURCE labs/_states/flat.sql</code> (it ends in bookstore). Browser tabs <code class="inline">lesson_07.html</code>, <code class="inline">lesson_08.html</code>.</li>
+  <li>☐ <b>Board, before learners arrive:</b> the evaluation order (comparisons → NOT → AND → OR), "NULL: IS NULL, never = NULL", and the clause order SELECT · FROM · WHERE · ORDER BY · LIMIT.</li>
+  <li>☐ <b>Checkpoint logistics:</b> decide how learners hand in (their <code class="inline">checkpoint_starter.sql</code> by email or USB, plus the workbook page for Part D). Open notes means workbook, scripts and lesson pages; no neighbors, no AI assistants.</li>
+</ul>
+<div class="blk warn"><div class="h">Known environment traps</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>Results do not match the guide</td><td>bookstore is not the Module 3 data (Session 3's labs or experiments changed it)</td><td><code class="inline">SOURCE labs/_states/flat.sql</code> (or Lesson 3.1's setup block); it rebuilds bookstore.</td></tr>
+<tr><td><code class="inline">ERROR 1046 No database selected</code></td><td>A fresh session</td><td><code class="inline">USE bookstore;</code> (flat.sql ends with it).</td></tr>
+<tr><td>Sorted results differ on MariaDB</td><td>Ties without a tie-breaker are ordered differently</td><td>That is the lesson: add a tie-breaker.</td></tr>
+<tr><td><code class="inline">NULLS LAST</code> is a syntax error</td><td>MySQL does not support it</td><td><code class="inline">ORDER BY col IS NULL, col</code> (the lesson's version note).</td></tr>
+<tr><td>Checkpoint: <code class="inline">ERROR 1064</code> at <code class="inline">condition</code></td><td>CONDITION is a reserved word</td><td>Call the column <code class="inline">book_condition</code> (the task says so).</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 4 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">10</td><td>Warm-up</td><td>Load the Module 3 data on every laptop, five retrieval questions on Session 3, homework check.</td></tr>
+      <tr><td class="t">0:10</td><td class="t">10</td><td><b>3.1</b> Frame and mental model</td><td>WHERE tests every row: true, false or unknown; only true is kept.</td></tr>
+      <tr><td class="t">0:20</td><td class="t">25</td><td><b>3.1</b> Live demo</td><td>Comparisons, AND/OR/NOT, IN, BETWEEN, a half-open date range, LIKE, NULL, precedence, two mistakes.</td></tr>
+      <tr><td class="t">0:45</td><td class="t">20</td><td><b>3.1</b> Guided lab</td><td><code class="inline">labs/module-04/l3_1-where-clauses-operators-filtering/staff_requests_starter.sql</code> in pairs: seven requests, seven WHERE clauses.</td></tr>
+      <tr><td class="t">1:05</td><td class="t">10</td><td><b>3.1</b> Start the lesson project</td><td>saved_searches.sql, Steps 1 to 3; Steps 4 to 7 go home.</td></tr>
+      <tr><td class="t">1:15</td><td class="t">10</td><td>Break</td><td>Leave "AND before OR: add parentheses" and "NULL: IS NULL" on the board.</td></tr>
+      <tr><td class="t">1:25</td><td class="t">10</td><td><b>3.2</b> Frame and mental model</td><td>A table has no order; ORDER BY, tie-breakers, then LIMIT cuts.</td></tr>
+      <tr><td class="t">1:35</td><td class="t">20</td><td><b>3.2</b> Live demo</td><td>Several keys, an alias, CASE, where NULLs go, top N, OFFSET pages, keyset, three mistakes.</td></tr>
+      <tr><td class="t">1:55</td><td class="t">15</td><td><b>3.2</b> Guided lab</td><td><code class="inline">labs/module-04/l3_2-sorting-limiting-results/bestseller_board_starter.sql</code>: six orders for a display board.</td></tr>
+      <tr><td class="t">2:10</td><td class="t">10</td><td><b>3.2</b> Start the lesson project</td><td>storefront.sql, Steps 1 and 2; Steps 3 to 6 go home.</td></tr>
+      <tr><td class="t">2:20</td><td class="t">30</td><td>Checkpoint 1 (Modules 1 and 2)</td><td><code class="inline">labs/module-04/checkpoint-1/checkpoint_starter.sql</code>: open notes, 30 minutes, scored with the 5-row rubric.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up</td><td>Exit ticket (3 questions), homework, bring list for Session 5.</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> The lesson pages estimate 95 + 85 = 180 minutes for a solo learner; with the warm-up, the break, the checkpoint and the wrap-up the room has 120. Each lesson keeps its full shape in shorter blocks; both projects start here and finish at home.</p>
+<p><b>Goes home (about 2 to 3 hours).</b> saved_searches.sql Steps 4 to 7 and storefront.sql Steps 3 to 6; each lesson's Hands-on Exercises; both Quick Quizzes; both journal entries; anything unfinished in the checkpoint is NOT homework (it is scored as handed in).</p>
+<p><b>Protect, in this order:</b> the checkpoint's 30 minutes; the warm-up's data load; 3.1 demo Steps 4, 11 to 14 (NULL and precedence); 3.2 demo Steps 1, 2 and 11 (ties and the silent quoted name); the staff-requests lab through request 5. <b>Cut first:</b> the 3.1 project start, then 3.2 demo Steps 4 and 5 (alias, CASE), then the 3.2 project start.</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Warm-Up: Session 3 Retrieval and the Module 3 Data</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">3m</td><td>Everyone: <code class="inline">SOURCE labs/_states/flat.sql</code> (or Lesson 3.1's setup block), then <code class="inline">SELECT COUNT(*) FROM books;</code> says 10</td></tr>
+<tr><td class="t">4m</td><td>Five questions W1 to W5 in the workbook, no notes, then fingers up</td></tr>
+<tr><td class="t">3m</td><td>Homework check: load_bookstore_data.sql run twice; who tried --safe-updates, and what did it stop?</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Warm-up answers</div>
+<p>Answers: <b>W1</b> B) <code class="inline">DECIMAL(8, 2)</code>; <b>W2</b> C) <code class="inline">1048</code>; <b>W3</b> D) <code class="inline">Rows matched: 1  Changed: 0</code>; <b>W4</b> A) A SELECT with exactly the same WHERE; <b>W5</b> C) <code class="inline">REPLACE INTO ...</code>.</p>
+<ul class="tick">
+  <li><b>W1 to W3</b> are Lesson 2.2 and 2.3 facts the checkpoint uses: DECIMAL, 1048, and the second line of an UPDATE.</li>
+  <li><b>W4</b> is the preview habit; the checkpoint's B4 asks for it.</li>
+  <li><b>W5:</b> REPLACE versus the upsert, the checkpoint's B6.</li>
+  <li>Tell the room now: "Checkpoint 1 at 2:20, 30 minutes, open notes, on everything up to Lesson 2.3."</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plans</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">3.1</span><h3>WHERE Clauses, Operators &amp; Filtering</h3><span class="dur">65 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Filter rows by numbers, text and dates with the comparison operators (=, !=, &lt;, &gt;, &lt;=, &gt;=)</li>
+  <li>Combine conditions with AND, OR and NOT, and use parentheses to say exactly what you mean</li>
+  <li>Match lists, ranges and text patterns with IN, BETWEEN and LIKE</li>
+  <li>Find missing values with IS NULL and explain why = NULL finds nothing</li>
+  <li>Spot the silent filtering mistakes (missing NULL rows, AND/OR mix-ups) and fix error 1054</li>
+  <li>Save a set of reusable searches in a .sql script</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: a test on every row; true, false, unknown</td></tr>
+<tr><td class="t">25m</td><td>Live demo: comparisons to precedence, two mistakes</td></tr>
+<tr><td class="t">20m</td><td>Guided lab: <code class="inline">staff_requests_starter.sql</code> in pairs</td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: saved_searches.sql, Steps 1 to 3</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Draw the lesson's diagram: each row of books → the test → kept (true) or dropped (false, <b>or unknown</b>). "WHERE is a test MySQL runs on every row. The third answer, unknown, appears whenever a NULL is involved, and unknown is dropped like false."</p>
+<p>Then the counting habit: "Before you run a filter, say how many rows you expect. Three of today's mistakes give no error at all; the count is how you catch them."</p>
+<p>Then precedence as arithmetic: "Multiplication before addition; AND before OR. When you mix them, type the parentheses."</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>Inside <code class="inline">bookstore</code> with the Module 3 data. Ask for the row count before each query.</p>
+<ol class="steps">
+  <li><b>WHERE as a test on every row (2m).</b> "Five of ten pass. The ORDER BY makes the result read the same everywhere: Lesson 3.2."
+<pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &lt; <span class="s">10</span>
+<span class="k">ORDER</span> <span class="k">BY</span> price, title;</pre>
+<pre class="out">+------------------------+-------+
+| title                  | price |
++------------------------+-------+
+| Pride and Prejudice    |  7.99 |
+| The Catcher in the Rye |  8.99 |
+| The Great Gatsby       |  8.99 |
+| Brave New World        |  9.49 |
+| 1984                   |  9.99 |
++------------------------+-------+</pre></li>
+  <li><b>See the test itself (2m).</b> "A condition is a value: 1, 0 or NULL. Put it in the SELECT list to debug a WHERE."
+<pre class="code"><span class="k">SELECT</span> title, price, price &lt; <span class="s">10</span> <span class="k">AS</span> passes
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> id
+<span class="k">LIMIT</span> <span class="s">4</span>;</pre>
+<pre class="out">+-----------------------+-------+--------+
+| title                 | price | passes |
++-----------------------+-------+--------+
+| Dune                  | 14.99 |      0 |
+| 1984                  |  9.99 |      1 |
+| To Kill a Mockingbird | 11.99 |      0 |
+| The Great Gatsby      |  8.99 |      1 |
++-----------------------+-------+--------+</pre></li>
+  <li><b>Text ignores case (1m).</b> "The collation is _ci: case-insensitive."
+<pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> author = <span class="s">'j.r.r. tolkien'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> title;</pre>
+<pre class="out">+-------------------+
+| title             |
++-------------------+
+| Lord of the Rings |
+| The Hobbit        |
++-------------------+</pre></li>
+  <li><b>Not equal, and two missing customers (2m).</b> "Eight customers, two in New York. Count the rows."
+<pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city != <span class="s">'New York'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre>
+<pre class="out">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Grace      | Chicago     |
++------------+-------------+</pre>
+Four. Eve and Hank are gone: an unknown city is not "different from New York". Leave the question open until Step 12.</li>
+  <li><b>AND narrows (1m).</b> "Cheap AND long."
+<pre class="code"><span class="k">SELECT</span> title, price, pages
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &lt; <span class="s">10</span> <span class="k">AND</span> pages &gt; <span class="s">300</span>
+<span class="k">ORDER</span> <span class="k">BY</span> price;</pre>
+<pre class="out">+---------------------+-------+-------+
+| title               | price | pages |
++---------------------+-------+-------+
+| Pride and Prejudice |  7.99 |   432 |
+| Brave New World     |  9.49 |   311 |
+| 1984                |  9.99 |   328 |
++---------------------+-------+-------+</pre></li>
+  <li><b>OR widens (1m).</b> "Cheap OR short. Gatsby passes both: does it appear twice?"
+<pre class="code"><span class="k">SELECT</span> title, price, pages
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price &lt; <span class="s">9</span> <span class="k">OR</span> pages &lt; <span class="s">200</span>
+<span class="k">ORDER</span> <span class="k">BY</span> title;</pre>
+<pre class="out">+------------------------+-------+-------+
+| title                  | price | pages |
++------------------------+-------+-------+
+| Fahrenheit 451         | 10.49 |   158 |
+| Pride and Prejudice    |  7.99 |   432 |
+| The Catcher in the Rye |  8.99 |   234 |
+| The Great Gatsby       |  8.99 |   180 |
++------------------------+-------+-------+</pre></li>
+  <li><b>IN: a list (1m).</b> "Three ORs on one column, said once."
+<pre class="code"><span class="k">SELECT</span> title, author
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> author <span class="k">IN</span> (<span class="s">'George Orwell'</span>, <span class="s">'Aldous Huxley'</span>, <span class="s">'Ray Bradbury'</span>)
+<span class="k">ORDER</span> <span class="k">BY</span> author;</pre>
+<pre class="out">+-----------------+---------------+
+| title           | author        |
++-----------------+---------------+
+| Brave New World | Aldous Huxley |
+| 1984            | George Orwell |
+| Fahrenheit 451  | Ray Bradbury  |
++-----------------+---------------+</pre></li>
+  <li><b>BETWEEN includes both ends (1m).</b> "Are 9.49 and 10.99 in?"
+<pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price <span class="k">BETWEEN</span> <span class="s">9.49</span> <span class="k">AND</span> <span class="s">10.99</span>
+<span class="k">ORDER</span> <span class="k">BY</span> price;</pre>
+<pre class="out">+-----------------+-------+
+| title           | price |
++-----------------+-------+
+| Brave New World |  9.49 |
+| 1984            |  9.99 |
+| Fahrenheit 451  | 10.49 |
+| The Hobbit      | 10.99 |
++-----------------+-------+</pre></li>
+  <li><b>A month of timestamps (2m).</b> "created_at has a time. Half-open: on or after the first, before the first of next month."
+<pre class="code"><span class="k">SELECT</span> first_name, created_at
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> created_at &gt;= <span class="s">'2026-01-01'</span>
+  <span class="k">AND</span> created_at &lt;  <span class="s">'2026-02-01'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> created_at;</pre>
+<pre class="out">+------------+---------------------+
+| first_name | created_at          |
++------------+---------------------+
+| Alice      | 2026-01-04 10:15:00 |
+| Bob        | 2026-01-06 14:02:00 |
+| Carol      | 2026-01-09 09:40:00 |
+| Dave       | 2026-01-12 16:25:00 |
+| Eve        | 2026-01-20 11:08:00 |
+| Frank      | 2026-01-27 13:30:00 |
++------------+---------------------+</pre></li>
+  <li><b>LIKE: contains (2m).</b> "% is any number of characters. Lowercase 'the' finds The too."
+<pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> title <span class="k">LIKE</span> <span class="s">'%the%'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> title;</pre>
+<pre class="out">+------------------------+
+| title                  |
++------------------------+
+| Lord of the Rings      |
+| The Catcher in the Rye |
+| The Great Gatsby       |
+| The Hobbit             |
++------------------------+</pre></li>
+  <li><b>NULL is unknown (2m).</b> "Is NULL equal to NULL?" Let them guess before you run it.
+<pre class="code"><span class="k">SELECT</span>
+    <span class="k">NULL</span> = <span class="k">NULL</span>   <span class="k">AS</span> equals,
+    <span class="k">NULL</span> != <span class="s">'x'</span>   <span class="k">AS</span> not_equals,
+    <span class="k">NULL</span> <span class="k">IS</span> <span class="k">NULL</span>  <span class="k">AS</span> is_null;</pre>
+<pre class="out">+--------+------------+---------+
+| equals | not_equals | is_null |
++--------+------------+---------+
+|   NULL |       NULL |       1 |
++--------+------------+---------+</pre></li>
+  <li><b>Keep the NULL rows on purpose (2m).</b> "Back to Step 4: say what the empty rows should do."
+<pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city != <span class="s">'New York'</span> <span class="k">OR</span> city <span class="k">IS</span> <span class="k">NULL</span>
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre>
+<pre class="out">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Eve        | NULL        |
+| Grace      | Chicago     |
+| Hank       | NULL        |
++------------+-------------+</pre></li>
+  <li><b>AND before OR (2m).</b> "Tolkien or Orwell books under $12, written the way we say it."
+<pre class="code"><span class="k">SELECT</span> title, author, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> author = <span class="s">'J.R.R. Tolkien'</span> <span class="k">OR</span> author = <span class="s">'George Orwell'</span> <span class="k">AND</span> price &lt; <span class="s">12</span>
+<span class="k">ORDER</span> <span class="k">BY</span> price;</pre>
+<pre class="out">+-------------------+----------------+-------+
+| title             | author         | price |
++-------------------+----------------+-------+
+| 1984              | George Orwell  |  9.99 |
+| The Hobbit        | J.R.R. Tolkien | 10.99 |
+| Lord of the Rings | J.R.R. Tolkien | 15.99 |
++-------------------+----------------+-------+</pre>
+Lord of the Rings at 15.99 is in it: MySQL read A OR (B AND C).</li>
+  <li><b>Parentheses say what you meant (1m).</b> 
+<pre class="code"><span class="k">SELECT</span> title, author, price
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> (author = <span class="s">'J.R.R. Tolkien'</span> <span class="k">OR</span> author = <span class="s">'George Orwell'</span>)
+  <span class="k">AND</span> price &lt; <span class="s">12</span>
+<span class="k">ORDER</span> <span class="k">BY</span> price;</pre>
+<pre class="out">+------------+----------------+-------+
+| title      | author         | price |
++------------+----------------+-------+
+| 1984       | George Orwell  |  9.99 |
+| The Hobbit | J.R.R. Tolkien | 10.99 |
++------------+----------------+-------+</pre></li>
+  <li><b>Two mistakes (2m).</b> "Text without quotes; and = NULL."
+<pre class="code"><span class="k">SELECT</span> title <span class="k">FROM</span> books <span class="k">WHERE</span> author = Tolkien;
+<span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="k">NULL</span>;</pre>
+<pre class="out">ERROR 1054 (42S22): Unknown column 'Tolkien' in 'where clause'
+Empty set</pre>
+The second is silent: no error, no rows. IS NULL.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b><code class="inline">= NULL</code> or <code class="inline">!=</code> that drops the NULL rows.</b> Coach: "What happens to Eve and Hank in this test?" Show the condition as a column.</li>
+  <li><b>AND/OR without parentheses.</b> Coach: "Read it the way MySQL does: AND first. Where would you put the brackets?"</li>
+  <li><b>Text without quotes (1054) and wildcards with = (silent).</b> Coach: "Quotes for text; % only means something to LIKE."</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-04/l3_1-where-clauses-operators-filtering/staff_requests_starter.sql</code>; reference <code class="inline">labs/module-04/l3_1-where-clauses-operators-filtering/staff_requests_solution.sql</code>. Seven requests from the staff, each a ready SELECT whose WHERE says FALSE (Empty set).</p>
+<ul class="tick">
+  <li><b>Request 1 together (3m), 2 to 7 in pairs (14m):</b> count the expected rows from the lesson's two tables first, then write the WHERE.</li>
+  <li><b>Expected:</b> 3 · 3 · 2 (Johnson, Wilson) · 2 (1984, Dune) · 6 · 3 · 2 (Grace, Hank). Request 5 is the NULL trap (4 without <code class="inline">OR city IS NULL</code>); request 7 the half-open range.</li>
+  <li><b>Circulate for:</b> request 2 with <code class="inline">'1950'</code> (works by accident: compare with a full date); request 4 with <code class="inline">LIKE '%____%'</code> (every title); request 6 with <code class="inline">OR</code> instead of <code class="inline">AND</code> before the Tolkien test.</li>
+  <li><b>Debrief (3m):</b> which request would have been wrong without an error? (5, and 6 if mis-bracketed.)</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-04/l3_1-where-clauses-operators-filtering/null_detective_starter.sql</code>, then <code class="inline">labs/module-04/l3_1-where-clauses-operators-filtering/debug_filters.sql</code>.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>Saved Searches</b>: <code class="inline">saved_searches.sql</code>, six commented searches the staff can rerun. In the room: Steps 1 to 3 (10 minutes).</p>
+<ul class="tick">
+  <li>Steps 1 to 3: gift ideas, long reads, mid-century shelf, each run as it is added.</li>
+  <li><b>Done in the room</b> = three searches saved and run with SOURCE.</li>
+  <li><b>Goes home:</b> Steps 4 to 7 (title search, follow-up list, flyer, run the whole file).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud:</p>
+<ul class="tick">
+  <li><code class="inline">NULL = NULL</code>: true, false or unknown? <b>Answer:</b> unknown (NULL).</li>
+  <li>BETWEEN 9.49 AND 10.99: are the ends in? <b>Answer:</b> yes, both.</li>
+  <li>Why a half-open range for created_at? <b>Answer:</b> BETWEEN '...-01' AND '...-31' stops at midnight of the 31st and misses that day.</li>
+  <li><code class="inline">'The%'</code> or <code class="inline">'The %'</code>? <b>Answer:</b> the space keeps out words like Theory.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">B) 4</span>; <b>Q2</b> <span data-sc="2"><code class="inline">4</code></span>; <b>Q3</b> <span data-sc="3">A) <code class="inline">WHERE author NOT IN ('J.R.R. Tolkien', 'George Orwell')</code></span>; <b>Q4</b> <span data-sc="4">C) <code class="inline">WHERE created_at &gt;= '2026-01-27' AND created_at &lt; '2026-01-28'</code></span>; <b>Q5</b> <span data-sc="5"><code class="inline">Alice</code>, <code class="inline">Frank</code>, <code class="inline">Grace</code></span>; <b>Q6</b> <span data-sc="6">D) <code class="inline">WHERE city NOT IN ('Reno', NULL)</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> a card with the operator table and "NULL → IS NULL".</p>
+<p><b>Stretch:</b> <code class="inline">null_detective_starter.sql</code> and <code class="inline">debug_filters.sql</code>; the lesson's Exercise 4 (the picky customer) and the REGEXP Bonus Challenge.</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">3.2</span><h3>Sorting &amp; Limiting Results</h3><span class="dur">55 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Sort results with ORDER BY on one or more columns or expressions, each ascending or descending</li>
+  <li>Predict where NULL values land in a sort and move them to the end</li>
+  <li>Take the top N rows with LIMIT, and add a tie-breaker so the result is always the same</li>
+  <li>Split a result into pages with LIMIT ... OFFSET, and explain when keyset pagination is better</li>
+  <li>Read and fix the errors MySQL raises for misplaced or malformed ORDER BY and LIMIT clauses</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">10m</td><td>Frame: a table has no order; sort keys and tie-breakers; LIMIT runs last</td></tr>
+<tr><td class="t">20m</td><td>Live demo: ties, directions, alias, CASE, NULLs, top N, pages, keyset, three mistakes</td></tr>
+<tr><td class="t">15m</td><td>Guided lab: <code class="inline">bestseller_board_starter.sql</code></td></tr>
+<tr><td class="t">10m</td><td>Start the lesson project: storefront.sql, Steps 1 and 2</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>"A table is a set of rows, not a list. Without ORDER BY you get whatever is cheapest for the server, which usually looks right until one day it is not." Then the phone book: sorted by last name, and by first name only among people with the same last name.</p>
+<p>Then the run order on the board: FROM → WHERE → SELECT → ORDER BY → LIMIT. "That is why an alias works in ORDER BY, and why LIMIT cuts the sorted result." And the rule: <b>every ORDER BY that feeds a LIMIT ends with a unique column.</b></p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow)</div>
+<p>Same data; read-only.</p>
+<ol class="steps">
+  <li><b>Ties without a tie-breaker (2m).</b> "Cheapest first. Two books cost 8.99: which comes first, and will it always?"
+<pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price;</pre>
+<pre class="out">+------------------------+-------+
+| title                  | price |
++------------------------+-------+
+| Pride and Prejudice    |  7.99 |
+| The Great Gatsby       |  8.99 |
+| The Catcher in the Rye |  8.99 |
+| Brave New World        |  9.49 |
+| 1984                   |  9.99 |
+| Fahrenheit 451         | 10.49 |
+| The Hobbit             | 10.99 |
+| To Kill a Mockingbird  | 11.99 |
+| Dune                   | 14.99 |
+| Lord of the Rings      | 15.99 |
++------------------------+-------+</pre>
+Here Gatsby came first; nothing promises it. Lesson 3.2's card says the same.</li>
+  <li><b>A tie-breaker (1m).</b> 
+<pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price, title;</pre>
+<pre class="out">+------------------------+-------+
+| title                  | price |
++------------------------+-------+
+| Pride and Prejudice    |  7.99 |
+| The Catcher in the Rye |  8.99 |
+| The Great Gatsby       |  8.99 |
+| Brave New World        |  9.49 |
+| 1984                   |  9.99 |
+| Fahrenheit 451         | 10.49 |
+| The Hobbit             | 10.99 |
+| To Kill a Mockingbird  | 11.99 |
+| Dune                   | 14.99 |
+| Lord of the Rings      | 15.99 |
++------------------------+-------+</pre></li>
+  <li><b>A direction per column (2m).</b> "In stock first (1 before 0, so DESC), then cheapest."
+<pre class="code"><span class="k">SELECT</span> title, in_stock, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> in_stock <span class="k">DESC</span>, price, title;</pre>
+<pre class="out">+------------------------+----------+-------+
+| title                  | in_stock | price |
++------------------------+----------+-------+
+| Pride and Prejudice    |        1 |  7.99 |
+| Brave New World        |        1 |  9.49 |
+| 1984                   |        1 |  9.99 |
+| Fahrenheit 451         |        1 | 10.49 |
+| The Hobbit             |        1 | 10.99 |
+| To Kill a Mockingbird  |        1 | 11.99 |
+| Dune                   |        1 | 14.99 |
+| Lord of the Rings      |        1 | 15.99 |
+| The Catcher in the Rye |        0 |  8.99 |
+| The Great Gatsby       |        0 |  8.99 |
++------------------------+----------+-------+</pre></li>
+  <li><b>Sort by an alias (2m).</b> "Best value per page; the alias works because ORDER BY runs after SELECT."
+<pre class="code"><span class="k">SELECT</span> title, price, pages,
+       ROUND(pages / price, <span class="s">1</span>) <span class="k">AS</span> pages_per_dollar
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> pages_per_dollar <span class="k">DESC</span>, title
+<span class="k">LIMIT</span> <span class="s">5</span>;</pre>
+<pre class="out">+---------------------+-------+-------+------------------+
+| title               | price | pages | pages_per_dollar |
++---------------------+-------+-------+------------------+
+| Lord of the Rings   | 15.99 |  1178 |             73.7 |
+| Pride and Prejudice |  7.99 |   432 |             54.1 |
+| 1984                |  9.99 |   328 |             32.8 |
+| Brave New World     |  9.49 |   311 |             32.8 |
+| The Hobbit          | 10.99 |   310 |             28.2 |
++---------------------+-------+-------+------------------+</pre></li>
+  <li><b>A custom order with CASE (2m).</b> "The Chicago team wants their customers first."
+<pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">ORDER</span> <span class="k">BY</span>
+    <span class="k">CASE</span> city
+        <span class="k">WHEN</span> <span class="s">'Chicago'</span>  <span class="k">THEN</span> <span class="s">1</span>
+        <span class="k">WHEN</span> <span class="s">'New York'</span> <span class="k">THEN</span> <span class="s">2</span>
+        <span class="k">ELSE</span> <span class="s">3</span>
+    <span class="k">END</span>,
+    first_name;</pre>
+<pre class="out">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Grace      | Chicago     |
+| Alice      | New York    |
+| Frank      | New York    |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Eve        | NULL        |
+| Hank       | NULL        |
++------------+-------------+</pre></li>
+  <li><b>Where NULLs go (2m).</b> "Ascending: NULL first." Then push them down.
+<pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">ORDER</span> <span class="k">BY</span> city, first_name;
+
+<span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">ORDER</span> <span class="k">BY</span> city <span class="k">IS</span> <span class="k">NULL</span>, city, first_name;</pre>
+<pre class="out">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Eve        | NULL        |
+| Hank       | NULL        |
+| Bob        | Chicago     |
+| Grace      | Chicago     |
+| Dave       | Houston     |
+| Carol      | Los Angeles |
+| Alice      | New York    |
+| Frank      | New York    |
++------------+-------------+
++------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Grace      | Chicago     |
+| Dave       | Houston     |
+| Carol      | Los Angeles |
+| Alice      | New York    |
+| Frank      | New York    |
+| Eve        | NULL        |
+| Hank       | NULL        |
++------------+-------------+</pre></li>
+  <li><b>Top N (1m).</b> 
+<pre class="code"><span class="k">SELECT</span> title, pages
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> pages <span class="k">DESC</span>
+<span class="k">LIMIT</span> <span class="s">3</span>;</pre>
+<pre class="out">+---------------------+-------+
+| title               | pages |
++---------------------+-------+
+| Lord of the Rings   |  1178 |
+| Pride and Prejudice |   432 |
+| Dune                |   412 |
++---------------------+-------+</pre></li>
+  <li><b>OFFSET (1m).</b> "Rows 4 to 6 by price."
+<pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price, title
+<span class="k">LIMIT</span> <span class="s">3</span> <span class="k">OFFSET</span> <span class="s">3</span>;</pre>
+<pre class="out">+-----------------+-------+
+| title           | price |
++-----------------+-------+
+| Brave New World |  9.49 |
+| 1984            |  9.99 |
+| Fahrenheit 451  | 10.49 |
++-----------------+-------+</pre></li>
+  <li><b>A page and the page count (2m).</b> "Page 2 of the catalog, four per page, and how many pages."
+<pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> title
+<span class="k">LIMIT</span> <span class="s">4</span> <span class="k">OFFSET</span> <span class="s">4</span>;
+
+<span class="k">SELECT</span> COUNT(*)              <span class="k">AS</span> total_books,
+       CEILING(COUNT(*) / <span class="s">4</span>) <span class="k">AS</span> pages_needed
+<span class="k">FROM</span> books;</pre>
+<pre class="out">+------------------------+-------+
+| title                  | price |
++------------------------+-------+
+| Lord of the Rings      | 15.99 |
+| Pride and Prejudice    |  7.99 |
+| The Catcher in the Rye |  8.99 |
+| The Great Gatsby       |  8.99 |
++------------------------+-------+
++-------------+--------------+
+| total_books | pages_needed |
++-------------+--------------+
+|          10 |            3 |
++-------------+--------------+</pre></li>
+  <li><b>Keyset: the page after id 4 (1m).</b> 
+<pre class="code"><span class="k">SELECT</span> id, title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> id &gt; <span class="s">4</span>
+<span class="k">ORDER</span> <span class="k">BY</span> id
+<span class="k">LIMIT</span> <span class="s">4</span>;</pre>
+<pre class="out">+----+------------------------+
+| id | title                  |
++----+------------------------+
+|  5 | Pride and Prejudice    |
+|  6 | The Hobbit             |
+|  7 | Brave New World        |
+|  8 | The Catcher in the Rye |
++----+------------------------+</pre></li>
+  <li><b>Three mistakes (3m).</b> "Clauses in the wrong order; a formula in LIMIT; a column name in quotes."
+<pre class="code"><span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> price
+<span class="k">WHERE</span> price &gt; <span class="s">10</span>;
+
+<span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> title
+<span class="k">LIMIT</span> <span class="s">4</span> <span class="k">OFFSET</span> (<span class="s">3</span> - <span class="s">1</span>) * <span class="s">4</span>;
+
+<span class="k">SELECT</span> title, price
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> <span class="s">'price'</span> <span class="k">DESC</span>
+<span class="k">LIMIT</span> <span class="s">3</span>;</pre>
+<pre class="out">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE price &gt; 10' at line 4
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '(3 - 1) * 4' at line 4
++-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| Dune                  | 14.99 |
+| 1984                  |  9.99 |
+| To Kill a Mockingbird | 11.99 |
++-----------------------+-------+</pre>
+The third is silent: 'price' is text, the same for every row. Not the three most expensive.</li>
+</ol>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b><code class="inline">ORDER BY a, b DESC</code> expecting both descending.</b> Coach: "DESC belongs to the column before it."</li>
+  <li><b>A top N with ties at the cut.</b> Coach: "Could two rows have the same value here? Then add a unique column."</li>
+  <li><b>Clauses out of order or a formula in LIMIT (1064).</b> Coach with the clause order on the board; compute the offset first.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<p><b>File:</b> <code class="inline">labs/module-04/l3_2-sorting-limiting-results/bestseller_board_starter.sql</code>; reference <code class="inline">labs/module-04/l3_2-sorting-limiting-results/bestseller_board_solution.sql</code>. Six lists for the shop's display board; each starts as ORDER BY id.</p>
+<ul class="tick">
+  <li><b>Lists 1 to 4 in pairs (10m), 5 and 6 for the quick (3m), debrief (2m).</b></li>
+  <li><b>Expected:</b> Hank first; The Catcher in the Rye (22 characters) first, 1984 before Dune; authors A to Z, Tolkien's Lord of the Rings before The Hobbit; Fahrenheit 451, To Kill a Mockingbird, The Hobbit; Classic, Fiction, Dystopian, Fantasy, Science Fiction; Eve and Hank on top.</li>
+  <li><b>Circulate for:</b> list 4 without WHERE (out-of-stock Gatsby appears); list 6 with <code class="inline">city IS NULL</code> (NULLs at the bottom: which way does 1 sort?).</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-04/l3_2-sorting-limiting-results/paging_starter.sql</code>, then <code class="inline">labs/module-04/l3_2-sorting-limiting-results/debug_sorting.sql</code>.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Start the lesson project</div>
+<p>The lesson project is <b>The Storefront Queries</b>: <code class="inline">storefront.sql</code>. In the room: Steps 1 and 2 (10 minutes).</p>
+<ul class="tick">
+  <li>Step 1: three newest in-stock books (add <code class="inline">, title</code> as the tie-breaker the lesson suggests). Step 2: the bargain shelf.</li>
+  <li><b>Goes home:</b> Steps 3 to 6 (catalog pages, page count, customer directory, review).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask these out loud:</p>
+<ul class="tick">
+  <li>Where do NULLs go in an ascending sort? <b>Answer:</b> first.</li>
+  <li>LIMIT 3 OFFSET 6 returns which rows? <b>Answer:</b> rows 7 to 9.</li>
+  <li>Why does the alias work in ORDER BY but not in WHERE? <b>Answer:</b> WHERE runs before SELECT computes it; ORDER BY after.</li>
+</ul>
+<p>Workbook self-check, items Q7 to Q12.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">A) in_stock ascending (0 first), then price descending within each group</span>; <b>Q8</b> <span data-sc="8"><code class="inline">Dune</code> (412 pages: the third longest)</span>; <b>Q9</b> <span data-sc="9">C) No error, but the rows come in no particular order: 'price' is a fixed piece of text</span>; <b>Q10</b> <span data-sc="10">D) Last</span>; <b>Q11</b> <span data-sc="11">B) <code class="inline">... WHERE id &gt; 57 ORDER BY id LIMIT 20</code></span>; <b>Q12</b> <span data-sc="12"><code class="inline">4</code></span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> the clause order as a card.</p>
+<p><b>Stretch:</b> <code class="inline">paging_starter.sql</code> and <code class="inline">debug_sorting.sql</code>; the lesson's Exercise 4 (Tolkien week) and the keyset Bonus Challenge.</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Checkpoint 1</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">2:20</span><h3>Checkpoint 1: Modules 1 and 2</h3><span class="dur">30 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">2m</td><td>Hand out <code class="inline">labs/module-04/checkpoint-1/checkpoint_starter.sql</code> and the workbook's Checkpoint 1 page; read the four parts aloud</td></tr>
+<tr><td class="t">24m</td><td>Learners work alone: Parts A to C in the file, Part D on the page; SOURCE after each part</td></tr>
+<tr><td class="t">4m</td><td>Hand in the file and the page; learners mark their own confidence (1 to 3) next to each part</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">What it checks</div>
+<p>Everything up to Lesson 2.3: a rerunnable build script with a named collation (2.1), types and constraints (2.2), INSERT, UPDATE and DELETE with a preview and an upsert (2.3), reading MySQL's results and error numbers (all of Module 1 and 2). The domain is new (a used-book trade-in desk), so nobody can copy a lesson project. Filtering and sorting (Module 3) are not scored; a learner who uses them is welcome to.</p>
+</div>
+<div class="blk lab"><div class="h">Running it</div>
+<ul class="tick">
+  <li><b>Open notes:</b> the workbook, their own scripts (<code class="inline">create_bookstore.sql</code>, <code class="inline">employees.sql</code>, <code class="inline">load_bookstore_data.sql</code>) and the lesson pages. Alone; no AI assistants.</li>
+  <li><b>Answer questions about the task, not about SQL.</b> "Is paid required?" (yes, default no) is fine; "How do I write the CHECK?" gets "look at Lesson 2.2's coupons table".</li>
+  <li><b>Stuck on Part A for more than 10 minutes?</b> Hand them the model answer's two CREATE TABLE statements (from the Answer Key) so Parts B and C can still be scored; record that Part A is 0.</li>
+  <li><b>Scoring:</b> the 5-row rubric in the Answer Key, 0 to 2 per row (10 points). 8 to 10: on track. 5 to 7: review the weakest row before Session 6. Under 5: a one-to-one before Lesson 4.1 (relationships build on all of it). Return the scores at the start of Session 5.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 4 minutes)</div>
+<p>After the checkpoint, keep it short: three questions on the slide, sticky notes on the way out.</p>
+<ol class="steps">
+  <li>Why does <code class="inline">WHERE city != 'Chicago'</code> skip Eve and Hank, and how do you include them? <b>Answer:</b> Their city is NULL, so the comparison is unknown, not true, and only true rows are kept. Add <code class="inline">OR city IS NULL</code>.</li>
+  <li>Write the WHERE clause for: books from $9 to $11, both ends included, that are not by Tolkien. <b>Answer:</b> <code class="inline">WHERE price BETWEEN 9 AND 11 AND author != 'J.R.R. Tolkien'</code> (on the course data: Brave New World, 1984, Fahrenheit 451).</li>
+  <li>Why should every ORDER BY that feeds a LIMIT end with a unique column? <b>Answer:</b> If rows tie at the cut-off, the server may return either one, and the choice can change between runs: page 1 and page 2 can repeat or skip a row. A unique column (id, title here) makes the order repeatable.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours)</div>
+<ul class="tick">
+  <li><b>Finish both projects:</b> saved_searches.sql (Steps 4 to 7) and storefront.sql (Steps 3 to 6).</li>
+  <li><b>Lesson exercises.</b> 3.1: Exercises 1 to 3; Exercise 4 is a stretch. 3.2: Exercises 1 to 3; Exercise 4 is a stretch.</li>
+  <li><b>Both Quick Quizzes</b> on the lesson pages.</li>
+  <li><b>Journal:</b> both entries.</li>
+  <li><b>Optional:</b> <code class="inline">labs/module-04/l3_1-where-clauses-operators-filtering/null_detective_starter.sql</code>, <code class="inline">labs/module-04/l3_2-sorting-limiting-results/paging_starter.sql</code> and the two debug handouts.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Bring list for Session 5</div>
+<ul class="tick">
+  <li>A laptop with the Module 3 data in bookstore (rerun <code class="inline">labs/_states/flat.sql</code> if in doubt), the root password.</li>
+  <li>saved_searches.sql and storefront.sql: Lesson 3.3's project builds on SOURCE-ing script files.</li>
+  <li>The course folder with <code class="inline">labs/</code> (Session 5's starters are in <code class="inline">labs/module-05/</code>), the workbook and the journal.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> the checkpoint's 30 minutes, starting at 2:20; the data load; 3.1 demo Steps 4 and 11 to 14; 3.2 demo Steps 1, 2 and 11.</li>
+  <li><b>Cut first (saves 10m):</b> the 3.1 project start.</li>
+  <li><b>Cut second (saves 4m):</b> 3.2 demo Steps 4 and 5.</li>
+  <li><b>Cut third (saves 10m):</b> the 3.2 project start; then shorten the 3.2 lab to lists 1 to 4.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>Run <code class="inline">debug_filters.sql</code> together: which three bugs give no error?</li>
+  <li>Lesson 3.2's keyset Bonus Challenge with the row-comparison form <code class="inline">(price, id) &gt; (8.99, 8)</code>.</li>
+  <li>Give back the checkpoint model answer immediately and let learners compare their Part D.</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 4 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Participant Workbook: Session 6</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Student workbook —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">write in it · bring it to every session</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Participant Workbook</div>
+    <h1>Session 6: Relationships and Foreign Keys</h1>
+    <p class="sub">Your workbook for Session 6: the warm-up, the key ideas of Lessons 4.1 and 4.2, worked examples, the guided labs, predict-then-run practice, a self-check for each lesson, the relationship map and your exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Lessons <b>4.1–4.2</b></span>
+      <span class="chip">Session <b>6</b> · 3 hours</span>
+      <span class="chip">Name: ____________________</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Session Goals</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Name the anomalies of one big table and explain why each fact belongs in one table, once.</li>
+  <li>Place the foreign key for one-to-many, one-to-one and many-to-many relationships, and build a junction table.</li>
+  <li>Move a repeated text column into its own table safely: add, fill, check, lock in.</li>
+  <li>Predict errors 1452 and 1451, and choose RESTRICT, CASCADE or SET NULL for a key, with a reason.</li>
+  <li>Add a key to a table that already holds data, and read every rule from information_schema.</li>
+</ul>
+
+  <div class="sec"><h2>Warm-up: Lessons 3.3 and 3.4</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Answer without running anything, then check on the projector</div>
+<div class="q"><div class="qn">W1</div><div class="qt">Three numbers: predict them. (Customers 1 to 5 signed up before 25 January; Eve has no city.)</div><pre class="code"><span class="k">SELECT</span> COUNT(*), COUNT(city), COUNT(<span class="k">DISTINCT</span> city)
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> created_at &lt; <span class="s">'2026-01-25'</span>;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt"><code class="inline">price &gt; 10</code> and <code class="inline">COUNT(*) &gt; 1</code>: which goes in WHERE, and which in HAVING?</div><div class="write"></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">Which book is it?</div><pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> pages = (<span class="k">SELECT</span> MAX(pages) <span class="k">FROM</span> books);</pre><div class="write"></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">How many customers? (Customer 7 is Grace in Chicago, 8 is Hank with no city.)</div><pre class="code"><span class="k">SELECT</span> COUNT(*)
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="k">SELECT</span> city <span class="k">FROM</span> customers <span class="k">WHERE</span> id &gt; <span class="s">6</span>);</pre><div class="write"></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">What is wrong, and what is the error number?</div><pre class="code"><span class="k">SELECT</span> author, title, MAX(price)
+<span class="k">FROM</span> books
+<span class="k">GROUP</span> <span class="k">BY</span> author;</pre><div class="write"></div></div>
+</div>
+
+  <div class="sec"><h2>Lessons</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">4.1</span><h3>Table Relationships</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Explain the update, insert and delete problems of a flat table, using the bookstore's own data</li>
+  <li>Tell one-to-many, one-to-one and many-to-many relationships apart, and say where the foreign key goes in each</li>
+  <li>Move a repeated text column into its own table with CREATE TABLE, ALTER TABLE and UPDATE ... JOIN</li>
+  <li>Build a junction table with a composite primary key, with and without extra columns</li>
+  <li>Read a crow's foot ER diagram of the finished bookstore database</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>Store each fact once</b>, in the table it describes; other tables point at it by id. Repeated text causes update, insert and delete anomalies.</li>
+  <li><b>Primary key</b> identifies a row; <b>foreign key</b> holds another table's primary key. The table with the id is the parent, the one with the pointer the child.</li>
+  <li><b>Can one A have many Bs?</b> Yes: the foreign key goes in B (the many side). Two yeses: a junction table.</li>
+  <li><b>One-to-one</b> = a foreign key that is also UNIQUE (or is the primary key).</li>
+  <li><b>Many-to-many</b> = a junction table: two foreign keys and a composite primary key; it may hold facts about the link (quantity, price_at_time, joined_on).</li>
+  <li><b>Migrate safely:</b> add the column, fill it (<code class="inline">UPDATE ... JOIN</code>), COUNT the NULLs, then NOT NULL, drop the old column, declare the key.</li>
+  <li><b>Create parents first, children second; drop in the opposite order</b> (1824 for a missing parent table).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: a many-to-many from scratch</div>
+<p>A small many-to-many from scratch, in a practice database of its own: members, clubs, and the memberships that link them (with one fact about each link, the date joined).</p>
+<pre class="code"><span class="k">DROP</span> <span class="k">DATABASE</span> <span class="k">IF</span> <span class="k">EXISTS</span> kit_clubs;
+<span class="k">CREATE</span> <span class="k">DATABASE</span> kit_clubs;
+<span class="k">USE</span> kit_clubs;
+<span class="k">CREATE</span> <span class="k">TABLE</span> members (
+    id   <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    name <span class="k">VARCHAR</span>(<span class="s">50</span>) <span class="k">NOT</span> <span class="k">NULL</span>
+);
+<span class="k">CREATE</span> <span class="k">TABLE</span> clubs (
+    id   <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    name <span class="k">VARCHAR</span>(<span class="s">50</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">UNIQUE</span>
+);
+<span class="k">CREATE</span> <span class="k">TABLE</span> memberships (
+    member_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    club_id   <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    joined_on <span class="k">DATE</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">PRIMARY</span> <span class="k">KEY</span> (member_id, club_id),
+    <span class="k">CONSTRAINT</span> fk_ms_member <span class="k">FOREIGN</span> <span class="k">KEY</span> (member_id) <span class="k">REFERENCES</span> members(id) <span class="k">ON</span> <span class="k">DELETE</span> <span class="k">CASCADE</span>,
+    <span class="k">CONSTRAINT</span> fk_ms_club   <span class="k">FOREIGN</span> <span class="k">KEY</span> (club_id)   <span class="k">REFERENCES</span> clubs(id)   <span class="k">ON</span> <span class="k">DELETE</span> <span class="k">CASCADE</span>
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> members (name) <span class="k">VALUES</span> (<span class="s">'Ana'</span>), (<span class="s">'Ben'</span>), (<span class="s">'Cleo'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> clubs (name) <span class="k">VALUES</span> (<span class="s">'Chess'</span>), (<span class="s">'Hiking'</span>), (<span class="s">'Book club'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> memberships <span class="k">VALUES</span>
+    (<span class="s">1</span>, <span class="s">1</span>, <span class="s">'2026-01-10'</span>), (<span class="s">1</span>, <span class="s">3</span>, <span class="s">'2026-02-01'</span>),
+    (<span class="s">2</span>, <span class="s">2</span>, <span class="s">'2026-01-15'</span>), (<span class="s">3</span>, <span class="s">2</span>, <span class="s">'2026-03-05'</span>), (<span class="s">3</span>, <span class="s">3</span>, <span class="s">'2026-03-05'</span>);</pre>
+<pre class="out">Database changed</pre><p>Which clubs is Cleo (member 3) in? Follow the links with a subquery:</p>
+<pre class="code"><span class="k">SELECT</span> name
+<span class="k">FROM</span> clubs
+<span class="k">WHERE</span> id <span class="k">IN</span> (<span class="k">SELECT</span> club_id <span class="k">FROM</span> memberships <span class="k">WHERE</span> member_id = <span class="s">3</span>)
+<span class="k">ORDER</span> <span class="k">BY</span> name;</pre>
+<pre class="out">+-----------+
+| name      |
++-----------+
+| Book club |
+| Hiking    |
++-----------+</pre><p>How many members does each club have? Count the links per club:</p>
+<pre class="code"><span class="k">SELECT</span>
+    name,
+    (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> memberships <span class="k">AS</span> ms <span class="k">WHERE</span> ms.club_id = clubs.id) <span class="k">AS</span> members
+<span class="k">FROM</span> clubs
+<span class="k">ORDER</span> <span class="k">BY</span> members <span class="k">DESC</span>, name;</pre>
+<pre class="out">+-----------+---------+
+| name      | members |
++-----------+---------+
+| Book club |       2 |
+| Hiking    |       2 |
+| Chess     |       1 |
++-----------+---------+</pre><p>Ana is already in Chess. The composite primary key stores each pair once:</p>
+<pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> memberships <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">1</span>, <span class="s">'2026-04-01'</span>);</pre>
+<pre class="out">ERROR 1062 (23000): Duplicate entry '1-1' for key 'memberships.PRIMARY'</pre><p>Clean up:</p>
+<pre class="code"><span class="k">DROP</span> <span class="k">DATABASE</span> kit_clubs;</pre><p>Two one-to-many relationships meeting in the middle: one member, many memberships; one club, many memberships. The junction row is also the right home for <code class="inline">joined_on</code>, which belongs to neither the member nor the club.</p>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>SOURCE <code class="inline">labs/module-06/l4_1-table-relationships/publisher_split_starter.sql</code>. Step 1 shows the problems in the flat editions table.</li>
+  <li>Turn on Steps 2 to 6 one at a time (remove the <code class="inline">--</code> from the statement lines, fill the <code class="inline">___</code> gaps), SOURCE again after each.</li>
+  <li>Step 4 is the check before anything is dropped. Write down what it found, and why:</li>
+</ul>
+<div class="write"></div>
+<ul class="tick">
+  <li>Finished early (after loading <code class="inline">bookstore.sql</code>)? <code class="inline">navigate_links_starter.sql</code>, then <code class="inline">debug_relationships.sql</code>.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction first, then run it in the relational bookstore (<code class="inline">bookstore.sql</code> loaded).</p>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it. (Animal Farm (11) is already Fiction and Classic (3).)</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> book_categories (book_id, category_id) <span class="k">VALUES</span> (<span class="s">11</span>, <span class="s">3</span>);</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it. (Ten authors; Isaac Asimov has no books.)</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> authors_without_books
+<span class="k">FROM</span> authors
+<span class="k">WHERE</span> id <span class="k">NOT</span> <span class="k">IN</span> (<span class="k">SELECT</span> author_id <span class="k">FROM</span> books);</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>Orders, Order Items and Staff</b> (lesson page, "Project: Orders, Order Items and Staff"). In class: load <code class="inline">bookstore.sql</code>, check the counts, read the design. At home: the rest.</p>
+<ul class="tick">
+  <li>☐ Loaded <code class="inline">bookstore.sql</code>; Step 5's counts are 10, 11, 5, 25, 8, 12, 18, 10 and I see eight tables</li>
+  <li>☐ I can say why orders has no total column, and why order_items stores price_at_time</li>
+  <li>☐ I can say why order_items has its own id while book_categories has a composite key</li>
+  <li>☐ Step 6: compared the CREATE TABLEs in <code class="inline">bookstore.sql</code> with my notes</li>
+  <li>☐ (optional) Steps 1 to 4 typed into a practice copy</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">A customer can have many delivery addresses; each address belongs to exactly one customer. Where does the foreign key go?</div><div class="opts"><div class="opt">A) <code class="inline">customers.address_id</code></div><div class="opt">B) <code class="inline">addresses.customer_id</code></div><div class="opt">C) A junction table <code class="inline">customer_addresses</code></div><div class="opt">D) In both tables, one pointing at the other</div></div></div>
+<div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">Which of these needs a junction table?</div><div class="opts"><div class="opt">A) One author writes many books</div><div class="opt">B) Each employee has at most one manager</div><div class="opt">C) Students and the courses they take</div><div class="opt">D) Each order belongs to one customer</div></div></div>
+<div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">In the finished bookstore, what does this print?</div><pre class="code"><span class="k">SELECT</span> book_id, COUNT(*) <span class="k">AS</span> categories
+<span class="k">FROM</span> book_categories
+<span class="k">GROUP</span> <span class="k">BY</span> book_id
+<span class="k">HAVING</span> COUNT(*) = <span class="s">3</span>
+<span class="k">ORDER</span> <span class="k">BY</span> book_id;</pre><div class="write"></div></div>
+<div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">The flat books table types "J.R.R. Tolkien" in two rows. A staff member edits the spelling in one of them only. What is this called?</div><div class="opts"><div class="opt">A) An update anomaly: one fact stored twice now disagrees with itself</div><div class="opt">B) An insert anomaly</div><div class="opt">C) A delete anomaly</div><div class="opt">D) Error 1062, a duplicate entry</div></div></div>
+<div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">A colleague builds <code class="inline">customer_profiles</code> with <code class="inline">customer_id INT NOT NULL</code> and a foreign key, but leaves out <code class="inline">UNIQUE</code>. What has the relationship become?</div><div class="opts"><div class="opt">A) Many-to-many</div><div class="opt">B) Still one-to-one: the foreign key enforces it</div><div class="opt">C) Nothing: MySQL refuses the CREATE TABLE</div><div class="opt">D) One-to-many: a customer can now have several profiles</div></div></div>
+<div class="q" data-sc="6" data-kind="short"><div class="qn">Q6</div><div class="qt">The bookstore's table is called books. What happens?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> kit_reviews (
+    id      <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    book_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">FOREIGN</span> <span class="k">KEY</span> (book_id) <span class="k">REFERENCES</span> book(id)
+);</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Pick something you track in real life (a book club, a sports league, a recipe collection). Name its things (the future tables) and draw the lines between them. Which relationships are one-to-many, and which need a junction table? What extra facts would that junction table hold?</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">4.2</span><h3>Foreign Keys &amp; Referential Integrity</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Explain referential integrity and predict when MySQL raises errors 1452 and 1451</li>
+  <li>Choose RESTRICT, CASCADE or SET NULL for ON DELETE and ON UPDATE, and justify the choice</li>
+  <li>Add, drop and change a named foreign key on an existing table, cleaning up orphan rows first</li>
+  <li>List a database's foreign keys and their rules from information_schema</li>
+  <li>Diagnose the errors raised by a badly formed key (3780, 6125, 1830)</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>Referential integrity:</b> every foreign key value points at a row that exists. A declared key makes orphans impossible.</li>
+  <li><b>1452</b> = a child row whose parent is missing ("add or update a child row"). <b>1451</b> = a parent that children still point at ("delete or update a parent row").</li>
+  <li><b>RESTRICT</b> refuses · <b>CASCADE</b> deletes or updates the children too · <b>SET NULL</b> keeps them and clears the link (the column must allow NULL: 1830).</li>
+  <li><b>No rule written = NO ACTION</b>, which MySQL enforces exactly like RESTRICT.</li>
+  <li><b>Two questions:</b> can the child exist without its parent (no: CASCADE)? Must it keep naming it (yes: RESTRICT; no: SET NULL)? When in doubt, RESTRICT.</li>
+  <li><b>Name your keys</b> (<code class="inline">CONSTRAINT fk_child_parent</code>) and use the table-level form.</li>
+  <li><b>A key on existing data:</b> find the orphans (<code class="inline">NOT IN (SELECT id FROM parent)</code>), fix them truthfully, then ADD CONSTRAINT. To change a rule: DROP FOREIGN KEY, then ADD again.</li>
+  <li><b>Test destructive changes inside START TRANSACTION ... ROLLBACK.</b></li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: RESTRICT and CASCADE in one transaction</div>
+<p>RESTRICT and CASCADE working together, inside one transaction so nothing is lost. Eve (5) has one order with two lines. Try to delete her:</p>
+<pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">5</span>;</pre>
+<pre class="out">ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`bookstore`.`orders`, CONSTRAINT `fk_orders_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE)</pre><p>fk_orders_customer RESTRICTs it: her order still names her. Deal with the children first: delete her order (its lines cascade), then her, then undo everything:</p>
+<pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> eves_items
+<span class="k">FROM</span> order_items
+<span class="k">WHERE</span> order_id <span class="k">IN</span> (<span class="k">SELECT</span> id <span class="k">FROM</span> orders <span class="k">WHERE</span> customer_id = <span class="s">5</span>);
+<span class="k">DELETE</span> <span class="k">FROM</span> orders <span class="k">WHERE</span> customer_id = <span class="s">5</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> items_left <span class="k">FROM</span> order_items;
+<span class="k">DELETE</span> <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">5</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> customers_left <span class="k">FROM</span> customers;
+<span class="k">ROLLBACK</span>;</pre>
+<pre class="out">+------------+
+| eves_items |
++------------+
+|          2 |
++------------+
++------------+
+| items_left |
++------------+
+|         16 |
++------------+
++----------------+
+| customers_left |
++----------------+
+|              7 |
++----------------+</pre><p>RESTRICT made the decision explicit ("delete her orders too?"); CASCADE removed the order lines that mean nothing without their order. In a real store you would not do this at all: you would keep the sales history and mark the customer inactive.</p>
+</div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>Open <code class="inline">labs/module-06/l4_2-foreign-keys/delete_rules_starter.sql</code>. For each of the five tests, write your prediction in the table below BEFORE you turn on its line.</li>
+  <li>Turn on one TODO line at a time, SOURCE, compare. Every test ends with ROLLBACK: the last row of the output must be the same every time.</li>
+  <li>Finished early? <code class="inline">orphan_audit_starter.sql</code>, then <code class="inline">debug_fk_errors.sql</code>.</li>
+</ul>
+<table class="timing">
+<thead><tr><th>Test</th><th>Rule that fires</th><th>My prediction</th><th>What happened</th></tr></thead>
+<tbody>
+<tr><td>1 delete category 5</td><td></td><td></td><td></td></tr>
+<tr><td>2 delete employee 6</td><td></td><td></td><td></td></tr>
+<tr><td>3 delete customer 8</td><td></td><td></td><td></td></tr>
+<tr><td>4 renumber customer 7</td><td></td><td></td><td></td></tr>
+<tr><td>5 delete order 9</td><td></td><td></td><td></td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction first, then run it in a freshly loaded <code class="inline">bookstore.sql</code>.</p>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it. (Fantasy (4) holds two books.)</div><pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> categories <span class="k">WHERE</span> id = <span class="s">4</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> links <span class="k">FROM</span> book_categories;
+<span class="k">ROLLBACK</span>;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it. (Bob (2) has two orders.)</div><pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> customers <span class="k">WHERE</span> id = <span class="s">2</span>;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>Book Reviews with the Right Rules</b> (lesson page, "Project: Book Reviews with the Right Rules"). In class: Steps 1 to 4. At home: Steps 5 and 6.</p>
+<ul class="tick">
+  <li>☐ Step 1: review → book is ________ because ____________________; review → customer is ________ because ____________________</li>
+  <li>☐ Step 2: table created, four reviews</li>
+  <li>☐ Step 3: book 42 refused with error ______</li>
+  <li>☐ Step 4: deleting book 4 removed its reviews; ROLLBACK brought them back</li>
+  <li>☐ Step 5: deleting Carol kept her reviews with a NULL customer</li>
+  <li>☐ Step 6: both rules listed from information_schema; table dropped</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">The bookstore has customers 1 to 8. What happens?</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> orders (customer_id, order_date)
+<span class="k">VALUES</span> (<span class="s">9</span>, <span class="s">'2026-07-01'</span>);</pre><div class="opts"><div class="opt">A) <code class="inline">ERROR 1451 (23000): Cannot delete or update a parent row</code></div><div class="opt">B) <code class="inline">ERROR 1452 (23000): Cannot add or update a child row</code></div><div class="opt">C) <code class="inline">ERROR 1062 (23000): Duplicate entry</code></div><div class="opt">D) Order 13 is created for customer 9</div></div></div>
+<div class="q" data-sc="8"><div class="qn">Q8</div><div class="qt">The bookstore has 18 order lines; order 5 has two of them. What does the SELECT print?</div><pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> orders <span class="k">WHERE</span> id = <span class="s">5</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> order_items;
+<span class="k">ROLLBACK</span>;</pre><div class="opts"><div class="opt">A) <code class="inline">16</code></div><div class="opt">B) <code class="inline">18</code></div><div class="opt">C) <code class="inline">ERROR 1451 (23000): Cannot delete or update a parent row</code></div><div class="opt">D) <code class="inline">0</code></div></div></div>
+<div class="q" data-sc="9" data-kind="short"><div class="qn">Q9</div><div class="qt">James Okafor (8) manages Nina Kowalski (9). What does the SELECT print?</div><pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> employees <span class="k">WHERE</span> id = <span class="s">8</span>;
+<span class="k">SELECT</span> manager_id <span class="k">FROM</span> employees <span class="k">WHERE</span> id = <span class="s">9</span>;
+<span class="k">ROLLBACK</span>;</pre><div class="write"></div></div>
+<div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">A music app deletes a playlist. Its rows in playlist_songs (the links between the playlist and its songs) should...</div><div class="opts"><div class="opt">A) block the delete: ON DELETE RESTRICT</div><div class="opt">B) keep the links with playlist_id NULL: ON DELETE SET NULL</div><div class="opt">C) go with it: ON DELETE CASCADE</div><div class="opt">D) stay unchanged: leave the rule out (NO ACTION)</div></div></div>
+<div class="q" data-sc="11"><div class="qn">Q11</div><div class="qt">The accountant wants <code class="inline">fk_items_order</code> changed from CASCADE to RESTRICT. How do you do it in MySQL?</div><div class="opts"><div class="opt">A) <code class="inline">ALTER TABLE order_items ALTER FOREIGN KEY fk_items_order ON DELETE RESTRICT;</code></div><div class="opt">B) <code class="inline">ALTER TABLE order_items MODIFY CONSTRAINT fk_items_order ON DELETE RESTRICT;</code></div><div class="opt">C) <code class="inline">SET FOREIGN_KEY_CHECKS = 0;</code> then delete as usual</div><div class="opt">D) <code class="inline">DROP FOREIGN KEY fk_items_order</code>, then <code class="inline">ADD CONSTRAINT fk_items_order ... ON DELETE RESTRICT</code></div></div></div>
+<div class="q" data-sc="12" data-kind="short"><div class="qn">Q12</div><div class="qt">What does this print?</div><pre class="code"><span class="k">SELECT</span> DELETE_RULE
+<span class="k">FROM</span> information_schema.REFERENTIAL_CONSTRAINTS
+<span class="k">WHERE</span> CONSTRAINT_SCHEMA = <span class="s">'bookstore'</span>
+  <span class="k">AND</span> CONSTRAINT_NAME = <span class="s">'fk_employees_manager'</span>;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Think of an app you use daily (a music service, a school portal, a social network). When you delete something there (a playlist, an account, a post), what happens to the things attached to it? Which of those behaviors look like CASCADE, SET NULL or RESTRICT, and would you have chosen differently?</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Relationship Map</h2><span class="rule"></span></div>
+<p>Draw the eight tables of the bookstore as boxes. Draw each foreign key as a crow's foot line (<code class="inline">||</code> exactly one, <code class="inline">o|</code> zero or one, <code class="inline">|{</code> one or many, <code class="inline">o{</code> zero or many). Label each line with its ON DELETE rule. Then check with the query below.</p>
+<div class="write tall"></div>
+<pre class="code"><span class="k">SELECT</span> TABLE_NAME, CONSTRAINT_NAME, DELETE_RULE, UPDATE_RULE
+<span class="k">FROM</span> information_schema.REFERENTIAL_CONSTRAINTS
+<span class="k">WHERE</span> CONSTRAINT_SCHEMA = <span class="s">'bookstore'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> TABLE_NAME, CONSTRAINT_NAME;</pre>
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<p>Three questions, no notes.</p>
+<div class="q"><div class="qn">E1</div><div class="qt">For one-to-many, one-to-one and many-to-many: where does the foreign key go?</div><div class="write"></div></div>
+<div class="q"><div class="qn">E2</div><div class="qt">You get <code class="inline">ERROR 1452</code>. Which table were you changing (parent or child), and what is missing? And <code class="inline">ERROR 1451</code>?</div><div class="write"></div></div>
+<div class="q"><div class="qn">E3</div><div class="qt">Choose an ON DELETE rule for <code class="inline">order_items.book_id → books</code> and justify it in one sentence.</div><div class="write"></div></div>
+
+  <div class="sec"><h2>Notes</h2><span class="rule"></span></div>
+<div class="notes-lines"></div>
+
+  <div class="sec"><h2>Homework Checklist</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ 4.1 project: compare my design with <code class="inline">bookstore.sql</code> (Steps 1 to 4 typed in a practice copy: optional)</li>
+  <li>☐ 4.2 project Steps 5 and 6</li>
+  <li>☐ Lesson 4.1 and 4.2 Hands-on Exercises 1 to 3 (Exercise 4 of each is a stretch)</li>
+  <li>☐ Both Quick Quizzes; both journal entries</li>
+  <li>☐ Labs not finished in class: <code class="inline">navigate_links_starter.sql</code>, <code class="inline">orphan_audit_starter.sql</code>, the debug handouts</li>
+  <li>☐ Part 1 assessment preparation: reread my project scripts (Sessions 3 to 6), redo one exercise per lesson from Modules 2 to 4</li>
+  <li>☐ Bring to Session 7: a charged laptop with <code class="inline">bookstore.sql</code> loaded, my course folder and scripts, this workbook with the relationship map</li>
+</ul>
+
+  <div class="sec"><h2>Glossary</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>anomaly (update, insert, delete)</td><td>A problem caused by storing one fact in many rows: copies disagree, nothing can be stored, or a fact is lost</td></tr>
+<tr><td>parent / child table</td><td>The table whose id is referenced / the table that holds the foreign key</td></tr>
+<tr><td>one-to-many (1:M)</td><td>One parent row, many child rows; the key goes on the many side</td></tr>
+<tr><td>one-to-one (1:1)</td><td>At most one child per parent: a foreign key that is also UNIQUE</td></tr>
+<tr><td>many-to-many (M:M)</td><td>Both sides have many partners: a junction table with two foreign keys</td></tr>
+<tr><td>junction table</td><td>A table whose rows are links (book_categories, order_items), with a composite or own primary key</td></tr>
+<tr><td>composite primary key</td><td>A primary key of two or more columns: the combination must be unique</td></tr>
+<tr><td>referential integrity</td><td>Every foreign key value points at an existing row</td></tr>
+<tr><td>orphan</td><td>A child row whose parent does not exist</td></tr>
+<tr><td>RESTRICT / NO ACTION</td><td>Refuse to delete or change a parent that children point at (1451)</td></tr>
+<tr><td>CASCADE</td><td>Delete (or renumber) the children along with the parent</td></tr>
+<tr><td>SET NULL</td><td>Keep the children, set their foreign key to NULL (the column must allow NULL)</td></tr>
+<tr><td>information_schema</td><td>The built-in database that describes all others (REFERENTIAL_CONSTRAINTS lists keys and rules)</td></tr>
+</tbody>
+</table>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 6 · Participant Workbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

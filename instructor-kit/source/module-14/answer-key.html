@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 14</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 14: Final Project Studio II, Showcase and Next Steps</h1>
+    <p class="sub">Answers and reasoning for every Session 14 item: the warm-up, both self-checks, the predict-then-run items, what a passed milestone check-in looks like, the lab reference outputs, both lesson pages' own quizzes and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>14</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Warm-up: the Rebuild Check</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">W1</div><div class="qt">From a client started in your tool-library folder: <code class="inline">SOURCE 02_data.sql</code>, then <code class="inline">SOURCE 03_queries.sql</code>. Which line fails, if any? <i>(Run your scripts)</i></div><div class="opts"><div class="opt correct">Nothing should fail. 02_data.sql rebuilds the schema and the data; the counts for the reference data are members 8, categories 5, safety_courses 2, member_courses 7, tools 12, loans 16. A failure here is the first thing to fix today (the rubric's Schema row and Milestone 8 depend on it).</div></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Saturday question 3 uses RANK(). What would ROW_NUMBER() lose? <i>(Milestone 4)</i></div><div class="opts"><div class="opt correct">A tie: with the reference data the hammer and the socket set share first place in Hand Tools (one loan each); ROW_NUMBER keeps only one of them, silently.</div></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">Why does every Saturday query read <code class="inline">@today</code> instead of <code class="inline">CURDATE()</code>? <i>(Milestone 4)</i></div><div class="opts"><div class="opt correct">So the results are repeatable and can be checked against known answers (and against the reference: <code class="inline">@today = '2026-06-15'</code>). The real report sets <code class="inline">@today = CURDATE()</code> once.</div></div></div>
+
+  <div class="sec"><h2>8.2 · Final Project: Design and Build a Database: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">On the reference tool_library (Milestone 3 data), member 7 is Tessa (active, no safety course) and tool 6 is the chainsaw, on the shelf. What does this print?</div><pre class="code"><span class="k">CALL</span> checkout_tool(<span class="s">7</span>, <span class="s">6</span>, <span class="s">'2026-06-15'</span>);</pre><div class="opts"><div class="opt">A) A new loan: <code class="inline">loan_id 17, due_on 2026-06-22</code></div><div class="opt">B) <code class="inline">ERROR 1644 (45000): Member is suspended</code></div><div class="opt correct">C) <code class="inline">ERROR 1644 (45000): Safety course required for this tool</code></div><div class="opt">D) <code class="inline">ERROR 1142 (42000): INSERT command denied</code></div></div><div class="why"><b>Why:</b> Tessa is active and the chainsaw is free, so the first checks pass; the course check finds no member_courses row for Chainsaw Safety and SIGNALs. The EXIT HANDLER rolls back and RESIGNALs, so the caller sees the procedure's own message with error 1644 (a user-defined SQLSTATE 45000).<br><b>A</b> is wrong: The course rule refuses it before the INSERT.<br><b>B</b> is wrong: Tessa is active; that message belongs to Victor (member 8).<br><b>D</b> is wrong: root runs it here; and a desk account calling the procedure gets the definer's rights anyway.</div></div>
+  <div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">Why does <code class="inline">checkout_tool</code> declare <code class="inline">EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END</code>?</div><div class="opts"><div class="opt correct">A) So a failed check-out never leaves a half-finished transaction, and the caller still receives the real error message</div><div class="opt">B) So that errors are ignored and the loan is created anyway</div><div class="opt">C) Because SIGNAL only works inside a handler</div><div class="opt">D) To make the procedure run with the definer's rights</div></div><div class="why"><b>Why:</b> Any error after START TRANSACTION (a SIGNAL from a rule, or a constraint) jumps to the handler: ROLLBACK undoes the transaction, RESIGNAL passes the original error on, so the desk's web form can show "Tool is already on loan".<br><b>B</b> is wrong: EXIT ends the procedure; nothing after the error runs.<br><b>C</b> is wrong: SIGNAL works anywhere in a stored program.<br><b>D</b> is wrong: Definer's rights come from SQL SECURITY DEFINER (the default), not from a handler.</div></div>
+  <div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">Logged in as <code class="inline">tl_desk_app</code> (the reference roles from Milestone 6), what does this print?</div><pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> loans <span class="k">WHERE</span> id = <span class="s">1</span>;</pre><div class="opts"><div class="opt correct"><code class="inline">ERROR 1142 (42000): DELETE command denied to user 'tl_desk_app'@'localhost' for table 'loans'</code></div></div><div class="why"><b>Why:</b> tl_desk has SELECT on everything, INSERT and UPDATE on members and EXECUTE on the two procedures, and nothing else: no DELETE anywhere, so the loan history stays (Rosa's requirement 7). Measured by logging in as the account; INSERT INTO loans is refused the same way, while CALL checkout_tool works.</div></div>
+  <div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">Milestone 7: your dump of tool_library restored into tool_library_test with matching counts. What is NOT in that dump?</div><div class="opts"><div class="opt">A) The tables and their rows</div><div class="opt">B) The view v_open_loans</div><div class="opt">C) The two procedures (taken with --routines)</div><div class="opt correct">D) The accounts tl_desk_app and tl_treasurer and their roles</div></div><div class="why"><b>Why:</b> A single-database dump holds tables, rows, views and (with --routines) procedures, but no accounts and no grants: they live in the mysql system database. 05_security.sql is their backup (measured: the reference dump contains no CREATE USER and no GRANT).<br><b>A</b> is wrong: Tables and rows are the core of every dump.<br><b>B</b> is wrong: Views are always dumped with their database.<br><b>C</b> is wrong: --routines puts them in; the restored copy lists both.</div></div>
+  <div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">Why does the reference <code class="inline">checkout_tool</code> read the tool with <code class="inline">SELECT ... FOR UPDATE</code>?</div><div class="opts"><div class="opt">A) To make the SELECT faster</div><div class="opt correct">B) So a second check-out of the same tool waits until the first commits, then sees the new loan</div><div class="opt">C) Because SELECT INTO needs FOR UPDATE inside a procedure</div><div class="opt">D) To update the tool's condition</div></div><div class="why"><b>Why:</b> Without the lock, two desk volunteers could both see "drill available" and both lend it. FOR UPDATE locks the tool's row inside the transaction; the second call waits, then its "already on loan" check finds the first loan.<br><b>A</b> is wrong: A lock can only make another session wait; it never speeds anything up.<br><b>C</b> is wrong: SELECT ... INTO works without it.<br><b>D</b> is wrong: FOR UPDATE changes nothing by itself; it only locks the rows read.</div></div>
+  <div class="q" data-sc="6" data-kind="short"><div class="qn">Q6</div><div class="qt">On the Milestone 3 data, Rosa runs the overdue query (Saturday question 2) with a later report date. How many rows come back, and which loan is first?</div><pre class="code"><span class="k">SET</span> @today = <span class="s">'2026-06-20'</span>;
+<span class="c">-- then the lesson's query 2: open loans with due_on &lt; @today, worst first</span></pre><div class="opts"><div class="opt correct">Four rows; loan 13 (the extension ladder, <code class="inline">12</code> days) first</div></div><div class="why"><b>Why:</b> On June 20 all four open loans (13 to 16) are past due: 12, 7, 3 and 1 days. On June 15 only two were. A report that reads @today can be checked against known answers for any date; one that reads CURDATE() changes every day.</div></div>
+
+  <div class="sec"><h2>8.2: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> tool_loans (tool <span class="k">VARCHAR</span>(<span class="s">20</span>), loans <span class="k">INT</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> tool_loans <span class="k">VALUES</span> (<span class="s">'Hammer'</span>, <span class="s">1</span>), (<span class="s">'Socket set'</span>, <span class="s">1</span>), (<span class="s">'Tile cutter'</span>, <span class="s">0</span>);
+
+<span class="k">SELECT</span> tool, loans,
+       RANK()       <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> loans <span class="k">DESC</span>) <span class="k">AS</span> rnk,
+       ROW_NUMBER() <span class="k">OVER</span> (<span class="k">ORDER</span> <span class="k">BY</span> loans <span class="k">DESC</span>, tool) <span class="k">AS</span> row_num
+<span class="k">FROM</span> tool_loans
+<span class="k">ORDER</span> <span class="k">BY</span> loans <span class="k">DESC</span>, tool;</pre><div class="opts"><div class="opt correct"><pre class="out">+-------------+-------+-----+---------+
+| tool        | loans | rnk | row_num |
++-------------+-------+-----+---------+
+| Hammer      |     1 |   1 |       1 |
+| Socket set  |     1 |   1 |       2 |
+| Tile cutter |     0 |   3 |       3 |
++-------------+-------+-----+---------+</pre></div></div><div class="why"><b>Why:</b> RANK gives equal values the same rank (both 1, then 3); ROW_NUMBER numbers every row differently, so a WHERE row_num = 1 would keep only the Hammer (it sorts first by name). That is why Saturday question 3 uses RANK.</div></div>
+
+  <div class="sec"><h2>8.3 · Next Steps &amp; Best Practices: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">What does this print on the bookstore?</div><pre class="code"><span class="k">SET</span> @input = <span class="s">'Chicago'' OR ''x''=''x'</span>;
+<span class="k">SET</span> @sql = CONCAT(<span class="s">'SELECT first_name FROM customers WHERE city = '''</span>, @input, <span class="s">''' ORDER BY id'</span>);
+PREPARE search <span class="k">FROM</span> @sql;
+EXECUTE search;</pre><div class="opts"><div class="opt">A) <code class="inline">Empty set</code></div><div class="opt">B) Two rows: Bob and Grace</div><div class="opt">C) <code class="inline">ERROR 1064 (42000): You have an error in your SQL syntax</code></div><div class="opt correct">D) All eight customers</div></div><div class="why"><b>Why:</b> The quote inside @input closes the string early and OR 'x'='x' becomes part of the SQL: true for every row. That is SQL injection, with no error at all. A placeholder (city = ?) with EXECUTE ... USING @input would print Empty set.<br><b>A</b> is wrong: That is what the safe, parameterized version prints.<br><b>B</b> is wrong: Only an honest 'Chicago' would give those two.<br><b>C</b> is wrong: The quotes are doubled correctly, so the built statement is valid SQL; that is what makes it dangerous.</div></div>
+  <div class="q" data-sc="8"><div class="qn">Q8</div><div class="qt">Health check 3 lists the bookstore's foreign keys. What happens to an order's rows in order_items when the order is deleted?</div><div class="opts"><div class="opt correct">A) They are deleted too (fk_items_order is CASCADE)</div><div class="opt">B) The DELETE is refused (RESTRICT)</div><div class="opt">C) Their order_id becomes NULL (SET NULL)</div><div class="opt">D) Nothing: they stay and point at a missing order</div></div><div class="why"><b>Why:</b> The check's output shows order_items · fk_items_order · orders · CASCADE. Deleting a customer with orders, by contrast, is refused (fk_orders_customer RESTRICT), and deleting a manager sets the staff's manager_id to NULL.<br><b>B</b> is wrong: RESTRICT is the rule on fk_orders_customer and fk_items_book, not on the order link.<br><b>C</b> is wrong: SET NULL is fk_employees_manager; order_items.order_id is NOT NULL anyway.<br><b>D</b> is wrong: A foreign key never allows a row that points at nothing.</div></div>
+  <div class="q" data-sc="9" data-kind="short"><div class="qn">Q9</div><div class="qt">What does the DELETE do?</div><pre class="code"><span class="k">SET</span> SQL_SAFE_UPDATES = <span class="s">1</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> customers <span class="k">WHERE</span> city = <span class="s">'Houston'</span>;</pre><div class="opts"><div class="opt correct">It is refused: <code class="inline">ERROR 1175</code> (safe update mode: no KEY column in the WHERE)</div></div><div class="why"><b>Why:</b> city is not indexed, so safe-update mode treats the statement as a probably-forgotten WHERE and refuses it. Fix: name the rows by key (WHERE id = 4), or preview with SELECT first. Switch it back with SET SQL_SAFE_UPDATES = 0.</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">Why does the "tables without a primary key" check use LEFT JOIN ... WHERE c.CONSTRAINT_NAME IS NULL?</div><div class="opts"><div class="opt">A) Because information_schema does not support inner joins</div><div class="opt">B) To sort the tables by name</div><div class="opt correct">C) It is the "find what is missing" pattern: keep every table, then keep only those that found no PRIMARY KEY row</div><div class="opt">D) To skip views</div></div><div class="why"><b>Why:</b> The same pattern as "members who never borrowed" (Lesson 4.3), pointed at the catalog. The condition CONSTRAINT_TYPE = 'PRIMARY KEY' sits in ON for the reason of the final project's Mistake 5; views are skipped by TABLE_TYPE = 'BASE TABLE'.<br><b>A</b> is wrong: information_schema is queried like any tables; inner joins work.<br><b>B</b> is wrong: ORDER BY sorts; the join decides which rows exist.<br><b>D</b> is wrong: TABLE_TYPE = 'BASE TABLE' skips views.</div></div>
+  <div class="q" data-sc="11"><div class="qn">Q11</div><div class="qt">Where should a web application's database password live?</div><div class="opts"><div class="opt">A) In the source code, next to the connection string</div><div class="opt correct">B) In an environment variable or a secrets manager, never in the code or the repository</div><div class="opt">C) In a comment in 05_security.sql, so the team can find it</div><div class="opt">D) Nowhere: use root without a password on the web server</div></div><div class="why"><b>Why:</b> Lesson 8.3's security practice: secrets outside the code (environment variables, a secrets manager, or an option file only the user can read), and commit placeholder passwords only. The drivers' examples read getenv('DB_PASSWORD').<br><b>A</b> is wrong: Code is copied, shared and pushed to repositories; the password goes with it.<br><b>C</b> is wrong: A shared script is exactly what must not hold real passwords (the final project's FAQ).<br><b>D</b> is wrong: root is for administration only, never for an application.</div></div>
+  <div class="q" data-sc="12" data-kind="short"><div class="qn">Q12</div><div class="qt">A statement has two placeholders, <code class="inline">WHERE a.name = ? AND b.price &lt; ?</code>. How must the values be given to EXECUTE?</div><div class="opts"><div class="opt correct"><code class="inline">EXECUTE stmt USING @author, @max_price;</code>: user variables, in the same order as the ? placeholders</div></div><div class="why"><b>Why:</b> EXECUTE ... USING takes user variables (not literals) and fills the placeholders left to right. The lesson's Exercise 1 does exactly this; a driver does the same with a list of values.</div></div>
+
+  <div class="sec"><h2>8.3: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SET</span> @who = <span class="s">'x'' OR ''1''=''1'</span>;
+PREPARE find <span class="k">FROM</span> <span class="s">'SELECT first_name FROM customers WHERE last_name = ?'</span>;
+EXECUTE find <span class="k">USING</span> @who;
+DEALLOCATE PREPARE find;</pre><div class="opts"><div class="opt correct"><pre class="out">Statement prepared
+Empty set</pre></div></div><div class="why"><b>Why:</b> The crafted text is only a value: no customer has that last name, so the result is empty. Glued into the SQL, the same text would have returned every customer.</div></div>
+
+  <div class="sec"><h2>Milestones 5 to 7: what a passed check-in looks like</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Milestone 5:</b> five refusals with their own messages, error 1644 each (the reference: Member is suspended · Tool is out for repair · Tool is already on loan · Safety course required for this tool · Loan limit reached (3 open loans)); a success that prints the new loan (reference: loans 17 and 18, due 2026-06-22); <code class="inline">return_tool</code> refuses a tool that is not out (Tool is not on loan); <code class="inline">v_open_loans</code> after the reference calls lists loans 14, 15 and 16.</li>
+  <li><b>Milestone 6:</b> SHOW GRANTS for the desk account shows SELECT on the database, INSERT and UPDATE on members, EXECUTE on the two procedures and the role; logged in as it, the CALL works and <code class="inline">DELETE FROM loans</code> / <code class="inline">INSERT INTO loans</code> give 1142; the treasurer reads and gets 1142 on UPDATE (all measured on the reference).</li>
+  <li><b>Milestone 7:</b> the two counts match (18 and 18 on the reference after Milestone 5); both procedures in the copy; the README has the date and the counts. The accounts are not in the dump (measured: no CREATE USER, no GRANT).</li>
+  <li>Scoring with the rubric and the full reference numbers: <code class="inline">final-assessment.html</code>, Part 2.</li>
+</ul>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Lab 8.2-A: labs/module-14/l8_2-final-project/add_item_rules_starter.sql → add_item_rules_solution.sql</div>
+<p>Both print the same for the two allowed calls (the difference shows in the failing calls):</p>
+<pre class="out">+---------+---------------+
+| item_id | price_at_time |
++---------+---------------+
+|      19 |          9.99 |
++---------+---------------+
++---------+---------------+
+| item_id | price_at_time |
++---------+---------------+
+|      20 |         10.99 |
++---------+---------------+
++----+------------+----------+---------------+
+| id | title      | quantity | price_at_time |
++----+------------+----------+---------------+
+|  4 | Dune       |        1 |         14.99 |
+| 19 | 1984       |        1 |          9.99 |
+| 20 | The Hobbit |        2 |         10.99 |
++----+------------+----------+---------------+
++----------------+--------------+---------------+
+| ROUTINE_NAME   | ROUTINE_TYPE | SECURITY_TYPE |
++----------------+--------------+---------------+
+| add_order_item | PROCEDURE    | DEFINER       |
++----------------+--------------+---------------+</pre><p>What the TODOs add: (1) the quantity rule as a named CHECK, because it looks at one row only; (2) the EXIT HANDLER (ROLLBACK, RESIGNAL) and FOR UPDATE on the order's row; (3) No such book / Book is out of stock; (4) Book is already on this order; (5) at most 3 different books per order. The price is copied into price_at_time on purpose (the price at the time of sale). Order 3 belongs to Bob and had one line (Dune); the cleanup removes the two new lines, the CHECK and the procedure.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-14/l8_2-final-project/debug_add_item_rules.sql (every rule must fail)</div>
+<p>It prints:</p>
+<pre class="out">+---------+---------------+
+| item_id | price_at_time |
++---------+---------------+
+|      19 |          9.99 |
++---------+---------------+
++---------+---------------+
+| item_id | price_at_time |
++---------+---------------+
+|      20 |         10.99 |
++---------+---------------+
+ERROR 1644 (45000): No such order
+ERROR 1644 (45000): No such book
+ERROR 1644 (45000): Book is out of stock
+ERROR 1644 (45000): Book is already on this order
+ERROR 1644 (45000): An order holds at most 3 different books
+ERROR 3819 (HY000): Check constraint 'chk_items_quantity' is violated.
++-----------------+
+| order_items_now |
++-----------------+
+|              20 |
++-----------------+</pre><p>Order 99 does not exist; book 77 does not exist; The Great Gatsby (4) is out of stock; Pride and Prejudice (5) is already on order 2; order 3 already holds three books; zero copies breaks the CHECK, which fires inside the procedure and is passed on by RESIGNAL as 3819. <code class="inline">order_items_now</code> is 20: 18 in the course data plus the two allowed calls; none of the refused calls left a row. With the STARTER's procedure, the Gatsby, Pride and Prejudice and fourth-book calls would all succeed.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 8.2-B: labs/module-14/l8_2-final-project/least_privilege_starter.sql → least_privilege_solution.sql</div>
+<p>As shipped, the audit shows the damage (ALL PRIVILEGES expands to 18 privileges, and both roles can DELETE):</p>
+<pre class="out">+---------------------------------------------------------------------+
+| Grants for kit_till_app@localhost                                   |
++---------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_till_app`@`localhost`                    |
+| GRANT ALL PRIVILEGES ON `bookstore`.* TO `kit_till_app`@`localhost` |
+| GRANT `kit_shop_till`@`%` TO `kit_till_app`@`localhost`             |
++---------------------------------------------------------------------+
++----------------------+----------------+-------------------------+
+| GRANTEE              | on_what        | PRIVILEGE_TYPE          |
++----------------------+----------------+-------------------------+
+| 'kit_shop_owner'@'%' | whole database | DELETE                  |
+| 'kit_shop_owner'@'%' | whole database | INSERT                  |
+| 'kit_shop_owner'@'%' | whole database | SELECT                  |
+| 'kit_shop_owner'@'%' | whole database | UPDATE                  |
+| 'kit_shop_till'@'%'  | whole database | ALTER                   |
+| 'kit_shop_till'@'%'  | whole database | ALTER ROUTINE           |
+| 'kit_shop_till'@'%'  | whole database | CREATE                  |
+| 'kit_shop_till'@'%'  | whole database | CREATE ROUTINE          |
+| 'kit_shop_till'@'%'  | whole database | CREATE TEMPORARY TABLES |
+| 'kit_shop_till'@'%'  | whole database | CREATE VIEW             |
+| 'kit_shop_till'@'%'  | whole database | DELETE                  |
+| 'kit_shop_till'@'%'  | whole database | DROP                    |
+| 'kit_shop_till'@'%'  | whole database | EVENT                   |
+| 'kit_shop_till'@'%'  | whole database | EXECUTE                 |
+| 'kit_shop_till'@'%'  | whole database | INDEX                   |
+| 'kit_shop_till'@'%'  | whole database | INSERT                  |
+| 'kit_shop_till'@'%'  | whole database | LOCK TABLES             |
+| 'kit_shop_till'@'%'  | whole database | REFERENCES              |
+| 'kit_shop_till'@'%'  | whole database | SELECT                  |
+| 'kit_shop_till'@'%'  | whole database | SHOW VIEW               |
+| 'kit_shop_till'@'%'  | whole database | TRIGGER                 |
+| 'kit_shop_till'@'%'  | whole database | UPDATE                  |
++----------------------+----------------+-------------------------+
++-------------------+
+| delete_privileges |
++-------------------+
+|                 2 |
++-------------------+</pre><p>The solution prints:</p>
+<pre class="out">+------------------------------------------------------------------------------------+
+| Grants for kit_till_app@localhost                                                  |
++------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_till_app`@`localhost`                                   |
+| GRANT SELECT ON `bookstore`.* TO `kit_till_app`@`localhost`                        |
+| GRANT INSERT, UPDATE ON `bookstore`.`customers` TO `kit_till_app`@`localhost`      |
+| GRANT EXECUTE ON PROCEDURE `bookstore`.`kit_restock` TO `kit_till_app`@`localhost` |
+| GRANT `kit_shop_till`@`%` TO `kit_till_app`@`localhost`                            |
++------------------------------------------------------------------------------------+
++----------------------+----------------+----------------+
+| GRANTEE              | on_what        | PRIVILEGE_TYPE |
++----------------------+----------------+----------------+
+| 'kit_shop_owner'@'%' | whole database | SELECT         |
+| 'kit_shop_till'@'%'  | customers      | INSERT         |
+| 'kit_shop_till'@'%'  | customers      | UPDATE         |
+| 'kit_shop_till'@'%'  | whole database | SELECT         |
++----------------------+----------------+----------------+
++-------------------+
+| delete_privileges |
++-------------------+
+|                 0 |
++-------------------+</pre><p>Reading it: the till's account sees its role's grants through <code class="inline">USING</code>; EXECUTE on the procedure appears in SHOW GRANTS but not in SCHEMA_PRIVILEGES or TABLE_PRIVILEGES (procedure privileges live in mysql.procs_priv). TODO 3 (SET DEFAULT ROLE) changes nothing in this output: it only matters when the account logs in, which a SOURCEd lab cannot show (the Lesson 7.4 project tests it by logging in). Everything is dropped at the end.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 8.3-A: labs/module-14/l8_3-next-steps/health_check_starter.sql → health_check_solution.sql</div>
+<p>The solution prints (on the bookstore with the planted table):</p>
+<pre class="out">+--------------------+
+| table_without_pk   |
++--------------------+
+| kit_legacy_refunds |
++--------------------+
++--------------------+-------------+--------------+--------------------+
+| TABLE_NAME         | COLUMN_NAME | COLUMN_TYPE  | CHARACTER_SET_NAME |
++--------------------+-------------+--------------+--------------------+
+| kit_legacy_refunds | amount      | float        | NULL               |
+| kit_legacy_refunds | reason      | varchar(100) | latin1             |
++--------------------+-------------+--------------+--------------------+
++--------------------+-------------+
+| TABLE_NAME         | COLUMN_NAME |
++--------------------+-------------+
+| kit_legacy_refunds | order_id    |
++--------------------+-------------+
++-----------------+----------------------+-----------------------+-------------+
+| TABLE_NAME      | CONSTRAINT_NAME      | REFERENCED_TABLE_NAME | DELETE_RULE |
++-----------------+----------------------+-----------------------+-------------+
+| book_categories | fk_bc_book           | books                 | CASCADE     |
+| book_categories | fk_bc_category       | categories            | CASCADE     |
+| employees       | fk_employees_manager | employees             | SET NULL    |
+| order_items     | fk_items_order       | orders                | CASCADE     |
++-----------------+----------------------+-----------------------+-------------+</pre><p>Check 3 is new: a column named like a key that no foreign key protects (the legacy table's order_id could point at an order that does not exist). Check 4 lists only the delete rules that do more than refuse. Pointed at the reference tool_library, checks 1 to 3 print nothing and check 4 lists fk_mc_member CASCADE only. As shipped, check 4 lists all seven foreign keys (three RESTRICT).</p>
+</div>
+<div class="blk lab"><div class="h">Lab 8.3-B: labs/module-14/l8_3-next-steps/safe_search_starter.sql → safe_search_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+-------------------------------------------------------------------------------------------------+
+| query_sent                                                                                      |
++-------------------------------------------------------------------------------------------------+
+| SELECT first_name, last_name, city FROM customers WHERE city = 'Chicago' OR 'x'='x' ORDER BY id |
++-------------------------------------------------------------------------------------------------+
+Statement prepared
++------------+-----------+-------------+
+| first_name | last_name | city        |
++------------+-----------+-------------+
+| Alice      | Johnson   | New York    |
+| Bob        | Smith     | Chicago     |
+| Carol      | Williams  | Los Angeles |
+| Dave       | Brown     | Houston     |
+| Eve        | Davis     | NULL        |
+| Frank      | Miller    | New York    |
+| Grace      | Wilson    | Chicago     |
+| Hank       | Taylor    | NULL        |
++------------+-----------+-------------+
+Statement prepared
+Empty set
++------------+-----------+---------+
+| first_name | last_name | city    |
++------------+-----------+---------+
+| Bob        | Smith     | Chicago |
+| Grace      | Wilson    | Chicago |
++------------+-----------+---------+
+Statement prepared
++----+------------+
+| id | order_date |
++----+------------+
+|  2 | 2026-02-20 |
+|  8 | 2026-04-05 |
++----+------------+
+Empty set</pre><p>As shipped, part 1 leaks all eight customers and the two TODO lines print placeholders. The second EXECUTE of orders_between with the crafted email prints Empty set (interactive client); Alice's orders between February and June are 2 and 8.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-14/l8_3-next-steps/debug_unsafe_habits.sql (deliberately broken)</div>
+<p>It prints:</p>
+<pre class="out">ERROR 1175 (HY000): You are using safe update mode and you tried to update a table without a WHERE that uses a KEY column.
+ERROR 1175 (HY000): You are using safe update mode and you tried to update a table without a WHERE that uses a KEY column.
++----+-------+-------+
+| id | title | price |
++----+-------+-------+
+|  1 | Dune  | 14.99 |
++----+-------+-------+
++----+------------+---------+
+| id | first_name | city    |
++----+------------+---------+
+|  2 | Bob        | Chicago |
++----+------------+---------+
++--------------+
+| gatsby_lines |
++--------------+
+|            0 |
++--------------+</pre><ol class="steps">
+  <li><b>A, 1175:</b> no WHERE at all. Fix: <code class="inline">WHERE id = 1</code>.</li>
+  <li><b>B, 1175:</b> first_name is not a key. Fix: <code class="inline">WHERE id = 2</code>.</li>
+  <li><b>C gets through:</b> book_id leads an index (the foreign key's), so safe-update mode accepts it; it deletes nothing because The Great Gatsby was never sold.</li>
+</ol>
+<p>After the fixes, inside the transaction Dune costs 16.49 and Bob lives in Boston; ROLLBACK restores both.</p>
+</div>
+
+  <div class="sec"><h2>The Lesson Pages' Own Quick Quizzes</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Lesson 8.2 · Final Project: Design and Build a Database</div>
+<ol class="steps" data-lesson-quiz="8.2">
+  <li><b>B</b> In the procedure that creates loans, inside a transaction: The rule depends on other rows, so it belongs in the code that creates loans: a procedure that counts open loans inside a transaction before inserting.</li>
+  <li><b>A</b> A junction table with member_id, course_id and completed_on: A many-to-many relationship needs a junction table, and the completion date is a fact about the pair, so it lives there too.</li>
+  <li><b>C</b> CURDATE() changes over time, so it is not allowed in a CHECK: A constraint must give the same answer for a row at any time. CURDATE() changes every day, so MySQL disallows it in CHECK.</li>
+  <li><b>A</b> So the results are repeatable and can be checked against known answers: With a fixed report date the results can be checked by hand and compared over time; in production the variable is simply set to CURDATE().</li>
+  <li><b>C</b> The loan is created, because the procedure runs with its definer's rights: With SQL SECURITY DEFINER (the default) the procedure uses its definer's rights, so it can insert the loan, while the account itself still cannot touch loans directly.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Lesson 8.3 · Next Steps &amp; Best Practices</div>
+<ol class="steps" data-lesson-quiz="8.3">
+  <li><b>B</b> The value is sent separately from the SQL text, so it can never become part of the statement: The SQL text and the values travel separately, so the server parses the statement before it sees the input, and the input can only ever be a value.</li>
+  <li><b>C</b> It fails with error 1524; update the app's driver instead: MySQL 9.x no longer has the mysql_native_password plugin (error 1524). Maintained drivers support caching_sha2_password, so the fix is a current driver.</li>
+  <li><b>A</b> REFERENTIAL_CONSTRAINTS: REFERENTIAL_CONSTRAINTS has one row per foreign key, with its UPDATE_RULE and DELETE_RULE.</li>
+  <li><b>B</b> Change the column to DECIMAL(8, 2): DECIMAL stores exact decimal digits, so sums of prices are exact to the cent.</li>
+  <li><b>C</b> The current Long-Term Support release, such as 9.7 or 8.4: LTS releases receive bug and security fixes for years without changing behavior, which is what production systems need.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>Definer's rights:</b> the procedure runs with the privileges of its definer (SQL SECURITY DEFINER is the default); the desk account only needs EXECUTE, and every loan passes the procedure's rules.</li>
+  <li><b>Safely:</b> <code class="inline">PREPARE s FROM 'SELECT ... WHERE email = ?'; EXECUTE s USING @input; DEALLOCATE PREPARE s;</code> or, in a driver, a placeholder and the value passed separately.</li>
+  <li><b>Next step:</b> any path from the table with a start date; check that the plan names one first topic and one small project.</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q1 A (a loan is created).</b> Expects the procedure to check only availability. Ask which of the five rules reads member_courses.</li>
+  <li><b>Q2 C or D.</b> Mixes up SIGNAL, handlers and definer's rights: three separate tools. Draw the five-box shape again.</li>
+  <li><b>Q4 C (the procedures are missing).</b> True only without <code class="inline">--routines</code>; the lesson's command has it.</li>
+  <li><b>Q5 A ("faster").</b> Thinks of locks as optimizations. Show the two-terminal race once.</li>
+  <li><b>Q7 A (Empty set).</b> Has seen the safe version and assumes the database protects them. The leak is silent: that is the danger.</li>
+  <li><b>Q8 B (RESTRICT).</b> Generalizes from customers to orders. Read health check 3's output line by line.</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 14 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

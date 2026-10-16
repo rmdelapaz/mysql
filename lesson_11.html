@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn about table relationships in MySQL — one-to-one, one-to-many, and many-to-many — and how to model real-world data across multiple connected tables.">
-    <meta name="author" content="Ray De La Paz">
+    <meta name="description" content="Split one flat table into related tables: one-to-many, one-to-one and many-to-many relationships, junction tables, ER diagrams, and a hands-on migration of the bookstore database. MySQL Foundations Lesson 4.1.">
+    <meta name="author" content="Ray de la Paz">
     <title>Table Relationships - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -43,30 +43,34 @@
         <ul>
             <li><a href="index.html">Home</a></li>
             <li><a href="index.html#modules">Module 4: Relationships &amp; Joins</a></li>
-            <li aria-current="page">Lesson 11: Table Relationships</li>
+            <li aria-current="page">Lesson 4.1: Table Relationships</li>
         </ul>
     </nav>
 
     <main id="main-content">
         <div class="container">
             <header>
-                <h1>🔗 Lesson 11: Table Relationships</h1>
-                <p class="lead">Until now, all your data has lived in one or two standalone tables. Real databases have dozens — sometimes hundreds — of tables, all connected to each other. A customer <em>places</em> orders. An order <em>contains</em> books. A book <em>belongs to</em> categories. These connections are called <strong>relationships</strong>, and understanding them is the key to thinking like a database designer.</p>
+                <h1>🔗 Lesson 4.1: Table Relationships</h1>
+                <p class="lead">Your bookstore has lived in three separate tables so far, and the <code>books</code> table types every author's name by hand. That works for ten books, but it breaks as soon as a name is spelled two ways or a customer starts placing orders. This lesson answers the question every database designer asks first: which facts belong in which table, and how do the tables point at each other? Then you will rebuild the bookstore the relational way.</p>
 
                 <div class="card card-info">
                     <h2>🎯 Learning Objectives</h2>
                     <p>By the end of this lesson, you will be able to:</p>
                     <ul>
-                        <li>Explain why data is split across multiple tables</li>
-                        <li>Identify one-to-one, one-to-many, and many-to-many relationships</li>
-                        <li>Read and interpret Entity-Relationship (ER) diagrams</li>
-                        <li>Design a junction table for many-to-many relationships</li>
-                        <li>Create related tables with proper primary and foreign key columns</li>
-                        <li>Recognize real-world relationship patterns</li>
+                        <li>Explain the update, insert and delete problems of a flat table, using the bookstore's own data</li>
+                        <li>Tell one-to-many, one-to-one and many-to-many relationships apart, and say where the foreign key goes in each</li>
+                        <li>Move a repeated text column into its own table with <code>CREATE TABLE</code>, <code>ALTER TABLE</code> and <code>UPDATE ... JOIN</code></li>
+                        <li>Build a junction table with a composite primary key, with and without extra columns</li>
+                        <li>Read a crow's foot ER diagram of the finished bookstore database</li>
                     </ul>
-                    <p><strong>Estimated Time:</strong> 45 minutes</p>
-                    <p><strong>Prerequisites:</strong> Subqueries &amp; nested queries (<a href="lesson_10.html">Lesson 10</a>)</p>
                 </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 105 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_10.html">Lesson 3.4: Subqueries &amp; Nested Queries</a></li>
+                    <li><span class="meta-label">🛠️ You will build</span> the relational bookstore: <code>authors</code>, <code>book_categories</code>, <code>orders</code>, <code>order_items</code> and <code>employees</code>, the database every later lesson uses</li>
+                    <li><span class="meta-label">🗄️ Database</span> <code>bookstore</code> as loaded in <a href="lesson_07.html#setup">Lesson 3.1</a> (10 books with a text <code>author</code> column, 8 customers, 5 categories); it ends as <a href="assets/sql/bookstore.sql" download>bookstore.sql</a></li>
+                </ul>
             </header>
 
             <details class="card toc-card" open>
@@ -77,955 +81,1022 @@
                 </summary>
                 <nav aria-label="Table of Contents">
                     <ol>
-                        <li><a href="#why-multiple-tables" class="toc-link">Why Multiple Tables?</a></li>
-                        <li><a href="#primary-foreign-keys" class="toc-link">Primary Keys &amp; Foreign Keys</a></li>
-                        <li><a href="#one-to-many" class="toc-link">One-to-Many (1:M) Relationships</a></li>
-                        <li><a href="#one-to-one" class="toc-link">One-to-One (1:1) Relationships</a></li>
-                        <li><a href="#many-to-many" class="toc-link">Many-to-Many (M:M) Relationships</a></li>
+                        <li><a href="#why-tables" class="toc-link">Why Split Data into Tables?</a></li>
+                        <li><a href="#keys" class="toc-link">Primary Keys and Foreign Keys</a></li>
+                        <li><a href="#one-to-many" class="toc-link">One-to-Many: Authors and Books</a></li>
+                        <li><a href="#one-to-one" class="toc-link">One-to-One: Optional Extra Details</a></li>
+                        <li><a href="#many-to-many" class="toc-link">Many-to-Many: Books and Categories</a></li>
                         <li><a href="#er-diagrams" class="toc-link">Reading ER Diagrams</a></li>
-                        <li><a href="#bookstore-schema" class="toc-link">Building a Bookstore Schema</a></li>
-                        <li><a href="#common-mistakes" class="toc-link">Common Mistakes</a></li>
-                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
-                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: Orders, Order Items and Staff</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
                     </ol>
                 </nav>
             </details>
 
-            <!-- Section 1: Why Multiple Tables? -->
-            <section id="why-multiple-tables" class="lesson-section">
-                <h2>Why Multiple Tables?</h2>
-                <p>Imagine storing everything in one giant table:</p>
+            <section id="why-tables" class="lesson-section">
+                <h2>🧩 Why Split Data into Tables?</h2>
+                <p>Picture the bookstore keeping its sales in one giant spreadsheet-style table, one row per book sold:</p>
 
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>order_id</th>
-                                <th>customer_name</th>
-                                <th>customer_email</th>
-                                <th>customer_city</th>
-                                <th>book_title</th>
-                                <th>book_price</th>
-                                <th>order_date</th>
-                            </tr>
+                            <tr><th>sale</th><th>customer_name</th><th>customer_email</th><th>customer_city</th><th>book_title</th><th>book_price</th><th>sale_date</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>1</td>
-                                <td>Alice Johnson</td>
-                                <td>alice@email.com</td>
-                                <td>New York</td>
-                                <td>Dune</td>
-                                <td>14.99</td>
-                                <td>2026-01-15</td>
-                            </tr>
-                            <tr>
-                                <td>2</td>
-                                <td>Alice Johnson</td>
-                                <td>alice@email.com</td>
-                                <td>New York</td>
-                                <td>1984</td>
-                                <td>9.99</td>
-                                <td>2026-01-15</td>
-                            </tr>
-                            <tr>
-                                <td>3</td>
-                                <td>Bob Smith</td>
-                                <td>bob@email.com</td>
-                                <td>Chicago</td>
-                                <td>Dune</td>
-                                <td>14.99</td>
-                                <td>2026-02-01</td>
-                            </tr>
+                            <tr><td>1</td><td>Alice Johnson</td><td>alice@example.com</td><td>New York</td><td>Dune</td><td>14.99</td><td>2026-01-15</td></tr>
+                            <tr><td>2</td><td>Alice Johnson</td><td>alice@example.com</td><td>New York</td><td>1984</td><td>9.99</td><td>2026-01-15</td></tr>
+                            <tr><td>3</td><td>Bob Smith</td><td>bob@example.com</td><td>Chicago</td><td>Dune</td><td>14.99</td><td>2026-03-10</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <p>This works until you notice the problems:</p>
+                <p>It looks tidy, but it has four classic problems, called <strong>anomalies</strong>:</p>
+                <ul>
+                    <li><strong>Duplication:</strong> Alice's name, email and city are stored once per book she buys. Fifty purchases, fifty copies.</li>
+                    <li><strong>Update anomaly:</strong> when Alice changes her email, every one of her rows must change. Miss one and the table disagrees with itself.</li>
+                    <li><strong>Delete anomaly:</strong> delete Bob's only sale and Bob himself disappears from the database.</li>
+                    <li><strong>Insert anomaly:</strong> a new customer who has not bought anything yet has nowhere to go, unless you fill the book columns with <code>NULL</code>.</li>
+                </ul>
 
-                <div class="card card-warning">
-                    <h4>⚠️ Problems With One Big Table</h4>
-                    <ul>
-                        <li><strong>Data duplication</strong> — Alice's name, email, and city are repeated for every order she places. If she orders 50 books, that's 50 copies of the same info.</li>
-                        <li><strong>Update anomalies</strong> — If Alice changes her email, you have to update it in every row. Miss one and your data is inconsistent.</li>
-                        <li><strong>Deletion anomalies</strong> — If you delete Alice's only order, you lose her customer info entirely.</li>
-                        <li><strong>Insert anomalies</strong> — You can't add a new customer until they place an order (or you'd have NULL order fields).</li>
-                        <li><strong>Wasted space</strong> — Every row stores redundant data, bloating the table unnecessarily.</li>
-                    </ul>
+                <h3>The bookstore already has this problem</h3>
+                <p>Your <code>books</code> table stores each author as text. Start the lesson in the mysql client, in the <code>bookstore</code> database you have used since Lesson 3.1:</p>
+                <pre><code class="language-sql">USE bookstore;
+
+SELECT id, title, author
+FROM books
+WHERE author = 'J.R.R. Tolkien';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Database changed
++----+-------------------+----------------+
+| id | title             | author         |
++----+-------------------+----------------+
+|  6 | The Hobbit        | J.R.R. Tolkien |
+|  9 | Lord of the Rings | J.R.R. Tolkien |
++----+-------------------+----------------+</code></pre>
                 </div>
+                <p>The same 14 characters are typed twice. Now imagine a staff member adds spaces to the initials on one of the two rows:</p>
+                <pre><code class="language-sql">UPDATE books SET author = 'J. R. R. Tolkien' WHERE id = 9;
 
-                <p>The solution: <strong>split the data into separate tables</strong> and connect them with relationships.</p>
-
-                <div class="mermaid">
-                    erDiagram
-                        customers {
-                            int id PK
-                            varchar first_name
-                            varchar last_name
-                            varchar email
-                            varchar city
-                        }
-                        orders {
-                            int id PK
-                            int customer_id FK
-                            date order_date
-                            decimal total
-                        }
-                        customers ||--o{ orders : "places"
+SELECT author, COUNT(*) AS books
+FROM books
+WHERE author LIKE '%Tolkien%'
+GROUP BY author
+ORDER BY author;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------+-------+
+| author           | books |
++------------------+-------+
+| J. R. R. Tolkien |     1 |
+| J.R.R. Tolkien   |     1 |
++------------------+-------+</code></pre>
                 </div>
+                <p>No error, yet the database now believes in two different Tolkiens, and the "books per author" report from Lesson 3.3 is quietly wrong. That is an update anomaly in action. Put the name back before you go on:</p>
+                <pre><code class="language-sql">UPDATE books SET author = 'J.R.R. Tolkien' WHERE id = 9;</code></pre>
 
-                <p>Now Alice's info is stored <em>once</em> in the customers table. Her orders reference her by ID. Update her email in one place, and it's correct everywhere.</p>
+                <div class="card card-accent">
+                    <h4>🔑 The relational idea</h4>
+                    <p>Store each fact <strong>once</strong>, in the table it describes, and let other tables point at it by its id. An author's name belongs in an <code>authors</code> table; a book only needs to say "my author is number 6". Change the name in one place and every book sees the new spelling.</p>
+                </div>
             </section>
 
-            <!-- Section 2: Primary Keys & Foreign Keys -->
-            <section id="primary-foreign-keys" class="lesson-section">
-                <h2>Primary Keys &amp; Foreign Keys</h2>
-                <p>Relationships depend on two key concepts you've already seen:</p>
-
-                <h3>Primary Key (PK) — The Identifier</h3>
-                <p>Every table should have a <strong>primary key</strong> — a column (or set of columns) that uniquely identifies each row. You've been using these since <a href="lesson_04.html">Lesson 4</a>:</p>
-
-                <pre><code class="language-sql">
-CREATE TABLE customers (
-    id INT AUTO_INCREMENT PRIMARY KEY,   -- unique identifier
-    first_name VARCHAR(50),
-    last_name VARCHAR(50),
-    email VARCHAR(100)
-);
-                </code></pre>
-
-                <h3>Foreign Key (FK) — The Connector</h3>
-                <p>A <strong>foreign key</strong> is a column in one table that references the primary key of another table. It's the link that creates the relationship:</p>
-
-                <pre><code class="language-sql">
-CREATE TABLE orders (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    customer_id INT,              -- foreign key
-    order_date DATE,
-    total DECIMAL(10, 2),
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
-);
-                </code></pre>
-
-                <p>The <code>customer_id</code> column in the orders table stores a value that matches an <code>id</code> in the customers table. This is how MySQL knows which customer placed which order.</p>
+            <section id="keys" class="lesson-section">
+                <h2>🔑 Primary Keys and Foreign Keys</h2>
+                <p>Two kinds of key make relationships work. You have used the first one since Lesson 2.1.</p>
+                <ul>
+                    <li>A <strong>primary key</strong> (PK) identifies each row of a table: unique, never <code>NULL</code>. In the bookstore every table has an <code>id INT AUTO_INCREMENT PRIMARY KEY</code>.</li>
+                    <li>A <strong>foreign key</strong> (FK) is a column in one table that holds a primary key value from another table. <code>orders.customer_id = 1</code> means "this order belongs to customer 1".</li>
+                </ul>
 
                 <div class="mermaid">
-                    graph LR
-                        subgraph customers["customers table"]
-                            C1["id: 1 | Alice Johnson"]
-                            C2["id: 2 | Bob Smith"]
-                        end
-                        subgraph orders["orders table"]
-                            O1["id: 1 | customer_id: 1 | 2026-01-15"]
-                            O2["id: 2 | customer_id: 1 | 2026-01-20"]
-                            O3["id: 3 | customer_id: 2 | 2026-02-01"]
-                        end
-                        C1 -.->|"referenced by"| O1
-                        C1 -.->|"referenced by"| O2
-                        C2 -.->|"referenced by"| O3
+graph TD
+    C["customers: id 1, Alice"] -->|"referenced by"| O1["orders: id 1, customer_id 1"]
+    C -->|"referenced by"| O2["orders: id 2, customer_id 1"]
                 </div>
+
+                <p>The table that holds the primary key is the <strong>parent</strong> (<code>customers</code>); the table that holds the foreign key is the <strong>child</strong> (<code>orders</code>). Foreign key columns are usually named after the parent in the singular: <code>customer_id</code>, <code>book_id</code>, <code>author_id</code>.</p>
 
                 <div class="card card-info">
-                    <h4>💡 Naming Convention</h4>
-                    <p>Foreign key columns are typically named <code>tablename_id</code> — like <code>customer_id</code>, <code>book_id</code>, or <code>order_id</code>. This makes it immediately clear which table they reference.</p>
-                </div>
-
-                <div class="card card-success">
-                    <h4>✅ Key Terminology</h4>
-                    <ul>
-                        <li><strong>Parent table</strong> — the table being referenced (customers)</li>
-                        <li><strong>Child table</strong> — the table containing the foreign key (orders)</li>
-                        <li>The foreign key in the child table must match a primary key value in the parent table (or be NULL)</li>
-                    </ul>
+                    <h4>💡 Declaring the key</h4>
+                    <p>A column called <code>customer_id</code> is only a naming habit until you declare it with <code>FOREIGN KEY (customer_id) REFERENCES customers(id)</code>. Then MySQL checks every value: an order for a customer who does not exist is refused. In this lesson you will declare foreign keys as you build tables; <a href="lesson_12.html">Lesson 4.2</a> is all about the rules they enforce.</p>
                 </div>
             </section>
 
-            <!-- Section 3: One-to-Many -->
             <section id="one-to-many" class="lesson-section">
-                <h2>One-to-Many (1:M) Relationships</h2>
-                <p>The <strong>one-to-many</strong> relationship is by far the most common type in relational databases. One record in the parent table can be linked to many records in the child table, but each child record links to exactly one parent.</p>
+                <h2>👩‍👧‍👦 One-to-Many: Authors and Books</h2>
+                <p>In a <strong>one-to-many</strong> (1:M) relationship, one parent row can have many child rows, but each child has exactly one parent. It is by far the most common relationship: one author writes many books, one customer places many orders, one order holds many items.</p>
 
-                <div class="mermaid">
-                    erDiagram
-                        customers ||--o{ orders : "places"
-                        customers {
-                            int id PK
-                            varchar first_name
-                            varchar last_name
-                        }
-                        orders {
-                            int id PK
-                            int customer_id FK
-                            date order_date
-                        }
+                <div class="card card-accent">
+                    <h4>🔑 Where does the foreign key go?</h4>
+                    <p>Ask "can one A have many Bs?" If yes, the foreign key goes in <strong>B's</strong> table, the "many" side. Can one author have many books? Yes, so <code>books</code> gets <code>author_id</code>. Can one book have many authors? Not in this store, so <code>authors</code> gets no <code>book_id</code>.</p>
                 </div>
 
-                <p><strong>One</strong> customer can place <strong>many</strong> orders, but each order belongs to exactly <strong>one</strong> customer.</p>
+                <p>Now turn the text column into a real relationship, in four steps. Run each block and look at the result before you move on.</p>
 
-                <h3>Real-World Examples</h3>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>One Side (Parent)</th>
-                                <th>Many Side (Child)</th>
-                                <th>Relationship</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Customer</td>
-                                <td>Orders</td>
-                                <td>One customer places many orders</td>
-                            </tr>
-                            <tr>
-                                <td>Author</td>
-                                <td>Books</td>
-                                <td>One author writes many books</td>
-                            </tr>
-                            <tr>
-                                <td>Department</td>
-                                <td>Employees</td>
-                                <td>One department has many employees</td>
-                            </tr>
-                            <tr>
-                                <td>Category</td>
-                                <td>Products</td>
-                                <td>One category contains many products</td>
-                            </tr>
-                            <tr>
-                                <td>Teacher</td>
-                                <td>Classes</td>
-                                <td>One teacher teaches many classes</td>
-                            </tr>
-                            <tr>
-                                <td>Country</td>
-                                <td>Cities</td>
-                                <td>One country has many cities</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3>How to Build It</h3>
-                <p>The foreign key always goes on the <strong>"many" side</strong>:</p>
-
-                <pre><code class="language-sql">
--- Parent table (the "one" side)
-CREATE TABLE authors (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    birth_year INT
+                <h3>Step 1: Create the parent table and fill it</h3>
+                <pre><code class="language-sql">CREATE TABLE authors (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    birth_year  INT
 );
 
--- Child table (the "many" side) — has the foreign key
-CREATE TABLE books (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    author_id INT NOT NULL,
-    price DECIMAL(6, 2),
-    FOREIGN KEY (author_id) REFERENCES authors(id)
-);
-                </code></pre>
+INSERT INTO authors (id, name, birth_year) VALUES
+    (1, 'Frank Herbert', 1920),
+    (2, 'George Orwell', 1903),
+    (3, 'Harper Lee', 1926),
+    (4, 'F. Scott Fitzgerald', 1896),
+    (5, 'Jane Austen', 1775),
+    (6, 'J.R.R. Tolkien', 1892),
+    (7, 'Aldous Huxley', 1894),
+    (8, 'J.D. Salinger', 1919),
+    (9, 'Ray Bradbury', 1920),
+    (10, 'Isaac Asimov', 1920);
 
-                <div class="card card-info">
-                    <h4>💡 How to Identify the "Many" Side</h4>
-                    <p>Ask yourself: "Can one [A] have multiple [B]s?" If yes, A is the "one" side and B is the "many" side. The foreign key goes in B's table.</p>
-                    <p>Can one customer have multiple orders? <strong>Yes</strong> → FK goes in orders.<br>
-                    Can one order have multiple customers? <strong>No</strong> → customers is the "one" side.</p>
+SELECT * FROM authors ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+---------------------+------------+
+| id | name                | birth_year |
++----+---------------------+------------+
+|  1 | Frank Herbert       |       1920 |
+|  2 | George Orwell       |       1903 |
+|  3 | Harper Lee          |       1926 |
+|  4 | F. Scott Fitzgerald |       1896 |
+|  5 | Jane Austen         |       1775 |
+|  6 | J.R.R. Tolkien      |       1892 |
+|  7 | Aldous Huxley       |       1894 |
+|  8 | J.D. Salinger       |       1919 |
+|  9 | Ray Bradbury        |       1920 |
+| 10 | Isaac Asimov        |       1920 |
++----+---------------------+------------+</code></pre>
                 </div>
+                <p>The first nine authors are numbered in the order their first book appears in <code>books</code>. The tenth, Isaac Asimov, has no books in the store yet. That is allowed on the "one" side of a relationship (an author with zero books), and he will be useful in <a href="lesson_13.html">Lesson 4.3</a> when you look for rows with no match.</p>
+
+                <h3>Step 2: Add the foreign key column to the child</h3>
+                <pre><code class="language-sql">ALTER TABLE books ADD COLUMN author_id INT AFTER title;
+
+SELECT id, title, author, author_id
+FROM books
+WHERE id &lt;= 3;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+-----------------------+---------------+-----------+
+| id | title                 | author        | author_id |
++----+-----------------------+---------------+-----------+
+|  1 | Dune                  | Frank Herbert |      NULL |
+|  2 | 1984                  | George Orwell |      NULL |
+|  3 | To Kill a Mockingbird | Harper Lee    |      NULL |
++----+-----------------------+---------------+-----------+</code></pre>
+                </div>
+                <p>The new column exists but is empty (<code>NULL</code>) on every row. <code>AFTER title</code> only decides where it appears in <code>SELECT *</code> and <code>DESCRIBE</code>.</p>
+
+                <h3>Step 3: Fill <code>author_id</code> by matching names</h3>
+                <p>Every book's <code>author</code> text equals exactly one <code>authors.name</code>. An <code>UPDATE</code> that joins the two tables can copy the matching id into each book in one statement:</p>
+                <pre><code class="language-sql">UPDATE books
+JOIN authors ON authors.name = books.author
+SET books.author_id = authors.id;
+
+SELECT id, title, author, author_id
+FROM books
+ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+------------------------+---------------------+-----------+
+| id | title                  | author              | author_id |
++----+------------------------+---------------------+-----------+
+|  1 | Dune                   | Frank Herbert       |         1 |
+|  2 | 1984                   | George Orwell       |         2 |
+|  3 | To Kill a Mockingbird  | Harper Lee          |         3 |
+|  4 | The Great Gatsby       | F. Scott Fitzgerald |         4 |
+|  5 | Pride and Prejudice    | Jane Austen         |         5 |
+|  6 | The Hobbit             | J.R.R. Tolkien      |         6 |
+|  7 | Brave New World        | Aldous Huxley       |         7 |
+|  8 | The Catcher in the Rye | J.D. Salinger       |         8 |
+|  9 | Lord of the Rings      | J.R.R. Tolkien      |         6 |
+| 10 | Fahrenheit 451         | Ray Bradbury        |         9 |
++----+------------------------+---------------------+-----------+</code></pre>
+                </div>
+                <p>Read the <code>UPDATE</code> as "for every pair of a book and an author whose name equals the book's author text, set the book's <code>author_id</code> to that author's id". <code>JOIN ... ON</code> pairs rows from two tables; it is the subject of <a href="lesson_13.html">Lesson 4.3</a>, and here you only need this one pattern. Both Tolkien books now carry 6.</p>
+                <p>Before you delete the old text column, prove that nothing was missed. If a name had been misspelled, its book would still have a <code>NULL</code>:</p>
+                <pre><code class="language-sql">SELECT COUNT(*) AS books_without_author_id
+FROM books
+WHERE author_id IS NULL;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------------+
+| books_without_author_id |
++-------------------------+
+|                       0 |
++-------------------------+</code></pre>
+                </div>
+
+                <h3>Step 4: Lock it in</h3>
+                <p>Three changes in one <code>ALTER TABLE</code>: every book must now have an author (<code>NOT NULL</code>), the redundant text column goes, and the foreign key is declared and named <code>fk_books_author</code>.</p>
+                <pre><code class="language-sql">ALTER TABLE books
+    MODIFY COLUMN author_id INT NOT NULL,
+    DROP COLUMN author,
+    ADD CONSTRAINT fk_books_author
+        FOREIGN KEY (author_id) REFERENCES authors(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE;
+
+DESCRIBE books;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+--------------+------+-----+---------+----------------+
+| Field     | Type         | Null | Key | Default | Extra          |
++-----------+--------------+------+-----+---------+----------------+
+| id        | int          | NO   | PRI | NULL    | auto_increment |
+| title     | varchar(200) | NO   |     | NULL    |                |
+| author_id | int          | NO   | MUL | NULL    |                |
+| price     | decimal(8,2) | NO   |     | NULL    |                |
+| pages     | int          | YES  |     | NULL    |                |
+| published | date         | YES  |     | NULL    |                |
+| in_stock  | tinyint(1)   | YES  |     | 1       |                |
++-----------+--------------+------+-----+---------+----------------+</code></pre>
+                </div>
+                <p><code>author_id</code> now shows <code>MUL</code> in the <code>Key</code> column: MySQL created an index on it to check the foreign key quickly. The <code>ON DELETE RESTRICT</code> and <code>ON UPDATE CASCADE</code> rules say what happens when an author is deleted or renumbered; Lesson 4.2 explains each choice.</p>
+
+                <div class="card card-danger">
+                    <h4>🛑 Drop a column only after you have checked the copy</h4>
+                    <p><code>DROP COLUMN</code> cannot be undone. That is why Step 3 ends with the <code>IS NULL</code> count: on a real system you would also back up the table first (Lesson 8.1 shows how).</p>
+                </div>
+
+                <h3>Using the relationship</h3>
+                <p>A book's author is now one lookup away. With a correlated subquery from Lesson 3.4:</p>
+                <pre><code class="language-sql">SELECT
+    title,
+    (SELECT name FROM authors WHERE authors.id = books.author_id) AS author
+FROM books
+WHERE author_id IN (2, 6)
+ORDER BY title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+----------------+
+| title             | author         |
++-------------------+----------------+
+| 1984              | George Orwell  |
+| Lord of the Rings | J.R.R. Tolkien |
+| The Hobbit        | J.R.R. Tolkien |
++-------------------+----------------+</code></pre>
+                </div>
+                <p>And a new book is added the relational way, by id. The store just got <em>Animal Farm</em>, Orwell's second title:</p>
+                <pre><code class="language-sql">INSERT INTO books (id, title, author_id, price, pages, published, in_stock) VALUES
+    (11, 'Animal Farm', 2, 8.49, 112, '1945-08-17', TRUE);
+
+SELECT author_id, COUNT(*) AS books
+FROM books
+GROUP BY author_id
+HAVING COUNT(*) &gt; 1
+ORDER BY author_id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+-------+
+| author_id | books |
++-----------+-------+
+|         2 |     2 |
+|         6 |     2 |
++-----------+-------+</code></pre>
+                </div>
+                <p>Orwell (2) and Tolkien (6) each have two books, and the spelling of their names can never split them again: the name lives in exactly one row of <code>authors</code>.</p>
             </section>
 
-            <!-- Section 4: One-to-One -->
             <section id="one-to-one" class="lesson-section">
-                <h2>One-to-One (1:1) Relationships</h2>
-                <p>In a <strong>one-to-one</strong> relationship, each record in Table A is linked to exactly one record in Table B, and vice versa. These are less common and are typically used for:</p>
-
+                <h2>🪪 One-to-One: Optional Extra Details</h2>
+                <p>In a <strong>one-to-one</strong> (1:1) relationship each parent row has at most one child row. It is rarer, and usually a design choice rather than a necessity:</p>
                 <ul>
-                    <li><strong>Splitting a wide table</strong> — separating rarely-accessed columns to improve performance</li>
-                    <li><strong>Security</strong> — keeping sensitive data in a separate, restricted table</li>
-                    <li><strong>Optional data</strong> — information that only some records have</li>
+                    <li><strong>Optional data:</strong> only some customers fill in a profile (a bio, a favorite genre).</li>
+                    <li><strong>Security:</strong> employees' bank details in a table only payroll may read (Lesson 7.4 grants access per table).</li>
+                    <li><strong>Wide or rarely read columns:</strong> a long description kept out of the table every query scans.</li>
                 </ul>
-
-                <div class="mermaid">
-                    erDiagram
-                        customers ||--|| customer_profiles : "has"
-                        customers {
-                            int id PK
-                            varchar first_name
-                            varchar last_name
-                            varchar email
-                        }
-                        customer_profiles {
-                            int id PK
-                            int customer_id FK
-                            text bio
-                            varchar avatar_url
-                            date date_of_birth
-                        }
-                </div>
-
-                <h3>Implementation</h3>
-                <p>A 1:1 relationship uses a foreign key with a <code>UNIQUE</code> constraint — this prevents multiple rows from pointing to the same parent:</p>
-
-                <pre><code class="language-sql">
-CREATE TABLE customer_profiles (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    customer_id INT UNIQUE NOT NULL,   -- UNIQUE enforces 1:1
-    bio TEXT,
-    avatar_url VARCHAR(255),
-    date_of_birth DATE,
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
+                <p>Technically it is a one-to-many relationship with one extra rule: the foreign key column is <code>UNIQUE</code>, so no parent can be referenced twice. Try it with a small profile table:</p>
+                <pre><code class="language-sql">CREATE TABLE customer_profiles (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id    INT NOT NULL UNIQUE,
+    favorite_genre VARCHAR(50),
+    bio            VARCHAR(255),
+    CONSTRAINT fk_profiles_customer
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
 );
-                </code></pre>
 
-                <p>The <code>UNIQUE</code> constraint on <code>customer_id</code> ensures each customer can have at most one profile. Without it, this would be a one-to-many relationship.</p>
+INSERT INTO customer_profiles (customer_id, favorite_genre, bio)
+VALUES (1, 'Science Fiction', 'Reads on the subway.');
 
-                <h3>Real-World Examples</h3>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Table A</th>
-                                <th>Table B</th>
-                                <th>Why Separate?</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Users</td>
-                                <td>User Settings</td>
-                                <td>Optional; not all users customize settings</td>
-                            </tr>
-                            <tr>
-                                <td>Employees</td>
-                                <td>Payroll Details</td>
-                                <td>Security — restricted access to salary data</td>
-                            </tr>
-                            <tr>
-                                <td>Products</td>
-                                <td>Product Details</td>
-                                <td>Performance — large text/blob fields in a separate table</td>
-                            </tr>
-                            <tr>
-                                <td>Countries</td>
-                                <td>Capital Cities</td>
-                                <td>Each country has exactly one capital</td>
-                            </tr>
-                        </tbody>
-                    </table>
+SELECT * FROM customer_profiles;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+-------------+-----------------+----------------------+
+| id | customer_id | favorite_genre  | bio                  |
++----+-------------+-----------------+----------------------+
+|  1 |           1 | Science Fiction | Reads on the subway. |
++----+-------------+-----------------+----------------------+</code></pre>
+                </div>
+                <p>Alice has a profile. A second one for her is refused, which is exactly the "one" in one-to-one:</p>
+                <pre data-raises="ERROR 1062"><code class="language-sql">INSERT INTO customer_profiles (customer_id, favorite_genre)
+VALUES (1, 'Fantasy');</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1062 (23000): Duplicate entry '1' for key 'customer_profiles.customer_id'</code></pre>
+                </div>
+                <p>Without <code>UNIQUE</code>, that insert would succeed and the relationship would silently become one-to-many. The bookstore does not need profiles, so remove the demo table to keep your database identical to <code>bookstore.sql</code>:</p>
+                <pre><code class="language-sql">DROP TABLE customer_profiles;</code></pre>
+
+                <div class="card card-info">
+                    <h4>💡 Another common 1:1 layout</h4>
+                    <p>You can also make <code>customer_id</code> itself the primary key of the profile table (<code>customer_id INT PRIMARY KEY</code> plus the foreign key). A primary key is already unique, so the extra <code>id</code> column disappears. Both layouts are correct.</p>
                 </div>
             </section>
 
-            <!-- Section 5: Many-to-Many -->
             <section id="many-to-many" class="lesson-section">
-                <h2>Many-to-Many (M:M) Relationships</h2>
-                <p>In a <strong>many-to-many</strong> relationship, records on <em>both</em> sides can link to multiple records on the other side:</p>
-
-                <ul>
-                    <li>One book can belong to <strong>many</strong> categories (Fiction, Sci-Fi, Classic)</li>
-                    <li>One category can contain <strong>many</strong> books</li>
-                </ul>
-
-                <p>You can't represent this with a single foreign key — you'd need multiple values in one column, which breaks relational rules. The solution is a <strong>junction table</strong> (also called a <strong>bridge table</strong>, <strong>linking table</strong>, or <strong>join table</strong>).</p>
-
-                <h3>The Junction Table Pattern</h3>
+                <h2>🕸️ Many-to-Many: Books and Categories</h2>
+                <p>In a <strong>many-to-many</strong> (M:M) relationship both sides can have many partners. <em>1984</em> is Fiction, Classic and Dystopian; the Fiction category holds every book. One foreign key column cannot express that: <code>books.category_id</code> holds one category, and a comma-separated list in one column is a trap (Common Mistakes, number 4).</p>
+                <p>The answer is a third table, a <strong>junction table</strong> (also called a bridge, link or join table). Each row is one link, "book X is in category Y", and holds two foreign keys:</p>
 
                 <div class="mermaid">
-                    erDiagram
-                        books ||--o{ book_categories : "assigned to"
-                        categories ||--o{ book_categories : "contains"
-                        books {
-                            int id PK
-                            varchar title
-                            decimal price
-                        }
-                        categories {
-                            int id PK
-                            varchar name
-                        }
-                        book_categories {
-                            int book_id FK
-                            int category_id FK
-                        }
+graph TD
+    B["books"] -->|"one book, many links"| BC["book_categories"]
+    C["categories"] -->|"one category, many links"| BC
                 </div>
 
-                <p>The junction table <code>book_categories</code> sits between the two main tables. Each row represents one link — "this book is in this category." The two foreign keys together form a composite primary key.</p>
-
-                <h3>Creating the Tables</h3>
-
-                <pre><code class="language-sql">
--- Table A
-CREATE TABLE books (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    price DECIMAL(6, 2)
-);
-
--- Table B
-CREATE TABLE categories (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE
-);
-
--- Junction table (the bridge)
-CREATE TABLE book_categories (
-    book_id INT NOT NULL,
-    category_id INT NOT NULL,
-    PRIMARY KEY (book_id, category_id),    -- composite PK
-    FOREIGN KEY (book_id) REFERENCES books(id),
-    FOREIGN KEY (category_id) REFERENCES categories(id)
-);
-                </code></pre>
-
-                <h3>Inserting Data</h3>
-
-                <pre><code class="language-sql">
--- Add some categories
-INSERT INTO categories (name) VALUES
-    ('Fiction'), ('Science Fiction'), ('Classic'), ('Dystopian');
-
--- Link books to categories (a book can have multiple categories)
-INSERT INTO book_categories (book_id, category_id) VALUES
-    (1, 1),    -- Dune → Fiction
-    (1, 2),    -- Dune → Science Fiction
-    (2, 1),    -- 1984 → Fiction
-    (2, 4),    -- 1984 → Dystopian
-    (2, 3),    -- 1984 → Classic
-    (3, 1),    -- Pride and Prejudice → Fiction
-    (3, 3);    -- Pride and Prejudice → Classic
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 Composite Primary Key</h4>
-                    <p><code>PRIMARY KEY (book_id, category_id)</code> means the <em>combination</em> of both columns must be unique. A book can be in multiple categories, and a category can have multiple books — but the same book–category pair can only appear once.</p>
-                </div>
-
-                <h3>Real-World Examples</h3>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Table A</th>
-                                <th>Table B</th>
-                                <th>Junction Table</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Students</td>
-                                <td>Courses</td>
-                                <td>enrollments</td>
-                            </tr>
-                            <tr>
-                                <td>Orders</td>
-                                <td>Books</td>
-                                <td>order_items</td>
-                            </tr>
-                            <tr>
-                                <td>Actors</td>
-                                <td>Movies</td>
-                                <td>movie_cast</td>
-                            </tr>
-                            <tr>
-                                <td>Users</td>
-                                <td>Roles</td>
-                                <td>user_roles</td>
-                            </tr>
-                            <tr>
-                                <td>Recipes</td>
-                                <td>Ingredients</td>
-                                <td>recipe_ingredients</td>
-                            </tr>
-                            <tr>
-                                <td>Playlists</td>
-                                <td>Songs</td>
-                                <td>playlist_songs</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3>Junction Tables with Extra Data</h3>
-                <p>Junction tables often carry additional data about the relationship itself:</p>
-
-                <pre><code class="language-sql">
--- Order items — the junction between orders and books
-CREATE TABLE order_items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id INT NOT NULL,
-    book_id INT NOT NULL,
-    quantity INT NOT NULL DEFAULT 1,       -- extra data!
-    price_at_time DECIMAL(6, 2) NOT NULL,  -- extra data!
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (book_id) REFERENCES books(id)
-);
-                </code></pre>
-
-                <p>The <code>quantity</code> and <code>price_at_time</code> columns belong to neither the order nor the book — they describe the <em>relationship</em> between a specific order and a specific book.</p>
-
-                <div class="card card-success">
-                    <h4>✅ Why Store Price at Time of Order?</h4>
-                    <p>Book prices change. If you only stored <code>book_id</code> and looked up the current price, historical orders would show the wrong total. Storing <code>price_at_time</code> captures what the customer actually paid — a common and important pattern.</p>
-                </div>
-            </section>
-
-            <!-- Section 6: ER Diagrams -->
-            <section id="er-diagrams" class="lesson-section">
-                <h2>Reading ER Diagrams</h2>
-                <p>An <strong>Entity-Relationship (ER) diagram</strong> is a visual blueprint of your database. You've been seeing them throughout this lesson. Here's how to read the notation:</p>
-
-                <h3>Crow's Foot Notation</h3>
-                <p>The most common ER diagram style uses symbols at the ends of relationship lines:</p>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Symbol</th>
-                                <th>Meaning</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>||</code></td>
-                                <td>Exactly one</td>
-                                <td>This side has exactly one record</td>
-                            </tr>
-                            <tr>
-                                <td><code>o|</code></td>
-                                <td>Zero or one</td>
-                                <td>This side has zero or one record (optional)</td>
-                            </tr>
-                            <tr>
-                                <td><code>}|</code> or <code>{</code></td>
-                                <td>One or many</td>
-                                <td>This side has one or more records</td>
-                            </tr>
-                            <tr>
-                                <td><code>o{</code></td>
-                                <td>Zero or many</td>
-                                <td>This side has zero or more records</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="mermaid">
-                    erDiagram
-                        CUSTOMER ||--o{ ORDER : "places"
-                        ORDER ||--|{ ORDER_ITEM : "contains"
-                        BOOK ||--o{ ORDER_ITEM : "included in"
-                        BOOK }o--o{ CATEGORY : "belongs to"
-                </div>
-
-                <p>Reading this diagram:</p>
-                <ul>
-                    <li>A <strong>customer</strong> places zero or many <strong>orders</strong> (a new customer may have no orders yet)</li>
-                    <li>An <strong>order</strong> contains one or many <strong>order items</strong> (an order must have at least one item)</li>
-                    <li>A <strong>book</strong> appears in zero or many <strong>order items</strong> (some books may never be ordered)</li>
-                    <li>A <strong>book</strong> belongs to zero or many <strong>categories</strong>, and a <strong>category</strong> contains zero or many <strong>books</strong> (many-to-many)</li>
-                </ul>
-
-                <div class="card card-info">
-                    <h4>💡 Reading ER Diagrams</h4>
-                    <p>Read each line from left to right or right to left, using the notation at each end. The verb on the line describes the relationship. Practice reading the diagram above out loud — "One customer places zero or many orders" — until it becomes natural.</p>
-                </div>
-            </section>
-
-            <!-- Section 7: Bookstore Schema -->
-            <section id="bookstore-schema" class="lesson-section">
-                <h2>Building a Bookstore Schema</h2>
-                <p>Let's put it all together and design a complete schema for our bookstore. This is what we'll use for the rest of the course:</p>
-
-                <div class="mermaid">
-                    erDiagram
-                        authors ||--o{ books : "writes"
-                        books ||--o{ order_items : "ordered as"
-                        orders ||--|{ order_items : "contains"
-                        customers ||--o{ orders : "places"
-                        books }o--o{ categories : "tagged"
-                        books ||--o{ book_categories : ""
-                        categories ||--o{ book_categories : ""
-
-                        authors {
-                            int id PK
-                            varchar name
-                            int birth_year
-                        }
-                        books {
-                            int id PK
-                            varchar title
-                            int author_id FK
-                            decimal price
-                            int pages
-                            date published
-                            boolean in_stock
-                        }
-                        customers {
-                            int id PK
-                            varchar first_name
-                            varchar last_name
-                            varchar email
-                            varchar city
-                        }
-                        orders {
-                            int id PK
-                            int customer_id FK
-                            date order_date
-                            decimal total
-                        }
-                        order_items {
-                            int id PK
-                            int order_id FK
-                            int book_id FK
-                            int quantity
-                            decimal price_at_time
-                        }
-                        categories {
-                            int id PK
-                            varchar name
-                        }
-                        book_categories {
-                            int book_id FK
-                            int category_id FK
-                        }
-                </div>
-
-                <h3>The Complete SQL</h3>
-
-                <pre><code class="language-sql">
--- 1. Authors (no dependencies)
-CREATE TABLE authors (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    birth_year INT
-);
-
--- 2. Books (depends on authors)
-CREATE TABLE books (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    author_id INT NOT NULL,
-    price DECIMAL(6, 2) NOT NULL,
-    pages INT,
-    published DATE,
-    in_stock BOOLEAN DEFAULT TRUE,
-    FOREIGN KEY (author_id) REFERENCES authors(id)
-);
-
--- 3. Categories (no dependencies)
-CREATE TABLE categories (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE
-);
-
--- 4. Book-Category junction (depends on books, categories)
-CREATE TABLE book_categories (
-    book_id INT NOT NULL,
+                <p>So a many-to-many relationship is really two one-to-many relationships that meet in the middle. Create the junction table:</p>
+                <pre><code class="language-sql">CREATE TABLE book_categories (
+    book_id     INT NOT NULL,
     category_id INT NOT NULL,
     PRIMARY KEY (book_id, category_id),
-    FOREIGN KEY (book_id) REFERENCES books(id),
-    FOREIGN KEY (category_id) REFERENCES categories(id)
-);
+    CONSTRAINT fk_bc_book
+        FOREIGN KEY (book_id) REFERENCES books(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_bc_category
+        FOREIGN KEY (category_id) REFERENCES categories(id)
+        ON DELETE CASCADE
+);</code></pre>
+                <p><code>PRIMARY KEY (book_id, category_id)</code> is a <strong>composite primary key</strong>: the <em>pair</em> must be unique. Book 2 may appear many times and category 1 may appear many times, but the link "book 2 is in category 1" can be stored only once. Now add the 25 links (every book is Fiction plus one or two more; the category ids are 1 Fiction, 2 Science Fiction, 3 Classic, 4 Fantasy, 5 Dystopian):</p>
+                <pre><code class="language-sql">INSERT INTO book_categories (book_id, category_id) VALUES
+    (1, 1), (1, 2),
+    (2, 1), (2, 3), (2, 5),
+    (3, 1), (3, 3),
+    (4, 1), (4, 3),
+    (5, 1), (5, 3),
+    (6, 1), (6, 4),
+    (7, 1), (7, 2), (7, 5),
+    (8, 1), (8, 3),
+    (9, 1), (9, 4),
+    (10, 1), (10, 2), (10, 5),
+    (11, 1), (11, 3);
 
--- 5. Customers (no dependencies)
-CREATE TABLE customers (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
-    email VARCHAR(100) UNIQUE,
-    city VARCHAR(50)
-);
+SELECT COUNT(*) AS links FROM book_categories;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------+
+| links |
++-------+
+|    25 |
++-------+</code></pre>
+                </div>
 
--- 6. Orders (depends on customers)
-CREATE TABLE orders (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    customer_id INT NOT NULL,
-    order_date DATE NOT NULL,
-    total DECIMAL(10, 2) DEFAULT 0,
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
-);
+                <p>Which categories is <em>1984</em> (book 2) in? Follow the links with a subquery:</p>
+                <pre><code class="language-sql">SELECT name
+FROM categories
+WHERE id IN (SELECT category_id FROM book_categories WHERE book_id = 2)
+ORDER BY name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+
+| name      |
++-----------+
+| Classic   |
+| Dystopian |
+| Fiction   |
++-----------+</code></pre>
+                </div>
 
--- 7. Order items (depends on orders, books)
-CREATE TABLE order_items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id INT NOT NULL,
-    book_id INT NOT NULL,
-    quantity INT NOT NULL DEFAULT 1,
-    price_at_time DECIMAL(6, 2) NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (book_id) REFERENCES books(id)
-);
-                </code></pre>
+                <p>And from the other side, how many books does each category hold?</p>
+                <pre><code class="language-sql">SELECT
+    name,
+    (SELECT COUNT(*)
+     FROM book_categories AS bc
+     WHERE bc.category_id = categories.id) AS books
+FROM categories
+ORDER BY books DESC, name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------+-------+
+| name            | books |
++-----------------+-------+
+| Fiction         |    11 |
+| Classic         |     6 |
+| Dystopian       |     3 |
+| Science Fiction |     3 |
+| Fantasy         |     2 |
++-----------------+-------+</code></pre>
+                </div>
 
-                <div class="card card-warning">
-                    <h4>⚠️ Creation Order Matters</h4>
-                    <p>Tables must be created in dependency order — you can't reference a table that doesn't exist yet. Create parent tables first, child tables second. The numbered comments above show a valid order.</p>
-                    <p>Similarly, when <strong>dropping</strong> tables, go in <em>reverse</em> order — drop child tables first, parent tables last. Or use <code>SET FOREIGN_KEY_CHECKS = 0;</code> to temporarily disable the constraint checking (and re-enable with <code>SET FOREIGN_KEY_CHECKS = 1;</code> after).</p>
+                <h3>Junction tables with extra data</h3>
+                <p>Sometimes the link itself has facts. When Alice orders two copies of <em>1984</em>, the "2" belongs neither to the order nor to the book: it describes this book <em>in</em> this order. Orders and books are many-to-many (an order holds many books, a book appears in many orders), and the junction table <code>order_items</code> carries the extra columns <code>quantity</code> and <code>price_at_time</code>. You will build it in the project.</p>
+
+                <div class="card card-success">
+                    <h4>✅ Why store the price twice?</h4>
+                    <p><code>books.price</code> is today's price; <code>order_items.price_at_time</code> is what the customer paid. When the store raises the price of <em>Dune</em> next year, last January's receipts must not change. Copying a value on purpose because it describes a different moment is not duplication; it is history.</p>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Relationship</th><th>How to build it</th><th>Bookstore example</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>One-to-many</td><td>FK on the "many" side</td><td><code>books.author_id</code> → <code>authors.id</code></td></tr>
+                            <tr><td>One-to-one</td><td>FK that is also <code>UNIQUE</code> (or the PK)</td><td>the <code>customer_profiles</code> demo</td></tr>
+                            <tr><td>Many-to-many</td><td>Junction table with two FKs and a composite PK</td><td><code>book_categories</code>, <code>order_items</code></td></tr>
+                            <tr><td>Self-referencing</td><td>FK pointing at the same table</td><td><code>employees.manager_id</code> → <code>employees.id</code></td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 
-            <!-- Section 8: Common Mistakes -->
-            <section id="common-mistakes" class="lesson-section">
-                <h2>Common Mistakes</h2>
+            <section id="er-diagrams" class="lesson-section">
+                <h2>🗺️ Reading ER Diagrams</h2>
+                <p>An <strong>entity-relationship (ER) diagram</strong> is the map of a database: one box per table, one line per relationship. The most common style, <strong>crow's foot</strong> notation, draws the "how many" at each end of a line:</p>
 
-                <h3>Mistake 1: Putting the FK on the Wrong Side</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>End of the line</th><th>Means</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>||</code></td><td>exactly one</td></tr>
+                            <tr><td><code>o|</code></td><td>zero or one</td></tr>
+                            <tr><td><code>|{</code> (crow's foot with a bar)</td><td>one or many</td></tr>
+                            <tr><td><code>o{</code> (crow's foot with a circle)</td><td>zero or many</td></tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                <pre><code class="language-sql">
--- ⛔ WRONG — FK on the "one" side
--- This says each customer can only have ONE order!
-ALTER TABLE customers ADD COLUMN order_id INT;
+                <p>Here is the bookstore you are building, relationships only, in two parts. The catalog:</p>
 
--- ✅ CORRECT — FK on the "many" side
--- This allows each customer to have MANY orders
-ALTER TABLE orders ADD COLUMN customer_id INT;
-                </code></pre>
+                <div class="mermaid">
+erDiagram
+    authors ||--o{ books : "writes"
+    books ||--o{ book_categories : "tagged"
+    categories ||--o{ book_categories : "holds"
+                </div>
 
-                <p>The foreign key always goes on the <strong>"many" side</strong> of a 1:M relationship.</p>
+                <p>The sales side and the staff:</p>
 
-                <h3>Mistake 2: Storing Comma-Separated Values</h3>
+                <div class="mermaid">
+erDiagram
+    customers ||--o{ orders : "places"
+    orders ||--|{ order_items : "contains"
+    books ||--o{ order_items : "sold as"
+    employees |o--o{ employees : "manages"
+                </div>
 
-                <pre><code class="language-sql">
--- ⛔ WRONG — storing multiple categories in one column
-INSERT INTO books (title, categories) VALUES
-    ('Dune', 'Fiction,Sci-Fi,Classic');
-
--- ✅ CORRECT — use a junction table
-INSERT INTO book_categories VALUES (1, 1), (1, 2), (1, 3);
-                </code></pre>
-
-                <p>Never store multiple values in a single column. It makes querying, updating, and maintaining data integrity nearly impossible.</p>
-
-                <h3>Mistake 3: Forgetting the UNIQUE Constraint for 1:1</h3>
-
-                <pre><code class="language-sql">
--- ⛔ WRONG — this is actually 1:M without UNIQUE
-CREATE TABLE profiles (
-    id INT PRIMARY KEY,
-    customer_id INT,   -- missing UNIQUE!
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
-);
-
--- ✅ CORRECT — UNIQUE enforces 1:1
-CREATE TABLE profiles (
-    id INT PRIMARY KEY,
-    customer_id INT UNIQUE NOT NULL,
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
-);
-                </code></pre>
-
-                <h3>Mistake 4: Creating Tables in Wrong Order</h3>
-                <pre><code class="language-sql">
--- ⛔ WRONG — books references authors, but authors doesn't exist yet
-CREATE TABLE books (
-    id INT PRIMARY KEY,
-    author_id INT,
-    FOREIGN KEY (author_id) REFERENCES authors(id)  -- ERROR!
-);
-CREATE TABLE authors (id INT PRIMARY KEY, name VARCHAR(100));
-
--- ✅ CORRECT — create parent first
-CREATE TABLE authors (id INT PRIMARY KEY, name VARCHAR(100));
-CREATE TABLE books (
-    id INT PRIMARY KEY,
-    author_id INT,
-    FOREIGN KEY (author_id) REFERENCES authors(id)
-);
-                </code></pre>
-            </section>
-
-            <!-- Section 9: Exercises -->
-            <section id="exercises" class="lesson-section">
-                <h2>Exercises</h2>
+                <p>Read each line out loud from one end to the other:</p>
+                <ul>
+                    <li>An author writes <strong>zero or many</strong> books (Asimov: zero); a book has <strong>exactly one</strong> author.</li>
+                    <li>A customer places zero or many orders (Carol and Hank: zero); an order belongs to exactly one customer.</li>
+                    <li>An order contains <strong>one or many</strong> items: an empty order makes no business sense. (MySQL cannot enforce "at least one" with a key; the application or a transaction, Lesson 7.2, takes care of it.)</li>
+                    <li>An employee has <strong>zero or one</strong> manager (the store manager has none) and manages zero or many employees.</li>
+                </ul>
 
                 <div class="card card-info">
-                    <h3>🏋️ Exercise 1: Identify the Relationship Type</h3>
-                    <p>For each pair, identify whether the relationship is 1:1, 1:M, or M:M:</p>
-                    <ol>
-                        <li>A user and their login credentials</li>
-                        <li>A teacher and their students</li>
-                        <li>A blog post and its comments</li>
-                        <li>A student and courses they're enrolled in</li>
-                        <li>A country and its capital city</li>
-                        <li>A doctor and their patients</li>
-                    </ol>
+                    <h4>💡 Tools that draw these for you</h4>
+                    <p>MySQL Workbench (Database, Reverse Engineer) and phpMyAdmin (the Designer tab of a database) read your foreign keys and draw the diagram. They can only draw relationships you declared: a column named <code>author_id</code> without a <code>FOREIGN KEY</code> is invisible to them.</p>
+                </div>
+            </section>
 
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Creating the child before the parent</h3>
+                <pre data-raises="ERROR 1824"><code class="language-sql">CREATE TABLE reviews (
+    id      INT AUTO_INCREMENT PRIMARY KEY,
+    book_id INT NOT NULL,
+    stars   INT,
+    FOREIGN KEY (book_id) REFERENCES book (id)
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1824 (HY000): Failed to open the referenced table 'book'</code></pre>
+                </div>
+                <p><strong>What it means:</strong> the foreign key points at a table called <code>book</code>, which does not exist (the real one is <code>books</code>). The same error appears when the name is right but you create the child first. <strong>Fix:</strong> create parent tables first, children second, and check the table name. When you drop tables, go the other way: children first.</p>
+                <div class="card card-info">
+                    <h4>🐬 Version note: MariaDB words these differently</h4>
+                    <p>On MariaDB (XAMPP, many shared hosts) the missing parent table shows up as <code>ERROR 1005 (HY000): Can't create table `bookstore`.`reviews` (errno: 150 "Foreign key constraint is incorrectly formed")</code>, and Mistake 2 below as <code>ERROR 1265 (01000): Data truncated for column 'author_id' at row 2</code>. Same causes, same fixes. MariaDB's duplicate-key messages also leave out the table name (<code>for key 'PRIMARY'</code>).</p>
+                </div>
+
+                <h3>2. Requiring a value before filling it</h3>
+                <p>To see this one safely, make a two-row scratch table where one row has no author yet:</p>
+                <pre><code class="language-sql">CREATE TABLE demo_books (id INT PRIMARY KEY, author_id INT);
+INSERT INTO demo_books VALUES (1, 6), (2, NULL);</code></pre>
+                <pre data-raises="ERROR 1138"><code class="language-sql">ALTER TABLE demo_books MODIFY COLUMN author_id INT NOT NULL;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1138 (22004): Invalid use of NULL value</code></pre>
+                </div>
+                <p><strong>What it means:</strong> a column cannot become <code>NOT NULL</code> while a row still holds <code>NULL</code> (strict mode, MySQL's default, refuses instead of inventing a 0). <strong>Fix:</strong> fill the column first, count the <code>NULL</code>s (Step 3 above), then add <code>NOT NULL</code>. Clean up:</p>
+                <pre><code class="language-sql">DROP TABLE demo_books;</code></pre>
+
+                <h3>3. Storing the same link twice</h3>
+                <pre data-raises="ERROR 1062"><code class="language-sql">INSERT INTO book_categories (book_id, category_id) VALUES (2, 5);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1062 (23000): Duplicate entry '2-5' for key 'book_categories.PRIMARY'</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <em>1984</em> is already Dystopian, and the composite primary key allows each pair once. The message shows the pair as <code>'2-5'</code>. This error is the junction table doing its job. <strong>Fix:</strong> nothing to fix unless you meant a different pair; to add links without failing on existing ones, check first with a subquery.</p>
+
+                <h3>4. A list of values in one column (silent)</h3>
+                <p>A shortcut that looks harmless: one text column with all the categories, separated by commas. Here are two books stored that way, built on the spot with <code>UNION ALL</code> like the ratings in Lesson 3.3. Both are Fiction. Which books does the query find?</p>
+                <pre><code class="language-sql">SELECT title
+FROM (
+    SELECT 'Dune' AS title, 'Fiction,Science Fiction' AS categories
+    UNION ALL
+    SELECT 'The Hobbit', 'Fiction,Fantasy'
+) AS flat_books
+WHERE categories = 'Fiction';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Empty set</code></pre>
+                </div>
+                <p><strong>What it means:</strong> no error, just a wrong answer: neither row's text <em>equals</em> 'Fiction'. Switching to <code>LIKE '%Fiction%'</code> brings them back, but then a search for Fiction also matches every row that only says "Science Fiction". Renaming a category means editing text inside every row, and no foreign key can check a list. <strong>Fix:</strong> one value per column; many values become many rows in a junction table.</p>
+
+                <h3>5. Putting the foreign key on the "one" side (silent)</h3>
+                <p>A designer adds <code>order_id</code> to <code>customers</code> "so each customer points at their order". It runs without an error, but a column holds one value, so every customer can now have only one order. <strong>What it means:</strong> the design limits the data instead of describing it. <strong>Fix:</strong> ask "can one customer have many orders?" Yes, so the foreign key is <code>orders.customer_id</code>, on the many side.</p>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: Orders, Order Items and Staff</h2>
+                <p>Authors, books and categories are now related. To finish the bookstore that the rest of the course uses, add the sales side (customers place orders, orders contain books) and the staff, whose managers are other staff members. Long <code>INSERT</code>s are fine to paste with the Copy button: the point is the structure. Allow about 30 minutes.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: The orders table <span class="step-time">(5 min)</span></h3>
+                    <p>One customer, many orders: the foreign key goes in <code>orders</code>. There is no <code>total</code> column on purpose: a total can always be calculated from the items, and a stored copy could drift out of date (Lesson 6.3 returns to this).</p>
+                    <pre><code class="language-sql">CREATE TABLE orders (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    order_date  DATE NOT NULL,
+    CONSTRAINT fk_orders_customer
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+INSERT INTO orders (id, customer_id, order_date) VALUES
+    (1, 1, '2026-01-15'),
+    (2, 1, '2026-02-20'),
+    (3, 2, '2026-03-10'),
+    (4, 4, '2026-01-22'),
+    (5, 6, '2026-02-03'),
+    (6, 7, '2026-02-14'),
+    (7, 2, '2026-03-28'),
+    (8, 1, '2026-04-05'),
+    (9, 5, '2026-04-18'),
+    (10, 6, '2026-05-02'),
+    (11, 7, '2026-05-19'),
+    (12, 4, '2026-06-07');
+
+SELECT customer_id, COUNT(*) AS orders
+FROM orders
+GROUP BY customer_id
+ORDER BY customer_id;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------------+--------+
+| customer_id | orders |
++-------------+--------+
+|           1 |      3 |
+|           2 |      2 |
+|           4 |      2 |
+|           5 |      1 |
+|           6 |      2 |
+|           7 |      2 |
++-------------+--------+</code></pre>
+                    </div>
+                    <p>Customers 3 (Carol) and 8 (Hank) are missing: they never ordered. Nothing forces a customer to have orders, which is the "zero or many" end of the line.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: The order_items junction table <span class="step-time">(7 min)</span></h3>
+                    <p>Each row is one book in one order, with the extra facts about that link. Deleting an order should delete its lines (<code>CASCADE</code>), but a book that was ever sold must not be deleted (<code>RESTRICT</code>).</p>
+                    <pre><code class="language-sql">CREATE TABLE order_items (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    order_id      INT NOT NULL,
+    book_id       INT NOT NULL,
+    quantity      INT NOT NULL DEFAULT 1,
+    price_at_time DECIMAL(8, 2) NOT NULL,
+    CONSTRAINT fk_items_order
+        FOREIGN KEY (order_id) REFERENCES orders(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_items_book
+        FOREIGN KEY (book_id) REFERENCES books(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+INSERT INTO order_items (id, order_id, book_id, quantity, price_at_time) VALUES
+    (1, 1, 1, 1, 14.99),
+    (2, 1, 2, 2, 9.99),
+    (3, 2, 5, 1, 7.99),
+    (4, 3, 1, 1, 14.99),
+    (5, 4, 6, 1, 10.99),
+    (6, 4, 9, 1, 15.99),
+    (7, 5, 10, 1, 10.49),
+    (8, 5, 7, 1, 9.49),
+    (9, 6, 3, 2, 11.99),
+    (10, 7, 2, 1, 9.99),
+    (11, 7, 11, 1, 8.49),
+    (12, 8, 9, 1, 15.99),
+    (13, 9, 1, 1, 14.99),
+    (14, 9, 5, 1, 7.99),
+    (15, 10, 6, 2, 10.99),
+    (16, 11, 2, 1, 9.99),
+    (17, 12, 11, 1, 8.49),
+    (18, 12, 10, 1, 10.49);</code></pre>
+                    <p>Why does <code>order_items</code> have its own <code>id</code> instead of a composite key like <code>book_categories</code>? Both work. A separate id makes it easy to point at one line of a receipt (for a refund, say), and it would allow the same book on two lines of one order if the store ever needed that.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: Read Alice's first order <span class="step-time">(5 min)</span></h3>
+                    <p>Order 1 holds two lines. Compute each line's amount and the order's total from the items, with a subquery for the title:</p>
+                    <pre><code class="language-sql">SELECT
+    (SELECT title FROM books WHERE books.id = order_items.book_id) AS title,
+    quantity,
+    price_at_time,
+    quantity * price_at_time AS line_total
+FROM order_items
+WHERE order_id = 1
+ORDER BY id;
+
+SELECT SUM(quantity * price_at_time) AS order_1_total
+FROM order_items
+WHERE order_id = 1;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------+----------+---------------+------------+
+| title | quantity | price_at_time | line_total |
++-------+----------+---------------+------------+
+| Dune  |        1 |         14.99 |      14.99 |
+| 1984  |        2 |          9.99 |      19.98 |
++-------+----------+---------------+------------+
++---------------+
+| order_1_total |
++---------------+
+|         34.97 |
++---------------+</code></pre>
+                    </div>
+                    <p>One copy of <em>Dune</em> and two of <em>1984</em>: 14.99 + 19.98 = 34.97. This is the total a <code>total</code> column would have stored, calculated fresh.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: Staff who manage staff <span class="step-time">(7 min)</span></h3>
+                    <p>Each employee has at most one manager, and a manager is also an employee. The foreign key points at its own table. <code>ON DELETE SET NULL</code> means that if a manager leaves, their reports stay, just without a manager until someone is assigned.</p>
+                    <pre><code class="language-sql">CREATE TABLE employees (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    first_name  VARCHAR(50) NOT NULL,
+    last_name   VARCHAR(50) NOT NULL,
+    email       VARCHAR(100) NOT NULL UNIQUE,
+    hire_date   DATE NOT NULL,
+    salary      DECIMAL(8, 2) NOT NULL,
+    department  ENUM('sales', 'inventory', 'management', 'support'),
+    manager_id  INT,
+    is_active   BOOLEAN DEFAULT TRUE,
+    CONSTRAINT chk_salary CHECK (salary &gt; 0),
+    CONSTRAINT fk_employees_manager
+        FOREIGN KEY (manager_id) REFERENCES employees(id)
+        ON DELETE SET NULL
+);
+
+INSERT INTO employees (id, first_name, last_name, email, hire_date, salary, department, manager_id, is_active) VALUES
+    (1, 'Maria', 'Santos', 'maria.santos@bookstore.example', '2015-03-02', 92000.00, 'management', NULL, TRUE),
+    (2, 'Daniel', 'Reyes', 'daniel.reyes@bookstore.example', '2017-06-12', 68000.00, 'management', 1, TRUE),
+    (3, 'Priya', 'Nair', 'priya.nair@bookstore.example', '2019-04-01', 46000.00, 'sales', 2, TRUE),
+    (4, 'Tom', 'Becker', 'tom.becker@bookstore.example', '2022-09-15', 38000.00, 'sales', 3, TRUE),
+    (5, 'Lena', 'Park', 'lena.park@bookstore.example', '2021-01-11', 39500.00, 'sales', 3, TRUE),
+    (6, 'Marcus', 'Hill', 'marcus.hill@bookstore.example', '2018-08-20', 47000.00, 'inventory', 2, TRUE),
+    (7, 'Sofia', 'Alvarez', 'sofia.alvarez@bookstore.example', '2023-02-06', 37000.00, 'inventory', 6, TRUE),
+    (8, 'James', 'Okafor', 'james.okafor@bookstore.example', '2020-05-18', 52000.00, 'support', 1, TRUE),
+    (9, 'Nina', 'Kowalski', 'nina.kowalski@bookstore.example', '2024-03-04', 36500.00, 'support', 8, TRUE),
+    (10, 'Ben', 'Carter', 'ben.carter@bookstore.example', '2020-07-01', 35000.00, 'sales', 3, FALSE);
+
+SELECT
+    first_name,
+    (SELECT m.first_name FROM employees AS m WHERE m.id = e.manager_id) AS manager
+FROM employees AS e
+WHERE department = 'sales'
+ORDER BY id;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+------------+---------+
+| first_name | manager |
++------------+---------+
+| Priya      | Daniel  |
+| Tom        | Priya   |
+| Lena       | Priya   |
+| Ben        | Priya   |
++------------+---------+</code></pre>
+                    </div>
+                    <p>The rows are inserted in id order on purpose: Maria (1) must exist before Daniel can name her as his manager. The aliases <code>e</code> and <code>m</code> let the subquery tell the employee apart from the manager, two roles played by the same table.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: Check your work against the course database <span class="step-time">(3 min)</span></h3>
+                    <p>Count every table's rows in one query (each subquery counts one table):</p>
+                    <pre><code class="language-sql">SELECT
+    (SELECT COUNT(*) FROM authors)         AS authors,
+    (SELECT COUNT(*) FROM books)           AS books,
+    (SELECT COUNT(*) FROM categories)      AS categories,
+    (SELECT COUNT(*) FROM book_categories) AS links,
+    (SELECT COUNT(*) FROM customers)       AS customers,
+    (SELECT COUNT(*) FROM orders)          AS orders,
+    (SELECT COUNT(*) FROM order_items)     AS items,
+    (SELECT COUNT(*) FROM employees)       AS staff;
+
+SHOW TABLES;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+---------+-------+------------+-------+-----------+--------+-------+-------+
+| authors | books | categories | links | customers | orders | items | staff |
++---------+-------+------------+-------+-----------+--------+-------+-------+
+|      10 |    11 |          5 |    25 |         8 |     12 |    18 |    10 |
++---------+-------+------------+-------+-----------+--------+-------+-------+
++---------------------+
+| Tables_in_bookstore |
++---------------------+
+| authors             |
+| book_categories     |
+| books               |
+| categories          |
+| customers           |
+| employees           |
+| order_items         |
+| orders              |
++---------------------+</code></pre>
+                    </div>
+                    <p>If your counts match (10, 11, 5, 25, 8, 12, 18, 10) and you see eight tables, your database now holds the same tables and rows as <a href="assets/sql/bookstore.sql" download>bookstore.sql</a>, the file every later lesson starts from.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 6: Keep a known-good copy <span class="step-time">(5 min)</span></h3>
+                    <p>Download <a href="assets/sql/bookstore.sql" download>bookstore.sql</a> into your <code>mysql-course</code> folder and open it in your editor. Find the <code>CREATE TABLE</code> statements you just wrote and compare them. From the next lesson on, you will start each lesson by loading this file, so that a mistake in one lesson never follows you into the next:</p>
+                    <pre data-norun><code class="language-sql">SOURCE ~/mysql-course/bookstore.sql</code></pre>
+                    <p>The file begins with <code>DROP DATABASE IF EXISTS bookstore;</code>, so it replaces whatever is there with a fresh copy. Never run it against a database you want to keep.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>books</code> has an <code>author_id</code> column with the foreign key <code>fk_books_author</code>, and no <code>author</code> column</li>
+                        <li><code>book_categories</code> holds 25 links and refuses a duplicate pair</li>
+                        <li><code>orders</code> (12 rows) has no <code>total</code> column, and order 1 totals 34.97 from its items</li>
+                        <li><code>order_items</code> (18 rows) stores <code>quantity</code> and <code>price_at_time</code> for every line</li>
+                        <li><code>employees</code> (10 rows) points at itself through <code>manager_id</code></li>
+                        <li><code>bookstore.sql</code> is saved in your course folder, ready for Lesson 4.2</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+                <p>The SQL exercises use the database you just built. Try each one before you open the solution.</p>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: Name the Relationship</h3>
+                    <p>For each pair, decide whether it is one-to-one, one-to-many or many-to-many, and say which table gets the foreign key (or that a junction table is needed): (a) a country and its capital city; (b) a blog post and its comments; (c) students and courses; (d) a user and their login settings; (e) actors and movies; (f) a playlist and the songs on it.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Ask the question both ways: "can one A have many Bs?" and "can one B have many As?" Two yeses mean many-to-many.</p>
+                    </details>
                     <details>
                         <summary>✅ Solution</summary>
-                        <ol>
-                            <li><strong>1:1</strong> — Each user has exactly one set of credentials, each credential belongs to one user</li>
-                            <li><strong>M:M</strong> — One teacher can have many students, and one student can have many teachers (across different classes)</li>
-                            <li><strong>1:M</strong> — One blog post can have many comments, but each comment belongs to one post</li>
-                            <li><strong>M:M</strong> — One student enrolls in many courses, and one course has many students</li>
-                            <li><strong>1:1</strong> — Each country has one capital, each capital belongs to one country</li>
-                            <li><strong>M:M</strong> — One doctor sees many patients, and one patient can see many doctors</li>
-                        </ol>
+                        <p>(a) One-to-one: <code>capitals.country_id UNIQUE</code>. (b) One-to-many: <code>comments.post_id</code>. (c) Many-to-many: a junction table such as <code>enrollments(student_id, course_id)</code>, which can also hold a grade. (d) One-to-one: <code>settings.user_id UNIQUE</code> (or the PK). (e) Many-to-many: <code>movie_cast(actor_id, movie_id)</code>, perhaps with the character's name. (f) Many-to-many: a song appears on many playlists, so <code>playlist_songs(playlist_id, song_id)</code>, with a <code>position</code> column for the track order.</p>
                     </details>
                 </div>
 
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 2: Design a Schema</h3>
-                    <p>Design the tables (just the CREATE TABLE statements) for a music streaming service with these entities:</p>
-                    <ul>
-                        <li><strong>Artists</strong> — name, country</li>
-                        <li><strong>Albums</strong> — title, release year (one artist per album)</li>
-                        <li><strong>Songs</strong> — title, duration in seconds (each song is on one album)</li>
-                        <li><strong>Playlists</strong> — name, created date</li>
-                        <li>A song can appear on many playlists, and a playlist contains many songs</li>
-                    </ul>
-
+                <div class="card">
+                    <h3>🏋️ Exercise 2: The Fantasy Shelf</h3>
+                    <p>List the titles of the books in the Fantasy category (category 4), alphabetically, using the junction table.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Flip the 1984 query around: select from <code>books</code> where <code>id IN</code> the book ids linked to category 4.</p>
+                    </details>
                     <details>
                         <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
+                        <pre><code class="language-sql">SELECT title
+FROM books
+WHERE id IN (SELECT book_id FROM book_categories WHERE category_id = 4)
+ORDER BY title;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------------------+
+| title             |
++-------------------+
+| Lord of the Rings |
+| The Hobbit        |
++-------------------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: Nobody's Bought It Yet</h3>
+                    <p>Which books have never been ordered? Then: which authors have no books in the store?</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>"Never ordered" means the book's id is not among the <code>book_id</code> values in <code>order_items</code>. Use <code>NOT IN</code> with a subquery (or <code>NOT EXISTS</code>, both from Lesson 3.4).</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT title
+FROM books
+WHERE id NOT IN (SELECT book_id FROM order_items)
+ORDER BY title;
+
+SELECT name
+FROM authors
+WHERE id NOT IN (SELECT author_id FROM books);</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------------------+
+| title                  |
++------------------------+
+| The Catcher in the Rye |
+| The Great Gatsby       |
++------------------------+
++--------------+
+| name         |
++--------------+
+| Isaac Asimov |
++--------------+</code></pre>
+                        </div>
+                        <p>The two out-of-stock books have never sold, and Asimov is the author without a book. In Lesson 4.3 you will answer the same questions with a <code>LEFT JOIN</code>.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): A Music Library Schema</h3>
+                    <p>Design and create, in a new database called <code>music_demo</code>, the tables for a streaming service: artists (name, country); albums (title, release year; one artist per album); songs (title, length in seconds; each song is on one album); playlists (name); and the songs on each playlist, in order. Declare every foreign key, then insert one artist, album, song and playlist, link the song to the playlist, and finally drop the database.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Three one-to-many relationships (artist to albums, album to songs) and one many-to-many (playlists and songs). Create parents first: artists, albums, songs, playlists, then the junction table.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">CREATE DATABASE music_demo;
+USE music_demo;
+
 CREATE TABLE artists (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
+    id      INT AUTO_INCREMENT PRIMARY KEY,
+    name    VARCHAR(100) NOT NULL,
     country VARCHAR(50)
 );
 
 CREATE TABLE albums (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    artist_id INT NOT NULL,
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    artist_id    INT NOT NULL,
+    title        VARCHAR(200) NOT NULL,
     release_year INT,
     FOREIGN KEY (artist_id) REFERENCES artists(id)
 );
 
 CREATE TABLE songs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    album_id INT NOT NULL,
+    id               INT AUTO_INCREMENT PRIMARY KEY,
+    album_id         INT NOT NULL,
+    title            VARCHAR(200) NOT NULL,
     duration_seconds INT,
     FOREIGN KEY (album_id) REFERENCES albums(id)
 );
 
 CREATE TABLE playlists (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    created_date DATE NOT NULL
+    id   INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE playlist_songs (
     playlist_id INT NOT NULL,
-    song_id INT NOT NULL,
-    position INT,   -- track order in the playlist
+    song_id     INT NOT NULL,
+    position    INT NOT NULL,
     PRIMARY KEY (playlist_id, song_id),
-    FOREIGN KEY (playlist_id) REFERENCES playlists(id),
-    FOREIGN KEY (song_id) REFERENCES songs(id)
+    FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
 );
-                        </code></pre>
+
+INSERT INTO artists (name, country) VALUES ('The Quiet Owls', 'Canada');
+INSERT INTO albums (artist_id, title, release_year) VALUES (1, 'Night Shift', 2019);
+INSERT INTO songs (album_id, title, duration_seconds) VALUES (1, 'Lamplight', 214);
+INSERT INTO playlists (name) VALUES ('Study Mix');
+INSERT INTO playlist_songs (playlist_id, song_id, position) VALUES (1, 1, 1);
+
+SHOW TABLES;
+
+DROP DATABASE music_demo;
+USE bookstore;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>Database changed
++----------------------+
+| Tables_in_music_demo |
++----------------------+
+| albums               |
+| artists              |
+| playlist_songs       |
+| playlists            |
+| songs                |
++----------------------+
+Database changed</code></pre>
+                        </div>
+                        <p>The foreign keys without a name get one generated by MySQL (<code>albums_ibfk_1</code> and so on). That works, but named constraints are easier to find in error messages, which is why the bookstore names all of its keys.</p>
                     </details>
                 </div>
+            </section>
 
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 3: Spot the Problems</h3>
-                    <p>What's wrong with each of these designs?</p>
-
-                    <p><strong>Design A:</strong></p>
-                    <pre><code class="language-sql">
-CREATE TABLE students (
-    id INT PRIMARY KEY,
-    name VARCHAR(100),
-    course_name VARCHAR(100)   -- "Math, Science, English"
-);
-                    </code></pre>
-
-                    <p><strong>Design B:</strong></p>
-                    <pre><code class="language-sql">
-CREATE TABLE departments (
-    id INT PRIMARY KEY,
-    name VARCHAR(50),
-    employee_id INT,
-    FOREIGN KEY (employee_id) REFERENCES employees(id)
-);
-                    </code></pre>
-
-                    <p><strong>Design C:</strong></p>
-                    <pre><code class="language-sql">
-CREATE TABLE orders (
-    id INT PRIMARY KEY,
-    customer_id INT,
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
-);
-CREATE TABLE customers (
-    id INT PRIMARY KEY,
-    name VARCHAR(100)
-);
-                    </code></pre>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <p><strong>Design A:</strong> Storing comma-separated values in <code>course_name</code>. Students and courses are M:M — use a junction table (enrollments) instead.</p>
-                        <p><strong>Design B:</strong> The foreign key is on the wrong side. Departments and employees are 1:M (one department has many employees). The FK should be in the employees table as <code>department_id</code>, not in departments.</p>
-                        <p><strong>Design C:</strong> Table creation order is wrong. The orders table references customers, but customers hasn't been created yet. Create customers first, then orders.</p>
-                    </details>
-                </div>
-
-                <!-- Quiz -->
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
                 <div class="card quiz-container">
-                    <h3>🎯 Quick Quiz</h3>
+                    <h3>🎯 Check Your Understanding</h3>
 
                     <div class="quiz-question">
-                        <p><strong>Question 1:</strong> In a one-to-many relationship, where does the foreign key go?</p>
+                        <p><strong>Question 1:</strong> One author writes many books; each book has one author. Where does the foreign key go?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="If the FK was on the 'one' side, each parent could only link to one child — that would be 1:1.">
-                                A) On the "one" side (parent table)
+                            <button class="quiz-option" data-correct="false" data-hint="A column holds one value. An author with two books would need two book ids in one column.">
+                                A) <code>authors.book_id</code>
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The foreign key always goes on the 'many' side (child table). Each child row stores the ID of its parent, allowing many children to reference the same parent.">
-                                B) On the "many" side (child table)
+                            <button class="quiz-option" data-correct="true" data-explanation="The foreign key goes on the many side. Each book holds one author_id, and any number of books can hold the same one.">
+                                B) <code>books.author_id</code>
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="A junction table is for many-to-many relationships, not one-to-many.">
-                                C) In a junction table
+                            <button class="quiz-option" data-correct="false" data-hint="A junction table is for many-to-many. Can one book have many authors in this store?">
+                                C) In a junction table <code>author_books</code>
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 2:</strong> What type of relationship requires a junction table?</p>
+                        <p><strong>Question 2:</strong> Before <code>ALTER TABLE books DROP COLUMN author</code>, why did the lesson count the books whose <code>author_id IS NULL</code>?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="1:1 uses a foreign key with a UNIQUE constraint — no junction needed.">
-                                A) One-to-one
+                            <button class="quiz-option" data-correct="false" data-hint="DROP COLUMN does not look at the other columns. Think about what would be lost.">
+                                A) <code>DROP COLUMN</code> fails when another column has NULLs
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="1:M uses a foreign key on the 'many' side — no junction needed.">
-                                B) One-to-many
+                            <button class="quiz-option" data-correct="false" data-hint="Counting changes nothing in the table. What does a NULL author_id tell you after the UPDATE?">
+                                B) Counting refreshes the foreign key index
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Many-to-many relationships need a junction (bridge) table because you can't represent multiple links with a single foreign key column.">
-                                C) Many-to-many
+                            <button class="quiz-option" data-correct="true" data-explanation="A NULL after the UPDATE means a name found no match in authors. Dropping the text column would then lose that book's author for good, so you check first.">
+                                C) A NULL would mean a name did not match, and dropping the text would lose that author
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 3:</strong> How do you enforce a one-to-one relationship?</p>
+                        <p><strong>Question 3:</strong> What makes a one-to-one relationship different from a one-to-many one in MySQL?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="A regular foreign key without UNIQUE allows one-to-many, not one-to-one.">
-                                A) Just use a foreign key — it's automatically 1:1
+                            <button class="quiz-option" data-correct="true" data-explanation="The foreign key column is also UNIQUE (or is the primary key), so no parent row can be referenced by more than one child row.">
+                                A) The foreign key column is also <code>UNIQUE</code>
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Adding UNIQUE to the foreign key column ensures each parent can be referenced by at most one child row, enforcing the 1:1 constraint.">
-                                B) Add a UNIQUE constraint to the foreign key column
+                            <button class="quiz-option" data-correct="false" data-hint="Both kinds use the same FOREIGN KEY syntax. Something extra limits how often a value may appear.">
+                                B) It uses <code>ONE TO ONE REFERENCES</code> instead of <code>REFERENCES</code>
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Using the same primary key as the foreign key can work for 1:1, but adding UNIQUE to the FK column is the standard approach.">
-                                C) Use a junction table with a UNIQUE constraint
+                            <button class="quiz-option" data-correct="false" data-hint="Junction tables are for many-to-many relationships.">
+                                C) It needs a junction table
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 4:</strong> In our bookstore schema, what type of relationship exists between books and categories?</p>
+                        <p><strong>Question 4:</strong> What happens when you run this statement in the finished bookstore, where <em>1984</em> (book 2) is already in category 1?</p>
+                        <pre data-raises="ERROR 1062"><code class="language-sql">INSERT INTO book_categories (book_id, category_id) VALUES (2, 1);</code></pre>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="One book can belong to many categories AND one category can contain many books — it goes both ways.">
-                                A) One-to-many
+                            <button class="quiz-option" data-correct="false" data-hint="The pair already exists. What does the composite primary key say about pairs?">
+                                A) A second, identical link is added
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! A book can belong to multiple categories (Fiction, Sci-Fi, Classic), and a category can contain multiple books. The book_categories junction table bridges this M:M relationship.">
-                                B) Many-to-many
+                            <button class="quiz-option" data-correct="false" data-hint="Book 2 and category 1 both exist, so the foreign keys are satisfied. Look at the primary key instead.">
+                                B) Error 1452: the foreign key fails
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="One-to-one would mean each book has exactly one category and each category has exactly one book — far too restrictive.">
-                                C) One-to-one
+                            <button class="quiz-option" data-correct="true" data-explanation="PRIMARY KEY (book_id, category_id) allows each pair once, so MySQL reports error 1062, a duplicate entry 2-1 for the primary key.">
+                                C) Error 1062: duplicate entry for the primary key
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> <code>order_items</code> stores <code>price_at_time</code> even though <code>books</code> has a <code>price</code>. Why is that not harmful duplication?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="Speed is not the reason; the two columns can hold different values on purpose.">
+                                A) It makes queries faster than looking up the book
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="books.price is today's price; price_at_time records what was paid on the order date. They are two different facts, so old orders keep their real amounts when prices change.">
+                                B) It records what the customer paid then, which must not change when the price does
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Foreign keys only need the id columns. Think about what happens to old receipts after a price increase.">
+                                C) Foreign keys require a copy of the parent's columns
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
@@ -1033,68 +1104,101 @@ CREATE TABLE customers (
                 </div>
             </section>
 
-            <!-- Section 10: Summary -->
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Why not just keep the author's name in <code>books</code>? It is simpler.</summary>
+                    <p>For ten books it is, and many small spreadsheets live happily that way. The problems grow with the data: two spellings split one author, an author's birth year has nowhere to go, and an author with no books cannot exist. A separate table costs one lookup per query (a join, next lesson), which MySQL does extremely fast with the foreign key's index.</p>
+                </details>
+                <details>
+                    <summary>Do I have to use <code>INT AUTO_INCREMENT</code> ids? Could the author's name be the primary key?</summary>
+                    <p>A meaningful value used as a key is called a <strong>natural key</strong> (an ISBN, an email). It works, but names are not unique and can change, and every child row would repeat the long text. A meaningless number, a <strong>surrogate key</strong>, never needs to change. The course uses surrogate keys everywhere and adds <code>UNIQUE</code> to natural identifiers like <code>customers.email</code>.</p>
+                </details>
+                <details>
+                    <summary>Why did the <code>UPDATE ... JOIN</code> work before I learned joins?</summary>
+                    <p>It is a MySQL (and MariaDB) form of <code>UPDATE</code> that pairs the rows of two tables before setting values. The same <code>JOIN ... ON</code> pairing powers <code>SELECT</code> in Lesson 4.3, where you will learn every variant. Other databases write it differently (PostgreSQL uses <code>UPDATE ... FROM</code>).</p>
+                </details>
+                <details>
+                    <summary>I made a mistake halfway through the migration. How do I start over?</summary>
+                    <p>Either reload Lesson 3.1's flat database (its reload block) and repeat the lesson's blocks, or skip straight to the end state: <code>SOURCE bookstore.sql</code> builds the finished relational database in one go. Your counts in Step 5 tell you which state you are in.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>The lesson typed the ten authors by hand. Could the database have built the list itself? Reload the flat database, then try <code>INSERT INTO authors (name) SELECT author FROM books GROUP BY author ORDER BY MIN(id);</code> right after creating <code>authors</code>. Do the generated ids match the ones in this lesson? What does <code>ORDER BY MIN(id)</code> do, and what happens to Asimov and to the birth years?</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Pick something you track in real life (a book club, a sports league, a recipe collection). Name its things (the future tables) and draw the lines between them. Which relationships are one-to-many, and which need a junction table? What extra facts would that junction table hold?</p>
+                </div>
+            </section>
+
             <section id="summary" class="lesson-section">
-                <h2>Summary</h2>
+                <h2>📝 Lesson Summary</h2>
 
                 <div class="card card-success">
-                    <h3>🎉 Key Takeaways</h3>
+                    <h3>🎓 Key Takeaways</h3>
                     <ul>
-                        <li>Splitting data into <strong>multiple tables</strong> eliminates duplication and prevents update/delete/insert anomalies</li>
-                        <li><strong>Primary keys</strong> uniquely identify rows; <strong>foreign keys</strong> create links between tables</li>
-                        <li><strong>One-to-Many (1:M)</strong> — the most common type; FK goes on the "many" side</li>
-                        <li><strong>One-to-One (1:1)</strong> — FK with a UNIQUE constraint; used for optional or sensitive data</li>
-                        <li><strong>Many-to-Many (M:M)</strong> — requires a <strong>junction table</strong> with two foreign keys</li>
-                        <li>Junction tables can carry extra data about the relationship (quantity, timestamp, etc.)</li>
-                        <li><strong>ER diagrams</strong> visualize table structures and their relationships</li>
-                        <li>Tables must be <strong>created in dependency order</strong> (parents before children)</li>
-                        <li>Never store <strong>comma-separated values</strong> — use a junction table instead</li>
+                        <li>Store each fact once, in the table it describes; repeated text invites update, insert and delete anomalies</li>
+                        <li>A <strong>primary key</strong> identifies a row; a <strong>foreign key</strong> holds another table's primary key and is checked once declared</li>
+                        <li><strong>One-to-many:</strong> the foreign key goes on the "many" side (<code>books.author_id</code>)</li>
+                        <li><strong>One-to-one:</strong> a foreign key that is also <code>UNIQUE</code></li>
+                        <li><strong>Many-to-many:</strong> a junction table with two foreign keys and a composite primary key; it may carry facts about the link (<code>quantity</code>, <code>price_at_time</code>)</li>
+                        <li>Migrate safely: add the column, fill it, count what is missing, then add <code>NOT NULL</code>, drop the old column and declare the key</li>
+                        <li>Create parents before children; drop children before parents</li>
                     </ul>
                 </div>
 
-                <h3>Quick Reference</h3>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Relationship</th>
-                                <th>Implementation</th>
-                                <th>Example</th>
-                            </tr>
+                            <tr><th>You want</th><th>Write</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>One-to-Many</td>
-                                <td>FK on the "many" side</td>
-                                <td>orders.customer_id → customers.id</td>
-                            </tr>
-                            <tr>
-                                <td>One-to-One</td>
-                                <td>FK + UNIQUE on child</td>
-                                <td>profiles.customer_id (UNIQUE) → customers.id</td>
-                            </tr>
-                            <tr>
-                                <td>Many-to-Many</td>
-                                <td>Junction table with two FKs</td>
-                                <td>book_categories(book_id, category_id)</td>
-                            </tr>
+                            <tr><td>A new foreign key column</td><td><code>ALTER TABLE child ADD COLUMN parent_id INT</code></td></tr>
+                            <tr><td>Fill it from matching values</td><td><code>UPDATE child JOIN parent ON ... SET child.parent_id = parent.id</code></td></tr>
+                            <tr><td>Declare the relationship</td><td><code>ADD CONSTRAINT fk_name FOREIGN KEY (parent_id) REFERENCES parent(id)</code></td></tr>
+                            <tr><td>A one-to-one link</td><td><code>parent_id INT NOT NULL UNIQUE</code> + foreign key</td></tr>
+                            <tr><td>A many-to-many link</td><td>junction table, <code>PRIMARY KEY (a_id, b_id)</code> + two foreign keys</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <h3>📚 Additional Resources</h3>
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You saw an update anomaly happen in your own data, and removed its cause</li>
+                        <li>You migrated a live table from text authors to a foreign key without losing a row</li>
+                        <li>You built three kinds of relationship, including a junction table with extra data and a table that references itself</li>
+                        <li>Your <code>bookstore</code> database now matches <code>bookstore.sql</code>, the database for the rest of the course</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>In <a href="lesson_12.html"><strong>Lesson 4.2: Foreign Keys &amp; Referential Integrity</strong></a> you will put the foreign keys you declared today to the test: what MySQL does when an order names a customer who does not exist, when you delete a book that has been sold, or when a manager leaves. You will choose between <code>RESTRICT</code>, <code>CASCADE</code> and <code>SET NULL</code>, and read the errors each one produces.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
                 <ul>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html" target="_blank" rel="noopener">MySQL Docs — Foreign Key Constraints</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/example-auto-increment.html" target="_blank" rel="noopener">MySQL Docs — AUTO_INCREMENT</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/constraint-primary-key.html" target="_blank" rel="noopener">MySQL Docs — Primary Key Constraints</a></li>
+                    <li>Save <code>bookstore.sql</code> in your course folder and practice loading it once with <code>SOURCE</code></li>
+                    <li>Sketch the bookstore's eight tables on paper with crow's foot lines, from memory, then compare with the ER diagram</li>
+                    <li>Run <code>SHOW CREATE TABLE order_items;</code> and find both foreign keys and their rules</li>
                 </ul>
 
-                <h3>🚀 What's Next?</h3>
-                <p>Now that you understand how tables relate to each other, it's time to make those relationships <strong>official and enforced</strong>. In the next lesson, you'll learn about <strong>foreign key constraints</strong> — the rules that MySQL enforces to keep your relationships consistent. What happens when you delete a customer who has orders? What if you try to create an order for a non-existent customer? Foreign keys answer these questions with <code>ON DELETE</code> and <code>ON UPDATE</code> rules.</p>
-
-                <div class="card card-accent" style="text-align: center; padding: 2rem;">
-                    <h3>🎉 Congratulations!</h3>
-                    <p>You now think in relationships — one-to-one, one-to-many, many-to-many. This mental model is the foundation of every well-designed database!</p>
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>This was a big lesson: you changed the shape of a database that already held data, which is something working developers do with care and a little nervousness. If the three relationship types still blur together, go back to the one question that settles them: "can one A have many Bs, and can one B have many As?" Everything else follows from the answer.</p>
                 </div>
             </section>
 
@@ -1107,7 +1211,7 @@ CREATE TABLE customers (
     </main>
 
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>

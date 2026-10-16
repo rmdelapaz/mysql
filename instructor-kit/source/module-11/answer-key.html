@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 11</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 11: Transactions and JSON</h1>
+    <p class="sub">Answers and reasoning for every Session 11 item: the warm-up, Checkpoint 2 (rubric, model answer, weak answers), both self-checks, the predict-then-run items, the lab reference outputs, the lesson pages' own quizzes and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>11</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Checkpoint <b>2</b></span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Warm-up</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>W1</b> (6.3) 1NF: one value per cell. Fix: one row per book in a child table (member_id, book_id).</li>
+  <li><b>W2</b> (6.3) "The whole key" is 2NF (no column depends on only part of a composite key); "nothing but the key" is 3NF (no column depends on another non-key column).</li>
+  <li><b>W3</b> (7.1) The mysql client. It changes where the client cuts statements; the server never sees the word DELIMITER.</li>
+  <li><b>W4</b> (7.1) A stored function: it returns one value and can sit inside an expression. A procedure runs with CALL.</li>
+  <li><b>W5</b> (7.1) 11.99 for Dune and 7.99 for 1984: 80% of the price, rounded to cents.</li>
+</ol>
+<p>W5 prints:</p>
+<pre class="out">+-------+-------+---------+
+| title | price | on_sale |
++-------+-------+---------+
+| Dune  | 14.99 |   11.99 |
+| 1984  |  9.99 |    7.99 |
++-------+-------+---------+</pre>
+  <div class="sec"><h2>Checkpoint 2: Rubric, Model Answer and Weak Answers</h2><span class="rule"></span></div>
+<div class="note"><div class="t">The task</div>
+<p>Thirty minutes, alone, open notes. Parts 1 to 4 in <code class="inline">labs/module-11/checkpoint-2/checkpoint2_starter.sql</code>, Part 5 on paper in the workbook (the class_signups table).</p>
+<table class="timing">
+<thead><tr><th>Part</th><th>Lessons</th><th>Task</th></tr></thead>
+<tbody>
+<tr><td>Part 1</td><td>5.1, 5.2</td><td>The best seller(s) of each category by copies sold (SUM of order_items.quantity), ties sharing first place: a CTE for the copies and a window function to rank. Columns category, title, copies, sorted by category.</td></tr>
+<tr><td>Part 2</td><td>5.1</td><td>Everyone who reports to Daniel Reyes (employee 2), directly or through someone else, with a level column (1 = reports to Daniel directly), sorted by level and id: a recursive CTE.</td></tr>
+<tr><td>Part 3</td><td>6.2</td><td>The view v_customer_revenue (customer_id, customer, orders, revenue) for customers who have ordered, then a query on the view: customers with revenue above 30, highest first.</td></tr>
+<tr><td>Part 4</td><td>6.1</td><td>The plan of SELECT id, first_name FROM customers WHERE city = 'Chicago' before and after an index that helps it: the first line of each plan.</td></tr>
+<tr><td>Part 5</td><td>6.3</td><td>On paper: the table class_signups below. Name its key, the dependencies that break 2NF and 3NF, and the tables (with keys) you would split it into.</td></tr>
+</tbody>
+</table>
+</div>
+<p><b>Rubric.</b> Five rows, four levels, 20 points. "Proficient" in every row (15 points) is a successful checkpoint. Circle one cell per row and write one sentence of advice.</p>
+<table class="rubric"><thead><tr><th>Criterion</th><th>1 · Beginning</th><th>2 · Developing</th><th>3 · Proficient</th><th>4 · Exemplary</th></tr></thead><tbody>
+<tr><td class="crit">CTE and window function (Part 1)</td><td>No ranking: a GROUP BY with MAX(copies) that cannot say which title won, or no result.</td><td>A ranking, but over the whole shop (no PARTITION BY), or the window function filtered in the same query's WHERE (<code class="inline">ERROR 3593</code>).</td><td>A CTE for the copies, RANK() OVER (PARTITION BY category ORDER BY copies DESC) in a second step, filtered on 1 outside: five rows (Classic, Dystopian and Fiction 1984 with 4; Fantasy The Hobbit 3; Science Fiction Dune 3).</td><td>Also says why the filter needs a second step (window functions run after WHERE) and why RANK, not ROW_NUMBER, keeps ties.</td></tr>
+<tr><td class="crit">Recursive CTE (Part 2)</td><td>Only the direct reports (WHERE manager_id = 2), or a self-join with a fixed depth.</td><td>A recursive CTE that starts from Daniel himself (adds him as level 1) or has no working level column.</td><td>Anchor manager_id = 2 at level 1, recursive member joined on e.manager_id = t.id with level + 1: six rows, Priya and Marcus at 1; Tom, Lena, Sofia and Ben at 2.</td><td>Also explains why the recursion stops (no one reports to the level-2 people) and notices Ben is inactive, keeping or filtering him on purpose.</td></tr>
+<tr><td class="crit">View (Part 3)</td><td>No view: the query typed directly, or a view that does not run.</td><td>A view that runs but counts order LINES as orders (<code class="inline">COUNT(*)</code> gives Alice 4) or leaves out the name.</td><td>COUNT(DISTINCT o.id) and SUM(quantity * price_at_time) in the view; the query on the view returns Alice Johnson 3 / 58.95, Dave Brown 45.96, Frank Miller 41.96, Grace Wilson 33.97, Bob Smith 33.47.</td><td>Also says a view stores the query, not the rows (it is always current), and that a LEFT JOIN would list customers who never ordered.</td></tr>
+<tr><td class="crit">Index and EXPLAIN (Part 4)</td><td>No plan read, or an index on a column the search does not use.</td><td>An index on city, but the plans are not read (no before/after) or misread.</td><td>Before: <code class="inline">Table scan on customers</code> under a Filter; after <code class="inline">CREATE INDEX ... (city)</code>: <code class="inline">Index lookup on customers using idx_customers_city</code>.</td><td>Also reads the row estimates (8 scanned, then 2) and says what the index costs (space, slower writes) and why 8 rows hide the gain.</td></tr>
+<tr><td class="crit">Normalization (Part 5)</td><td>A list of tables with no key or reasons.</td><td>Finds the 2NF problems (student_name; class_title, room, teacher) or the 3NF one (teacher -&gt; teacher_phone), not both.</td><td>Key (student_email, class_code); 2NF: student_name depends on student_email, class_title/room/teacher on class_code; 3NF: teacher_phone depends on teacher. Tables: students, teachers, classes (teacher FK), signups (both FKs as the key).</td><td>Also names the anomalies (Lee Wong's phone in three rows; a class nobody signed up for cannot exist; deleting Cy's signup loses Glass Fusing) and questions whether room belongs to the class.</td></tr>
+</tbody></table>
+<div class="blk lab"><div class="h">Model answer, Parts 1 to 4: labs/module-11/checkpoint-2/checkpoint2_solution.sql</div>
+<p>The file prints (MySQL 9.7, fresh bookstore):</p>
+<pre class="out">+-----------------+------------+--------+
+| category        | title      | copies |
++-----------------+------------+--------+
+| Classic         | 1984       |      4 |
+| Dystopian       | 1984       |      4 |
+| Fantasy         | The Hobbit |      3 |
+| Fiction         | 1984       |      4 |
+| Science Fiction | Dune       |      3 |
++-----------------+------------+--------+
++-------+------+---------------+------------+
+| level | id   | employee      | manager_id |
++-------+------+---------------+------------+
+|     1 |    3 | Priya Nair    |          2 |
+|     1 |    6 | Marcus Hill   |          2 |
+|     2 |    4 | Tom Becker    |          3 |
+|     2 |    5 | Lena Park     |          3 |
+|     2 |    7 | Sofia Alvarez |          6 |
+|     2 |   10 | Ben Carter    |          3 |
++-------+------+---------------+------------+
++---------------+--------+---------+
+| customer      | orders | revenue |
++---------------+--------+---------+
+| Alice Johnson |      3 |   58.95 |
+| Dave Brown    |      2 |   45.96 |
+| Frank Miller  |      2 |   41.96 |
+| Grace Wilson  |      2 |   33.97 |
+| Bob Smith     |      2 |   33.47 |
++---------------+--------+---------+
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Filter: (customers.city = 'Chicago')  (cost=1.05 rows=1)
+    -&gt; Table scan on customers  (cost=1.05 rows=8)
+*************************** 1. row ***************************
+EXPLAIN: -&gt; Index lookup on customers using idx_customers_city (city = 'Chicago')  (cost=0.7 rows=2)</pre><p>Reading it: Part 1 shows 1984 winning three categories (4 copies) and no tie this time; RANK would keep a tie, ROW_NUMBER would silently drop one. Part 2's recursion stops at level 2 because nobody reports to Tom, Lena, Sofia or Ben. Part 3: Alice's 3 orders hold 4 order lines, the reason COUNT(DISTINCT o.id) matters. Part 4: the cost numbers differ by machine; the access method (table scan, then index lookup) is the answer.</p>
+</div>
+<div class="blk"><div class="h">Model answer, Part 5 (normalization)</div>
+<ul class="tick">
+  <li><b>Key:</b> (student_email, class_code): one student in one class.</li>
+  <li><b>2NF (partial dependencies):</b> student_email → student_name; class_code → class_title, room, teacher. They depend on only part of the key, so Ana's name is stored twice and Pottery Basics' details twice.</li>
+  <li><b>3NF (transitive dependency):</b> teacher → teacher_phone. The phone describes the teacher, not the sign-up or the class; Lee Wong's number is stored three times.</li>
+  <li><b>Tables:</b> students(email PK, name); teachers(id PK, name, phone); classes(code PK, title, room, teacher_id FK → teachers); signups(student_email FK → students, class_code FK → classes, PRIMARY KEY (student_email, class_code)).</li>
+  <li><b>Anomalies it removes:</b> update (change Lee Wong's phone in three rows), insert (a new class with no sign-ups has nowhere to go), delete (cancelling Cy's sign-up erases Glass Fusing).</li>
+</ul>
+</div>
+<div class="blk warn"><div class="h">Two weak answers, run for real</div>
+<p>Part 3 with COUNT(*) instead of COUNT(DISTINCT o.id): it counts order lines, so Alice gets 4 "orders" (Developing in the View row):</p>
+<pre class="code"><span class="k">SELECT</span> CONCAT(c.first_name, <span class="s">' '</span>, c.last_name) <span class="k">AS</span> customer,
+       COUNT(*) <span class="k">AS</span> orders,
+       SUM(oi.quantity * oi.price_at_time) <span class="k">AS</span> revenue
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">JOIN</span> orders <span class="k">AS</span> o       <span class="k">ON</span> o.customer_id = c.id
+<span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.order_id = o.id
+<span class="k">WHERE</span> c.id = <span class="s">1</span>
+<span class="k">GROUP</span> <span class="k">BY</span> c.id, c.first_name, c.last_name;</pre>
+<pre class="out">+---------------+--------+---------+
+| customer      | orders | revenue |
++---------------+--------+---------+
+| Alice Johnson |      4 |   58.95 |
++---------------+--------+---------+</pre><p>Part 1 with the window function in WHERE: MySQL refuses, because window functions are computed after WHERE (Developing in the first row; the fix is the second step):</p>
+<pre class="code"><span class="k">SELECT</span> c.name <span class="k">AS</span> category, b.title, SUM(oi.quantity) <span class="k">AS</span> copies,
+       RANK() <span class="k">OVER</span> (<span class="k">PARTITION</span> <span class="k">BY</span> c.id <span class="k">ORDER</span> <span class="k">BY</span> SUM(oi.quantity) <span class="k">DESC</span>) <span class="k">AS</span> place
+<span class="k">FROM</span> categories <span class="k">AS</span> c
+<span class="k">JOIN</span> book_categories <span class="k">AS</span> bc <span class="k">ON</span> bc.category_id = c.id
+<span class="k">JOIN</span> books <span class="k">AS</span> b            <span class="k">ON</span> b.id = bc.book_id
+<span class="k">JOIN</span> order_items <span class="k">AS</span> oi     <span class="k">ON</span> oi.book_id = b.id
+<span class="k">WHERE</span> RANK() <span class="k">OVER</span> (<span class="k">PARTITION</span> <span class="k">BY</span> c.id <span class="k">ORDER</span> <span class="k">BY</span> SUM(oi.quantity) <span class="k">DESC</span>) = <span class="s">1</span>
+<span class="k">GROUP</span> <span class="k">BY</span> c.id, c.name, b.id, b.title;</pre>
+<pre class="out">ERROR 3593 (HY000): You cannot use the window function 'rank' in this context.'</pre></div>
+
+  <div class="sec"><h2>7.2 · Transactions: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">You type <code class="inline">START TRANSACTION;</code> and an UPDATE that succeeds, then close the terminal window without COMMIT. What happens to the change?</div><div class="opts"><div class="opt">A) It is kept: the UPDATE succeeded</div><div class="opt correct">B) The server rolls it back when the connection ends</div><div class="opt">C) It waits, and is committed the next time you log in</div><div class="opt">D) It is kept, but only your account can see it</div></div><div class="why"><b>Why:</b> Nothing is committed unless you say COMMIT (or autocommit does it for you). A dropped connection ends the open transaction with a rollback (the lesson's Common Questions).<br><b>A</b> is wrong: Succeeding is not the same as being committed; inside a transaction the change is still provisional.<br><b>C</b> is wrong: Transactions do not survive the connection; a new login starts with nothing open.<br><b>D</b> is wrong: Uncommitted changes are visible to your own session only while it is open; once it closes they are gone.</div></div>
+  <div class="q" data-sc="2" data-kind="short"><div class="qn">Q2</div><div class="qt">What does the last statement print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> stock (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, qty <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> stock <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">5</span>), (<span class="s">2</span>, <span class="s">5</span>);
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> stock <span class="k">SET</span> qty = qty - <span class="s">1</span> <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SAVEPOINT</span> s1;
+<span class="k">UPDATE</span> stock <span class="k">SET</span> qty = qty - <span class="s">1</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">ROLLBACK</span> <span class="k">TO</span> <span class="k">SAVEPOINT</span> s1;
+<span class="k">UPDATE</span> stock <span class="k">SET</span> qty = qty + <span class="s">3</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">COMMIT</span>;
+<span class="k">SELECT</span> id, qty <span class="k">FROM</span> stock <span class="k">ORDER</span> <span class="k">BY</span> id;</pre><div class="opts"><div class="opt correct">Two rows: id 1 qty <code class="inline">4</code>, id 2 qty <code class="inline">8</code></div></div><div class="why"><b>Why:</b> The first UPDATE (id 1 to 4) happened before the savepoint and stays. ROLLBACK TO SAVEPOINT s1 undoes only the -1 on id 2. The +3 on id 2 comes after the rollback, so id 2 goes from 5 to 8, and COMMIT keeps both.</div></div>
+  <div class="q" data-sc="3"><div class="qn">Q3</div><div class="qt">Which statement, typed inside an open transaction, commits that transaction on the spot?</div><div class="opts"><div class="opt">A) <code class="inline">SAVEPOINT before_change;</code></div><div class="opt">B) <code class="inline">SELECT price FROM books WHERE id = 1 FOR UPDATE;</code></div><div class="opt correct">C) <code class="inline">ALTER TABLE books ADD COLUMN rating INT;</code></div><div class="opt">D) <code class="inline">ROLLBACK TO SAVEPOINT before_change;</code></div></div><div class="why"><b>Why:</b> Schema changes (CREATE, ALTER, DROP, RENAME, TRUNCATE) cause an implicit commit before they run, so a later ROLLBACK has nothing left to undo: the trap the demo showed with CREATE TABLE.<br><b>A</b> is wrong: A savepoint is a bookmark inside the transaction; the transaction stays open.<br><b>B</b> is wrong: FOR UPDATE takes row locks inside the transaction; it does not end it.<br><b>D</b> is wrong: Rolling back to a savepoint undoes part of the work and keeps the transaction open.</div></div>
+  <div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">Window A runs <code class="inline">START TRANSACTION;</code> and <code class="inline">UPDATE accounts SET balance = 0 WHERE id = 1;</code> and does not commit. Window B then runs <code class="inline">SELECT balance FROM accounts WHERE id = 1 FOR UPDATE;</code>. What does B get?</div><div class="opts"><div class="opt">A) 0, A's new value</div><div class="opt">B) The last committed balance, at once</div><div class="opt">C) ERROR 1213 at once: a deadlock</div><div class="opt correct">D) Nothing yet: B waits for A's row lock, and fails with ERROR 1205 if A holds it past the timeout</div></div><div class="why"><b>Why:</b> A locking read (FOR UPDATE) needs the same row lock A's UPDATE holds, so it waits like a writer. A plain SELECT would not wait: it reads the committed snapshot.<br><b>A</b> is wrong: No session ever sees another's uncommitted value under REPEATABLE READ.<br><b>B</b> is wrong: That is what a PLAIN SELECT gets; FOR UPDATE must lock the row first.<br><b>C</b> is wrong: A deadlock needs two transactions each waiting for the other; here only B waits.</div></div>
+  <div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt">In the transfer procedure's handler, why does RESIGNAL come right after ROLLBACK?</div><div class="opts"><div class="opt correct">A) So the caller still receives the original error after the half-done changes are undone</div><div class="opt">B) RESIGNAL commits whatever the handler did not roll back</div><div class="opt">C) Without it, the handler would run again and again</div><div class="opt">D) Every handler must end with RESIGNAL or the procedure does not compile</div></div><div class="why"><b>Why:</b> ROLLBACK cleans up; RESIGNAL passes the same error (1644, 3819, ...) on, so the app knows the call failed and why. A handler that only rolls back hides the failure.<br><b>B</b> is wrong: RESIGNAL raises an error; it never commits anything.<br><b>C</b> is wrong: An EXIT handler runs once and leaves the procedure.<br><b>D</b> is wrong: RESIGNAL is optional syntax; leaving it out compiles fine, which is exactly why the silent version is a trap.</div></div>
+  <div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt">An app's checkout fails with <code class="inline">ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction</code>. What should the app do?</div><div class="opts"><div class="opt">A) Nothing: the statements before the deadlock were saved</div><div class="opt">B) Run only the statement that failed again</div><div class="opt">C) Raise innodb_lock_wait_timeout so it never happens again</div><div class="opt correct">D) Run the whole transaction again from the start</div></div><div class="why"><b>Why:</b> InnoDB picked this transaction as the deadlock victim and rolled ALL of it back. The message is the advice: restart the transaction. Short transactions that lock rows in the same order make it rare.<br><b>A</b> is wrong: The victim's whole transaction was rolled back; nothing of it was saved.<br><b>B</b> is wrong: The earlier statements were undone too; repeating one statement alone leaves the job half done.<br><b>C</b> is wrong: A deadlock is detected at once, not after a timeout; the timeout setting does not affect it.</div></div>
+
+  <div class="sec"><h2>7.2 · Transactions: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> counter (n <span class="k">INT</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> counter <span class="k">VALUES</span> (<span class="s">1</span>);
+<span class="k">SET</span> autocommit = <span class="s">0</span>;
+<span class="k">UPDATE</span> counter <span class="k">SET</span> n = n + <span class="s">10</span>;
+<span class="k">ROLLBACK</span>;
+<span class="k">SET</span> autocommit = <span class="s">1</span>;
+<span class="k">SELECT</span> n <span class="k">FROM</span> counter;</pre><div class="opts"><div class="opt correct"><pre class="out">+------+
+| n    |
++------+
+|    1 |
++------+</pre></div></div><div class="why"><b>Why:</b> With autocommit off, the UPDATE waited for a decision; ROLLBACK discarded it, so n is still 1. Switching autocommit off for a whole session is rare: one forgotten COMMIT and the work is lost at disconnect.</div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> seats (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, taken <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> seats <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">0</span>), (<span class="s">2</span>, <span class="s">0</span>);
+<span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">UPDATE</span> seats <span class="k">SET</span> taken = <span class="s">1</span> <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">SAVEPOINT</span> one_seat;
+<span class="k">UPDATE</span> seats <span class="k">SET</span> taken = <span class="s">1</span> <span class="k">WHERE</span> id = <span class="s">2</span>;
+<span class="k">ROLLBACK</span> <span class="k">TO</span> <span class="k">SAVEPOINT</span> one_seat;
+<span class="k">COMMIT</span>;
+<span class="k">SELECT</span> SUM(taken) <span class="k">AS</span> seats_taken <span class="k">FROM</span> seats;</pre><div class="opts"><div class="opt correct"><pre class="out">+-------------+
+| seats_taken |
++-------------+
+|           1 |
++-------------+</pre></div></div><div class="why"><b>Why:</b> Seat 1 was taken before the savepoint and kept; seat 2 was taken after it and rolled back. COMMIT keeps what is left: one seat.</div></div>
+
+  <div class="sec"><h2>7.3 · JSON Columns: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">On the web page, <code class="inline">CONCAT(title, ': ', attributes-&gt;'$.series')</code> prints <code class="inline">Dune: "Dune Chronicles"</code>. Which change removes the quotes?</div><div class="opts"><div class="opt">A) Wrap the whole CONCAT in <code class="inline">TRIM()</code></div><div class="opt">B) Use <code class="inline">JSON_EXTRACT</code> instead of <code class="inline">-&gt;</code></div><div class="opt correct">C) Use <code class="inline">-&gt;&gt;</code> instead of <code class="inline">-&gt;</code></div><div class="opt">D) Store the series without quotes in the document</div></div><div class="why"><b>Why:</b> -> returns a JSON value, and a JSON string keeps its double quotes. ->> (JSON_UNQUOTE of JSON_EXTRACT) returns plain text: use it whenever a value leaves JSON for display, CONCAT or comparison.<br><b>A</b> is wrong: TRIM removes spaces, not quote characters.<br><b>B</b> is wrong: JSON_EXTRACT is exactly what -> means; same quotes.<br><b>D</b> is wrong: Every JSON string is stored with double quotes; that is the format, not a mistake.</div></div>
+  <div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">What does the SELECT print?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> shelf (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, info <span class="k">JSON</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> shelf <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'{"tags": ["new", "signed", "gift"], "copies": 2}'</span>);
+<span class="k">SELECT</span> info-&gt;&gt;<span class="s">'$.tags[last]'</span> <span class="k">AS</span> last_tag, JSON_LENGTH(info-&gt;<span class="s">'$.tags'</span>) <span class="k">AS</span> tag_count
+<span class="k">FROM</span> shelf;</pre><div class="opts"><div class="opt correct"><code class="inline">gift</code> and <code class="inline">3</code></div></div><div class="why"><b>Why:</b> [last] is the last element of the array, and ->> returns it as plain text; JSON_LENGTH counts the three elements.</div></div>
+  <div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">A document already has a <code class="inline">format</code> key. What does <code class="inline">JSON_INSERT(doc, '$.format', 'ebook')</code> return?</div><div class="opts"><div class="opt correct">A) The document unchanged</div><div class="opt">B) The document with format replaced by ebook</div><div class="opt">C) The document with a second format key</div><div class="opt">D) An error: the key already exists</div></div><div class="why"><b>Why:</b> JSON_INSERT only adds missing keys; JSON_SET adds or replaces; JSON_REPLACE only replaces existing keys. All three return a changed copy, never an error, for a key that is or is not there.<br><b>B</b> is wrong: That is JSON_SET (or JSON_REPLACE).<br><b>C</b> is wrong: A JSON object never holds the same key twice.<br><b>D</b> is wrong: The JSON_* change functions do not raise errors for existing or missing keys.</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt"><code class="inline">WHERE attributes-&gt;&gt;'$.format' = 'hardcover'</code> is slow on a table of a million books. What is MySQL's fix?</div><div class="opts"><div class="opt">A) <code class="inline">CREATE INDEX idx_attr ON books (attributes);</code></div><div class="opt correct">B) A generated column for $.format, with an index on that column</div><div class="opt">C) Change the column type from JSON to TEXT</div><div class="opt">D) Write <code class="inline">JSON_EXTRACT</code> instead of <code class="inline">-&gt;&gt;</code></div></div><div class="why"><b>Why:</b> A JSON column cannot be indexed as a whole (error 3152). A VIRTUAL generated column pulls one path out, and its index is used even by the original ->> expression, as the demo's EXPLAIN showed.<br><b>A</b> is wrong: That is error 3152: JSON columns are indexed only through generated columns.<br><b>C</b> is wrong: TEXT loses validation and is no easier to index by path.<br><b>D</b> is wrong: Same lookup, same full scan.</div></div>
+  <div class="q" data-sc="11" data-kind="short"><div class="qn">Q11</div><div class="qt">What does this print?</div><pre class="code"><span class="k">SELECT</span> JSON_OBJECT(<span class="s">'title'</span>, <span class="s">'Dune'</span>, <span class="s">'id'</span>, <span class="s">1</span>, <span class="s">'price'</span>, <span class="s">14.99</span>) <span class="k">AS</span> doc;</pre><div class="opts"><div class="opt correct"><code class="inline">{"id": 1, "price": 14.99, "title": "Dune"}</code></div></div><div class="why"><b>Why:</b> MySQL stores JSON in a binary form with the keys of every object sorted: shorter keys first, then alphabetically. The data is the same; only the order changed, so never rely on key order.</div></div>
+  <div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">The store wants to record four things. Which ONE belongs in a JSON column rather than a regular column or table?</div><div class="opts"><div class="opt">A) The customer an order belongs to</div><div class="opt">B) A book's price</div><div class="opt">C) The line items of an order</div><div class="opt correct">D) An optional gift-wrap note some orders have, with a color and a message</div></div><div class="why"><b>Why:</b> Optional, varied, display-only details are what JSON is for. The other three are core data: you join on the customer, sum the price, and line items are a list of related things that need their own table with foreign keys.<br><b>A</b> is wrong: You join on it and it needs a foreign key: a column.<br><b>B</b> is wrong: Every book has one, and every total uses it: a DECIMAL column.<br><b>C</b> is wrong: A list of related rows is a child table (order_items), the lesson's 'when not to use JSON' table.</div></div>
+
+  <div class="sec"><h2>7.3 · JSON Columns: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> JSON_VALID(<span class="s">'{"a": 1}'</span>) <span class="k">AS</span> ok,
+       JSON_VALID(<span class="s">"{'a': 1}"</span>)  <span class="k">AS</span> single_quotes,
+       JSON_TYPE(<span class="s">'[1, 2]'</span>)     <span class="k">AS</span> kind;</pre><div class="opts"><div class="opt correct"><pre class="out">+------+---------------+-------+
+| ok   | single_quotes | kind  |
++------+---------------+-------+
+|    1 |             0 | ARRAY |
++------+---------------+-------+</pre></div></div><div class="why"><b>Why:</b> JSON_VALID accepts double quotes only (single quotes give 0); JSON_TYPE names the kind of value: ARRAY.</div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SET</span> @doc = <span class="s">'{"format": "paperback"}'</span>;
+<span class="k">SELECT</span> JSON_INSERT(@doc, <span class="s">'$.format'</span>, <span class="s">'ebook'</span>)  <span class="k">AS</span> ins,
+       JSON_REPLACE(@doc, <span class="s">'$.pages'</span>, <span class="s">300</span>)      <span class="k">AS</span> rep;</pre><div class="opts"><div class="opt correct"><pre class="out">+-------------------------+-------------------------+
+| ins                     | rep                     |
++-------------------------+-------------------------+
+| {"format": "paperback"} | {"format": "paperback"} |
++-------------------------+-------------------------+</pre></div></div><div class="why"><b>Why:</b> JSON_INSERT never replaces an existing key (format stays paperback); JSON_REPLACE never adds a missing key (no pages). Both return the document unchanged here; JSON_SET would have done both.</div></div>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Lab 7.2-A: labs/module-11/l7_2-transactions/loyalty_points_starter.sql → loyalty_points_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+-------------+--------+
+| customer_id | points |
++-------------+--------+
+|           6 |     15 |
+|           7 |     25 |
++-------------+--------+
++---------------+--------------+
+| orders_inside | items_inside |
++---------------+--------------+
+|             7 |           10 |
++---------------+--------------+
++--------------+-------------+
+| orders_after | items_after |
++--------------+-------------+
+|           12 |          18 |
++--------------+-------------+
++-------------+--------+
+| customer_id | points |
++-------------+--------+
+|           1 |    350 |
+|           2 |    170 |
+|           4 |     10 |
+|           6 |     15 |
+|           7 |     25 |
++-------------+--------+
++-------------+--------+
+| customer_id | points |
++-------------+--------+
+|           2 |    170 |
++-------------+--------+
++----------+
+| log_rows |
++----------+
+|        0 |
++----------+
++------------+-----------------+
+| autocommit | isolation       |
++------------+-----------------+
+|          1 | REPEATABLE-READ |
++------------+-----------------+</pre><p>What each TODO teaches: (1) two UPDATEs that only make sense together, committed as one; (2) a rehearsal: the DELETE of 5 orders cascades to 8 order lines inside the transaction, and ROLLBACK brings all of them back; (3) ROLLBACK TO SAVEPOINT keeps the bonus and drops the slip that zeroed everyone (as shipped, the zeros are committed); (4) the implicit commit: as shipped, CREATE TABLE ends the transaction, the INSERT then autocommits and the ROLLBACK undoes nothing (Bob 10, log_rows 1); moved above START TRANSACTION, the ROLLBACK undoes both (Bob 170, log_rows 0).</p>
+</div>
+<div class="blk lab"><div class="h">Lab 7.2-B: labs/module-11/l7_2-transactions/return_item_starter.sql → return_item_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+--------+-------+
+| orders | items |
++--------+-------+
+|     12 |    18 |
++--------+-------+
++--------+-------+
+| orders | items |
++--------+-------+
+|     11 |    16 |
++--------+-------+
++-------------+--------+
+| customer_id | points |
++-------------+--------+
+|           1 |    307 |
+|           4 |     18 |
++-------------+--------+
++----+-------------+
+| id | customer_id |
++----+-------------+
+| 12 |           4 |
++----+-------------+</pre><p>Then, at the prompt (real output, same session as the solution):</p>
+<pre class="code"><span class="k">CALL</span> return_item(<span class="s">99</span>);
+<span class="k">CALL</span> return_item(<span class="s">13</span>);
+<span class="k">SELECT</span> (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> orders) <span class="k">AS</span> orders,
+       (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> order_items) <span class="k">AS</span> items,
+       (<span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> order_items <span class="k">WHERE</span> id = <span class="s">13</span>) <span class="k">AS</span> line_13_kept;</pre>
+<pre class="out">ERROR 1644 (45000): No such order line
+ERROR 1644 (45000): Customer has no loyalty account
++--------+-------+--------------+
+| orders | items | line_13_kept |
++--------+-------+--------------+
+|     11 |    16 |            1 |
++--------+-------+--------------+</pre><p>Reading it: line 17 was one of order 12's two lines, so order 12 stays; line 3 was order 2's only line, so the order goes too. Points are FLOOR(quantity × price): 8 for Dave, 7 for Alice. Eve has no loyalty row, so the UPDATE changes nothing, the SIGNAL fires after both DELETEs, and the handler rolls them back: line 13 is still there. Without TODOs 1 to 3 (the starter as shipped), the same call deletes Eve's line and THEN fails: the half-done return the lesson warns about.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-11/l7_2-transactions/debug_lost_points.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints (the table, then the two errors at the lines where they happened):</p>
+<pre class="out">ERROR 3819 (HY000): Check constraint 'chk_points' is violated.
+ERROR 1305 (42000): SAVEPOINT before_bonuses does not exist
++-------------+--------+
+| customer_id | points |
++-------------+--------+
+|           1 |      0 |
+|           2 |    340 |
+|           4 |     20 |
+|           6 |     80 |
+|           7 |      0 |
++-------------+--------+</pre><ol class="steps">
+  <li><b>A, 3819:</b> Grace has 0 points, so her -50 breaks the CHECK. The failed UPDATE undid only itself; COMMIT then saved Bob's +50: 50 points from nothing. Fix: ROLLBACK after the error (in code, a handler).</li>
+  <li><b>B, 1305:</b> the savepoint is <code class="inline">before_bonus</code>, the ROLLBACK names <code class="inline">before_bonuses</code>. The transaction stays open with everyone doubled, and COMMIT keeps it (Bob 170 × 2 = 340). Fix: the right name.</li>
+  <li><b>C, silent:</b> CREATE TABLE committed Alice's zero before it ran, so the ROLLBACK had nothing to undo. Fix: create the table before START TRANSACTION.</li>
+</ol>
+<p>Fixed (real run; the 3819 still appears, because the statement still fails, but nothing is saved):</p>
+<pre class="out">ERROR 3819 (HY000): Check constraint 'chk_points' is violated.
++-------------+--------+
+| customer_id | points |
++-------------+--------+
+|           1 |    300 |
+|           2 |    120 |
+|           4 |     10 |
+|           6 |     40 |
+|           7 |      0 |
++-------------+--------+</pre></div>
+<div class="blk lab"><div class="h">Lab 7.3-A: labs/module-11/l7_3-json-columns/reader_prefs_starter.sql → reader_prefs_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+----+------------+
+| id | first_name |
++----+------------+
+|  1 | Alice      |
+|  6 | Frank      |
+|  7 | Grace      |
++----+------------+
++----+------------+
+| id | first_name |
++----+------------+
+|  1 | Alice      |
+|  7 | Grace      |
++----+------------+
++----+------------+--------------------------------+-----------------+-------------+----------+
+| id | first_name | genres                         | first_genre     | genre_count | email_ok |
++----+------------+--------------------------------+-----------------+-------------+----------+
+|  1 | Alice      | ["Science Fiction", "Classic"] | Science Fiction |           2 | true     |
+|  4 | Dave       | NULL                           | NULL            |        NULL | NULL     |
+|  6 | Frank      | []                             | NULL            |           0 | NULL     |
+|  7 | Grace      | ["Fantasy", "Classic"]         | Fantasy         |           2 | NULL     |
++----+------------+--------------------------------+-----------------+-------------+----------+
++----+------------+------------+
+| id | first_name | has_genres |
++----+------------+------------+
+|  1 | Alice      |          1 |
+|  2 | Bob        |          1 |
+|  3 | Carol      |       NULL |
+|  4 | Dave       |          0 |
+|  5 | Eve        |       NULL |
+|  6 | Frank      |          1 |
+|  7 | Grace      |          1 |
+|  8 | Hank       |       NULL |
++----+------------+------------+
++----+------------+---------------------------------------------------------------------------+
+| id | first_name | prefs                                                                     |
++----+------------+---------------------------------------------------------------------------+
+|  2 | Bob        | {"genres": ["Dystopian"], "newsletter": true}                             |
+|  7 | Grace      | {"genres": ["Fantasy", "Classic", "Science Fiction"], "newsletter": true} |
++----+------------+---------------------------------------------------------------------------+
++------------+-----------+
+| newsletter | customers |
++------------+-----------+
+| NULL       |         3 |
+| false      |         1 |
+| true       |         4 |
++------------+-----------+</pre><p>Reading it: a JSON <code class="inline">true</code> read with <code class="inline">-&gt;&gt;</code> is the text 'true' (comparing with the number 1 or TRUE finds nothing). Dave's prefs exist without a genres key, so JSON_CONTAINS_PATH says 0; Carol, Eve and Hank have no document at all, so it says NULL: the difference between "missing key" and "missing document". Grace's document lost the language key and gained a genre, and its keys come back sorted. The generated column turns three states into a GROUP BY: true, false and NULL (no prefs).</p>
+</div>
+<div class="blk lab"><div class="h">Lab 7.3-B: labs/module-11/l7_3-json-columns/order_documents_starter.sql → order_documents_solution.sql</div>
+<p>The solution prints (an empty first line marks the silent SET):</p>
+<pre class="out">+-------------------------------------------------------------------+
+| order_doc                                                         |
++-------------------------------------------------------------------+
+| {"date": "2026-01-15", "lines": 2, "total": 34.97, "order_id": 1} |
+| {"date": "2026-02-20", "lines": 1, "total": 7.99, "order_id": 2}  |
+| {"date": "2026-04-05", "lines": 1, "total": 15.99, "order_id": 8} |
++-------------------------------------------------------------------+
++-----------------------------------------+
+| best_sellers                            |
++-----------------------------------------+
+| {"1984": 4, "Dune": 3, "The Hobbit": 3} |
++-----------------------------------------+
++---------+------+------------------------+----------+
+| book_id | qty  | title                  | in_stock |
++---------+------+------------------------+----------+
+|       4 |    5 | The Great Gatsby       |        0 |
+|       8 |    3 | The Catcher in the Rye |        0 |
+|      42 |    1 | NULL                   |     NULL |
++---------+------+------------------------+----------+
++-----------------------+--------------------+
+| supplier              | still_out_of_stock |
++-----------------------+--------------------+
+| Riverside Book Supply |                  0 |
++-----------------------+--------------------+</pre><p>Reading it: JSON_OBJECT accepts aggregates in a grouped query; the total stays a number. JSON_OBJECTAGG sorts its keys (shortest first), so the order is stable even though the rows are not ordered. JSON_TABLE's LEFT JOIN exposes the supplier's mistake (book 42 does not exist) before anything is updated; the UPDATE joins only real books. Learners who used an inner JOIN in step 3 never see book 42: ask what the supplier should be told.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-11/l7_3-json-columns/debug_bad_json.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 3140 (22032): Invalid JSON text: "Missing a name for object member." at position 1 in value for column 'wishlists.items'.
+ERROR 3143 (42000): Invalid JSON path expression. The error is around character position 1.
+ERROR 3152 (42000): JSON column 'items' supports indexing only via generated columns on a specified JSON path.
++--------------------+
+| label              |
++--------------------+
+| Alice ("birthday") |
++--------------------+
+Empty set
++-------------+-------+--------------------------------------------------------------+
+| customer_id | owner | items                                                        |
++-------------+-------+--------------------------------------------------------------+
+|           1 | Alice | {"public": true, "book_ids": [1, 9], "occasion": "birthday"} |
+|           7 | Grace | {"public": false, "book_ids": [1, 6]}                        |
++-------------+-------+--------------------------------------------------------------+</pre><ol class="steps">
+  <li><b>A, 3140:</b> single quotes inside the document. Fix: <code class="inline">'{"book_ids": [2, 11], "public": true}'</code> (or JSON_OBJECT).</li>
+  <li><b>B, 3143:</b> the path has no <code class="inline">$</code>. Fix: <code class="inline">items-&gt;&gt;'$.book_ids'</code>.</li>
+  <li><b>C, 3152:</b> a JSON column cannot be indexed whole. Fix: a generated column for one path (<code class="inline">occasion</code>) with an index on it.</li>
+  <li><b>D, silent:</b> <code class="inline">-&gt;</code> keeps the JSON quotes: <code class="inline">Alice ("birthday")</code>. Fix: <code class="inline">-&gt;&gt;</code>.</li>
+  <li><b>E, silent:</b> <code class="inline">$.bookIds</code> does not exist (the key is <code class="inline">book_ids</code>), so MEMBER OF finds nobody and nothing warns. Fix: the real key name.</li>
+</ol>
+<p>Fixed (real run):</p>
+<pre class="out">+-------+---------+
+| owner | books   |
++-------+---------+
+| Alice | [1, 9]  |
+| Bob   | [2, 11] |
+| Grace | [1, 6]  |
++-------+---------+
++------------------+
+| label            |
++------------------+
+| Alice (birthday) |
++------------------+
++-------+
+| owner |
++-------+
+| Alice |
+| Grace |
++-------+
++-------------+-------+--------------------------------------------------------------+
+| customer_id | owner | items                                                        |
++-------------+-------+--------------------------------------------------------------+
+|           1 | Alice | {"public": true, "book_ids": [1, 9], "occasion": "birthday"} |
+|           2 | Bob   | {"public": true, "book_ids": [2, 11]}                        |
+|           7 | Grace | {"public": false, "book_ids": [1, 6]}                        |
++-------------+-------+--------------------------------------------------------------+</pre></div>
+
+  <div class="sec"><h2>The Lesson Pages' Own Quick Quizzes</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Lesson 7.2 · Transactions</div>
+<ol class="steps" data-lesson-quiz="7.2">
+  <li><b>A</b> Atomicity: Atomicity: all of a transaction's changes are kept, or none of them. The order row and its item rows succeed or fail together.</li>
+  <li><b>C</b> The last committed value, immediately: InnoDB gives plain readers the last committed version of the row, without waiting. B sees A's change only after A commits.</li>
+  <li><b>B</b> The first UPDATE only: In MySQL a failed statement rolls back only itself and the transaction stays open, so COMMIT saves the first UPDATE. Roll back yourself, or use a handler.</li>
+  <li><b>B</b> CREATE TABLE demo_audit (note VARCHAR(100)): DDL such as CREATE TABLE causes an implicit commit before it runs, so a later ROLLBACK cannot undo the earlier changes.</li>
+  <li><b>C</b> Another transaction held the row's lock longer than the timeout: Another transaction held a lock on the row, and your statement gave up after innodb_lock_wait_timeout seconds (50 by default). Only that statement failed.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Lesson 7.3 · JSON Columns</div>
+<ol class="steps" data-lesson-quiz="7.3">
+  <li><b>C</b> attributes-&gt;&gt;'$.format': The double arrow extracts and unquotes in one step: it is short for JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.format')).</li>
+  <li><b>A</b> JSON keys are case-sensitive, so $.FORMAT is NULL for every book: JSON keys are case-sensitive. No document has a FORMAT key, so the expression is NULL for every row, and NULL never equals anything. MySQL does not warn about a missing key.</li>
+  <li><b>B</b> Add a generated column for $.format and index that column: A generated column extracts the value from each document, and an ordinary index on that column can be used, even by queries that write the original JSON expression.</li>
+  <li><b>C</b> It fails with error 3140, because JSON keys must be double-quoted strings: The key format has no double quotes, so the text is not valid JSON and the JSON column rejects it with error 3140. The row keeps its old value.</li>
+  <li><b>B</b> The price, which every book has and every order total uses: Every book has a price, it needs an exact DECIMAL type and NOT NULL, and orders and reports calculate with it all the time. That is regular-column data.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>Committed after 3819:</b> every change made before the failed statement in that transaction; the failed statement undid only itself. ROLLBACK after an error, or a handler.</li>
+  <li><b>The handler:</b> <code class="inline">DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;</code> (declared after the variables, before the other statements).</li>
+  <li><b>JSON or column:</b> JSON for optional, varied, display-only details (series, edition, awards, illustrated); a column for what every row has or what you join, sum or constrain (price, author_id, customer_id). Accept any pair with a reason from the lesson's table.</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q1 A ("kept, because the UPDATE succeeded").</b> Success is not commitment. Rerun the two-window step: B never saw the change until COMMIT.</li>
+  <li><b>Q3 A or D (a savepoint statement ends the transaction).</b> Confuses bookmarks with endings; only COMMIT, ROLLBACK and implicit commits end it.</li>
+  <li><b>Q4 B ("the committed value at once").</b> Right for a plain SELECT, wrong for FOR UPDATE: the whole point of a locking read is to wait.</li>
+  <li><b>Q6 B ("repeat the failed statement").</b> The victim's whole transaction is gone; repeating one statement leaves half a transfer.</li>
+  <li><b>Q7 B (JSON_EXTRACT).</b> Thinks the function is different from the arrow; it is the same thing. Only -&gt;&gt; (or JSON_UNQUOTE) removes quotes.</li>
+  <li><b>Q12 C (line items in JSON).</b> The most tempting design mistake of the lesson: a list of related things with prices and books needs its own table and foreign keys.</li>
+  <li><b>Checkpoint, Part 3 orders = 4 for Alice.</b> Counting rows after a join counts the many side; COUNT(DISTINCT) or aggregate before joining.</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 11 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

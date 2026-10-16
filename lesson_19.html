@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn MySQL user management and permissions — CREATE USER, GRANT, REVOKE, SHOW GRANTS, roles, and the principle of least privilege for database security.">
-    <meta name="author" content="Ray De La Paz">
+    <meta name="description" content="Create MySQL accounts, grant and revoke privileges at the right level, group them into roles, and apply least privilege, with caching_sha2_password and the removed mysql_native_password explained. MySQL Foundations Lesson 7.4.">
+    <meta name="author" content="Ray de la Paz">
     <title>User Management &amp; Permissions - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -42,32 +42,35 @@
     <nav class="breadcrumb" aria-label="Breadcrumb">
         <ul>
             <li><a href="index.html">Home</a></li>
-            <li><a href="index.html#modules">Module 6: Advanced Features</a></li>
-            <li aria-current="page">Lesson 19: User Management &amp; Permissions</li>
+            <li><a href="index.html#modules">Module 7: Advanced Features</a></li>
+            <li aria-current="page">Lesson 7.4: User Management &amp; Permissions</li>
         </ul>
     </nav>
 
     <main id="main-content">
         <div class="container">
             <header>
-                <h1>🛡️ Lesson 19: User Management &amp; Permissions</h1>
-                <p class="lead">So far you've been working as the <code>root</code> user — the all-powerful superuser who can do anything: read, write, delete, create users, drop databases, the works. In production, that's a disaster waiting to happen. One mistyped <code>DROP DATABASE</code> and everything is gone. Proper user management gives each person (or application) <em>only</em> the permissions they need — no more, no less. This is the <strong>principle of least privilege</strong>, and it's the foundation of database security.</p>
+                <h1>🛡️ Lesson 7.4: User Management &amp; Permissions</h1>
+                <p class="lead">Every query in this course so far ran as <code>root</code>, the account that can do anything, including <code>DROP DATABASE</code>. That is fine on your own laptop and dangerous everywhere else. This lesson gives each person and program its own account with only the privileges it needs, so that a mistake, a bug or a stolen password can do as little damage as possible.</p>
 
                 <div class="card card-info">
                     <h2>🎯 Learning Objectives</h2>
                     <p>By the end of this lesson, you will be able to:</p>
                     <ul>
-                        <li>Create and manage MySQL user accounts</li>
-                        <li>Grant specific privileges with <code>GRANT</code></li>
-                        <li>Revoke privileges with <code>REVOKE</code></li>
-                        <li>View a user's privileges with <code>SHOW GRANTS</code></li>
-                        <li>Understand privilege levels (global, database, table, column)</li>
-                        <li>Use roles to manage groups of privileges (MySQL 8+)</li>
-                        <li>Apply the principle of least privilege</li>
+                        <li>Create accounts as <code>'user'@'host'</code> and explain how MySQL 9.7 stores their passwords (<code>caching_sha2_password</code>)</li>
+                        <li>Grant and revoke privileges at the global, database, table and column level, and read <code>SHOW GRANTS</code></li>
+                        <li>Log in as a restricted user and recognize the access-denied errors (1142, 1143, 1044, 3118)</li>
+                        <li>Group privileges into roles, assign them, and make them active with <code>SET DEFAULT ROLE</code></li>
+                        <li>Design least-privilege accounts for an application, a report and staff, and script them</li>
                     </ul>
-                    <p><strong>Estimated Time:</strong> 40 minutes</p>
-                    <p><strong>Prerequisites:</strong> Transactions (<a href="lesson_18.html">Lesson 18</a>)</p>
                 </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 105 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_json.html">Lesson 7.3: JSON Columns</a></li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>team_access.sql</code>, a rerunnable script that creates the bookstore team's roles and accounts</li>
+                    <li><span class="meta-label">🗄️ Database</span> <code>bookstore</code> freshly loaded from <a href="assets/sql/bookstore.sql" download>bookstore.sql</a>; you will need the <code>root</code> account (or another administrator) and a second terminal window</li>
+                </ul>
             </header>
 
             <details class="card toc-card" open>
@@ -78,880 +81,986 @@
                 </summary>
                 <nav aria-label="Table of Contents">
                     <ol>
-                        <li><a href="#why-users" class="toc-link">Why User Management Matters</a></li>
-                        <li><a href="#creating-users" class="toc-link">Creating Users</a></li>
-                        <li><a href="#granting" class="toc-link">Granting Privileges</a></li>
-                        <li><a href="#privilege-levels" class="toc-link">Privilege Levels</a></li>
-                        <li><a href="#show-grants" class="toc-link">Viewing Privileges</a></li>
-                        <li><a href="#revoking" class="toc-link">Revoking Privileges</a></li>
-                        <li><a href="#modifying-users" class="toc-link">Modifying &amp; Deleting Users</a></li>
-                        <li><a href="#roles" class="toc-link">Roles (MySQL 8+)</a></li>
+                        <li><a href="#why" class="toc-link">Why Not Just Use root?</a></li>
+                        <li><a href="#accounts" class="toc-link">Accounts: 'user'@'host'</a></li>
+                        <li><a href="#authentication" class="toc-link">Passwords and caching_sha2_password</a></li>
+                        <li><a href="#grant" class="toc-link">GRANT: Giving Privileges</a></li>
+                        <li><a href="#levels" class="toc-link">Privilege Levels</a></li>
+                        <li><a href="#testing" class="toc-link">Testing as the User</a></li>
+                        <li><a href="#revoke" class="toc-link">REVOKE, ALTER USER and DROP USER</a></li>
+                        <li><a href="#roles" class="toc-link">Roles</a></li>
                         <li><a href="#least-privilege" class="toc-link">The Principle of Least Privilege</a></li>
-                        <li><a href="#common-setups" class="toc-link">Common User Setups</a></li>
-                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
-                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: Accounts for the Bookstore Team</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
                     </ol>
                 </nav>
             </details>
 
-            <!-- Section 1: Why User Management Matters -->
-            <section id="why-users" class="lesson-section">
-                <h2>Why User Management Matters</h2>
-                <p>Consider these scenarios:</p>
+            <section id="why" class="lesson-section">
+                <h2>🛡️ Why Not Just Use root?</h2>
+                <p>Picture the bookstore running on one shared <code>root</code> login:</p>
                 <ul>
-                    <li>A junior developer accidentally runs <code>DELETE FROM customers</code> without a WHERE clause — every customer record gone</li>
-                    <li>A reporting dashboard only needs to read data, but its database account can also write and delete</li>
-                    <li>An intern with root access drops the production database</li>
-                    <li>A web application's database credentials are compromised — the attacker has full admin access</li>
+                    <li>A sales clerk runs <code>DELETE FROM customers</code> and forgets the <code>WHERE</code>. Every customer is gone.</li>
+                    <li>The website has a bug that lets an attacker slip SQL into a search box. With <code>root</code>, the attacker can read every table, create accounts and drop databases.</li>
+                    <li>A report dashboard only ever reads, but its password sits in a config file that half the company can see.</li>
                 </ul>
-
-                <p>All of these are preventable with proper user management. Each user or application gets <strong>only the permissions required for their job</strong>.</p>
-
-                <div class="mermaid">
-                    graph TD
-                        R["root (superuser)"]
-                        R --> A["app_user<br/>SELECT, INSERT, UPDATE<br/>on bookstore only"]
-                        R --> B["report_user<br/>SELECT only<br/>on bookstore only"]
-                        R --> C["admin_user<br/>All privileges<br/>on bookstore only"]
-                        R --> D["backup_user<br/>SELECT, LOCK TABLES<br/>on all databases"]
-                </div>
-            </section>
-
-            <!-- Section 2: Creating Users -->
-            <section id="creating-users" class="lesson-section">
-                <h2>Creating Users</h2>
-
-                <h3>Basic Syntax</h3>
-
-                <pre><code class="language-sql">
-CREATE USER 'username'@'host' IDENTIFIED BY 'password';
-                </code></pre>
-
-                <p>A MySQL user is identified by <strong>two parts</strong>: the username and the host they connect from. The same username from different hosts is treated as different accounts.</p>
-
-                <h3>Common Host Patterns</h3>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Host</th>
-                                <th>Meaning</th>
-                                <th>Use Case</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>'localhost'</code></td>
-                                <td>Only from the same machine</td>
-                                <td>Local applications, CLI access</td>
-                            </tr>
-                            <tr>
-                                <td><code>'%'</code></td>
-                                <td>From any host (wildcard)</td>
-                                <td>Remote applications (use with caution)</td>
-                            </tr>
-                            <tr>
-                                <td><code>'192.168.1.%'</code></td>
-                                <td>From any IP in that subnet</td>
-                                <td>Internal network access</td>
-                            </tr>
-                            <tr>
-                                <td><code>'10.0.0.5'</code></td>
-                                <td>From one specific IP</td>
-                                <td>Locked to one server</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3>Examples</h3>
-
-                <pre><code class="language-sql">
--- User that can only connect locally
-CREATE USER 'app_user'@'localhost' IDENTIFIED BY 'SecurePass123!';
-
--- User that can connect from any host
-CREATE USER 'remote_user'@'%' IDENTIFIED BY 'RemotePass456!';
-
--- User locked to a specific IP
-CREATE USER 'api_service'@'10.0.0.50' IDENTIFIED BY 'ApiKey789!';
-                </code></pre>
-
-                <div class="card card-warning">
-                    <h4>⚠️ Strong Passwords</h4>
-                    <p>Always use strong passwords with a mix of uppercase, lowercase, numbers, and special characters. Never use <code>'password'</code>, <code>'123456'</code>, or the username as the password. In production, use a password manager or secrets management system.</p>
-                </div>
-
-                <h3>See All Users</h3>
-
-                <pre><code class="language-sql">
--- List all user accounts
-SELECT User, Host FROM mysql.user;
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Example Output:</h4>
-                    <pre><code>
-+------------------+-----------+
-| User             | Host      |
-+------------------+-----------+
-| root             | localhost |
-| mysql.sys        | localhost |
-| app_user         | localhost |
-| remote_user      | %         |
-+------------------+-----------+
-                    </code></pre>
-                </div>
-            </section>
-
-            <!-- Section 3: Granting Privileges -->
-            <section id="granting" class="lesson-section">
-                <h2>Granting Privileges</h2>
-                <p>Creating a user gives them <strong>zero permissions</strong> — they can connect but can't see or do anything. You must explicitly grant what they need.</p>
-
-                <h3>Basic Syntax</h3>
-
-                <pre><code class="language-sql">
-GRANT privilege_list ON database.table TO 'user'@'host';
-                </code></pre>
-
-                <h3>Common Privileges</h3>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Privilege</th>
-                                <th>Allows</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>SELECT</code></td>
-                                <td>Read data from tables</td>
-                            </tr>
-                            <tr>
-                                <td><code>INSERT</code></td>
-                                <td>Add new rows</td>
-                            </tr>
-                            <tr>
-                                <td><code>UPDATE</code></td>
-                                <td>Modify existing rows</td>
-                            </tr>
-                            <tr>
-                                <td><code>DELETE</code></td>
-                                <td>Remove rows</td>
-                            </tr>
-                            <tr>
-                                <td><code>CREATE</code></td>
-                                <td>Create tables and databases</td>
-                            </tr>
-                            <tr>
-                                <td><code>DROP</code></td>
-                                <td>Delete tables and databases</td>
-                            </tr>
-                            <tr>
-                                <td><code>ALTER</code></td>
-                                <td>Modify table structure</td>
-                            </tr>
-                            <tr>
-                                <td><code>INDEX</code></td>
-                                <td>Create and drop indexes</td>
-                            </tr>
-                            <tr>
-                                <td><code>EXECUTE</code></td>
-                                <td>Run stored procedures and functions</td>
-                            </tr>
-                            <tr>
-                                <td><code>CREATE VIEW</code></td>
-                                <td>Create views</td>
-                            </tr>
-                            <tr>
-                                <td><code>ALL PRIVILEGES</code></td>
-                                <td>Everything (on the specified scope)</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3>Examples</h3>
-
-                <pre><code class="language-sql">
--- Read-only access to the bookstore database
-GRANT SELECT ON bookstore.* TO 'report_user'@'localhost';
-
--- Full CRUD access to bookstore
-GRANT SELECT, INSERT, UPDATE, DELETE ON bookstore.* TO 'app_user'@'localhost';
-
--- All privileges on bookstore (but not on other databases)
-GRANT ALL PRIVILEGES ON bookstore.* TO 'admin_user'@'localhost';
-
--- Read access to a specific table only
-GRANT SELECT ON bookstore.books TO 'catalog_viewer'@'localhost';
-
--- Apply changes (required in older MySQL versions)
-FLUSH PRIVILEGES;
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 FLUSH PRIVILEGES</h4>
-                    <p>When you use GRANT and REVOKE, MySQL updates privileges immediately. <code>FLUSH PRIVILEGES</code> is only necessary if you modified the privilege tables directly (e.g., with INSERT into mysql.user). In practice, many people include it out of habit — it's harmless but usually unnecessary with GRANT/REVOKE.</p>
-                </div>
-
-                <h3>GRANT with Grant Option</h3>
-                <p>If you want a user to be able to grant their own privileges to others:</p>
-
-                <pre><code class="language-sql">
--- admin_user can grant privileges to other users
-GRANT ALL PRIVILEGES ON bookstore.*
-TO 'admin_user'@'localhost'
-WITH GRANT OPTION;
-                </code></pre>
-
-                <div class="card card-warning">
-                    <h4>⚠️ Use WITH GRANT OPTION Carefully</h4>
-                    <p>A user with GRANT OPTION can give their privileges to anyone. This can cascade out of control. Only give it to trusted administrators.</p>
-                </div>
-            </section>
-
-            <!-- Section 4: Privilege Levels -->
-            <section id="privilege-levels" class="lesson-section">
-                <h2>Privilege Levels</h2>
-                <p>Privileges can be scoped at different levels — from "everything on the server" to "one column in one table."</p>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Level</th>
-                                <th>Syntax</th>
-                                <th>Scope</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><strong>Global</strong></td>
-                                <td><code>ON *.*</code></td>
-                                <td>All databases, all tables on the server</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Database</strong></td>
-                                <td><code>ON database_name.*</code></td>
-                                <td>All tables in one database</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Table</strong></td>
-                                <td><code>ON database_name.table_name</code></td>
-                                <td>One specific table</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Column</strong></td>
-                                <td><code>GRANT SELECT (col1, col2) ON db.table</code></td>
-                                <td>Specific columns in a table</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Routine</strong></td>
-                                <td><code>GRANT EXECUTE ON PROCEDURE db.proc</code></td>
-                                <td>A specific stored procedure or function</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3>Examples at Each Level</h3>
-
-                <pre><code class="language-sql">
--- Global: SELECT on every database (e.g., monitoring tool)
-GRANT SELECT ON *.* TO 'monitor'@'localhost';
-
--- Database: Full access to bookstore only
-GRANT ALL PRIVILEGES ON bookstore.* TO 'admin_user'@'localhost';
-
--- Table: Read only the books table
-GRANT SELECT ON bookstore.books TO 'catalog_viewer'@'localhost';
-
--- Column: See customer names but not emails or phones
-GRANT SELECT (id, first_name, last_name) ON bookstore.customers
-TO 'limited_viewer'@'localhost';
-
--- Routine: Run a specific stored procedure
-GRANT EXECUTE ON PROCEDURE bookstore.place_order TO 'app_user'@'localhost';
-                </code></pre>
+                <p>None of these needs <code>root</code>. Each needs an account with a short list of privileges. That idea has a name, the <strong>principle of least privilege</strong>: every account gets the minimum it needs to do its job, and nothing more.</p>
 
                 <div class="mermaid">
-                    graph TD
-                        G["Global (*.*)<br/>All databases"] --> D["Database (db.*)<br/>All tables in one DB"]
-                        D --> T["Table (db.table)<br/>One table"]
-                        T --> C["Column (col1, col2)<br/>Specific columns"]
-                        D --> R["Routine (PROCEDURE/FUNCTION)<br/>One stored routine"]
+graph TD
+    R["root: administrators only"] --> A["programs: own narrow accounts"]
+    R --> P["people: accounts plus roles"]
+    A --> A1["website, report dashboard"]
+    P --> P1["clerks, support, managers"]
                 </div>
 
-                <div class="card card-info">
-                    <h4>💡 Narrower Is Safer</h4>
-                    <p>Always grant at the narrowest level possible. If a user only needs to read the books table, grant SELECT on <code>bookstore.books</code> — not on <code>bookstore.*</code> and definitely not on <code>*.*</code>.</p>
+                <div class="card card-danger">
+                    <h4>🛑 Ground rules for this lesson</h4>
+                    <p>Practice on your own MySQL server, not on one that other people depend on. Never change <code>root</code>'s own password or privileges while experimenting: if you lock yourself out, recovering takes a server restart with special options. Every example here creates its own demo accounts. The passwords are obvious placeholders like <code>'CHANGE-ME-reports-1'</code>; real ones come from a password manager.</p>
                 </div>
+
+                <p>Start from a clean bookstore (the JSON lesson added columns to <code>books</code>):</p>
+                <pre><code class="language-sql">SOURCE ~/mysql-course/bookstore.sql</code></pre>
             </section>
 
-            <!-- Section 5: Viewing Privileges -->
-            <section id="show-grants" class="lesson-section">
-                <h2>Viewing Privileges</h2>
+            <section id="accounts" class="lesson-section">
+                <h2>👤 Accounts: 'user'@'host'</h2>
+                <p>A MySQL account has two parts: a user name and the <strong>host</strong> the user connects from. <code>'shop_reports'@'localhost'</code> and <code>'shop_reports'@'%'</code> are two different accounts, with their own passwords and privileges.</p>
 
-                <pre><code class="language-sql">
--- See your own privileges
-SHOW GRANTS;
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Host part</th><th>Matches connections from</th><th>Typical use</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>'localhost'</code></td><td>The same machine (socket or 127.0.0.1)</td><td>An app on the same server, you at the console</td></tr>
+                            <tr><td><code>'10.0.0.25'</code></td><td>One IP address</td><td>One application server</td></tr>
+                            <tr><td><code>'10.0.0.%'</code></td><td>A range of addresses (<code>%</code> is a wildcard)</td><td>An office or internal network</td></tr>
+                            <tr><td><code>'%'</code></td><td>Anywhere</td><td>Only with a firewall in front and TLS required</td></tr>
+                        </tbody>
+                    </table>
+                </div>
 
--- See another user's privileges
-SHOW GRANTS FOR 'app_user'@'localhost';
-                </code></pre>
+                <p>Create the first account, a read-only login for the monthly reports, and look it up in the <code>mysql.user</code> system table:</p>
+                <pre><code class="language-sql">CREATE USER 'shop_reports'@'localhost' IDENTIFIED BY 'CHANGE-ME-reports-1';
 
+SELECT user, host, plugin, account_locked
+FROM mysql.user
+WHERE user = 'shop_reports';</code></pre>
                 <div class="card card-output">
-                    <h4>Example Output:</h4>
-                    <pre><code>
-+-----------------------------------------------------------------------+
-| Grants for app_user@localhost                                         |
-+-----------------------------------------------------------------------+
-| GRANT USAGE ON *.* TO `app_user`@`localhost`                          |
-| GRANT SELECT, INSERT, UPDATE, DELETE ON `bookstore`.* TO `app_user`@… |
-+-----------------------------------------------------------------------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+--------------+-----------+-----------------------+----------------+
+| user         | host      | plugin                | account_locked |
++--------------+-----------+-----------------------+----------------+
+| shop_reports | localhost | caching_sha2_password | N              |
++--------------+-----------+-----------------------+----------------+</code></pre>
                 </div>
-
-                <p><code>USAGE</code> means "no privileges" at the global level — it's the default grant that says "this account exists and can connect, but has no global permissions." The real permissions come from the second line.</p>
-
-                <h3>Checking Current User</h3>
-
-                <pre><code class="language-sql">
--- Who am I?
-SELECT CURRENT_USER();
-
--- What's my connection info?
-SELECT USER();
-                </code></pre>
-            </section>
-
-            <!-- Section 6: Revoking Privileges -->
-            <section id="revoking" class="lesson-section">
-                <h2>Revoking Privileges</h2>
-                <p>Remove privileges with <code>REVOKE</code> — the syntax mirrors GRANT:</p>
-
-                <pre><code class="language-sql">
--- Remove DELETE privilege (keep SELECT, INSERT, UPDATE)
-REVOKE DELETE ON bookstore.* FROM 'app_user'@'localhost';
-
--- Remove all privileges on bookstore
-REVOKE ALL PRIVILEGES ON bookstore.* FROM 'app_user'@'localhost';
-
--- Remove the grant option
-REVOKE GRANT OPTION ON bookstore.* FROM 'admin_user'@'localhost';
-                </code></pre>
-
-                <h3>Verify After Revoking</h3>
-
-                <pre><code class="language-sql">
--- Always verify the change took effect
-SHOW GRANTS FOR 'app_user'@'localhost';
-                </code></pre>
+                <p>The account exists and is not locked. The <code>plugin</code> column says how its password is checked: that is the next section.</p>
 
                 <div class="card card-info">
-                    <h4>💡 REVOKE Doesn't Delete the User</h4>
-                    <p>Revoking all privileges leaves the user account intact — they can still connect, they just can't do anything. To fully remove a user, use <code>DROP USER</code> (next section).</p>
+                    <h4>💡 Leaving out the host</h4>
+                    <p><code>CREATE USER 'shop_reports'</code> without <code>@'...'</code> means <code>@'%'</code>: any host. Always write the host on purpose.</p>
                 </div>
             </section>
 
-            <!-- Section 7: Modifying & Deleting Users -->
-            <section id="modifying-users" class="lesson-section">
-                <h2>Modifying &amp; Deleting Users</h2>
+            <section id="authentication" class="lesson-section">
+                <h2>🔐 Passwords and caching_sha2_password</h2>
+                <p>MySQL never stores the password itself. It stores a salted SHA-256 hash, produced by an <strong>authentication plugin</strong>. In MySQL 8.4 and 9.7, new accounts use <code>caching_sha2_password</code> unless you say otherwise. Every current client speaks it: the <code>mysql</code> client, MySQL Workbench, PHP's mysqlnd, and the current connectors for Python, Java, Node.js and .NET.</p>
 
-                <h3>Change a Password</h3>
+                <h3>The old advice that no longer works</h3>
+                <p>Many older tutorials say: "if your app cannot connect, switch the account to <code>mysql_native_password</code>". That plugin used a weak SHA-1 hash. MySQL 8.4 ships it disabled, and MySQL 9 removed it completely:</p>
+                <pre data-raises="ERROR 1524"><code class="language-sql">CREATE USER 'legacy_app'@'localhost' IDENTIFIED WITH mysql_native_password BY 'CHANGE-ME-legacy-1';</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1524 (HY000): Plugin 'mysql_native_password' is not loaded</code></pre>
+                </div>
+                <p>If an old program reports <code>Authentication plugin 'caching_sha2_password' cannot be loaded</code> or a similar message, the fix is to update the program's MySQL driver, not to weaken the server.</p>
 
-                <pre><code class="language-sql">
--- Change another user's password (as root)
-ALTER USER 'app_user'@'localhost' IDENTIFIED BY 'NewSecurePass789!';
+                <div class="card card-info">
+                    <h4>🐬 Version note</h4>
+                    <p><strong>MySQL 8.4</strong> gives the same ERROR 1524 by default. <strong>MariaDB</strong> (XAMPP, many shared hosts) is different: it never adopted <code>caching_sha2_password</code>, its new accounts use <code>mysql_native_password</code>, and its stronger alternative is <code>ed25519</code>, set with <code>IDENTIFIED VIA ed25519</code>. <code>CREATE USER</code>, <code>GRANT</code>, <code>REVOKE</code> and <code>ACCOUNT LOCK</code> work as written, but roles and some account options differ: one role per <code>GRANT</code>, <code>SET DEFAULT ROLE role_name FOR 'user'@'host'</code> (one default role, no <code>ALL</code>), no <code>SHOW GRANTS ... USING</code>, no <code>mysql.default_roles</code> table, no <code>account_locked</code> column in <code>mysql.user</code>, and no <code>FAILED_LOGIN_ATTEMPTS</code>. A <code>GRANT</code> to a missing account fails with error 1133 instead of 1410.</p>
+                </div>
+                <pre data-server="mariadb"><code class="language-sql">CREATE USER 'shop_reports'@'localhost' IDENTIFIED BY 'CHANGE-ME-reports-1';
 
--- Change your own password
-ALTER USER CURRENT_USER() IDENTIFIED BY 'MyNewPassword!';
+SELECT user, host, plugin FROM mysql.user WHERE user = 'shop_reports';</code></pre>
+                <div class="card card-output">
+                    <h4>Output on MariaDB</h4>
+                    <pre><code>+--------------+-----------+-----------------------+
+| User         | Host      | plugin                |
++--------------+-----------+-----------------------+
+| shop_reports | localhost | mysql_native_password |
++--------------+-----------+-----------------------+</code></pre>
+                </div>
+            </section>
 
--- Older syntax (still works):
-SET PASSWORD FOR 'app_user'@'localhost' = 'NewSecurePass789!';
-                </code></pre>
+            <section id="grant" class="lesson-section">
+                <h2>🎁 GRANT: Giving Privileges</h2>
+                <p>A new account can log in and do almost nothing else. <code>SHOW GRANTS</code> lists what an account may do:</p>
+                <pre><code class="language-sql">SHOW GRANTS FOR 'shop_reports'@'localhost';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+--------------------------------------------------+
+| Grants for shop_reports@localhost                |
++--------------------------------------------------+
+| GRANT USAGE ON *.* TO `shop_reports`@`localhost` |
++--------------------------------------------------+</code></pre>
+                </div>
+                <p><code>USAGE</code> means "no privileges": the account exists and may connect, that is all. Now give it read access to every table in <code>bookstore</code>:</p>
+                <pre><code class="language-sql">GRANT SELECT ON bookstore.* TO 'shop_reports'@'localhost';
 
-                <h3>Rename a User</h3>
+SHOW GRANTS FOR 'shop_reports'@'localhost';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------------------------------------------------+
+| Grants for shop_reports@localhost                           |
++-------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `shop_reports`@`localhost`            |
+| GRANT SELECT ON `bookstore`.* TO `shop_reports`@`localhost` |
++-------------------------------------------------------------+</code></pre>
+                </div>
+                <p>The pattern is always <code>GRANT what ON where TO whom</code>. The change takes effect immediately; you do not need <code>FLUSH PRIVILEGES</code> after <code>GRANT</code>, <code>REVOKE</code> or <code>CREATE USER</code> (old tutorials add it out of habit).</p>
 
-                <pre><code class="language-sql">
-RENAME USER 'old_name'@'localhost' TO 'new_name'@'localhost';
-                </code></pre>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Privilege</th><th>Allows</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>SELECT</code></td><td>Reading rows</td></tr>
+                            <tr><td><code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code></td><td>Adding, changing, removing rows</td></tr>
+                            <tr><td><code>CREATE</code>, <code>ALTER</code>, <code>DROP</code>, <code>INDEX</code></td><td>Creating, changing and removing tables and indexes</td></tr>
+                            <tr><td><code>CREATE VIEW</code>, <code>SHOW VIEW</code></td><td>Creating views, reading their definitions</td></tr>
+                            <tr><td><code>EXECUTE</code></td><td>Calling stored procedures and functions</td></tr>
+                            <tr><td><code>CREATE USER</code>, <code>GRANT OPTION</code></td><td>Managing other accounts (administrators only)</td></tr>
+                            <tr><td><code>ALL PRIVILEGES</code></td><td>Everything at that level except <code>GRANT OPTION</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                <h3>Lock/Unlock an Account</h3>
+                <h3>An account for the website</h3>
+                <p>The online store reads the catalog and records customers and orders. It never changes prices or deletes anything. Grant exactly that, table by table:</p>
+                <pre><code class="language-sql">CREATE USER 'shop_app'@'localhost' IDENTIFIED BY 'CHANGE-ME-app-1';
 
-                <pre><code class="language-sql">
--- Temporarily disable an account (MySQL 5.7.6+)
-ALTER USER 'app_user'@'localhost' ACCOUNT LOCK;
+GRANT SELECT ON bookstore.* TO 'shop_app'@'localhost';
+GRANT INSERT, UPDATE ON bookstore.customers   TO 'shop_app'@'localhost';
+GRANT INSERT         ON bookstore.orders      TO 'shop_app'@'localhost';
+GRANT INSERT         ON bookstore.order_items TO 'shop_app'@'localhost';
 
--- Re-enable it
-ALTER USER 'app_user'@'localhost' ACCOUNT UNLOCK;
-                </code></pre>
-
-                <h3>Delete a User</h3>
-
-                <pre><code class="language-sql">
--- Remove a user entirely (account + all privileges)
-DROP USER 'app_user'@'localhost';
-
--- Safe version (no error if user doesn't exist)
-DROP USER IF EXISTS 'app_user'@'localhost';
-                </code></pre>
+SHOW GRANTS FOR 'shop_app'@'localhost';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------------------------------------------------------------+
+| Grants for shop_app@localhost                                             |
++---------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `shop_app`@`localhost`                              |
+| GRANT SELECT ON `bookstore`.* TO `shop_app`@`localhost`                   |
+| GRANT INSERT, UPDATE ON `bookstore`.`customers` TO `shop_app`@`localhost` |
+| GRANT INSERT ON `bookstore`.`order_items` TO `shop_app`@`localhost`       |
+| GRANT INSERT ON `bookstore`.`orders` TO `shop_app`@`localhost`            |
++---------------------------------------------------------------------------+</code></pre>
+                </div>
+                <p>If the website is ever compromised, the attacker can read the catalog and add orders, but cannot change a price, delete a customer or drop a table.</p>
 
                 <div class="card card-warning">
-                    <h4>⚠️ DROP USER Is Permanent</h4>
-                    <p>Dropping a user removes the account and all its privilege grants. If the user was the owner of stored procedures or views, those objects may become inaccessible. Verify dependencies before dropping accounts.</p>
+                    <h4>⚠️ WITH GRANT OPTION</h4>
+                    <p>Adding <code>WITH GRANT OPTION</code> to a <code>GRANT</code> lets that account pass its privileges on to others. Give it only to real administrators, never to an application.</p>
                 </div>
             </section>
 
-            <!-- Section 8: Roles -->
+            <section id="levels" class="lesson-section">
+                <h2>🎚️ Privilege Levels</h2>
+                <p>The <code>ON</code> part decides how far a privilege reaches:</p>
+
+                <div class="mermaid">
+graph TD
+    G["Global: ON *.*"] --> D["Database: ON bookstore.*"]
+    D --> T["Table: ON bookstore.books"]
+    T --> C["Column: SELECT (email)"]
+    D --> P["Routine: ON PROCEDURE ..."]
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Level</th><th>Syntax</th><th>Reaches</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Global</td><td><code>ON *.*</code></td><td>Every database on the server, now and in future (administrators only)</td></tr>
+                            <tr><td>Database</td><td><code>ON bookstore.*</code></td><td>Every table in one database, including tables created later</td></tr>
+                            <tr><td>Table</td><td><code>ON bookstore.orders</code></td><td>One table or view</td></tr>
+                            <tr><td>Column</td><td><code>SELECT (id, email) ON bookstore.customers</code></td><td>Some columns of one table</td></tr>
+                            <tr><td>Routine</td><td><code>EXECUTE ON PROCEDURE bookstore.name</code></td><td>One stored procedure or function</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Column-level privileges</h3>
+                <p>The support desk answers customer emails. It may see a customer's name and email and fix a mistyped email, but it has no business reading anything else:</p>
+                <pre><code class="language-sql">CREATE USER 'support_desk'@'localhost' IDENTIFIED BY 'CHANGE-ME-support-1';
+
+GRANT SELECT (id, first_name, last_name, email), UPDATE (email)
+    ON bookstore.customers TO 'support_desk'@'localhost';
+
+SHOW GRANTS FOR 'support_desk'@'localhost';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------------------------------------------------------------------------------------------------------------------+
+| Grants for support_desk@localhost                                                                                                  |
++------------------------------------------------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `support_desk`@`localhost`                                                                                   |
+| GRANT SELECT (`email`, `first_name`, `id`, `last_name`), UPDATE (`email`) ON `bookstore`.`customers` TO `support_desk`@`localhost` |
++------------------------------------------------------------------------------------------------------------------------------------+</code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h4>💡 A view is often simpler</h4>
+                    <p>Column lists get long and are easy to forget when a table changes. The alternative from <a href="lesson_15.html">Lesson 6.2</a>: create a view with exactly the columns (and rows) someone may see, and grant <code>SELECT</code> on the view only. Exercise 3 does this.</p>
+                </div>
+            </section>
+
+            <section id="testing" class="lesson-section">
+                <h2>🧪 Testing as the User</h2>
+                <p>A grant you have not tested is a guess. Open a <strong>second</strong> terminal and log in as the account (your <code>root</code> session stays open in the first one):</p>
+                <pre><code class="language-bash">mysql -u shop_reports -p bookstore</code></pre>
+                <p>Type the password when asked; it is not shown and never belongs on the command line, where it would land in your shell history. Then check who you are and try a read and a delete:</p>
+                <pre data-norun><code class="language-sql">SELECT CURRENT_USER();
+SELECT COUNT(*) AS books FROM books;
+DELETE FROM books WHERE id = 11;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (as shop_reports)</h4>
+                    <pre><code>+------------------------+
+| CURRENT_USER()         |
++------------------------+
+| shop_reports@localhost |
++------------------------+
++-------+
+| books |
++-------+
+|    11 |
++-------+
+ERROR 1142 (42000): DELETE command denied to user 'shop_reports'@'localhost' for table 'books'</code></pre>
+                </div>
+                <p>Reading works; deleting is refused with error 1142, and Animal Farm is safe. Exit and log in as <code>support_desk</code>:</p>
+                <pre data-norun><code class="language-sql">SELECT first_name, email FROM customers WHERE id = 1;
+SELECT first_name, city FROM customers WHERE id = 1;
+SELECT * FROM customers WHERE id = 1;
+SELECT * FROM orders;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (as support_desk)</h4>
+                    <pre><code>+------------+-------------------+
+| first_name | email             |
++------------+-------------------+
+| Alice      | alice@example.com |
++------------+-------------------+
+ERROR 1143 (42000): SELECT command denied to user 'support_desk'@'localhost' for column 'city' in table 'customers'
+ERROR 1142 (42000): SELECT command denied to user 'support_desk'@'localhost' for table 'customers'
+ERROR 1142 (42000): SELECT command denied to user 'support_desk'@'localhost' for table 'orders'</code></pre>
+                </div>
+                <p>Error 1143 is the column-level cousin of 1142: it names the column that was never granted. <code>SELECT *</code> is refused for the whole table (1142), because the account may not read every column; name the allowed columns instead. Type <code>EXIT</code> to leave each test session.</p>
+
+                <div class="card card-success">
+                    <h4>✅ Test both directions</h4>
+                    <p>For every account, run one thing it must be able to do and one thing it must not. Both results matter: a grant that is too small breaks the app, one that is too big is a silent security hole.</p>
+                </div>
+            </section>
+
+            <section id="revoke" class="lesson-section">
+                <h2>↩️ REVOKE, ALTER USER and DROP USER</h2>
+                <h3>Taking privileges away</h3>
+                <p><code>REVOKE</code> mirrors <code>GRANT</code>, with <code>FROM</code> instead of <code>TO</code>. The website should not update customers after all (a separate account will handle profile changes):</p>
+                <pre><code class="language-sql">REVOKE UPDATE ON bookstore.customers FROM 'shop_app'@'localhost';
+
+SHOW GRANTS FOR 'shop_app'@'localhost';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------------------------------------------------------+
+| Grants for shop_app@localhost                                       |
++---------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `shop_app`@`localhost`                        |
+| GRANT SELECT ON `bookstore`.* TO `shop_app`@`localhost`             |
+| GRANT INSERT ON `bookstore`.`customers` TO `shop_app`@`localhost`   |
+| GRANT INSERT ON `bookstore`.`order_items` TO `shop_app`@`localhost` |
+| GRANT INSERT ON `bookstore`.`orders` TO `shop_app`@`localhost`      |
++---------------------------------------------------------------------+</code></pre>
+                </div>
+                <p>Revoke at the same level you granted: <code>UPDATE</code> was granted on the <code>customers</code> table, so it is revoked on that table. The account itself stays; a session that is already connected keeps its current database open but is checked against the new privileges on its next statement.</p>
+
+                <h3>Changing an account</h3>
+                <p><code>ALTER USER</code> changes the password and the account's rules. A nightly batch job gets an account that expires its password every 90 days and locks itself for a day after three wrong passwords:</p>
+                <pre><code class="language-sql">CREATE USER 'night_batch'@'localhost' IDENTIFIED BY 'CHANGE-ME-batch-1'
+    PASSWORD EXPIRE INTERVAL 90 DAY
+    FAILED_LOGIN_ATTEMPTS 3 PASSWORD_LOCK_TIME 1;
+
+ALTER USER 'night_batch'@'localhost' IDENTIFIED BY 'CHANGE-ME-batch-2';
+ALTER USER 'night_batch'@'localhost' ACCOUNT LOCK;
+
+SELECT user, host, password_lifetime, account_locked
+FROM mysql.user
+WHERE user = 'night_batch';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------+-----------+-------------------+----------------+
+| user        | host      | password_lifetime | account_locked |
++-------------+-----------+-------------------+----------------+
+| night_batch | localhost |                90 | Y              |
++-------------+-----------+-------------------+----------------+</code></pre>
+                </div>
+                <p>Locking is how you disable an account without losing its grants (for a staff member on leave, or a job you are about to retire). A login attempt to a locked account fails before the password even matters:</p>
+                <pre data-norun><code class="language-bash">mysql -u night_batch -p</code></pre>
+                <div class="card card-output">
+                    <h4>Output (logging in to the locked account)</h4>
+                    <pre><code>ERROR 3118 (HY000): Access denied for user 'night_batch'@'localhost'. Account is locked.</code></pre>
+                </div>
+                <p><code>ALTER USER ... ACCOUNT UNLOCK</code> opens it again.</p>
+
+                <div class="card card-danger">
+                    <h4>🛑 Change other accounts, not your own</h4>
+                    <p><code>ALTER USER CURRENT_USER() IDENTIFIED BY ...</code> changes the password of the account you are logged in with. As <code>root</code> on a practice server, that is the classic way to lock yourself out. Practice password changes on demo accounts like <code>night_batch</code>.</p>
+                </div>
+
+                <h3>Renaming and removing accounts</h3>
+                <pre><code class="language-sql">RENAME USER 'night_batch'@'localhost' TO 'nightly_import'@'localhost';
+DROP USER 'nightly_import'@'localhost';
+DROP USER IF EXISTS 'nightly_import'@'localhost';
+
+SELECT user FROM mysql.user WHERE user LIKE 'night%';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Empty set</code></pre>
+                </div>
+                <p><code>DROP USER</code> removes the account and all its grants in one step. <code>IF EXISTS</code> turns "no such account" into a warning instead of error 1396, which is what you want in a script that may run twice.</p>
+            </section>
+
             <section id="roles" class="lesson-section">
-                <h2>Roles (MySQL 8+)</h2>
-                <p>A <strong>role</strong> is a named collection of privileges. Instead of granting the same set of privileges to 20 users individually, you define a role once and assign it to users. Change the role's privileges and all assigned users are updated automatically.</p>
-
-                <h3>Create and Use a Role</h3>
-
-                <pre><code class="language-sql">
--- Step 1: Create the role
-CREATE ROLE 'bookstore_reader';
-
--- Step 2: Grant privileges to the role
-GRANT SELECT ON bookstore.* TO 'bookstore_reader';
-
--- Step 3: Assign the role to users
-GRANT 'bookstore_reader' TO 'alice'@'localhost';
-GRANT 'bookstore_reader' TO 'bob'@'localhost';
-GRANT 'bookstore_reader' TO 'carol'@'localhost';
-
--- Step 4: Activate the role for a user's session
-SET DEFAULT ROLE 'bookstore_reader' TO 'alice'@'localhost';
--- Or for all roles:
-SET DEFAULT ROLE ALL TO 'alice'@'localhost';
-                </code></pre>
-
-                <h3>Multiple Roles</h3>
-
-                <pre><code class="language-sql">
--- Define roles for different access levels
-CREATE ROLE 'bookstore_reader', 'bookstore_writer', 'bookstore_admin';
-
-GRANT SELECT ON bookstore.* TO 'bookstore_reader';
-GRANT SELECT, INSERT, UPDATE, DELETE ON bookstore.* TO 'bookstore_writer';
-GRANT ALL PRIVILEGES ON bookstore.* TO 'bookstore_admin';
-
--- A user can have multiple roles
-GRANT 'bookstore_reader', 'bookstore_writer' TO 'app_user'@'localhost';
-SET DEFAULT ROLE ALL TO 'app_user'@'localhost';
-                </code></pre>
-
-                <h3>Drop a Role</h3>
-
-                <pre><code class="language-sql">
-DROP ROLE 'bookstore_reader';
-                </code></pre>
-
-                <div class="card card-success">
-                    <h4>✅ When to Use Roles</h4>
-                    <p>Roles shine when you have many users with the same access needs. Instead of running 20 GRANT statements when a new table is added, update the role once. Roles are especially valuable in teams where people join, leave, or change positions regularly.</p>
-                </div>
+                <h2>🎭 Roles</h2>
+                <p>The bookstore has several sales clerks who all need the same privileges. Granting them one by one to every clerk means changing every account whenever the job changes. A <strong>role</strong> is a named bundle of privileges: grant privileges to the role once, then grant the role to people.</p>
 
                 <div class="mermaid">
-                    graph TD
-                        subgraph roles["Roles"]
-                            RR["bookstore_reader<br/>SELECT"]
-                            RW["bookstore_writer<br/>SELECT, INSERT, UPDATE, DELETE"]
-                            RA["bookstore_admin<br/>ALL PRIVILEGES"]
-                        end
-                        subgraph users["Users"]
-                            U1["alice"]
-                            U2["bob"]
-                            U3["carol"]
-                            U4["dave"]
-                        end
-                        RR --> U1
-                        RR --> U2
-                        RW --> U3
-                        RA --> U4
+graph TD
+    P["SELECT, INSERT on orders..."] --> R["role: bookstore_sales"]
+    R --> T["tom@localhost"]
+    R --> L["lena@localhost"]
+                </div>
+
+                <pre><code class="language-sql">CREATE ROLE 'bookstore_reader', 'bookstore_sales';
+
+GRANT SELECT ON bookstore.* TO 'bookstore_reader';
+GRANT INSERT, UPDATE ON bookstore.orders      TO 'bookstore_sales';
+GRANT INSERT, UPDATE ON bookstore.order_items TO 'bookstore_sales';
+
+CREATE USER 'tom'@'localhost'  IDENTIFIED BY 'CHANGE-ME-tom-1';
+CREATE USER 'lena'@'localhost' IDENTIFIED BY 'CHANGE-ME-lena-1';
+
+GRANT 'bookstore_reader', 'bookstore_sales' TO 'tom'@'localhost', 'lena'@'localhost';
+
+SHOW GRANTS FOR 'tom'@'localhost';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------------------------------------------------------------+
+| Grants for tom@localhost                                                |
++-------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `tom`@`localhost`                                 |
+| GRANT `bookstore_reader`@`%`,`bookstore_sales`@`%` TO `tom`@`localhost` |
++-------------------------------------------------------------------------+</code></pre>
+                </div>
+                <p>Tom's own grants list only the roles. To see what they add up to, ask with <code>USING</code>:</p>
+                <pre><code class="language-sql">SHOW GRANTS FOR 'tom'@'localhost' USING 'bookstore_reader', 'bookstore_sales';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------------------------------------------------------------+
+| Grants for tom@localhost                                                |
++-------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `tom`@`localhost`                                 |
+| GRANT SELECT ON `bookstore`.* TO `tom`@`localhost`                      |
+| GRANT INSERT, UPDATE ON `bookstore`.`order_items` TO `tom`@`localhost`  |
+| GRANT INSERT, UPDATE ON `bookstore`.`orders` TO `tom`@`localhost`       |
+| GRANT `bookstore_reader`@`%`,`bookstore_sales`@`%` TO `tom`@`localhost` |
++-------------------------------------------------------------------------+</code></pre>
+                </div>
+
+                <h3>The step everybody forgets: activating the role</h3>
+                <p>A granted role is not switched on automatically. Until it is active in Tom's session, Tom has nothing but <code>USAGE</code>. If you stop here, <code>mysql -u tom -p bookstore</code> does not even get past the login (<code>ERROR 1044 (42000): Access denied for user 'tom'@'localhost' to database 'bookstore'</code>). Logged in with <code>mysql -u tom -p</code>, without a database, Tom sees this:</p>
+                <pre data-norun><code class="language-sql">SELECT CURRENT_ROLE();
+SELECT COUNT(*) FROM bookstore.books;</code></pre>
+                <div class="card card-output">
+                    <h4>Output (as tom, before SET DEFAULT ROLE)</h4>
+                    <pre><code>+----------------+
+| CURRENT_ROLE() |
++----------------+
+| NONE           |
++----------------+
+ERROR 1142 (42000): SELECT command denied to user 'tom'@'localhost' for table 'books'</code></pre>
+                </div>
+                <p>Tom could type <code>SET ROLE ALL;</code> in every session, but the real fix is to make the roles <strong>default roles</strong>, which are activated at every login:</p>
+                <pre><code class="language-sql">SET DEFAULT ROLE ALL TO 'tom'@'localhost', 'lena'@'localhost';
+
+SELECT * FROM mysql.default_roles ORDER BY user, default_role_user;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+------+-------------------+-------------------+
+| HOST      | USER | DEFAULT_ROLE_HOST | DEFAULT_ROLE_USER |
++-----------+------+-------------------+-------------------+
+| localhost | lena | %                 | bookstore_reader  |
+| localhost | lena | %                 | bookstore_sales   |
+| localhost | tom  | %                 | bookstore_reader  |
+| localhost | tom  | %                 | bookstore_sales   |
++-----------+------+-------------------+-------------------+</code></pre>
+                </div>
+                <p>When Tom logs in now, <code>CURRENT_ROLE()</code> shows <code>`bookstore_reader`@`%`,`bookstore_sales`@`%`</code> and the <code>SELECT</code> works. (A role, like a user, has a host part; for roles it is <code>%</code> unless you choose one.)</p>
+
+                <div class="card card-success">
+                    <h4>✅ Change the role, everyone follows</h4>
+                    <p>When the clerks also need to record new customers, one <code>GRANT INSERT ON bookstore.customers TO 'bookstore_sales';</code> updates Tom, Lena and every future clerk at once. When Lena moves to another job, <code>REVOKE 'bookstore_sales' FROM 'lena'@'localhost';</code> removes the whole bundle.</p>
                 </div>
             </section>
 
-            <!-- Section 9: Principle of Least Privilege -->
             <section id="least-privilege" class="lesson-section">
-                <h2>The Principle of Least Privilege</h2>
-                <p>The <strong>principle of least privilege</strong> (PoLP) states: every user and application should have <em>only</em> the minimum permissions needed to do their job — nothing more.</p>
-
-                <h3>Why It Matters</h3>
-                <ul>
-                    <li><strong>Limits damage from mistakes:</strong> A user with only SELECT can't accidentally delete data</li>
-                    <li><strong>Limits damage from breaches:</strong> If credentials are compromised, the attacker can only do what the account allows</li>
-                    <li><strong>Creates accountability:</strong> Each account's purpose is clear and auditable</li>
-                    <li><strong>Meets compliance requirements:</strong> Many security standards (SOC 2, HIPAA, PCI DSS) require least privilege</li>
-                </ul>
-
-                <h3>Applying It in Practice</h3>
-
+                <h2>🔒 The Principle of Least Privilege</h2>
+                <p>Here is the bookstore's account plan, which you will build in the project:</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>User/Application</th>
-                                <th>Needs</th>
-                                <th>Grant</th>
-                            </tr>
+                            <tr><th>Who</th><th>Needs</th><th>Gets</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Reporting dashboard</td>
-                                <td>Read data only</td>
-                                <td><code>SELECT ON bookstore.*</code></td>
-                            </tr>
-                            <tr>
-                                <td>Web application</td>
-                                <td>Read, create, update records</td>
-                                <td><code>SELECT, INSERT, UPDATE ON bookstore.*</code></td>
-                            </tr>
-                            <tr>
-                                <td>Customer support tool</td>
-                                <td>View customer info, not financials</td>
-                                <td><code>SELECT ON bookstore.customers</code></td>
-                            </tr>
-                            <tr>
-                                <td>Backup script</td>
-                                <td>Read all data + lock tables</td>
-                                <td><code>SELECT, LOCK TABLES ON bookstore.*</code></td>
-                            </tr>
-                            <tr>
-                                <td>Database admin</td>
-                                <td>Full management access</td>
-                                <td><code>ALL PRIVILEGES ON bookstore.*</code></td>
-                            </tr>
+                            <tr><td>Website</td><td>Read the catalog, record orders</td><td><code>SELECT</code> on the catalog tables, <code>INSERT</code> on orders</td></tr>
+                            <tr><td>Report dashboard</td><td>Read everything</td><td>The reader role</td></tr>
+                            <tr><td>Inventory staff</td><td>Change prices and stock</td><td>Reader role + <code>UPDATE (price, in_stock)</code> on <code>books</code></td></tr>
+                            <tr><td>Manager</td><td>Everything in the bookstore</td><td><code>ALL</code> on <code>bookstore.*</code>, nothing global</td></tr>
+                            <tr><td>Administrator</td><td>Run the server</td><td>A personal admin account, not a shared <code>root</code></td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="card card-warning">
-                    <h4>⚠️ Never Use Root for Applications</h4>
-                    <p>Your web application should <strong>never</strong> connect as <code>root</code>. Create a dedicated user with only the privileges the app needs. If the app is compromised, the attacker can only do what <code>app_user</code> can do — not drop every database on the server.</p>
-                </div>
-            </section>
-
-            <!-- Section 10: Common User Setups -->
-            <section id="common-setups" class="lesson-section">
-                <h2>Common User Setups</h2>
-                <p>Here's a complete setup for a typical bookstore application:</p>
-
-                <pre><code class="language-sql">
--- 1. Application user: reads and writes data, runs procedures
-CREATE USER 'bookstore_app'@'localhost' IDENTIFIED BY 'AppPass!2026';
-GRANT SELECT, INSERT, UPDATE, DELETE ON bookstore.* TO 'bookstore_app'@'localhost';
-GRANT EXECUTE ON bookstore.* TO 'bookstore_app'@'localhost';
-
--- 2. Reporting user: read-only access
-CREATE USER 'bookstore_reports'@'localhost' IDENTIFIED BY 'ReportPass!2026';
-GRANT SELECT ON bookstore.* TO 'bookstore_reports'@'localhost';
-
--- 3. Admin user: full database management (not server-wide)
-CREATE USER 'bookstore_admin'@'localhost' IDENTIFIED BY 'AdminPass!2026';
-GRANT ALL PRIVILEGES ON bookstore.* TO 'bookstore_admin'@'localhost';
-
--- 4. Backup user: read-only + lock for consistent dumps
-CREATE USER 'bookstore_backup'@'localhost' IDENTIFIED BY 'BackupPass!2026';
-GRANT SELECT, LOCK TABLES, SHOW VIEW, EVENT, TRIGGER ON bookstore.*
-TO 'bookstore_backup'@'localhost';
-
--- 5. Support team: limited view of customers only
-CREATE USER 'bookstore_support'@'localhost' IDENTIFIED BY 'SupportPass!2026';
-GRANT SELECT (id, first_name, last_name, email) ON bookstore.customers
-TO 'bookstore_support'@'localhost';
-
--- Verify all setups:
-SHOW GRANTS FOR 'bookstore_app'@'localhost';
-SHOW GRANTS FOR 'bookstore_reports'@'localhost';
-SHOW GRANTS FOR 'bookstore_admin'@'localhost';
-SHOW GRANTS FOR 'bookstore_backup'@'localhost';
-SHOW GRANTS FOR 'bookstore_support'@'localhost';
-                </code></pre>
-
-                <div class="card card-success">
-                    <h4>✅ Testing Permissions</h4>
-                    <p>After creating a user, log in as that user and verify they can do what they need — and <em>can't</em> do what they shouldn't. Try a DELETE as a read-only user to confirm it's denied:</p>
-                    <pre><code class="language-sql">
--- In a terminal:
--- mysql -u bookstore_reports -p bookstore
--- Then try:
-DELETE FROM books WHERE id = 1;
--- ERROR 1142: DELETE command denied to user 'bookstore_reports'@'localhost'
-                    </code></pre>
-                </div>
-            </section>
-
-            <!-- Section 11: Exercises -->
-            <section id="exercises" class="lesson-section">
-                <h2>Exercises</h2>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 1: Create Users &amp; Grant Privileges</h3>
-                    <p>Write SQL to:</p>
-                    <ol>
-                        <li>Create a user called <code>inventory_mgr</code> that can connect from localhost with password <code>InvPass!2026</code></li>
-                        <li>Grant SELECT, INSERT, and UPDATE on the <code>bookstore.books</code> table only</li>
-                        <li>Create a user called <code>public_api</code> that can connect from any host (<code>%</code>) with password <code>ApiPass!2026</code></li>
-                        <li>Grant SELECT only on <code>bookstore.books</code> and <code>bookstore.authors</code></li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- 1
-CREATE USER 'inventory_mgr'@'localhost' IDENTIFIED BY 'InvPass!2026';
-
--- 2
-GRANT SELECT, INSERT, UPDATE ON bookstore.books
-TO 'inventory_mgr'@'localhost';
-
--- 3
-CREATE USER 'public_api'@'%' IDENTIFIED BY 'ApiPass!2026';
-
--- 4
-GRANT SELECT ON bookstore.books TO 'public_api'@'%';
-GRANT SELECT ON bookstore.authors TO 'public_api'@'%';
-                        </code></pre>
-                    </details>
-                </div>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 2: View &amp; Revoke Privileges</h3>
-                    <p>Write SQL to:</p>
-                    <ol>
-                        <li>Show the grants for <code>inventory_mgr@localhost</code></li>
-                        <li>Revoke the UPDATE privilege from <code>inventory_mgr@localhost</code></li>
-                        <li>Verify the privilege was removed</li>
-                        <li>Revoke all privileges from <code>public_api@%</code> and drop the user</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- 1
-SHOW GRANTS FOR 'inventory_mgr'@'localhost';
-
--- 2
-REVOKE UPDATE ON bookstore.books FROM 'inventory_mgr'@'localhost';
-
--- 3
-SHOW GRANTS FOR 'inventory_mgr'@'localhost';
--- Should show SELECT, INSERT only
-
--- 4
-REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'public_api'@'%';
-DROP USER 'public_api'@'%';
-                        </code></pre>
-                    </details>
-                </div>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 3: Design a Permission Scheme</h3>
-                    <p>Design users and permissions for a <strong>school database</strong> with tables: students, teachers, courses, enrollments, grades.</p>
-                    <p>Create users for:</p>
-                    <ol>
-                        <li>A <strong>teacher</strong> who can view students and courses, and add/update grades</li>
-                        <li>A <strong>registrar</strong> who can manage students, courses, and enrollments but not grades</li>
-                        <li>A <strong>student portal</strong> (application) that can only read course info and the student's own grades</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- Teacher: view students/courses, manage grades
-CREATE USER 'teacher'@'localhost' IDENTIFIED BY 'TeachPass!2026';
-GRANT SELECT ON school.students TO 'teacher'@'localhost';
-GRANT SELECT ON school.courses TO 'teacher'@'localhost';
-GRANT SELECT ON school.enrollments TO 'teacher'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON school.grades TO 'teacher'@'localhost';
-
--- Registrar: manage students/courses/enrollments, no grades
-CREATE USER 'registrar'@'localhost' IDENTIFIED BY 'RegPass!2026';
-GRANT SELECT, INSERT, UPDATE, DELETE ON school.students TO 'registrar'@'localhost';
-GRANT SELECT, INSERT, UPDATE, DELETE ON school.courses TO 'registrar'@'localhost';
-GRANT SELECT, INSERT, UPDATE, DELETE ON school.enrollments TO 'registrar'@'localhost';
-
--- Student portal: read-only on courses and grades
-CREATE USER 'student_portal'@'localhost' IDENTIFIED BY 'PortalPass!2026';
-GRANT SELECT ON school.courses TO 'student_portal'@'localhost';
-GRANT SELECT ON school.grades TO 'student_portal'@'localhost';
--- Note: Filtering by student ID would be done in the application layer
-                        </code></pre>
-                    </details>
-                </div>
-
-                <!-- Quiz -->
-                <div class="card quiz-container">
-                    <h3>🎯 Quick Quiz</h3>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 1:</strong> What does a newly created user (with no GRANT statements) have access to?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="New users don't get any default database access. They can connect but that's it.">
-                                A) Read access to all databases
-                            </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! A newly created user has USAGE (the ability to connect) but no privileges on any database, table, or object. You must explicitly GRANT everything they need.">
-                                B) Nothing — they can connect but can't see or do anything
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Full access would be extremely dangerous as a default. MySQL follows the principle of least privilege by starting with no permissions.">
-                                C) Full access to the database they were created in
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 2:</strong> What does the host part of <code>'app_user'@'%'</code> mean?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="'localhost' means local connections only. '%' is different — it's a wildcard.">
-                                A) The user can only connect from the local machine
-                            </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The '%' is a wildcard meaning 'any host.' The user can connect from any IP address. This is convenient for remote access but should be used carefully — restrict by IP when possible.">
-                                B) The user can connect from any host (wildcard)
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="The '%' symbol is a standard SQL wildcard for 'match anything.' It has nothing to do with the percentage of access.">
-                                C) The user has percentage-based access limits
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 3:</strong> What is the principle of least privilege?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! The principle of least privilege means granting each user or application only the minimum permissions required for their specific task. This limits potential damage from mistakes, breaches, or malicious actions.">
-                                A) Grant each user only the minimum permissions they need for their specific job
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="That's the opposite of least privilege! Giving everyone full access means any mistake or breach affects everything.">
-                                B) Give all users full access so they can do their work without restrictions
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Creating one shared account violates least privilege because you can't audit who did what, and everyone has the same (often excessive) access.">
-                                C) Create a single shared account for the whole team
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
-
-                    <div class="quiz-question">
-                        <p><strong>Question 4:</strong> What advantage do roles provide over individual GRANT statements?</p>
-                        <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="Roles don't affect query speed — they're purely an administrative convenience for managing permissions.">
-                                A) Roles make queries run faster
-                            </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! Roles bundle privileges into reusable named groups. Assign a role to 20 users, and when you need to add a privilege, update the role once instead of running 20 individual GRANT statements.">
-                                B) You can update permissions for many users at once by changing the role
-                            </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Roles are managed the same way as user privileges — through SQL commands, not stored procedures.">
-                                C) Roles automatically create stored procedures for access control
-                            </button>
-                        </div>
-                        <div class="quiz-feedback"></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Section 12: Summary -->
-            <section id="summary" class="lesson-section">
-                <h2>Summary</h2>
-
-                <div class="card card-success">
-                    <h3>🎉 Key Takeaways</h3>
+                <div class="card card-accent">
+                    <h4>🔑 Least-privilege checklist</h4>
                     <ul>
-                        <li>A MySQL user is <code>'username'@'host'</code> — the host controls <em>where</em> they can connect from</li>
-                        <li><code>CREATE USER</code> creates accounts; <code>DROP USER</code> removes them</li>
-                        <li><code>GRANT</code> adds privileges; <code>REVOKE</code> removes them</li>
-                        <li>New users have <strong>zero privileges</strong> — you must explicitly grant everything</li>
-                        <li>Privileges can be scoped at global (<code>*.*</code>), database, table, column, or routine level</li>
-                        <li><code>SHOW GRANTS FOR 'user'@'host'</code> shows what a user can do</li>
-                        <li><strong>Roles</strong> (MySQL 8+) group privileges for easier management of multiple users</li>
-                        <li>The <strong>principle of least privilege</strong>: grant only what's needed, nothing more</li>
-                        <li><strong>Never use root</strong> for application connections</li>
-                        <li>Always test permissions by logging in as the user and trying allowed/denied operations</li>
+                        <li>One account per application and per person; never share logins</li>
+                        <li>Applications never connect as <code>root</code>, and never get <code>DROP</code>, <code>ALTER</code> or <code>GRANT OPTION</code></li>
+                        <li>Grant at the narrowest level that works: column, then table, then database; global only for administrators</li>
+                        <li>Restrict the host; when an account must accept remote connections, add <code>REQUIRE SSL</code></li>
+                        <li>Apps send user input as query parameters (placeholders such as <code>?</code>), never pasted into the SQL text: least privilege limits the damage of SQL injection, parameters prevent it</li>
+                        <li>Review <code>SHOW GRANTS</code> regularly and drop accounts nobody uses</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Granting to an account that does not exist</h3>
+                <pre data-raises="ERROR 1410"><code class="language-sql">GRANT SELECT ON bookstore.* TO 'reports'@'localhost';</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1410 (42000): You are not allowed to create a user with GRANT</code></pre>
+                </div>
+                <p><strong>What it means:</strong> very old MySQL versions created the account on the fly in <code>GRANT</code>. Modern MySQL insists on <code>CREATE USER</code> first, so a typo in the name cannot silently create a new, passwordless account. <strong>Fix:</strong> check the spelling (here the account is <code>shop_reports</code>), or run <code>CREATE USER</code> first.</p>
+
+                <h3>2. The right user, the wrong host</h3>
+                <pre data-raises="ERROR 1141"><code class="language-sql">SHOW GRANTS FOR 'shop_reports'@'%';</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1141 (42000): There is no such grant defined for user 'shop_reports' on host '%'</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>'shop_reports'@'%'</code> is a different account from <code>'shop_reports'@'localhost'</code>, and it does not exist. The same mismatch causes "Access denied" at login when a program connects over the network (host 10.0.0.25) to an account created for <code>'localhost'</code>. <strong>Fix:</strong> list the real accounts with <code>SELECT user, host FROM mysql.user;</code> and use the exact pair.</p>
+
+                <h3>3. Creating an account twice</h3>
+                <pre data-raises="ERROR 1396"><code class="language-sql">CREATE USER 'shop_reports'@'localhost' IDENTIFIED BY 'CHANGE-ME-reports-1';</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1396 (HY000): Operation CREATE USER failed for 'shop_reports'@'localhost' (User account already exists)</code></pre>
+                </div>
+                <p><strong>What it means:</strong> setup scripts often fail on their second run. <strong>Fix:</strong> <code>CREATE USER IF NOT EXISTS</code>, or, when the script should rebuild the account from scratch, <code>DROP USER IF EXISTS</code> first.</p>
+
+                <h3>4. Revoking at a different level than you granted</h3>
+                <pre data-raises="ERROR 1147"><code class="language-sql">REVOKE SELECT ON bookstore.books FROM 'shop_reports'@'localhost';</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1147 (42000): There is no such grant defined for user 'shop_reports' on host 'localhost' on table 'books'</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>shop_reports</code> has <code>SELECT</code> on <code>bookstore.*</code> (database level). There is no table-level grant on <code>books</code> to take away, and MySQL cannot cut one table out of a database-level grant. <strong>Fix:</strong> revoke at the level shown by <code>SHOW GRANTS</code>; to hide one table, grant table by table instead (or through views).</p>
+
+                <h3>5. A role that was granted but never activated (silent)</h3>
+                <pre><code class="language-sql">CREATE ROLE 'bookstore_inventory';
+GRANT UPDATE (price, in_stock) ON bookstore.books TO 'bookstore_inventory';
+CREATE USER 'marcus'@'localhost' IDENTIFIED BY 'CHANGE-ME-marcus-1';
+GRANT 'bookstore_reader', 'bookstore_inventory' TO 'marcus'@'localhost';
+
+SELECT * FROM mysql.default_roles WHERE user = 'marcus';</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>Empty set</code></pre>
+                </div>
+                <p><strong>What it means:</strong> every statement succeeded and <code>SHOW GRANTS</code> lists both roles, but Marcus has no default roles, so at login he can do nothing and gets error 1142 on his first query, exactly like Tom before. <strong>Fix:</strong> <code>SET DEFAULT ROLE ALL TO 'marcus'@'localhost';</code> right after granting roles. (A server-wide alternative is the setting <code>activate_all_roles_on_login = ON</code>.)</p>
+                <pre><code class="language-sql">SET DEFAULT ROLE ALL TO 'marcus'@'localhost';</code></pre>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: Accounts for the Bookstore Team</h2>
+                <p>You will write <code>team_access.sql</code>, a script that creates the bookstore team's roles and accounts from the plan in <a href="#least-privilege">The Principle of Least Privilege</a>, and that can run again at any time without errors. It uses its own <code>team_</code> names so it does not collide with this lesson's demo accounts. Allow about 40 minutes.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: Start from a clean slate <span class="step-time">(5 min)</span></h3>
+                    <p>Create <code>team_access.sql</code> in your <code>mysql-course</code> folder. Its first lines remove everything it is about to create, so a second run rebuilds instead of failing with error 1396. Dropping a role also removes it from every account that had it.</p>
+                    <pre><code class="language-sql">-- team_access.sql: roles and accounts for the bookstore team
+DROP USER IF EXISTS 'team_web'@'localhost', 'team_dashboard'@'localhost',
+                    'team_sofia'@'localhost', 'team_maria'@'localhost';
+DROP ROLE IF EXISTS 'team_reader', 'team_inventory', 'team_manager';</code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: The roles <span class="step-time">(5 min)</span></h3>
+                    <p>Three bundles: read everything, change prices and stock, and manage the whole bookstore database.</p>
+                    <pre><code class="language-sql">-- 2. Roles
+CREATE ROLE 'team_reader', 'team_inventory', 'team_manager';
+GRANT SELECT ON bookstore.* TO 'team_reader';
+GRANT UPDATE (price, in_stock) ON bookstore.books TO 'team_inventory';
+GRANT ALL PRIVILEGES ON bookstore.* TO 'team_manager';
+
+SHOW GRANTS FOR 'team_inventory';</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-----------------------------------------------------------------------------------+
+| Grants for team_inventory@%                                                       |
++-----------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `team_inventory`@`%`                                        |
+| GRANT UPDATE (`in_stock`, `price`) ON `bookstore`.`books` TO `team_inventory`@`%` |
++-----------------------------------------------------------------------------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: The website account <span class="step-time">(5 min)</span></h3>
+                    <p>The website reads only the catalog tables (not employees, not other customers' orders) and records orders. Applications get direct grants rather than roles, so their privileges are always active and easy to read.</p>
+                    <pre><code class="language-sql">-- 3. The website
+CREATE USER 'team_web'@'localhost' IDENTIFIED BY 'CHANGE-ME-web-1';
+GRANT SELECT ON bookstore.books           TO 'team_web'@'localhost';
+GRANT SELECT ON bookstore.authors         TO 'team_web'@'localhost';
+GRANT SELECT ON bookstore.categories      TO 'team_web'@'localhost';
+GRANT SELECT ON bookstore.book_categories TO 'team_web'@'localhost';
+GRANT INSERT ON bookstore.orders          TO 'team_web'@'localhost';
+GRANT INSERT ON bookstore.order_items     TO 'team_web'@'localhost';
+
+SHOW GRANTS FOR 'team_web'@'localhost';</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------------------------------------------------------------------------+
+| Grants for team_web@localhost                                           |
++-------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `team_web`@`localhost`                            |
+| GRANT SELECT ON `bookstore`.`authors` TO `team_web`@`localhost`         |
+| GRANT SELECT ON `bookstore`.`book_categories` TO `team_web`@`localhost` |
+| GRANT SELECT ON `bookstore`.`books` TO `team_web`@`localhost`           |
+| GRANT SELECT ON `bookstore`.`categories` TO `team_web`@`localhost`      |
+| GRANT INSERT ON `bookstore`.`order_items` TO `team_web`@`localhost`     |
+| GRANT INSERT ON `bookstore`.`orders` TO `team_web`@`localhost`          |
++-------------------------------------------------------------------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: People and the dashboard <span class="step-time">(10 min)</span></h3>
+                    <p>Sofia works in inventory, Maria manages the store, and the dashboard only reads. Grant the roles, then make them default roles in the same script.</p>
+                    <pre><code class="language-sql">-- 4. People and the dashboard
+CREATE USER 'team_dashboard'@'localhost' IDENTIFIED BY 'CHANGE-ME-dash-1';
+CREATE USER 'team_sofia'@'localhost'     IDENTIFIED BY 'CHANGE-ME-sofia-1';
+CREATE USER 'team_maria'@'localhost'     IDENTIFIED BY 'CHANGE-ME-maria-1';
+
+GRANT 'team_reader'                   TO 'team_dashboard'@'localhost';
+GRANT 'team_reader', 'team_inventory' TO 'team_sofia'@'localhost';
+GRANT 'team_manager'                  TO 'team_maria'@'localhost';
+
+SET DEFAULT ROLE ALL TO 'team_dashboard'@'localhost', 'team_sofia'@'localhost', 'team_maria'@'localhost';
+
+SHOW GRANTS FOR 'team_sofia'@'localhost' USING 'team_reader', 'team_inventory';</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+---------------------------------------------------------------------------------------+
+| Grants for team_sofia@localhost                                                       |
++---------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `team_sofia`@`localhost`                                        |
+| GRANT SELECT ON `bookstore`.* TO `team_sofia`@`localhost`                             |
+| GRANT UPDATE (`in_stock`, `price`) ON `bookstore`.`books` TO `team_sofia`@`localhost` |
+| GRANT `team_inventory`@`%`,`team_reader`@`%` TO `team_sofia`@`localhost`              |
++---------------------------------------------------------------------------------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: An inventory of the accounts <span class="step-time">(5 min)</span></h3>
+                    <p>End the script with a check that lists every <code>team_</code> account and role, its plugin and its default roles. Roles are stored in <code>mysql.user</code> too, as locked accounts that cannot log in.</p>
+                    <pre><code class="language-sql">-- 5. What the script created
+SELECT u.user, u.host, u.plugin, u.account_locked,
+       GROUP_CONCAT(d.default_role_user ORDER BY d.default_role_user) AS default_roles
+FROM mysql.user AS u
+LEFT JOIN mysql.default_roles AS d ON d.user = u.user AND d.host = u.host
+WHERE u.user LIKE 'team%'
+GROUP BY u.user, u.host, u.plugin, u.account_locked
+ORDER BY u.account_locked, u.user;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+----------------+-----------+-----------------------+----------------+----------------------------+
+| user           | host      | plugin                | account_locked | default_roles              |
++----------------+-----------+-----------------------+----------------+----------------------------+
+| team_dashboard | localhost | caching_sha2_password | N              | team_reader                |
+| team_maria     | localhost | caching_sha2_password | N              | team_manager               |
+| team_sofia     | localhost | caching_sha2_password | N              | team_inventory,team_reader |
+| team_web       | localhost | caching_sha2_password | N              | NULL                       |
+| team_inventory | %         | caching_sha2_password | Y              | NULL                       |
+| team_manager   | %         | caching_sha2_password | Y              | NULL                       |
+| team_reader    | %         | caching_sha2_password | Y              | NULL                       |
++----------------+-----------+-----------------------+----------------+----------------------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 6: Run it twice and test as Sofia <span class="step-time">(10 min)</span></h3>
+                    <p>Run the script with <code>SOURCE</code>, then once more: the second run must also finish without errors. Then, in a second terminal, log in as <code>team_sofia</code> and check both directions: she can change a price, and she cannot change a title.</p>
+                    <pre data-norun><code class="language-sql">SOURCE ~/mysql-course/team_access.sql</code></pre>
+                    <pre data-norun><code class="language-sql">-- as team_sofia (mysql -u team_sofia -p bookstore)
+UPDATE books SET price = 15.49 WHERE id = 1;
+UPDATE books SET title = 'Dune (Deluxe)' WHERE id = 1;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output (as team_sofia)</h4>
+                        <pre><code>Query OK, 1 row affected (0.01 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+ERROR 1143 (42000): UPDATE command denied to user 'team_sofia'@'localhost' for column 'title' in table 'books'</code></pre>
+                    </div>
+                    <p>Set Dune back to 14.99 afterwards (as Sofia or as <code>root</code>), so the next lesson's numbers match.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>team_access.sql</code> starts with <code>DROP USER IF EXISTS</code> and <code>DROP ROLE IF EXISTS</code> and runs twice in a row without errors</li>
+                        <li>Three roles and four accounts exist, all accounts with <code>caching_sha2_password</code></li>
+                        <li><code>team_web</code> can read four catalog tables and insert orders, and has no <code>UPDATE</code> or <code>DELETE</code> anywhere</li>
+                        <li>Every person and the dashboard have their roles set as default roles</li>
+                        <li>Logged in as <code>team_sofia</code>, a price update works and a title update fails with error 1143</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+                <p>Run these as <code>root</code> (or your administrator account) in the same session. Try each one before you open the solution.</p>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: The Inventory Manager</h3>
+                    <p>Create <code>'inventory_mgr'@'localhost'</code> with a placeholder password. Give it <code>SELECT</code>, <code>INSERT</code> and <code>UPDATE</code> on the <code>books</code> table only, and show its grants.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Table level means <code>ON bookstore.books</code>. One <code>GRANT</code> can list several privileges separated by commas.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">CREATE USER 'inventory_mgr'@'localhost' IDENTIFIED BY 'CHANGE-ME-inv-1';
+GRANT SELECT, INSERT, UPDATE ON bookstore.books TO 'inventory_mgr'@'localhost';
+
+SHOW GRANTS FOR 'inventory_mgr'@'localhost';</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------------------------------------------------------------------------------+
+| Grants for inventory_mgr@localhost                                                 |
++------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `inventory_mgr`@`localhost`                                  |
+| GRANT SELECT, INSERT, UPDATE ON `bookstore`.`books` TO `inventory_mgr`@`localhost` |
++------------------------------------------------------------------------------------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 2: Take Some Back, Then Lock</h3>
+                    <p>Remove <code>INSERT</code> from <code>inventory_mgr</code>, show the grants again, then lock the account and confirm with a query on <code>mysql.user</code>.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Revoke at the same (table) level you granted. Locking is an <code>ALTER USER</code> option; the column is <code>account_locked</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">REVOKE INSERT ON bookstore.books FROM 'inventory_mgr'@'localhost';
+SHOW GRANTS FOR 'inventory_mgr'@'localhost';
+
+ALTER USER 'inventory_mgr'@'localhost' ACCOUNT LOCK;
+SELECT user, host, account_locked FROM mysql.user WHERE user = 'inventory_mgr';</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+----------------------------------------------------------------------------+
+| Grants for inventory_mgr@localhost                                         |
++----------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `inventory_mgr`@`localhost`                          |
+| GRANT SELECT, UPDATE ON `bookstore`.`books` TO `inventory_mgr`@`localhost` |
++----------------------------------------------------------------------------+
++---------------+-----------+----------------+
+| user          | host      | account_locked |
++---------------+-----------+----------------+
+| inventory_mgr | localhost | Y              |
++---------------+-----------+----------------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: A Marketing View</h3>
+                    <p>Marketing may see each customer's first name and city, and nothing else. Create a view <code>bookstore.customer_cities</code> with those two columns, create <code>'marketing'@'localhost'</code>, and grant it <code>SELECT</code> on the view only. Show its grants and the view's rows for Chicago.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>A view is granted like a table: <code>GRANT SELECT ON bookstore.customer_cities TO ...</code>. The account needs no privileges on <code>customers</code> itself; the view runs with its creator's rights.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">CREATE VIEW bookstore.customer_cities AS
+    SELECT first_name, city FROM bookstore.customers;
+
+CREATE USER 'marketing'@'localhost' IDENTIFIED BY 'CHANGE-ME-mkt-1';
+GRANT SELECT ON bookstore.customer_cities TO 'marketing'@'localhost';
+
+SHOW GRANTS FOR 'marketing'@'localhost';
+SELECT * FROM bookstore.customer_cities WHERE city = 'Chicago' ORDER BY first_name;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+--------------------------------------------------------------------------+
+| Grants for marketing@localhost                                           |
++--------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `marketing`@`localhost`                            |
+| GRANT SELECT ON `bookstore`.`customer_cities` TO `marketing`@`localhost` |
++--------------------------------------------------------------------------+
++------------+---------+
+| first_name | city    |
++------------+---------+
+| Bob        | Chicago |
+| Grace      | Chicago |
++------------+---------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): A Remote, Rate-Limited API Account</h3>
+                    <p>A partner's server at 203.0.113.10 may read <code>books</code> and <code>authors</code>. Create <code>'partner_api'@'203.0.113.10'</code> that must use TLS and may run at most 1000 queries per hour. Grant the two <code>SELECT</code>s, then read the TLS and limit settings back from <code>mysql.user</code>.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p><code>CREATE USER ... REQUIRE SSL WITH MAX_QUERIES_PER_HOUR 1000</code>. In <code>mysql.user</code>, look at <code>ssl_type</code> and <code>max_questions</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">CREATE USER 'partner_api'@'203.0.113.10' IDENTIFIED BY 'CHANGE-ME-partner-1'
+    REQUIRE SSL
+    WITH MAX_QUERIES_PER_HOUR 1000;
+GRANT SELECT ON bookstore.books   TO 'partner_api'@'203.0.113.10';
+GRANT SELECT ON bookstore.authors TO 'partner_api'@'203.0.113.10';
+
+SELECT user, host, ssl_type, max_questions FROM mysql.user WHERE user = 'partner_api';</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------------+--------------+----------+---------------+
+| user        | host         | ssl_type | max_questions |
++-------------+--------------+----------+---------------+
+| partner_api | 203.0.113.10 | ANY      |          1000 |
++-------------+--------------+----------+---------------+</code></pre>
+                        </div>
+                        <p><code>ssl_type ANY</code> is how <code>REQUIRE SSL</code> is stored: any valid TLS connection is accepted, a plain one is refused. 203.0.113.10 is an address reserved for documentation, so nobody can actually log in with this account.</p>
+                    </details>
+                </div>
+            </section>
+
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
+                <div class="card quiz-container">
+                    <h3>🎯 Check Your Understanding</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> You run <code>CREATE USER 'kiosk'@'localhost' IDENTIFIED BY '...';</code> and nothing else. What can <code>kiosk</code> do?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="New accounts start with no access to any database. Check what SHOW GRANTS lists for a new account.">
+                                A) Read every database on the server
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="A new account only has USAGE, which means no privileges: it can connect, but every table access fails until you GRANT something.">
+                                B) Connect, but read or change nothing
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL accounts are not tied to a current database. Privileges come only from GRANT.">
+                                C) Use the database root had selected when the account was created
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> <code>'shop_reports'@'localhost'</code> exists. Why does this fail?</p>
+                        <pre data-raises="ERROR 1141"><code class="language-sql">SHOW GRANTS FOR 'shop_reports'@'%';</code></pre>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="An account is the pair of user and host. shop_reports at % is a separate account that was never created, so it has no grants to show.">
+                                A) <code>'shop_reports'@'%'</code> is a different account, and it does not exist
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="% is a valid host pattern; it is used for remote accounts all the time.">
+                                B) <code>%</code> is not allowed in a host name
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="root can always read other accounts' grants. Look at the host part.">
+                                C) Only the account itself may see its own grants
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> An old tutorial tells you to run <code>CREATE USER 'app'@'localhost' IDENTIFIED WITH mysql_native_password BY '...';</code>. What happens on MySQL 9.7, and what should you do?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL 9 does not fall back silently. Look at the error number in this lesson.">
+                                A) It works, but prints a deprecation warning
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Turning off security to make old code run is the wrong direction. Which side should change?">
+                                B) It fails; enable the plugin in the server configuration
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="The plugin was removed in MySQL 9, so the statement fails with ERROR 1524. Use the default caching_sha2_password and update the program's MySQL driver if it cannot connect.">
+                                C) It fails with error 1524; keep <code>caching_sha2_password</code> and update the app's driver
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> Marcus was granted <code>bookstore_reader</code>, and <code>SHOW GRANTS</code> lists it. At login, his first <code>SELECT</code> fails with error 1142. What is missing?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="Granted roles are inactive until activated. SET DEFAULT ROLE ALL TO marcus activates them at every login (or Marcus runs SET ROLE ALL in his session).">
+                                A) The role is not active: run <code>SET DEFAULT ROLE ALL TO 'marcus'@'localhost'</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="GRANT and roles take effect without it. FLUSH PRIVILEGES is only for direct edits of the grant tables.">
+                                B) <code>FLUSH PRIVILEGES</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Roles exist exactly so you do not have to repeat grants per user. Something has to switch the role on.">
+                                C) The role's privileges must also be granted to Marcus directly
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> Which account setup follows least privilege for the bookstore website?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="A website never needs to drop tables or create users. What would an attacker get through this account?">
+                                A) <code>root</code>, so the site never hits a permission error
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="The website reads the catalog and adds orders, so it gets SELECT on those tables and INSERT on the order tables. A bug or attack through the site can do nothing more.">
+                                B) Its own account with <code>SELECT</code> on the catalog tables and <code>INSERT</code> on the order tables
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="ALL on the database still includes DELETE, DROP and ALTER, none of which the site needs.">
+                                C) Its own account with <code>ALL PRIVILEGES ON bookstore.*</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>My <code>CREATE USER</code> fails with error 1819 about the password policy. Why?</summary>
+                    <p>Your server has the <code>validate_password</code> component installed (some installers enable it). It rejects passwords that are too short or too simple: "Your password does not satisfy the current policy requirements". Use a longer password with mixed case, digits and symbols. Do not uninstall the component to make a weak password fit.</p>
+                </details>
+                <details>
+                    <summary>Do I need <code>FLUSH PRIVILEGES</code>?</summary>
+                    <p>Not after <code>CREATE USER</code>, <code>GRANT</code>, <code>REVOKE</code>, <code>ALTER USER</code> or <code>DROP USER</code>: they update the server's in-memory privileges immediately. It is only needed if someone edits the <code>mysql</code> system tables directly with <code>INSERT</code> or <code>UPDATE</code>, which you should not do.</p>
+                </details>
+                <details>
+                    <summary>I created <code>'app'@'%'</code>, but logging in from the server itself says access denied. Why?</summary>
+                    <p>When several accounts could match, MySQL picks the most specific host first. If an anonymous or other <code>localhost</code> account exists, it can win over <code>%</code>. Check with <code>SELECT user, host FROM mysql.user;</code>, and inside a session compare <code>USER()</code> (who you said you are) with <code>CURRENT_USER()</code> (the account MySQL matched).</p>
+                </details>
+                <details>
+                    <summary>Where does an application keep its database password?</summary>
+                    <p>Outside the source code: in an environment variable, a configuration file that is not committed to version control, or a secrets manager. Each environment (development, production) gets its own account and password, so a leaked development password opens nothing important.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>Create a <code>'team_backup'@'localhost'</code> account with exactly what <code>mysqldump</code> needs to back up <code>bookstore</code> (look up the privileges for <code>SELECT</code>, <code>SHOW VIEW</code>, <code>TRIGGER</code>, <code>LOCK TABLES</code> and <code>EVENT</code>, plus the global <code>PROCESS</code> for tablespaces, or the <code>--no-tablespaces</code> option instead). Then, after the next lesson, try a real dump as that account. Which privileges could you remove if you always dump with <code>--single-transaction</code>?</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Pick a building you know (a school, a hospital, an office). Who has a master key, who has a key to one room, and who only gets into the lobby? Map each kind of key to a MySQL privilege level, and write down one thing that would go wrong if everyone had the master key.</p>
+                </div>
+            </section>
+
+            <section id="summary" class="lesson-section">
+                <h2>📝 Lesson Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎓 Key Takeaways</h3>
+                    <ul>
+                        <li>An account is <code>'user'@'host'</code>; the same name with another host is another account</li>
+                        <li>New accounts use <code>caching_sha2_password</code>; <code>mysql_native_password</code> is gone in MySQL 9 (error 1524) and disabled in 8.4</li>
+                        <li>New accounts have only <code>USAGE</code>; <code>GRANT what ON where TO whom</code> adds privileges, <code>REVOKE ... FROM</code> removes them at the same level</li>
+                        <li>Levels: global <code>*.*</code>, database <code>db.*</code>, table, column, routine; grant at the narrowest level that works</li>
+                        <li>Test every account in a second session: 1142 (table), 1143 (column), 3118 (locked) are the refusals you should see</li>
+                        <li>Roles bundle privileges; they work only after <code>SET DEFAULT ROLE</code> (or <code>SET ROLE</code>)</li>
+                        <li>Applications get their own narrow accounts and use query parameters; nobody shares <code>root</code></li>
                     </ul>
                 </div>
 
-                <h3>Quick Reference</h3>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Command</th>
-                                <th>Purpose</th>
-                            </tr>
+                            <tr><th>You want</th><th>Write</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><code>CREATE USER 'u'@'h' IDENTIFIED BY 'p'</code></td>
-                                <td>Create a user account</td>
-                            </tr>
-                            <tr>
-                                <td><code>DROP USER IF EXISTS 'u'@'h'</code></td>
-                                <td>Remove a user account</td>
-                            </tr>
-                            <tr>
-                                <td><code>GRANT privs ON db.tbl TO 'u'@'h'</code></td>
-                                <td>Grant privileges</td>
-                            </tr>
-                            <tr>
-                                <td><code>REVOKE privs ON db.tbl FROM 'u'@'h'</code></td>
-                                <td>Revoke privileges</td>
-                            </tr>
-                            <tr>
-                                <td><code>SHOW GRANTS FOR 'u'@'h'</code></td>
-                                <td>View a user's privileges</td>
-                            </tr>
-                            <tr>
-                                <td><code>ALTER USER 'u'@'h' IDENTIFIED BY 'new'</code></td>
-                                <td>Change password</td>
-                            </tr>
-                            <tr>
-                                <td><code>ALTER USER 'u'@'h' ACCOUNT LOCK</code></td>
-                                <td>Disable an account</td>
-                            </tr>
-                            <tr>
-                                <td><code>CREATE ROLE 'role_name'</code></td>
-                                <td>Create a role (MySQL 8+)</td>
-                            </tr>
-                            <tr>
-                                <td><code>GRANT 'role' TO 'u'@'h'</code></td>
-                                <td>Assign a role to a user</td>
-                            </tr>
-                            <tr>
-                                <td><code>SELECT User, Host FROM mysql.user</code></td>
-                                <td>List all user accounts</td>
-                            </tr>
+                            <tr><td>A new account</td><td><code>CREATE USER 'u'@'localhost' IDENTIFIED BY '...'</code></td></tr>
+                            <tr><td>Give privileges</td><td><code>GRANT SELECT, INSERT ON db.table TO 'u'@'localhost'</code></td></tr>
+                            <tr><td>Take them back</td><td><code>REVOKE INSERT ON db.table FROM 'u'@'localhost'</code></td></tr>
+                            <tr><td>See them</td><td><code>SHOW GRANTS FOR 'u'@'localhost' [USING 'role']</code></td></tr>
+                            <tr><td>A role for a group</td><td><code>CREATE ROLE 'r'</code>, <code>GRANT 'r' TO ...</code>, <code>SET DEFAULT ROLE ALL TO ...</code></td></tr>
+                            <tr><td>Disable / enable</td><td><code>ALTER USER ... ACCOUNT LOCK</code> / <code>ACCOUNT UNLOCK</code></td></tr>
+                            <tr><td>Remove safely in a script</td><td><code>DROP USER IF EXISTS ...</code>, <code>DROP ROLE IF EXISTS ...</code></td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <h3>📚 Additional Resources</h3>
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You created accounts for a website, a report, a support desk and staff, each with a different, narrow set of privileges</li>
+                        <li>You logged in as restricted users and saw MySQL refuse exactly what it should</li>
+                        <li>You bundled privileges into roles and activated them properly</li>
+                        <li>You wrote <code>team_access.sql</code>, a rerunnable script that documents who may do what</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>In <a href="lesson_20.html"><strong>Lesson 8.1: Importing &amp; Exporting Data</strong></a> you will move data in and out of MySQL: back up the bookstore with <code>mysqldump</code>, export query results to CSV, and load CSV files with <code>LOAD DATA</code>. Privileges come right back: file imports and exports have their own security settings, and a backup account is a perfect least-privilege exercise.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
                 <ul>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/create-user.html" target="_blank" rel="noopener">MySQL Docs — CREATE USER</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/grant.html" target="_blank" rel="noopener">MySQL Docs — GRANT Statement</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/revoke.html" target="_blank" rel="noopener">MySQL Docs — REVOKE Statement</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/roles.html" target="_blank" rel="noopener">MySQL Docs — Using Roles</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html" target="_blank" rel="noopener">MySQL Docs — Privileges Provided by MySQL</a></li>
+                    <li>Run <code>team_access.sql</code> twice and log in as <code>team_dashboard</code> to confirm it can read but not write</li>
+                    <li>Clean up the demo accounts if you like: <code>DROP USER IF EXISTS</code> for each, <code>DROP ROLE IF EXISTS</code> for the roles</li>
+                    <li>Reload <code>bookstore.sql</code> so the next lesson starts from the standard data</li>
                 </ul>
 
-                <h3>🚀 What's Next?</h3>
-                <p>That completes <strong>Module 6: Advanced Features!</strong> You've built reusable logic (procedures/functions), protected data integrity (transactions), and locked down access (users/permissions). In the final module, <a href="lesson_20.html">Lesson 20: Importing &amp; Exporting Data</a> covers the essential real-world skill of moving data in and out of MySQL — backups with mysqldump, CSV imports, and more.</p>
-
-                <div class="card card-accent" style="text-align: center; padding: 2rem;">
-                    <h3>🎉 Module 6 Complete!</h3>
-                    <p>You've mastered the advanced side of MySQL — stored routines for reusable logic, transactions for bulletproof data integrity, and user management for security. Your databases are now powerful, safe, and secure.</p>
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>Security can feel like the boring part, until the day it is the only part that matters. You now know how to make a database that refuses the wrong things politely and with a clear error number, and you can prove it by logging in and trying. That habit, test both what should work and what should not, will serve you in every system you build.</p>
                 </div>
             </section>
 
             <nav class="lesson-nav" aria-label="Lesson Navigation">
-                <a href="lesson_18.html" class="prev-lesson">← Previous: Transactions</a>
+                <a href="lesson_json.html" class="prev-lesson">← Previous: JSON Columns</a>
                 <a href="index.html" class="home-link">🏠 Course Home</a>
                 <a href="lesson_20.html" class="next-lesson">Next: Importing &amp; Exporting Data →</a>
             </nav>
@@ -959,7 +1068,7 @@ GRANT SELECT ON school.grades TO 'student_portal'@'localhost';
     </main>
 
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>

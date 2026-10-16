@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Participant Workbook: Session 7</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Student workbook —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">write in it · bring it to every session</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Participant Workbook</div>
+    <h1>Session 7: Joins and the Part 1 Assessment</h1>
+    <p class="sub">Your workbook for Session 7: the warm-up, the key ideas of Lesson 4.3, a worked example, the guided lab, predict-then-run practice, the 4.3 self-check, how the Part 1 assessment works, the Part 1 review and your exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Lesson <b>4.3</b> · Part 1 assessment</span>
+      <span class="chip">Session <b>7</b> · 3 hours</span>
+      <span class="chip">Name: ____________________</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Session Goals</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Combine matching rows of two or more tables with JOIN, using aliases.</li>
+  <li>Keep unmatched rows with LEFT JOIN, and find rows with no match (the anti-join).</li>
+  <li>Join a table to itself, and combine joins with GROUP BY without counting the wrong thing.</li>
+  <li>Show what you can do with Part 1 in a 60-minute, open-book assessment on a new database.</li>
+</ul>
+
+  <div class="sec"><h2>Warm-up: Lessons 4.1 and 4.2</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Answer without running anything, then check on the projector</div>
+<div class="q"><div class="qn">W1</div><div class="qt">One order has many lines. Where does the foreign key go?</div><div class="write"></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Predict the count. (Order 3 has one line; fk_items_order is ON DELETE CASCADE.)</div><pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> orders <span class="k">WHERE</span> id = <span class="s">3</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> items <span class="k">FROM</span> order_items;
+<span class="k">ROLLBACK</span>;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">What happens, and why?</div><pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> authors <span class="k">WHERE</span> id = <span class="s">6</span>;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">A key is declared with no ON DELETE. What does MySQL do when a parent with children is deleted?</div><div class="write"></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">How many links?</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> links
+<span class="k">FROM</span> book_categories
+<span class="k">WHERE</span> book_id <span class="k">IN</span> (<span class="k">SELECT</span> id <span class="k">FROM</span> books <span class="k">WHERE</span> author_id = <span class="s">6</span>);</pre><div class="write"></div></div>
+</div>
+
+  <div class="sec"><h2>Lesson</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">4.3</span><h3>Joins</h3></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">By the end you can</div>
+<ul class="tick">
+  <li>Combine matching rows from two or more tables with INNER JOIN ... ON, using table aliases</li>
+  <li>Keep unmatched rows with LEFT JOIN, and find rows with no match using the anti-join pattern</li>
+  <li>Explain what RIGHT JOIN and CROSS JOIN return, and when (rarely) to use them</li>
+  <li>Join a table to itself to read a hierarchy such as employees and managers</li>
+  <li>Combine joins with GROUP BY without the two silent traps: COUNT(*) on outer joins and row fan-out</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Key ideas</div>
+<ul class="tick">
+  <li><b>JOIN ... ON</b> (INNER) returns one row per matching pair; a row without a partner disappears.</li>
+  <li><b>LEFT JOIN</b> keeps every row of the left table (the one before JOIN) and fills the right side with NULL when nothing matches.</li>
+  <li><b>Anti-join:</b> <code class="inline">LEFT JOIN right ... WHERE right.id IS NULL</code> finds the rows with no match (or NOT EXISTS).</li>
+  <li><b>On a LEFT JOIN, conditions on the right table go in ON;</b> in WHERE they turn it into an inner join.</li>
+  <li><b>A JOIN without ON is a cross join</b> (every combination): check the ON when a join returns too many rows.</li>
+  <li><b>Self-join:</b> one table, two aliases, two roles (employee and manager).</li>
+  <li><b>What does one row of this join stand for?</b> Ask before COUNT or SUM: use <code class="inline">COUNT(right.id)</code>, <code class="inline">COUNT(DISTINCT ...)</code>, COALESCE.</li>
+  <li><b>Qualify columns</b> that exist in both tables (1052); after an alias, use only the alias (1054).</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Worked example: guests and RSVPs</div>
+<p>A guest list and the RSVPs, small enough to check by eye. Four guests; Ana replied twice, Cleo once, Ben and Dev never.</p>
+<pre class="code"><span class="k">DROP</span> <span class="k">DATABASE</span> <span class="k">IF</span> <span class="k">EXISTS</span> kit_rsvp;
+<span class="k">CREATE</span> <span class="k">DATABASE</span> kit_rsvp;
+<span class="k">USE</span> kit_rsvp;
+<span class="k">CREATE</span> <span class="k">TABLE</span> guests (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, name <span class="k">VARCHAR</span>(<span class="s">30</span>) <span class="k">NOT</span> <span class="k">NULL</span>);
+<span class="k">CREATE</span> <span class="k">TABLE</span> rsvps (
+    id       <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    guest_id <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    answer   <span class="k">VARCHAR</span>(<span class="s">5</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    <span class="k">CONSTRAINT</span> fk_rsvps_guest <span class="k">FOREIGN</span> <span class="k">KEY</span> (guest_id) <span class="k">REFERENCES</span> guests(id)
+);
+<span class="k">INSERT</span> <span class="k">INTO</span> guests <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Ana'</span>), (<span class="s">2</span>, <span class="s">'Ben'</span>), (<span class="s">3</span>, <span class="s">'Cleo'</span>), (<span class="s">4</span>, <span class="s">'Dev'</span>);
+<span class="k">INSERT</span> <span class="k">INTO</span> rsvps <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">1</span>, <span class="s">'yes'</span>), (<span class="s">2</span>, <span class="s">3</span>, <span class="s">'no'</span>), (<span class="s">3</span>, <span class="s">1</span>, <span class="s">'yes'</span>);</pre>
+<pre class="out">Database changed</pre><p>JOIN keeps only the pairs (guest + reply): Ben and Dev are not in it, and Ana appears once per reply.</p>
+<pre class="code"><span class="k">SELECT</span> g.name, r.answer
+<span class="k">FROM</span> guests <span class="k">AS</span> g
+<span class="k">JOIN</span> rsvps <span class="k">AS</span> r <span class="k">ON</span> r.guest_id = g.id
+<span class="k">ORDER</span> <span class="k">BY</span> g.id, r.id;</pre>
+<pre class="out">+------+--------+
+| name | answer |
++------+--------+
+| Ana  | yes    |
+| Ana  | yes    |
+| Cleo | no     |
++------+--------+</pre><p>LEFT JOIN keeps every guest; where there is no reply it writes NULL:</p>
+<pre class="code"><span class="k">SELECT</span> g.name, r.answer
+<span class="k">FROM</span> guests <span class="k">AS</span> g
+<span class="k">LEFT</span> <span class="k">JOIN</span> rsvps <span class="k">AS</span> r <span class="k">ON</span> r.guest_id = g.id
+<span class="k">ORDER</span> <span class="k">BY</span> g.id, r.id;</pre>
+<pre class="out">+------+--------+
+| name | answer |
++------+--------+
+| Ana  | yes    |
+| Ana  | yes    |
+| Ben  | NULL   |
+| Cleo | no     |
+| Dev  | NULL   |
++------+--------+</pre><p>The anti-join keeps only the guests with no reply (the right side's id is NULL):</p>
+<pre class="code"><span class="k">SELECT</span> g.name
+<span class="k">FROM</span> guests <span class="k">AS</span> g
+<span class="k">LEFT</span> <span class="k">JOIN</span> rsvps <span class="k">AS</span> r <span class="k">ON</span> r.guest_id = g.id
+<span class="k">WHERE</span> r.id <span class="k">IS</span> <span class="k">NULL</span>;</pre>
+<pre class="out">+------+
+| name |
++------+
+| Ben  |
+| Dev  |
++------+</pre><p>And the counting trap: COUNT(*) counts Ben's and Dev's padded rows; COUNT(r.id) does not:</p>
+<pre class="code"><span class="k">SELECT</span> g.name, COUNT(*) <span class="k">AS</span> rows_counted, COUNT(r.id) <span class="k">AS</span> replies
+<span class="k">FROM</span> guests <span class="k">AS</span> g
+<span class="k">LEFT</span> <span class="k">JOIN</span> rsvps <span class="k">AS</span> r <span class="k">ON</span> r.guest_id = g.id
+<span class="k">GROUP</span> <span class="k">BY</span> g.id, g.name
+<span class="k">ORDER</span> <span class="k">BY</span> g.id;</pre>
+<pre class="out">+------+--------------+---------+
+| name | rows_counted | replies |
++------+--------------+---------+
+| Ana  |            2 |       2 |
+| Ben  |            1 |       0 |
+| Cleo |            1 |       1 |
+| Dev  |            1 |       0 |
++------+--------------+---------+</pre><p>Clean up:</p>
+<pre class="code"><span class="k">DROP</span> <span class="k">DATABASE</span> kit_rsvp;</pre></div>
+<div class="blk lab"><div class="h">Guided lab</div>
+<ul class="tick">
+  <li>SOURCE <code class="inline">labs/module-07/l4_3-joins/catalog_joins_starter.sql</code>. Every query runs; each is missing its join.</li>
+  <li>TODO 1 together, TODOs 2 to 4 in pairs. Before each one, say what one row of your join stands for.</li>
+  <li>TODO 3 answers a Session 6 question with a join instead of NOT EXISTS. Which do you find easier to read?</li>
+</ul>
+<div class="write"></div>
+<ul class="tick">
+  <li>Finished early? <code class="inline">city_sales_starter.sql</code>, then <code class="inline">debug_joins.sql</code>.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Predict, then run</div>
+<p>Write your prediction first, then run it in a freshly loaded <code class="inline">bookstore.sql</code>.</p>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it. (8 customers, 12 orders; Carol and Hank never ordered.)</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> rows_returned
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o <span class="k">ON</span> o.customer_id = c.id;</pre><div class="write"></div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it. (Carol (3) has no orders; Frank (6) has two.)</div><pre class="code"><span class="k">SELECT</span> c.first_name, COUNT(*) <span class="k">AS</span> n
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o <span class="k">ON</span> o.customer_id = c.id
+<span class="k">WHERE</span> c.id <span class="k">IN</span> (<span class="s">3</span>, <span class="s">6</span>)
+<span class="k">GROUP</span> <span class="k">BY</span> c.id, c.first_name
+<span class="k">ORDER</span> <span class="k">BY</span> c.id;</pre><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Lesson project: start in class, finish at home</div>
+<p><b>The Sales Report</b> (lesson page, "Project: The Sales Report"): <code class="inline">sales_report.sql</code>. In class: Step 1. At home: Steps 2 to 6.</p>
+<ul class="tick">
+  <li>☐ Step 1: one line per order (12 rows; order 1 totals 34.97)</li>
+  <li>☐ Step 2: revenue by month (the six months add up to 237.29, the sum of Step 1's totals)</li>
+  <li>☐ Step 3: the five best sellers</li>
+  <li>☐ Step 4: customers to welcome (LEFT JOIN ... IS NULL): Hank and Carol</li>
+  <li>☐ Step 5: copies sold per category</li>
+  <li>☐ Step 6: active staff and their managers; SOURCE runs the whole file</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Self-check</div>
+<div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Eight customers placed 12 orders; Carol and Hank placed none. How many rows does this return?</div><pre class="code"><span class="k">SELECT</span> c.first_name, o.id
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o <span class="k">ON</span> o.customer_id = c.id;</pre><div class="opts"><div class="opt">A) <code class="inline">8</code></div><div class="opt">B) <code class="inline">12</code></div><div class="opt">C) <code class="inline">14</code></div><div class="opt">D) <code class="inline">96</code></div></div></div>
+<div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">Which query lists the books that have never been sold?</div><div class="opts"><div class="opt">A) <code class="inline">FROM books b LEFT JOIN order_items oi ON oi.book_id = b.id WHERE oi.id IS NULL</code></div><div class="opt">B) <code class="inline">FROM books b JOIN order_items oi ON oi.book_id = b.id WHERE oi.id IS NULL</code></div><div class="opt">C) <code class="inline">FROM books b LEFT JOIN order_items oi ON oi.book_id = b.id WHERE b.id IS NULL</code></div><div class="opt">D) <code class="inline">FROM order_items oi LEFT JOIN books b ON oi.book_id = b.id WHERE b.id IS NULL</code></div></div></div>
+<div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">Alice (customer 1) placed three orders. What does this print?</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> rows_returned
+<span class="k">FROM</span> orders <span class="k">AS</span> o
+<span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.order_id = o.id
+<span class="k">WHERE</span> o.customer_id = <span class="s">1</span>;</pre><div class="write"></div></div>
+<div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">What happens when this runs?</div><pre class="code"><span class="k">SELECT</span> id, order_date, first_name
+<span class="k">FROM</span> orders
+<span class="k">JOIN</span> customers <span class="k">ON</span> orders.customer_id = customers.id;</pre><div class="opts"><div class="opt">A) It returns 12 rows, using the order's id</div><div class="opt">B) <code class="inline">ERROR 1052 (23000): Column 'id' in field list is ambiguous</code></div><div class="opt">C) <code class="inline">ERROR 1054 (42S22): Unknown column 'id' in 'field list'</code></div><div class="opt">D) It returns 96 rows: a cross join</div></div></div>
+<div class="q" data-sc="5" data-kind="short"><div class="qn">Q5</div><div class="qt">Carol (3) has no orders; Dave (4) has two. What does this print?</div><pre class="code"><span class="k">SELECT</span> c.first_name, COUNT(o.id) <span class="k">AS</span> orders
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o <span class="k">ON</span> o.customer_id = c.id
+<span class="k">WHERE</span> c.id <span class="k">IN</span> (<span class="s">3</span>, <span class="s">4</span>)
+<span class="k">GROUP</span> <span class="k">BY</span> c.id, c.first_name
+<span class="k">ORDER</span> <span class="k">BY</span> c.id;</pre><div class="write"></div></div>
+<div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt">This was meant to list every author with their in-stock books. Isaac Asimov (no books) and the authors of the two out-of-stock books are missing. Why?</div><pre class="code"><span class="k">SELECT</span> a.name, b.title
+<span class="k">FROM</span> authors <span class="k">AS</span> a
+<span class="k">LEFT</span> <span class="k">JOIN</span> books <span class="k">AS</span> b <span class="k">ON</span> b.author_id = a.id
+<span class="k">WHERE</span> b.in_stock = <span class="k">TRUE</span>
+<span class="k">ORDER</span> <span class="k">BY</span> a.id, b.title;</pre><div class="opts"><div class="opt">A) LEFT JOIN cannot be combined with WHERE</div><div class="opt">B) in_stock is a BOOLEAN, so TRUE must be written as 1</div><div class="opt">C) The ORDER BY removes the NULL rows</div><div class="opt">D) The WHERE runs after the join: for the padded rows b.in_stock is NULL, so the LEFT JOIN behaves like an inner join</div></div></div>
+</div>
+<div class="blk"><div class="h">Journal</div>
+<p>Explain the difference between JOIN and LEFT JOIN to a friend who has never written SQL, using a guest list and a list of RSVPs. Then write down, in your own words, what "one row of this join stands for" means and why it matters before you use SUM or COUNT.</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Part 1 Assessment: How It Works</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">The rules</div>
+<ul class="tick">
+  <li><b>60 minutes, open book:</b> the lesson pages, your notes, this workbook and your own scripts are allowed. Other people and AI assistants are not.</li>
+  <li><b>The file is the brief:</b> <code class="inline">labs/module-07/part1-assessment/part1_assessment_starter.sql</code>. It builds the Riverside Cooking School database (<code class="inline">kit_riverside</code>): instructors, classes and students. You build the enrollments table (Part A) and answer eight questions (Part B), writing every answer in the file under its TODO.</li>
+  <li><b>Run it often:</b> save, then <code class="inline">SOURCE labs/module-07/part1-assessment/part1_assessment_starter.sql</code>. Every run rebuilds the school from scratch, so you cannot break anything.</li>
+  <li><b>Joins or subqueries:</b> either is fine where both work. Every query that returns several rows has an ORDER BY. Do not type a number the database can compute.</li>
+  <li><b>Hand in</b> at the end: the file, renamed <code class="inline">part1_assessment_&lt;yourname&gt;.sql</code>, through the channel on the board. It must run from start to finish.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Before you start</div>
+<ul class="tick">
+  <li>☐ My laptop is charged or plugged in; <code class="inline">mysql -u root -p</code> works from my course folder</li>
+  <li>☐ The starter runs as handed out: three tables built, TODO lines, no ERROR</li>
+  <li>☐ The lesson pages I may want are open in tabs (2.2 types and constraints, 4.2 foreign keys, 3.3 GROUP BY, 4.3 joins)</li>
+  <li>☐ I know the plan: Part A in about 20 minutes, Part B in about 35, a final run in the last 5</li>
+</ul>
+</div>
+<div class="blk"><div class="h">If you get stuck</div>
+<ul class="tick">
+  <li>Read the FIRST error line: number, then reason. The lesson's Common Mistakes sections list most of them.</li>
+  <li>If A1 will not work after 15 minutes, make a minimal table (<code class="inline">student_id INT, class_id INT, enrolled_on DATE, rating INT</code>), turn on the A2 INSERT and move on: Part B needs the rows more than the rules.</li>
+  <li>Skip a Part B question and come back: each one is scored on its own.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>Part 1 Review</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Self-check: one question per module</div>
+<p>Six review questions across Modules 2 to 4 (the 4.3 items are above). Do them after the assessment or at home; the matching lesson is named in each.</p>
+<div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">Review (Lesson 2.2): which column type fits a book's price?</div><div class="opts"><div class="opt">A) <code class="inline">DECIMAL(8, 2)</code></div><div class="opt">B) <code class="inline">FLOAT</code></div><div class="opt">C) <code class="inline">VARCHAR(10)</code></div><div class="opt">D) <code class="inline">INT</code></div></div></div>
+<div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">Review (Lessons 2.2 and 2.3): what happens?</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> customers (first_name, last_name, email)
+<span class="k">VALUES</span> (<span class="s">'Ivy'</span>, <span class="s">'Lane'</span>, <span class="s">'alice@example.com'</span>);</pre><div class="write"></div></div>
+<div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">Review (Lesson 3.1): how many books does this count?</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> books <span class="k">WHERE</span> title <span class="k">LIKE</span> <span class="s">'The %'</span>;</pre><div class="opts"><div class="opt">A) <code class="inline">2</code></div><div class="opt">B) <code class="inline">3</code></div><div class="opt">C) <code class="inline">4</code></div><div class="opt">D) <code class="inline">11</code></div></div></div>
+<div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">Review (Lessons 3.2 and 3.3): in which order must these clauses be written?</div><div class="opts"><div class="opt">A) SELECT, FROM, GROUP BY, WHERE, HAVING, ORDER BY, LIMIT</div><div class="opt">B) SELECT, FROM, WHERE, ORDER BY, GROUP BY, HAVING, LIMIT</div><div class="opt">C) SELECT, FROM, WHERE, HAVING, GROUP BY, ORDER BY, LIMIT</div><div class="opt">D) SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT</div></div></div>
+<div class="q" data-sc="11" data-kind="short"><div class="qn">Q11</div><div class="qt">Review (Lesson 3.4): what does this print?</div><pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price = (<span class="k">SELECT</span> MIN(price) <span class="k">FROM</span> books);</pre><div class="write"></div></div>
+<div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">Review (Lessons 4.1 and 4.2): what is the bookstore's order_items table?</div><div class="opts"><div class="opt">A) A one-to-one extension of orders</div><div class="opt">B) A copy of books with a quantity column</div><div class="opt">C) A junction table linking orders and books (many-to-many), carrying facts about each link: quantity and price_at_time</div><div class="opt">D) A self-referencing table</div></div></div>
+</div>
+<div class="blk"><div class="h">The map of Part 1</div>
+<table class="timing">
+<thead><tr><th>Module</th><th>What it gave you</th><th>Lessons</th><th>Confident? (yes / not yet)</th></tr></thead>
+<tbody>
+<tr><td>1 Getting Started</td><td>a server, a client, a database; errors you can read</td><td>1.1, 1.2, 1.3</td><td></td></tr>
+<tr><td>2 Tables &amp; Data Types</td><td>tables with types and constraints; INSERT, SELECT, UPDATE, DELETE</td><td>2.1, 2.2, 2.3</td><td></td></tr>
+<tr><td>3 Querying Data</td><td>WHERE, ORDER BY, LIMIT; COUNT, SUM, AVG, GROUP BY, HAVING; subqueries</td><td>3.1, 3.2, 3.3, 3.4</td><td></td></tr>
+<tr><td>4 Relationships &amp; Joins</td><td>keys and relationships; foreign key rules; JOIN and LEFT JOIN</td><td>4.1, 4.2, 4.3</td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<p>Three questions; hand it in with your assessment file.</p>
+<div class="q"><div class="qn">E1</div><div class="qt">In one sentence each, with the customers and orders tables: what does JOIN return, and what does LEFT JOIN add?</div><div class="write"></div></div>
+<div class="q"><div class="qn">E2</div><div class="qt">Which assessment task was hardest for you, and what would you look up first?</div><div class="write"></div></div>
+<div class="q"><div class="qn">E3</div><div class="qt">Name one thing from Part 1 you will use in a project or at work, and one you want to practice.</div><div class="write"></div></div>
+
+  <div class="sec"><h2>Notes</h2><span class="rule"></span></div>
+<div class="notes-lines"></div>
+
+  <div class="sec"><h2>Homework Checklist</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <code class="inline">sales_report.sql</code> Steps 2 to 6 (optional practice if the course ends with Part 1)</li>
+  <li>☐ Lesson 4.3 Hands-on Exercises 1 to 3 (Exercise 4 is a stretch); the 4.3 Quick Quiz; the 4.3 journal</li>
+  <li>☐ The Part 1 review self-check (Q7 to Q12) and the map of Part 1: one "not yet" line, reread</li>
+  <li>☐ Labs not finished in class: <code class="inline">catalog_joins_starter.sql</code>, <code class="inline">city_sales_starter.sql</code>, <code class="inline">debug_joins.sql</code></li>
+  <li>☐ If Part 2 follows: reload <code class="inline">bookstore.sql</code>; bring <code class="inline">sales_report.sql</code>, the course folder, this workbook and my journal to Session 8</li>
+</ul>
+
+  <div class="sec"><h2>Glossary</h2><span class="rule"></span></div>
+<table class="timing">
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>join</td><td>Pairs the rows of two tables that satisfy a condition (ON) and returns each pair as one wider row</td></tr>
+<tr><td>INNER JOIN (JOIN)</td><td>Only the rows with a match on both sides</td></tr>
+<tr><td>LEFT JOIN</td><td>Every row of the left table; NULL in the right table's columns where nothing matched</td></tr>
+<tr><td>anti-join</td><td>LEFT JOIN ... WHERE right.id IS NULL: the left rows with no match</td></tr>
+<tr><td>CROSS JOIN</td><td>Every combination of rows (also what a JOIN without ON does)</td></tr>
+<tr><td>self-join</td><td>A table joined to itself under two aliases (employee and manager)</td></tr>
+<tr><td>table alias</td><td>A short name for a table in one query (<code class="inline">books AS b</code>)</td></tr>
+<tr><td>fan-out</td><td>Rows multiplied by a join (one row per order line, not per order): count with care</td></tr>
+<tr><td>ambiguous column (1052)</td><td>A column name that exists in two joined tables, used without its table</td></tr>
+</tbody>
+</table>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 7 · Participant Workbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

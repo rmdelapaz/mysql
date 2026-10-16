@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MySQL troubleshooting guide — solutions for installation issues, service problems, connection failures, performance slowdowns, and common setup pitfalls.">
-    <meta name="author" content="Ray De La Paz">
+    <meta name="description" content="MySQL 9.7 troubleshooting guide: fixes for installation, service, connection, phpMyAdmin, query, performance and encoding problems on Windows, macOS, Linux, WSL and Docker.">
+    <meta name="author" content="Ray de la Paz">
     <title>Troubleshooting - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -38,7 +38,11 @@
         <div class="container">
             <header>
                 <h1>🔧 Troubleshooting Guide</h1>
-                <p class="lead">Step-by-step solutions for the most common issues you'll encounter while working through this course — from installation problems to performance questions.</p>
+                <p class="lead">Step-by-step fixes for the problems learners hit most often in this course: installing MySQL 9.7, starting the server, connecting, phpMyAdmin, puzzling query results, slow queries and garbled text. For a specific error number, see <a href="common-errors.html">Common MySQL Errors</a>.</p>
+                <div class="card card-info">
+                    <h4>💡 First, three questions</h4>
+                    <p>Most problems are answered by: <strong>Is the server running?</strong> (see <a href="#service">Service Problems</a>) <strong>Which server am I talking to?</strong> (<code>SELECT VERSION();</code>: anything other than 9.7.x, such as 8.0, 26.x or a version containing <code>MariaDB</code>, means a different server than the course uses) <strong>Who am I, and where?</strong> (<code>SELECT CURRENT_USER(), DATABASE();</code>). The SQL examples on this page assume the course database from <a href="assets/sql/bookstore.sql" download>bookstore.sql</a>.</p>
+                </div>
             </header>
 
             <details class="card toc-card" open>
@@ -58,528 +62,498 @@
                         <li><a href="#encoding" class="toc-link">Character Encoding Issues</a></li>
                         <li><a href="#wsl" class="toc-link">WSL-Specific Issues</a></li>
                         <li><a href="#reset-password" class="toc-link">Resetting the Root Password</a></li>
-                        <li><a href="#nuclear" class="toc-link">Nuclear Option: Reinstall MySQL</a></li>
+                        <li><a href="#nuclear" class="toc-link">Last Resort: Reinstall MySQL</a></li>
                     </ol>
                 </nav>
             </details>
 
             <!-- Installation -->
             <section id="install" class="lesson-section">
-                <h2>Installation &amp; Setup Issues</h2>
+                <h2>📥 Installation &amp; Setup Issues</h2>
+                <p>The installation steps for every platform are in <a href="lesson_02.html">Lesson 1.2: Installing MySQL</a>.</p>
 
                 <div class="card card-info">
-                    <h3>🔹 Package Not Found During Installation</h3>
-                    <p><strong>Symptom:</strong> <code>E: Unable to locate package mysql-server</code></p>
-                    <p><strong>Fix:</strong> Update your package list first:</p>
-                    <pre><code class="language-bash">
-sudo apt update
+                    <h3>🔹 "I installed MySQL, but I got an older version (or MariaDB)"</h3>
+                    <p><strong>Symptom:</strong> <code>mysql --version</code> or <code>SELECT VERSION();</code> shows 8.0.x, 8.4.x, 26.x, or a version containing <code>MariaDB</code>.</p>
+                    <p><strong>Why:</strong> "latest" is usually not 9.7. <code>brew install mysql</code> and Docker's <code>mysql:latest</code> give the newest <em>innovation</em> release (calendar-numbered, like 26.x); the LTS series is <code>mysql@9.7</code> / <code>mysql:9.7</code>. Linux distributions package their own version: Ubuntu's <code>mysql-server</code> is 8.0 on 22.04 and 24.04 and 8.4 on 26.04, and Debian's <code>default-mysql-server</code> is MariaDB. XAMPP ships MariaDB (its button still says "MySQL"); MAMP ships an older MySQL. <strong>Fix:</strong> for MySQL 9.7 on Ubuntu/Debian, add Oracle's MySQL APT repository (Lesson 1.2), or use Docker (<code>mysql:9.7</code>). Everything in this course also works on MySQL 8.4 LTS; on MariaDB almost everything does, and the lessons point out the differences.</p>
+                    <pre><code class="language-bash">mysql --version          # the client
+mysql -u root -p -e "SELECT VERSION();"   # the server (can differ from the client!)</code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 "mysql: command not found" / "'mysql' is not recognized"</h3>
+                    <p><strong>Why:</strong> the client is installed, but its folder is not on your <code>PATH</code>. <strong>Fix:</strong> add the server's <code>bin</code> folder to the PATH, then open a new terminal.</p>
+                    <h4>Windows (PowerShell)</h4>
+                    <pre><code class="language-powershell"># Find the folder (the version number in the path depends on what you installed)
+Get-ChildItem "C:\Program Files\MySQL" -Directory
+
+# Then: Settings, search "environment variables", Edit the user Path, add for example
+#   C:\Program Files\MySQL\MySQL Server 9.7\bin
+# and open a NEW PowerShell window
+mysql --version</code></pre>
+                    <h4>macOS (zsh)</h4>
+                    <pre><code class="language-bash"># Homebrew: mysql@9.7 is "keg-only", so its commands are not on the PATH by default
+echo 'export PATH="$(brew --prefix)/opt/mysql@9.7/bin:$PATH"' &gt;&gt; ~/.zshrc
+# DMG package instead:
+echo 'export PATH="/usr/local/mysql/bin:$PATH"' &gt;&gt; ~/.zshrc
+
+source ~/.zshrc
+mysql --version</code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 "E: Unable to locate package mysql-server" (Ubuntu/Debian)</h3>
+                    <p><strong>Fix:</strong> refresh the package lists first. After adding the MySQL APT repository, the package names stay the same (<code>mysql-server</code>), but the version comes from Oracle's repository.</p>
+                    <pre><code class="language-bash">sudo apt update
 sudo apt install mysql-server
-                    </code></pre>
+apt policy mysql-server        # which version will be (or was) installed, and from where</code></pre>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 MySQL Root Password Never Set</h3>
-                    <p><strong>Symptom:</strong> You installed MySQL but were never prompted for a root password. Now you can't log in.</p>
-                    <p><strong>Fix:</strong> On Ubuntu, MySQL often uses <code>auth_socket</code> authentication for root. Log in with <code>sudo</code>:</p>
-                    <pre><code class="language-bash">
-# Log in as root using sudo (no password needed)
-sudo mysql
-
-# Once inside, set a password for root
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'YourNewPassword!';
-FLUSH PRIVILEGES;
-EXIT;
-
-# Now you can log in with: mysql -u root -p
-                    </code></pre>
+                    <h3>🔹 Ubuntu never asked for a root password; now I can't log in</h3>
+                    <p><strong>Why:</strong> Ubuntu's own <code>mysql-server</code> package sets <code>root</code> to log in through the operating system (the <code>auth_socket</code> plugin): <code>sudo mysql</code> works, <code>mysql -u root -p</code> does not. <strong>Fix:</strong> leave root as it is and create your own administrator account with a password:</p>
+                    <pre><code class="language-bash">sudo mysql</code></pre>
+                    <pre><code class="language-sql">CREATE USER 'ray'@'localhost' IDENTIFIED BY 'Replace-With-Your-Own-Passphrase-1';
+GRANT ALL PRIVILEGES ON *.* TO 'ray'@'localhost' WITH GRANT OPTION;
+SHOW GRANTS FOR 'ray'@'localhost';</code></pre>
+                    <p>Use your own name and a real passphrase, then log in with <code>mysql -u ray -p</code>. This account is for <em>you</em>, at your own computer; applications get their own least-privilege accounts (<a href="lesson_19.html">Lesson 7.4: User Management &amp; Permissions</a>). If you prefer to give root a password instead, run this inside <code>sudo mysql</code> (it uses the default <code>caching_sha2_password</code>; do not switch to <code>mysql_native_password</code>, which MySQL 9.x no longer has):</p>
+                    <pre data-norun><code class="language-sql">ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'Replace-With-Your-Own-Passphrase-2';</code></pre>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 mysql_secure_installation Fails</h3>
-                    <p><strong>Symptom:</strong> Running <code>sudo mysql_secure_installation</code> gives errors or loops.</p>
-                    <p><strong>Fix:</strong> Make sure MySQL is running first, then try:</p>
-                    <pre><code class="language-bash">
-# Ensure MySQL is running
-sudo service mysql start
-
-# If it still fails, set root password manually first (see above)
-# Then run the secure installation
-sudo mysql_secure_installation
-                    </code></pre>
+                    <h3>🔹 Red Hat, Fedora, Oracle Linux: "what is the root password?"</h3>
+                    <p><strong>Why:</strong> MySQL's Yum repository packages create a random <strong>temporary</strong> root password on the first start and write it to the log. <strong>Fix:</strong> read it, log in, and change it right away (until you do, every other statement fails with error 1820):</p>
+                    <pre><code class="language-bash">sudo grep 'temporary password' /var/log/mysqld.log
+mysql -u root -p                # paste the temporary password</code></pre>
+                    <pre data-norun><code class="language-sql">ALTER USER 'root'@'localhost' IDENTIFIED BY 'Replace-With-Your-Own-Passphrase-2';</code></pre>
+                    <p>These packages also install the password-strength component, so a weak password fails with <a href="common-errors.html#e1819">ERROR 1819</a>.</p>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 Apache Won't Start (Port 80 in Use)</h3>
-                    <p><strong>Symptom:</strong> <code>sudo service apache2 start</code> fails because another process is using port 80.</p>
-                    <p><strong>Fix:</strong></p>
-                    <pre><code class="language-bash">
-# Find what's using port 80
-sudo lsof -i :80
+                    <h3>🔹 Port 3306 is already in use</h3>
+                    <p><strong>Symptom:</strong> the server will not start, or Docker says <code>Bind for 0.0.0.0:3306 failed: port is already allocated</code>. <strong>Why:</strong> another MySQL or MariaDB (often XAMPP's, or a second installation, or a container you forgot) is listening. <strong>Fix:</strong> find it and stop it, or run the new server on another port (Docker: <code>-p 3307:3306</code>, then connect with <code>-P 3307</code>).</p>
+                    <h4>macOS / Linux / WSL</h4>
+                    <pre><code class="language-bash">sudo lsof -i :3306
+docker ps                       # a container already publishing 3306?</code></pre>
+                    <h4>Windows (PowerShell)</h4>
+                    <pre><code class="language-powershell">Get-NetTCPConnection -LocalPort 3306 | Select-Object LocalAddress, OwningProcess
+Get-Process -Id &lt;OwningProcess&gt;</code></pre>
+                </div>
 
-# If it's another web server (nginx, IIS), stop it
-sudo service nginx stop
-
-# Or change Apache's port in /etc/apache2/ports.conf
-# Listen 8080 (instead of 80)
-
-# Restart Apache
-sudo service apache2 restart
-                    </code></pre>
+                <div class="card card-info">
+                    <h3>🔹 Docker: the container stops right after it starts</h3>
+                    <p><strong>Fix:</strong> read its log. The most common message says the database is uninitialized and no password option was given: the first start of an empty data volume needs <code>MYSQL_ROOT_PASSWORD</code> (or <code>MYSQL_RANDOM_ROOT_PASSWORD=yes</code>).</p>
+                    <pre><code class="language-bash">docker ps -a                    # is it "Exited"?
+docker logs mysql97             # use your container's name
+docker rm mysql97
+docker run --name mysql97 -e MYSQL_ROOT_PASSWORD='Replace-With-A-Passphrase' \
+    -p 3306:3306 -v mysql97-data:/var/lib/mysql -d mysql:9.7</code></pre>
+                    <div class="card card-warning">
+                        <h4>⚠️ Changing MYSQL_ROOT_PASSWORD later does nothing</h4>
+                        <p>The variable is read only when the data volume is empty. With an existing volume, the old password stays; change it with <code>ALTER USER</code> instead.</p>
+                    </div>
                 </div>
             </section>
 
             <!-- Service Problems -->
             <section id="service" class="lesson-section">
-                <h2>MySQL Service Problems</h2>
+                <h2>⚙️ MySQL Service Problems</h2>
 
                 <div class="card card-info">
-                    <h3>🔹 MySQL Won't Start</h3>
-                    <p><strong>Symptom:</strong> <code>sudo service mysql start</code> fails or exits immediately.</p>
-                    <p><strong>Fix:</strong> Check the error log:</p>
-                    <pre><code class="language-bash">
-# Check the status
-sudo service mysql status
-
-# Read the error log
-sudo tail -50 /var/log/mysql/error.log
-
-# Common causes:
-# - Port 3306 already in use → another MySQL instance running
-# - Corrupted data files → check the error log for specifics
-# - Insufficient disk space → check with: df -h
-# - Permission issues → check ownership of /var/lib/mysql
-
-# Try restarting
-sudo service mysql restart
-                    </code></pre>
+                    <h3>🔹 Is the server running? Start, stop, restart</h3>
+                    <h4>Linux (systemd, including WSL with systemd)</h4>
+                    <pre><code class="language-bash">sudo systemctl status mysql     # the service is "mysqld" on Red Hat-family systems
+sudo systemctl start mysql
+sudo systemctl restart mysql
+sudo systemctl enable mysql     # start automatically at boot</code></pre>
+                    <h4>macOS</h4>
+                    <pre><code class="language-bash">brew services list              # Homebrew installs
+brew services start mysql@9.7
+# DMG installs: System Settings, MySQL (bottom of the list), Start MySQL Server</code></pre>
+                    <h4>Windows (PowerShell as Administrator)</h4>
+                    <pre><code class="language-powershell">Get-Service *mysql*             # shows the service name and status
+Start-Service -Name MySQL97     # use the name Get-Service printed</code></pre>
+                    <h4>Docker</h4>
+                    <pre><code class="language-bash">docker ps -a
+docker start mysql97</code></pre>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 MySQL Stops Unexpectedly</h3>
-                    <p><strong>Symptom:</strong> MySQL was running but crashed or stopped.</p>
-                    <p><strong>Fix:</strong></p>
-                    <pre><code class="language-bash">
-# Check the error log for crash details
-sudo tail -100 /var/log/mysql/error.log
+                    <h3>🔹 The server will not start, or stops by itself</h3>
+                    <p><strong>Fix:</strong> the error log almost always names the reason. Look at its last lines.</p>
+                    <pre><code class="language-bash"># Linux packages
+sudo tail -50 /var/log/mysql/error.log      # Debian/Ubuntu
+sudo tail -50 /var/log/mysqld.log           # Red Hat family
+sudo journalctl -u mysql -n 50
 
-# Common causes:
-# - Out of memory (OOM killer) → check: dmesg | grep -i mysql
-# - Disk full → check: df -h
-# - Configuration error after editing my.cnf
+# Homebrew
+tail -50 "$(brew --prefix)"/var/mysql/*.err
 
-# Restart the service
-sudo service mysql start
-                    </code></pre>
-                </div>
+# Docker
+docker logs --tail 50 mysql97
 
-                <div class="card card-info">
-                    <h3>🔹 Checking MySQL Status</h3>
-                    <pre><code class="language-bash">
-# Is MySQL running?
-sudo service mysql status
-
-# Which version?
-mysql --version
-
-# Is it listening on port 3306?
-sudo netstat -tlnp | grep 3306
-# or
-sudo ss -tlnp | grep 3306
-                    </code></pre>
+# Windows: the .err file in the data folder, typically
+#   C:\ProgramData\MySQL\MySQL Server 9.7\Data\&lt;computer-name&gt;.err</code></pre>
+                    <p><strong>Common causes in the log:</strong> port 3306 in use (see above), a typo in a configuration file you edited (<code>unknown variable</code>), a full disk (<code>df -h</code>), wrong ownership of the data directory (Linux: <code>sudo chown -R mysql:mysql /var/lib/mysql</code>), or not enough memory (on Linux: <code>sudo dmesg | grep -i -E 'killed process|out of memory'</code>).</p>
                 </div>
             </section>
 
             <!-- Connection Issues -->
             <section id="connection" class="lesson-section">
-                <h2>Connection Issues</h2>
+                <h2>🔌 Connection Issues</h2>
 
                 <div class="card card-info">
-                    <h3>🔹 "Access Denied" with Correct Password</h3>
-                    <p><strong>Symptom:</strong> You're sure the password is right, but you still get <code>ERROR 1045</code>.</p>
-                    <p><strong>Possible Causes:</strong></p>
+                    <h3>🔹 "Access denied" with the right password</h3>
+                    <p><strong>Possible causes</strong> (<a href="common-errors.html#e1045">ERROR 1045</a>):</p>
                     <ul>
-                        <li>The user exists for a different host (e.g., <code>'user'@'%'</code> but not <code>'user'@'localhost'</code>)</li>
-                        <li>Root uses <code>auth_socket</code> — try <code>sudo mysql</code> instead</li>
-                        <li>Password has special characters that the shell is interpreting — wrap in single quotes</li>
+                        <li>The account exists for a different host: <code>'app'@'%'</code> and <code>'app'@'localhost'</code> are separate accounts with separate passwords.</li>
+                        <li>Root uses <code>auth_socket</code> (Ubuntu's package): use <code>sudo mysql</code>, then see <a href="#install">the Ubuntu root fix</a>.</li>
+                        <li>The shell changed your password: characters like <code>!</code>, <code>$</code> or <code>&amp;</code> on the command line. Use <code>-p</code> alone and type the password at the prompt.</li>
+                        <li>You are talking to a different server than you think (a Docker container and a local installation both on port 3306).</li>
                     </ul>
-                    <pre><code class="language-bash">
-# Try with sudo (for auth_socket users)
-sudo mysql
-
-# Check which authentication method root uses
-sudo mysql -e "SELECT User, Host, plugin FROM mysql.user WHERE User='root';"
-
-# If it shows 'auth_socket', switch to password authentication:
-sudo mysql
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'YourPassword!';
-FLUSH PRIVILEGES;
-                    </code></pre>
+                    <p>As an administrator, see which accounts exist, which host each allows, and which plugin it uses:</p>
+                    <pre><code class="language-sql">SELECT user, host, plugin, account_locked FROM mysql.user ORDER BY user, host;</code></pre>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 Can't Connect via Socket</h3>
-                    <p><strong>Symptom:</strong> <code>Can't connect through socket '/var/run/mysqld/mysqld.sock'</code></p>
-                    <p><strong>Fix:</strong></p>
-                    <pre><code class="language-bash">
-# Check if MySQL is running
-sudo service mysql status
-
-# If not running, start it
-sudo service mysql start
-
-# If the socket file is missing, check the config
-cat /etc/mysql/mysql.conf.d/mysqld.cnf | grep socket
-
-# Verify the socket file exists
-ls -la /var/run/mysqld/mysqld.sock
-                    </code></pre>
+                    <h3>🔹 "Can't connect to local MySQL server through socket"</h3>
+                    <p>This is <a href="common-errors.html#e2002">ERROR 2002</a>: on Linux and macOS, <code>localhost</code> uses a socket file, and it is missing because the server is not running. <strong>Fix:</strong> start the server (<a href="#service">above</a>). If it is running and the error persists, the client and server disagree about the socket path; connect over TCP instead:</p>
+                    <pre><code class="language-bash">mysql -h 127.0.0.1 -P 3306 -u root -p
+mysqladmin -u root -p variables | grep socket     # where the server put its socket</code></pre>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 Connection Times Out (Remote)</h3>
-                    <p><strong>Fix:</strong> MySQL defaults to localhost-only. For remote connections:</p>
-                    <pre><code class="language-bash">
-# 1. Edit MySQL config
-sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
-# Change: bind-address = 127.0.0.1
-# To:     bind-address = 0.0.0.0
+                    <h3>🔹 Old tool: "Authentication plugin 'caching_sha2_password' cannot be loaded"</h3>
+                    <p><strong>Why:</strong> a client or library from the MySQL 5.7 era (or PHP before 7.4) does not know the default authentication plugin. <strong>Fix:</strong> upgrade the client, connector or PHP. Do not switch the account to <code>mysql_native_password</code>: MySQL 9.x removed it (<a href="common-errors.html#e1524">ERROR 1524</a>).</p>
+                </div>
 
-# 2. Restart MySQL
-sudo service mysql restart
-
-# 3. Create a user that can connect remotely
-mysql -u root -p
-CREATE USER 'remote_user'@'%' IDENTIFIED BY 'SecurePass!';
-GRANT ALL PRIVILEGES ON bookstore.* TO 'remote_user'@'%';
-
-# 4. Check firewall (if applicable)
-sudo ufw allow 3306
-                    </code></pre>
+                <div class="card card-info">
+                    <h3>🔹 Connecting from another computer</h3>
+                    <p>By default the server may listen only on <code>127.0.0.1</code>, and accounts are usually <code>@'localhost'</code>. Three things must line up:</p>
+                    <ol>
+                        <li><strong>Listen:</strong> set <code>bind-address</code> in the server configuration (Ubuntu: <code>/etc/mysql/mysql.conf.d/mysqld.cnf</code>) to the server's address, or <code>0.0.0.0</code> for all, then restart.</li>
+                        <li><strong>An account for that host:</strong> as narrow as possible, with only the privileges needed (example below).</li>
+                        <li><strong>Firewall:</strong> allow port 3306 only from where you need it (Ubuntu: <code>sudo ufw allow from 192.168.1.0/24 to any port 3306</code>).</li>
+                    </ol>
+                    <pre><code class="language-sql">CREATE USER 'report_user'@'192.168.1.%' IDENTIFIED BY 'Replace-With-A-Long-Passphrase-3';
+GRANT SELECT ON bookstore.* TO 'report_user'@'192.168.1.%';
+SHOW GRANTS FOR 'report_user'@'192.168.1.%';</code></pre>
+                    <div class="card card-danger">
+                        <h4>🛑 Never open root to the network</h4>
+                        <p>Do not create <code>'root'@'%'</code> or grant <code>ALL PRIVILEGES</code> to a remote account. Remote access is for specific accounts with specific privileges; for administration, connect over SSH and use the server locally.</p>
+                    </div>
                 </div>
             </section>
 
             <!-- phpMyAdmin -->
             <section id="phpmyadmin" class="lesson-section">
-                <h2>phpMyAdmin Issues</h2>
+                <h2>🌐 phpMyAdmin Issues</h2>
+                <p>phpMyAdmin is introduced in <a href="lesson_03.html">Lesson 1.3: MySQL CLI &amp; phpMyAdmin</a>. It is a PHP web application, so it needs a web server with PHP in front of your MySQL server (XAMPP and MAMP bundle that, with their own database server; with your own MySQL, Docker's <code>phpmyadmin</code> image is the easiest route, see <a href="lesson_02.html">Lesson 1.2: Installing MySQL</a>).</p>
 
                 <div class="card card-info">
-                    <h3>🔹 phpMyAdmin Page Not Found (404)</h3>
-                    <p><strong>Symptom:</strong> Navigating to <code>http://localhost/phpmyadmin</code> gives a 404 error.</p>
-                    <p><strong>Fix:</strong></p>
-                    <pre><code class="language-bash">
-# Check if phpMyAdmin is installed
-dpkg -l | grep phpmyadmin
-
-# If not installed:
-sudo apt install phpmyadmin
-
-# During installation, select "apache2" when asked for the web server
-
-# If installed but not linked to Apache:
-sudo ln -s /usr/share/phpmyadmin /var/www/html/phpmyadmin
-
-# Restart Apache
-sudo service apache2 restart
-                    </code></pre>
+                    <h3>🔹 http://localhost/phpmyadmin shows "Not Found"</h3>
+                    <p><strong>Fix</strong> (Ubuntu with Apache): the package installs a configuration snippet that must be enabled.</p>
+                    <pre><code class="language-bash">dpkg -l | grep phpmyadmin                     # installed at all?
+sudo apt install phpmyadmin                   # pick "apache2" when asked
+sudo ln -s /etc/phpmyadmin/apache.conf /etc/apache2/conf-available/phpmyadmin.conf
+sudo a2enconf phpmyadmin
+sudo systemctl reload apache2</code></pre>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 Can't Log In to phpMyAdmin</h3>
-                    <p><strong>Symptom:</strong> The login page appears but your credentials are rejected.</p>
-                    <p><strong>Fix:</strong> phpMyAdmin uses MySQL's authentication. Make sure your MySQL user uses <code>mysql_native_password</code> (not <code>auth_socket</code>):</p>
-                    <pre><code class="language-bash">
-sudo mysql
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'YourPassword!';
-FLUSH PRIVILEGES;
-EXIT;
-                    </code></pre>
+                    <h3>🔹 The login page rejects root</h3>
+                    <p><strong>Why:</strong> on Ubuntu's package, root has no password (it uses <code>auth_socket</code>), and a web application cannot log in that way. <strong>Fix:</strong> log in to phpMyAdmin with your own administrator account (<a href="#install">created above</a>), not root.</p>
+                    <p>If phpMyAdmin instead says <code>The server requested authentication method unknown to the client [caching_sha2_password]</code>, its PHP is older than 7.4: upgrade PHP (and phpMyAdmin), not the account's plugin.</p>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 Upload Size Too Small in phpMyAdmin</h3>
-                    <p><strong>Symptom:</strong> Can't import large <code>.sql</code> files — "file exceeds maximum upload size."</p>
-                    <p><strong>Fix:</strong> Edit PHP settings:</p>
-                    <pre><code class="language-bash">
-# Find the php.ini file
-php -i | grep "Loaded Configuration File"
-
-# Edit it (path may vary)
-sudo nano /etc/php/8.x/apache2/php.ini
-
-# Change these values:
-# upload_max_filesize = 64M
-# post_max_size = 64M
-# max_execution_time = 300
-
-# Restart Apache
-sudo service apache2 restart
-                    </code></pre>
+                    <h3>🔹 Import fails: "file exceeds the maximum upload size"</h3>
+                    <p><strong>Fix:</strong> raise PHP's limits, or skip the browser for big files and use the client: <code>mysql -u root -p bookstore &lt; big_file.sql</code>.</p>
+                    <pre><code class="language-bash">php --ini | grep "Loaded Configuration"        # which php.ini? (Apache may use a different one)
+# In that php.ini set, for example:
+#   upload_max_filesize = 64M
+#   post_max_size = 64M
+#   max_execution_time = 300
+sudo systemctl restart apache2</code></pre>
                 </div>
             </section>
 
             <!-- Query Problems -->
             <section id="queries" class="lesson-section">
-                <h2>Query Problems</h2>
+                <h2>🔍 Query Problems</h2>
 
                 <div class="card card-info">
-                    <h3>🔹 Query Returns No Results (But Should)</h3>
-                    <p><strong>Possible Causes:</strong></p>
-                    <ul>
-                        <li>Wrong database selected — check with <code>SELECT DATABASE();</code></li>
-                        <li>Table is empty — check with <code>SELECT COUNT(*) FROM table_name;</code></li>
-                        <li><code>WHERE</code> condition too restrictive</li>
-                        <li>Case-sensitive comparison on a case-insensitive column (or vice versa)</li>
-                        <li>Comparing to NULL with <code>=</code> instead of <code>IS NULL</code></li>
-                    </ul>
-                    <pre><code class="language-sql">
--- Bad: This never works for NULL values
-SELECT * FROM books WHERE author_id = NULL;
-
--- Fix: Use IS NULL
-SELECT * FROM books WHERE author_id IS NULL;
-                    </code></pre>
+                    <h3>🔹 A script works at the prompt but fails from a file: "Unknown command '\G'"</h3>
+                    <p><strong>Why:</strong> since MySQL 9, the <code>mysql</code> client ignores its own backslash commands such as <code>\G</code>, and <code>SOURCE</code>, in batch mode (<code>DELIMITER</code> still works), that is when you redirect a file into it (<code>mysql ... &lt; file.sql</code>) or use <code>-e</code>. <code>\G</code> then stops the script with <code>ERROR at line 1: Unknown command '\G'.</code>, and a <code>SOURCE</code> line reaches the server as a syntax error (1064). <strong>Fix:</strong> end statements in script files with <code>;</code>, or allow client commands explicitly (<a href="lesson_03.html">Lesson 1.3</a>):</p>
+                    <pre><code class="language-bash">mysql --commands -u root -p bookstore &lt; report.sql</code></pre>
+                    <p>Likewise <code>\!</code> (run a shell command) is off by default in MySQL 9.x; start the client with <code>--system-command</code> if you need it.</p>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 JOIN Returns Unexpected Duplicates</h3>
-                    <p><strong>Cause:</strong> A many-to-many relationship or missing <code>DISTINCT</code>.</p>
-                    <pre><code class="language-sql">
--- If you see duplicate rows, check the relationship
--- Use DISTINCT to remove duplicates
-SELECT DISTINCT b.title, a.name
+                    <h3>🔹 The query returns nothing (but it should)</h3>
+                    <p><strong>Check:</strong> the right database (<code>SELECT DATABASE();</code>), the table has rows (<code>SELECT COUNT(*) FROM customers;</code>), the <code>WHERE</code> is not too strict, and above all: <strong>NULL</strong>. Nothing is ever equal to NULL, not even NULL, so <code>= NULL</code> matches no rows and raises no error:</p>
+                    <pre><code class="language-sql">SELECT first_name, last_name FROM customers WHERE city = NULL;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Empty set</code></pre>
+                    </div>
+                    <pre><code class="language-sql">SELECT first_name, last_name FROM customers WHERE city IS NULL;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+------------+-----------+
+| first_name | last_name |
++------------+-----------+
+| Eve        | Davis     |
+| Hank       | Taylor    |
++------------+-----------+</code></pre>
+                    </div>
+                    <p>The same trap hides in <code>NOT IN</code>: if the list (or subquery) contains a NULL, <code>NOT IN</code> returns no rows. Use <code>NOT EXISTS</code> or filter the NULLs out.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 A JOIN returns duplicate rows</h3>
+                    <p><strong>Why:</strong> you joined to the "many" side of a relationship: 1984 is in three categories, so it appears three times. That is correct SQL; the question is what you wanted. <code>DISTINCT</code> hides the symptom; better, decide whether you need the extra table at all, or collapse it on purpose:</p>
+                    <pre><code class="language-sql">SELECT b.title, a.name
 FROM books b
-JOIN authors a ON b.author_id = a.id;
-
--- Or check if you're joining on the wrong column
-                    </code></pre>
+JOIN authors a ON a.id = b.author_id
+JOIN book_categories bc ON bc.book_id = b.id
+WHERE a.name = 'George Orwell'
+ORDER BY b.title;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------------+---------------+
+| title       | name          |
++-------------+---------------+
+| 1984        | George Orwell |
+| 1984        | George Orwell |
+| 1984        | George Orwell |
+| Animal Farm | George Orwell |
+| Animal Farm | George Orwell |
++-------------+---------------+</code></pre>
+                    </div>
+                    <pre><code class="language-sql">SELECT b.title, a.name, GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', ') AS categories
+FROM books b
+JOIN authors a ON a.id = b.author_id
+JOIN book_categories bc ON bc.book_id = b.id
+JOIN categories c ON c.id = bc.category_id
+WHERE a.name = 'George Orwell'
+GROUP BY b.id, b.title, a.name
+ORDER BY b.title;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------------+---------------+-----------------------------+
+| title       | name          | categories                  |
++-------------+---------------+-----------------------------+
+| 1984        | George Orwell | Classic, Dystopian, Fiction |
+| Animal Farm | George Orwell | Classic, Fiction            |
++-------------+---------------+-----------------------------+</code></pre>
+                    </div>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 Query Hangs or Is Very Slow</h3>
-                    <p><strong>Quick Fixes:</strong></p>
-                    <pre><code class="language-sql">
--- 1. Check if there's a long-running query
-SHOW PROCESSLIST;
-
--- 2. Kill a stuck query (use the Id from PROCESSLIST)
-KILL 12345;
-
--- 3. Analyze the slow query
-EXPLAIN SELECT * FROM books WHERE author_id = 3;
--- Look for "type: ALL" (full table scan) — add an index
-
--- 4. Add an index
-CREATE INDEX idx_author_id ON books(author_id);
-                    </code></pre>
+                    <h3>🔹 The rows come back in a different order than in the lesson</h3>
+                    <p><strong>Why:</strong> without <code>ORDER BY</code>, SQL promises no order at all, and since MySQL 8.0 <code>GROUP BY</code> no longer sorts its groups either (MariaDB still does). <strong>Fix:</strong> whenever order matters, say so: <code>ORDER BY</code>, with a tiebreaker such as <code>id</code> when values repeat.</p>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 "You Can't Specify Target Table for Update in FROM Clause"</h3>
-                    <p><strong>Cause:</strong> You're trying to UPDATE/DELETE a table while reading from it in a subquery.</p>
-                    <pre><code class="language-sql">
--- Bad:
-DELETE FROM books WHERE price = (SELECT MIN(price) FROM books);
+                    <h3>🔹 "dune" matches "Dune": comparisons ignore case</h3>
+                    <p><strong>Why:</strong> the course database uses a case-insensitive collation (<code>_ci</code>), so <code>=</code> and <code>LIKE</code> ignore case. Usually that is what you want. For an exact, case-sensitive match, compare with a binary collation (the older <code>BINARY 'dune'</code> form is deprecated):</p>
+                    <pre><code class="language-sql">SELECT title FROM books WHERE title = 'dune';
+SELECT title FROM books WHERE title = 'dune' COLLATE utf8mb4_bin;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------+
+| title |
++-------+
+| Dune  |
++-------+
+Empty set</code></pre>
+                    </div>
+                </div>
 
--- Fix: Wrap in a derived table
-DELETE FROM books WHERE price = (SELECT min_price FROM (SELECT MIN(price) AS min_price FROM books) AS tmp);
-                    </code></pre>
+                <div class="card card-info">
+                    <h3>🔹 "Rows matched: 1  Changed: 0"</h3>
+                    <p><strong>Why:</strong> the <code>WHERE</code> found the row, but it already had that value, so nothing changed. Not an error; it often means an earlier statement already did the work, or the <code>SET</code> is not what you meant.</p>
+                    <pre><code class="language-sql">UPDATE books SET price = 14.99 WHERE id = 1;   -- Dune already costs 14.99</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Query OK, 0 rows affected
+Rows matched: 1  Changed: 0  Warnings: 0</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 Money adds up to 0.30000000000000004</h3>
+                    <p><strong>Why:</strong> <code>FLOAT</code> and <code>DOUBLE</code> are binary approximations. <code>DECIMAL</code> (and plain literals like <code>0.1</code>) are exact. <strong>Fix:</strong> store money as <code>DECIMAL(8, 2)</code>, as the course tables do.</p>
+                    <pre><code class="language-sql">SELECT 0.1e0 + 0.2e0 AS double_math, 0.1 + 0.2 AS decimal_math;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+---------------------+--------------+
+| double_math         | decimal_math |
++---------------------+--------------+
+| 0.30000000000000004 |          0.3 |
++---------------------+--------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🔹 A query hangs</h3>
+                    <p><strong>Why:</strong> usually it is waiting for a lock held by an open transaction in another window (it gives up after 50 seconds with <a href="common-errors.html#e1205">ERROR 1205</a>), or it is genuinely slow. <strong>Fix:</strong> press <kbd>Ctrl</kbd>+<kbd>C</kbd> to cancel it, then look at what is running, from another session:</p>
+                    <pre><code class="language-sql">SELECT id, user, db, command, time, state, info
+FROM performance_schema.processlist
+WHERE command &lt;&gt; 'Daemon';</code></pre>
+                    <p>(<code>SHOW PROCESSLIST;</code> shows the same list, but on MySQL 9.7 it adds a deprecation warning pointing to this table.)</p>
+                    <p>Find the stuck statement's <code>Id</code> and stop it (12345 is a placeholder: use the real Id). <code>KILL QUERY</code> cancels the statement; <code>KILL</code> closes the whole connection and rolls back its open transaction:</p>
+                    <pre data-norun><code class="language-sql">KILL QUERY 12345;</code></pre>
                 </div>
             </section>
 
             <!-- Performance -->
             <section id="performance" class="lesson-section">
-                <h2>Performance Issues</h2>
-
+                <h2>⚡ Performance Issues</h2>
+                <p>Background: <a href="lesson_14.html">Lesson 6.1: Indexes &amp; Query Optimization</a>.</p>
                 <div class="card card-info">
-                    <h3>🔹 Quick Performance Checklist</h3>
+                    <h3>🔹 Quick checklist</h3>
                     <ol>
-                        <li><strong>Use <code>EXPLAIN</code></strong> — look for <code>type: ALL</code> (full table scan). Add indexes on columns in <code>WHERE</code>, <code>JOIN</code>, and <code>ORDER BY</code>.</li>
-                        <li><strong>Avoid <code>SELECT *</code></strong> — only request the columns you need.</li>
-                        <li><strong>Add indexes</strong> — on foreign keys, frequently filtered columns, and columns used in <code>ORDER BY</code>.</li>
-                        <li><strong>Use <code>LIMIT</code></strong> — don't fetch thousands of rows when you need 10.</li>
-                        <li><strong>Check for missing foreign key indexes</strong> — foreign key columns should always be indexed.</li>
+                        <li><strong><code>EXPLAIN</code> the query:</strong> <code>type: ALL</code> means a full table scan; the <code>key</code> column shows which index is used.</li>
+                        <li><strong>Index</strong> the columns you filter, join and sort on. InnoDB indexes foreign key columns automatically.</li>
+                        <li><strong>Keep columns bare in <code>WHERE</code>:</strong> <code>WHERE YEAR(published) = 1949</code> cannot use an index on <code>published</code>; <code>WHERE published &gt;= '1949-01-01' AND published &lt; '1950-01-01'</code> can.</li>
+                        <li><strong>Ask for less:</strong> only the columns you need (no <code>SELECT *</code> in applications), and <code>LIMIT</code> lists.</li>
+                        <li><strong>Measure:</strong> <code>EXPLAIN ANALYZE</code> runs the query and reports real times (MySQL only).</li>
                     </ol>
+                    <pre><code class="language-sql">CREATE INDEX idx_books_published ON books (published);
+
+EXPLAIN SELECT title FROM books WHERE YEAR(published) = 1949;
+EXPLAIN SELECT title FROM books WHERE published &gt;= '1949-01-01' AND published &lt; '1950-01-01';
+
+DROP INDEX idx_books_published ON books;</code></pre>
+                    <p>On a table this small, MySQL may still choose a full scan; the difference shows on thousands of rows.</p>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 Enable the Slow Query Log</h3>
-                    <pre><code class="language-sql">
--- Check if slow query log is enabled
-SHOW VARIABLES LIKE 'slow_query_log';
-
--- Enable it
-SET GLOBAL slow_query_log = 'ON';
-SET GLOBAL long_query_time = 1;   -- Log queries slower than 1 second
-
--- Check the log file location
-SHOW VARIABLES LIKE 'slow_query_log_file';
-                    </code></pre>
-                    <pre><code class="language-bash">
-# View the slow query log
-sudo tail -50 /var/lib/mysql/hostname-slow.log
-                    </code></pre>
+                    <h3>🔹 Find slow queries with the slow query log</h3>
+                    <p>As an administrator, switch it on, reproduce the slowness, read the file, and switch it off again (<code>SET GLOBAL</code> lasts until the server restarts):</p>
+                    <pre><code class="language-sql">SHOW VARIABLES LIKE 'slow_query_log%';
+SET GLOBAL long_query_time = 1;        -- log statements slower than 1 second
+SET GLOBAL slow_query_log = ON;</code></pre>
+                    <pre><code class="language-bash">sudo tail -50 /var/lib/mysql/$(hostname)-slow.log     # the file named by slow_query_log_file
+mysqldumpslow -s t /var/lib/mysql/$(hostname)-slow.log  # summary, slowest first</code></pre>
+                    <pre><code class="language-sql">SET GLOBAL slow_query_log = OFF;
+SET GLOBAL long_query_time = DEFAULT;</code></pre>
                 </div>
             </section>
 
             <!-- Encoding -->
             <section id="encoding" class="lesson-section">
-                <h2>Character Encoding Issues</h2>
+                <h2>🔤 Character Encoding Issues</h2>
 
                 <div class="card card-info">
-                    <h3>🔹 Garbled Characters (Mojibake)</h3>
-                    <p><strong>Symptom:</strong> Characters like <code>Ã©</code> appear instead of <code>é</code>, or emojis show as <code>????</code>.</p>
-                    <p><strong>Fix:</strong> Ensure everything uses <code>utf8mb4</code>:</p>
-                    <pre><code class="language-sql">
--- Check database encoding
-SELECT DEFAULT_CHARACTER_SET_NAME FROM information_schema.SCHEMATA
-WHERE SCHEMA_NAME = 'bookstore';
-
--- Check table encoding
-SHOW CREATE TABLE books;
-
--- Fix database encoding
-ALTER DATABASE bookstore CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- Fix table encoding
-ALTER TABLE books CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- Set connection encoding
+                    <h3>🔹 Garbled characters (é shows as Ã©) or emoji become ????</h3>
+                    <p><strong>Why:</strong> somewhere between your keyboard and the table, one link is not <code>utf8mb4</code>: the connection, the table or column, or the terminal. Plain <code>utf8</code> in MySQL is the old 3-byte <code>utf8mb3</code>, which cannot store emoji, and is deprecated. <strong>Fix:</strong> check each link.</p>
+                    <pre><code class="language-sql">-- The connection
+SHOW VARIABLES LIKE 'character_set_c%';
 SET NAMES utf8mb4;
-                    </code></pre>
-                </div>
 
-                <div class="card card-info">
-                    <h3>🔹 Emojis Show as "????"</h3>
-                    <p><strong>Cause:</strong> The column uses <code>utf8</code> (3-byte) instead of <code>utf8mb4</code> (4-byte). Emojis require 4 bytes.</p>
-                    <p><strong>Fix:</strong> Convert the column or table to <code>utf8mb4</code>:</p>
-                    <pre><code class="language-sql">
-ALTER TABLE posts MODIFY COLUMN content TEXT CHARACTER SET utf8mb4;
-                    </code></pre>
+-- The database
+SELECT default_character_set_name, default_collation_name
+FROM information_schema.schemata
+WHERE schema_name = 'bookstore';
+
+-- Any text columns that are NOT utf8mb4?
+SELECT table_name, column_name, character_set_name
+FROM information_schema.columns
+WHERE table_schema = 'bookstore'
+  AND character_set_name IS NOT NULL
+  AND character_set_name &lt;&gt; 'utf8mb4';</code></pre>
+                    <p>To convert a table that is not <code>utf8mb4</code> (this rewrites the table; back up first):</p>
+                    <pre><code class="language-sql">ALTER TABLE customers CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;</code></pre>
+                    <p>For the client, start it with <code>mysql --default-character-set=utf8mb4 -u root -p</code>. In the Windows console, also switch it to UTF-8 with <code>chcp 65001</code> (Windows Terminal handles this better than the old console).</p>
                 </div>
             </section>
 
             <!-- WSL -->
             <section id="wsl" class="lesson-section">
-                <h2>WSL-Specific Issues</h2>
+                <h2>🐧 WSL-Specific Issues</h2>
 
                 <div class="card card-info">
-                    <h3>🔹 Services Don't Start Automatically in WSL</h3>
-                    <p><strong>Symptom:</strong> MySQL and Apache aren't running when you open WSL.</p>
-                    <p><strong>Cause:</strong> WSL doesn't use <code>systemd</code> by default, so services don't auto-start.</p>
-                    <p><strong>Fix:</strong> Start services manually each session, or create an alias:</p>
-                    <pre><code class="language-bash">
-# Start services manually
-sudo service mysql start
-sudo service apache2 start
+                    <h3>🔹 MySQL does not start automatically in WSL</h3>
+                    <p><strong>Why:</strong> current Ubuntu images for WSL run <code>systemd</code>, so <code>sudo systemctl enable mysql</code> works. Older setups have no systemd: <code>systemctl</code> answers "System has not been booted with systemd". <strong>Fix:</strong> enable systemd, or start the service by hand each session.</p>
+                    <pre><code class="language-bash"># Option 1: enable systemd (then run "wsl --shutdown" in PowerShell and reopen Ubuntu)
+printf '[boot]\nsystemd=true\n' | sudo tee /etc/wsl.conf
 
-# Or add to ~/.bashrc for convenience
-echo 'alias lamp-start="sudo service mysql start && sudo service apache2 start"' >> ~/.bashrc
-source ~/.bashrc
-
-# Now just type: lamp-start
-                    </code></pre>
+# Option 2: start it yourself
+sudo service mysql start</code></pre>
                 </div>
 
                 <div class="card card-info">
-                    <h3>🔹 Can't Access localhost from Windows Browser</h3>
-                    <p><strong>Symptom:</strong> Apache is running in WSL but <code>http://localhost</code> doesn't work in your Windows browser.</p>
-                    <p><strong>Fix:</strong></p>
-                    <pre><code class="language-bash">
-# Check if Apache is running
-sudo service apache2 status
-
-# Try the WSL IP address instead
-hostname -I
-# Use that IP in your browser: http://172.x.x.x/phpmyadmin
-
-# In newer WSL2, localhost forwarding should work.
-# If not, restart WSL: (in PowerShell)
-# wsl --shutdown
-# Then reopen your Ubuntu terminal
-                    </code></pre>
-                </div>
-
-                <div class="card card-info">
-                    <h3>🔹 MySQL Data Directory Permissions in WSL</h3>
-                    <p><strong>Symptom:</strong> MySQL won't start with permission errors on <code>/var/lib/mysql</code>.</p>
-                    <p><strong>Fix:</strong></p>
-                    <pre><code class="language-bash">
-# Fix ownership
-sudo chown -R mysql:mysql /var/lib/mysql
-sudo chmod 750 /var/lib/mysql
-
-# Restart MySQL
-sudo service mysql start
-                    </code></pre>
+                    <h3>🔹 Windows programs can't reach MySQL (or phpMyAdmin) in WSL</h3>
+                    <p><strong>Fix:</strong> WSL 2 normally forwards <code>localhost</code> to Windows. If it does not, use the WSL address, or restart WSL. Also make sure a MySQL installed on Windows itself is not holding port 3306 at the same time.</p>
+                    <pre><code class="language-bash">hostname -I            # the WSL address; try http://THAT-ADDRESS/phpmyadmin
+# In PowerShell:  wsl --shutdown   then reopen the Ubuntu terminal</code></pre>
                 </div>
             </section>
 
             <!-- Reset Password -->
             <section id="reset-password" class="lesson-section">
-                <h2>Resetting the Root Password</h2>
-                <p>If you've completely lost the root password, here's how to reset it:</p>
-
-                <pre><code class="language-bash">
-# 1. Stop MySQL
-sudo service mysql stop
-
-# 2. Start MySQL in safe mode (skip authentication)
-sudo mysqld_safe --skip-grant-tables &
-
-# 3. Connect without a password
-mysql -u root
-
-# 4. Reset the password
-FLUSH PRIVILEGES;
-ALTER USER 'root'@'localhost' IDENTIFIED BY 'YourNewPassword!';
-EXIT;
-
-# 5. Stop the safe-mode instance and restart normally
-sudo service mysql stop
-sudo service mysql start
-
-# 6. Test the new password
-mysql -u root -p
-                </code></pre>
-
-                <div class="card card-warning">
-                    <h4>⚠️ Safe Mode = No Security</h4>
-                    <p>While MySQL is running with <code>--skip-grant-tables</code>, anyone can connect without a password. Complete the password reset quickly and restart in normal mode.</p>
+                <h2>🔑 Resetting the Root Password</h2>
+                <p>If you lost root's password (and have no other administrator account), restart the server once with the privilege checks switched off, set a new password, and restart normally. The server must be yours: on a shared or hosted server, ask its administrator.</p>
+                <div class="card card-danger">
+                    <h4>🛑 While the checks are off, anyone can log in</h4>
+                    <p><code>--skip-grant-tables</code> lets every connection in as any user. MySQL automatically disables network connections in this mode (<code>--skip-networking</code>), but finish quickly and restart normally right after.</p>
                 </div>
+                <h3>Linux (and WSL)</h3>
+                <pre><code class="language-bash">sudo systemctl stop mysql
+sudo mkdir -p /var/run/mysqld &amp;&amp; sudo chown mysql:mysql /var/run/mysqld
+sudo mysqld --user=mysql --skip-grant-tables --skip-networking &amp;
+mysql -u root                  # no password needed right now</code></pre>
+                <p>Inside the client: load the privilege tables first (in this mode they are not loaded, so <code>ALTER USER</code> would fail), then set the password. <code>FLUSH PRIVILEGES</code> is deprecated in MySQL 9.x and prints a warning; this special mode is the one place you still need it:</p>
+                <pre data-norun><code class="language-sql">FLUSH PRIVILEGES;
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'Replace-With-Your-New-Passphrase';
+EXIT</code></pre>
+                <pre><code class="language-bash">sudo mysqladmin -u root -p shutdown     # stop the temporary server (use the NEW password)
+sudo systemctl start mysql
+mysql -u root -p                        # test it</code></pre>
+                <h3>Windows</h3>
+                <ol>
+                    <li>Create a text file, for example <code>C:\mysql-init.txt</code>, holding the one line <code>ALTER USER 'root'@'localhost' IDENTIFIED BY 'Replace-With-Your-New-Passphrase';</code></li>
+                    <li>Stop the MySQL service (<code>Stop-Service -Name MySQL97</code>, with your service's name).</li>
+                    <li>In an Administrator PowerShell, start the server once with that file (adjust the version in the paths):</li>
+                </ol>
+                <pre><code class="language-powershell">cd "C:\Program Files\MySQL\MySQL Server 9.7\bin"
+.\mysqld.exe --defaults-file="C:\ProgramData\MySQL\MySQL Server 9.7\my.ini" --init-file=C:\mysql-init.txt --console</code></pre>
+                <ol start="4">
+                    <li>When the console says the server is ready for connections, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, start the service normally, and log in with the new password.</li>
+                    <li><strong>Delete <code>C:\mysql-init.txt</code></strong>: it contains the password.</li>
+                </ol>
+                <h3>Docker</h3>
+                <p>If you still know the password of any administrator account, use <code>docker exec -it mysql97 mysql -u that_admin -p</code> and <code>ALTER USER</code>. Otherwise, the simplest route for a practice container is a fresh one: export what you need first, then remove the container and its volume and start again (<a href="#nuclear">below</a>).</p>
             </section>
 
             <!-- Nuclear Option -->
             <section id="nuclear" class="lesson-section">
-                <h2>Nuclear Option: Reinstall MySQL</h2>
-                <p>If nothing else works and you want a fresh start:</p>
-
-                <pre><code class="language-bash">
-# WARNING: This deletes ALL databases and data!
-
-# 1. Stop MySQL
-sudo service mysql stop
-
-# 2. Remove MySQL completely
-sudo apt remove --purge mysql-server mysql-client mysql-common
-sudo apt autoremove
-sudo rm -rf /var/lib/mysql
-sudo rm -rf /etc/mysql
-
-# 3. Reinstall
-sudo apt update
-sudo apt install mysql-server
-
-# 4. Secure the installation
-sudo mysql_secure_installation
-
-# 5. Start the service
-sudo service mysql start
-                </code></pre>
-
-                <div class="card card-warning">
-                    <h4>⚠️ Last Resort Only</h4>
-                    <p>This removes all databases, all users, and all data. Only do this if you're willing to recreate everything from scratch (or restore from a backup — you do have backups, right? See <a href="lesson_20.html">Lesson 20</a>).</p>
+                <h2>💣 Last Resort: Reinstall MySQL</h2>
+                <div class="card card-danger">
+                    <h4>🛑 This deletes every database on the server</h4>
+                    <p>Back up anything you want to keep first (<a href="lesson_20.html">Lesson 8.1: Importing &amp; Exporting Data</a>): <code>mysqldump -u root -p --all-databases --routines --events &gt; everything.sql</code>. The course database itself can always be rebuilt from <a href="assets/sql/bookstore.sql" download>bookstore.sql</a>.</p>
                 </div>
+                <h4>Ubuntu/Debian</h4>
+                <pre><code class="language-bash">sudo systemctl stop mysql
+sudo apt purge 'mysql-server*' 'mysql-client*' 'mysql-community-*' mysql-common
+sudo apt autoremove
+sudo rm -rf /var/lib/mysql /etc/mysql /var/log/mysql
+sudo apt update &amp;&amp; sudo apt install mysql-server</code></pre>
+                <h4>macOS (Homebrew)</h4>
+                <pre><code class="language-bash">brew services stop mysql@9.7
+brew uninstall mysql@9.7
+rm -rf "$(brew --prefix)/var/mysql"
+brew install mysql@9.7 &amp;&amp; brew services start mysql@9.7</code></pre>
+                <h4>Docker</h4>
+                <pre><code class="language-bash">docker rm -f mysql97
+docker volume rm mysql97-data
+docker run --name mysql97 -e MYSQL_ROOT_PASSWORD='Replace-With-A-Passphrase' \
+    -p 3306:3306 -v mysql97-data:/var/lib/mysql -d mysql:9.7</code></pre>
+                <h4>Windows</h4>
+                <p>Uninstall "MySQL Server" in Settings, Apps; delete the data folder <code>C:\ProgramData\MySQL</code> (hidden; type the path into File Explorer); then run the installer again (<a href="lesson_02.html">Lesson 1.2</a>).</p>
             </section>
 
             <nav class="lesson-nav" aria-label="Page Navigation">
@@ -589,7 +563,7 @@ sudo service mysql start
     </main>
 
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilitator Guide: Session 14</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">contains answers &amp; timing · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Facilitator Guide</div>
+    <h1>Session 14: Final Project Studio II, Showcase and Next Steps</h1>
+    <p class="sub">How to run the last session of MySQL Foundations. Studio II takes the final project through business logic, least-privilege accounts and a backup proven by a restore; every learner presents in the showcase; Lesson 8.3 turns the course into habits (SQL injection and placeholders, an information_schema health check pointed at their own project) and the course closes with submission, evaluation and next steps.</p>
+    <div class="meta-row">
+      <span class="chip"><b>2</b> lessons</span>
+      <span class="chip"><b>3 hrs</b> session</span>
+      <span class="chip">Lessons <b>8.2–8.3</b> · Milestones <b>5–7</b></span>
+      <span class="chip">Session <b>14</b> of 14 · Part 2</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>How to Use This Guide</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>Session 14 closes the course. Before the break: <b>Studio II</b> (Milestones 5 to 7 of the final project, Lesson 8.2), with a short frame and demo. After the break: the <b>showcase</b> (every learner presents for three minutes), then <b>Lesson 8.3</b> (best practices, the health check, SQL injection, what to learn next) and the course close.</li>
+  <li>Every SQL block below was run for real on MySQL 9.7. The 8.2 outputs come from the lesson's own reference solution run as one session (they match the page); the account logins and the dump and restore were measured by logging in as the accounts and running mysqldump. The 8.3 outputs come from the lesson page's own blocks on a fresh bookstore.</li>
+  <li>Keep <code class="inline">lesson_final_project.html</code>, <code class="inline">lesson_21.html</code> and <code class="inline">final-assessment.html</code> open. The final-assessment page holds the rubric, scoring guidance, the reference numbers for every milestone and the submission rules.</li>
+  <li><b>Prepare the projector copy before class:</b> in a terminal started inside a folder holding the lesson's reference scripts, build tool_library (Milestones 2, 3 and 5's procedures, not the calls), so the demo's calls answer exactly as above. Do not show the scripts themselves.</li>
+  <li>Teal blocks are hands-on, amber blocks are watch-outs. Lesson codes match the course site.</li>
+</ul>
+<div class="note warn"><div class="t">The #1 risk of Session 14: no time left for the showcase and the close</div>
+<p>Milestone 5 expands to fill any time you give it. The showcase and Lesson 8.3 are what turn a project into a finished course, so they are fixed. <b>The defense:</b> at 1:05 everyone moves to Milestone 6 whatever the state of their procedure (a procedure that enforces three rules is "meets" on the rubric; the rest goes home). At 1:30 the break starts on time. A learner whose procedure is broken presents a design decision and a query instead.</p>
+</div>
+
+  <div class="sec"><h2>Before the Session</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li>☐ <b>Projector copy of the reference:</b> tool_library built from the lesson's scripts (see How to Use), and the bookstore loaded fresh in a second terminal for the 8.3 demo and the labs.</li>
+  <li>☐ <b>Files to hand out:</b> <code class="inline">labs/module-14/</code> without the <code class="inline">*_solution.sql</code> files. Run <code class="inline">python3 labs/check_labs.py module-14</code> once (10 files, every line PASS).</li>
+  <li>☐ <b>Showcase order:</b> a list on the board or a shared document; a timer visible to the room (3 minutes, then 30 seconds of questions). Groups larger than ten: run two showcase rooms or a gallery walk (see the showcase block).</li>
+  <li>☐ <b>Print or share:</b> the showcase cards ("one strength, one question", on sticky notes), the workbook (its showcase page and course-close page), the submission instructions from <code class="inline">final-assessment.html</code>, and the course evaluation link.</li>
+  <li>☐ <b>Board, before learners arrive:</b> the five-box procedure shape; "Milestone 6 at 1:05 · break 1:30 · showcase 1:40"; the three showcase prompts (a design decision · a Saturday answer checked by hand · a rule refused live).</li>
+  <li>☐ <b>Certificates or completion records</b>, if your program issues them: the completion rule is in <code class="inline">final-assessment.html</code> (the project is submitted after this session, so completion is confirmed after grading).</li>
+</ul>
+<div class="blk warn"><div class="h">Known traps in this session</div>
+<table class="timing">
+<thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><code class="inline">CREATE PROCEDURE</code> ends at the first <code class="inline">;</code></td><td>No <code class="inline">DELIMITER //</code> before it (or a missing <code class="inline">DELIMITER ;</code> after)</td><td>Lesson 7.1's DELIMITER lines around every procedure in 04_logic.sql.</td></tr>
+<tr><td>A failed check-out leaves the session in an open transaction (later statements behave oddly)</td><td>No EXIT HANDLER, or a handler without ROLLBACK</td><td><code class="inline">DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;</code> as the last DECLARE.</td></tr>
+<tr><td><code class="inline">ERROR 1337 (42000): Variable or condition declaration after cursor or handler declaration</code></td><td>The handler declared before a variable (measured on 9.7)</td><td>Variables first, then the handler; every DECLARE before the first statement.</td></tr>
+<tr><td>A call for a member that does not exist fails with 1452 instead of a clear message</td><td>No <code class="inline">IS NULL</code> test: a SELECT ... INTO that finds no row leaves the variable NULL with only a warning, and <code class="inline">NULL &lt;&gt; 'active'</code> is not true, so the INSERT runs and the foreign key refuses it</td><td>Test <code class="inline">IS NULL</code> first after each SELECT ... INTO, as the reference does ('No such member').</td></tr>
+<tr><td><code class="inline">tl_desk_app</code> gets 1142 on everything, even SELECT</td><td>The role was granted but not activated</td><td><code class="inline">SET DEFAULT ROLE 'tl_desk' TO 'tl_desk_app'@'localhost';</code> (Lesson 7.4's silent mistake); log in again.</td></tr>
+<tr><td><code class="inline">mysqldump: command not found</code> at the mysql&gt; prompt, or ERROR 1064</td><td>mysqldump typed inside the client</td><td>It is a terminal command (Lesson 8.1).</td></tr>
+<tr><td>Restore fails with a DEFINER or privilege error</td><td>Restoring as a non-root account</td><td>Restore as root (the lesson says so): the view and procedures carry <code class="inline">DEFINER=root@localhost</code>.</td></tr>
+<tr><td>Learners with their own data get other counts in Milestone 7</td><td>Expected</td><td>The check is that the two counts match each other, not that they are 18.</td></tr>
+</tbody>
+</table>
+</div>
+
+  <div class="sec"><h2>Session 14 Agenda (3 hours)</h2><span class="rule"></span></div>
+  <table class="timing">
+    <thead><tr><th>Clock</th><th>Minutes</th><th>Segment</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td class="t">0:00</td><td class="t">10</td><td>Warm-up</td><td>Rebuild check: every learner runs 02_data.sql and 03_queries.sql from their tool-library folder; three questions on Milestone 4.</td></tr>
+      <tr><td class="t">0:10</td><td class="t">15</td><td><b>8.2</b> Frame and live demo: rules across rows</td><td>The shape of checkout_tool (lock, check, SIGNAL, insert, commit; the EXIT HANDLER) and what a failing call per rule looks like.</td></tr>
+      <tr><td class="t">0:25</td><td class="t">40</td><td><b>8.2</b> Studio: Milestone 5, Business logic</td><td>04_logic.sql: v_open_loans, checkout_tool, return_tool, one failing call per rule; logic check-in. Stuck learners do <code class="inline">add_item_rules_starter.sql</code> first.</td></tr>
+      <tr><td class="t">1:05</td><td class="t">25</td><td><b>8.2</b> Studio: Milestones 6 and 7, Security and backup</td><td>05_security.sql and a login as the desk account; mysqldump, restore into tool_library_test, compare counts.</td></tr>
+      <tr><td class="t">1:30</td><td class="t">10</td><td>Break</td><td>Learners pick the three things they will show. Set up the showcase order on the board.</td></tr>
+      <tr><td class="t">1:40</td><td class="t">35</td><td><b>8.2</b> Showcase</td><td>Three minutes per learner: one design decision, one Saturday answer checked by hand, one rule refused live. Peers write one strength and one question.</td></tr>
+      <tr><td class="t">2:15</td><td class="t">20</td><td><b>8.3</b> Frame and live demo</td><td>Best practices as habits; SQL injection and the placeholder fix; information_schema checks; safe-update mode.</td></tr>
+      <tr><td class="t">2:35</td><td class="t">15</td><td><b>8.3</b> Start the lesson project</td><td>health_check.sql pointed at tool_library (Steps 1 to 4); the learning plan goes home.</td></tr>
+      <tr><td class="t">2:50</td><td class="t">10</td><td>Wrap-up and course close</td><td>Final submission, exit ticket, course evaluation, what comes next.</td></tr>
+      <tr><td class="t"><b>Total</b></td><td class="t"><b>180</b></td><td></td><td>Ends at 3:00.</td></tr>
+    </tbody>
+  </table>
+<p><b>In the room.</b> Lesson 8.2's Milestones 5, 6 and 7 (the lesson estimates 40 + 20 + 20 minutes) get 65 minutes plus a 15-minute frame; the showcase takes 35. Lesson 8.3 (80 minutes for a solo learner) gets 35 minutes: the frame, the injection and health-check demo, and Steps 1 to 4 of its project on the learner's own tool_library. The rest of 8.3 goes home.</p>
+<p><b>Goes home (about 2 to 3 hours, plus the project).</b> Finish the final project: Milestones 5 to 7 if unfinished, Milestone 8 (rebuild from the files on a clean server, the self-review list) and <code class="inline">README.md</code>; submit within one week. Lesson 8.2's Exercises 1 to 3 (they run on tool_library as Milestone 5 leaves it), both Quick Quizzes, both journal entries (the 8.2 prompt about a changed design decision; the 8.3 prompt looking back at Lesson 1.1). Lesson 8.3's project Step 5 (<code class="inline">learning_plan.md</code>) and Exercises 1 and 2.</p>
+<p><b>Protect, in this order:</b> the showcase for every learner; Milestone 6 (accounts that are not root, no DELETE); the 8.3 injection demo; the course close. <b>Cut first:</b> the 8.3 health-check demo steps (the project start runs the same checks), then the Milestone 5 frame's success calls, then Milestone 7 in the room (the commands go home with the reference numbers from the slide).</p>
+
+  <div class="sec"><h2>Opening Segment</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">0:00</span><h3>Warm-up: the Rebuild Check</h3><span class="dur">10 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Timing</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">5m</td><td>Rebuild check: 02_data.sql, then 03_queries.sql, from the tool-library folder</td></tr>
+<tr><td class="t">5m</td><td>Three questions on Milestone 4 (answers in the Answer Key)</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Warm-up questions</div>
+<div class="q"><div class="qn">W1</div><div class="qt">From a client started in your tool-library folder: <code class="inline">SOURCE 02_data.sql</code>, then <code class="inline">SOURCE 03_queries.sql</code>. Which line fails, if any? <i>(Run your scripts)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Saturday question 3 uses RANK(). What would ROW_NUMBER() lose? <i>(Milestone 4)</i></div><div class="write"></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">Why does every Saturday query read <code class="inline">@today</code> instead of <code class="inline">CURDATE()</code>? <i>(Milestone 4)</i></div><div class="write"></div></div>
+</div>
+<div class="blk"><div class="h">Sequence and talking points</div>
+<ul class="tick">
+  <li><b>Rebuild check (5m).</b> Say: "Start your client inside tool-library and rebuild everything from your files. If anything needs a manual fix, that is your first job today." Walk the room once; learners whose scripts fail go on the tracker for the first visit of the studio.</li>
+  <li><b>Milestone 4 (5m).</b> W2 and W3 by cold call; then ask two learners to read a hand check aloud ("7 of 12 tools on the shelf: 2, 4, 7 and 10 are out and 12 is in repair"). Learners on the reference data compare with the hidden reference; learners with their own data compare with their hand checks.</li>
+  <li><b>Learners who did not do Milestone 4:</b> they do Milestone 5 today anyway (it does not depend on the queries) and Milestone 4 at home. The showcase can show a query from Milestone 2's tests instead.</li>
+</ul>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Lesson Plans</h2><span class="rule"></span></div>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">8.2</span><h3>Final Project: Design and Build a Database</h3><span class="dur">115 min (of 240)</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Turn a written brief into entities, relationships and business rules, and draw them as a diagram</li>
+  <li>Build a normalized schema in a re-runnable script, with keys, foreign keys and CHECK constraints that you have tested</li>
+  <li>Answer business questions with joins, GROUP BY, CTEs and window functions, using a fixed report date</li>
+  <li>Enforce rules that span several rows in a stored procedure with a transaction</li>
+  <li>Secure the database with roles and least-privilege accounts, then back it up and prove the backup restores</li>
+</ul>
+<p>Today: the last two objectives in the room (rules in a procedure with a transaction; roles, accounts, a backup that is proven to restore), and every objective in the showcase.</p>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">15m</td><td>Frame and live demo: the shape of checkout_tool; one failing call per rule</td></tr>
+<tr><td class="t">40m</td><td>Studio: Milestone 5, 04_logic.sql</td></tr>
+<tr><td class="t">25m</td><td>Studio: Milestones 6 and 7, 05_security.sql, a login as the desk account, the backup and the restore test</td></tr>
+<tr><td class="t">35m</td><td>Showcase (after the break)</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>"Last session you sorted the rules: one row → a constraint, other rows → a procedure. Today you write that procedure. It is the only door into the loans table: the desk's account may not INSERT into loans at all, only CALL checkout_tool, and the procedure runs with its definer's rights, so every loan passes through every rule."</p>
+<p>"A procedure that checks first and inserts second has a gap: two desk volunteers can both see the drill as free. The transaction and the row lock close the gap; the handler makes sure a refusal undoes everything and tells the caller why."</p>
+</div>
+<div class="blk"><div class="h">Live demo (15 minutes; show the answers, not the code)</div>
+<ol class="steps">
+  <li><b>The shape, on the board (no code yet) (4m).</b> Draw five boxes in a column and say each one: "START TRANSACTION · read and LOCK the rows the rules need (SELECT ... FOR UPDATE) · check each rule, SIGNAL a clear message when one fails · INSERT · COMMIT. Around it all, one EXIT HANDLER: ROLLBACK, then RESIGNAL." Point at the five rules from requirement 5 and ask which row each one reads (member: status; tool: condition and course; loans: open loan for this tool, open loans for this member; member_courses).
+Do not show the reference procedure: Milestone 5 is the learners' own work. Lesson 7.2's handler and Lesson 7.1's SIGNAL are the two pieces they already have.</li>
+  <li><b>What "proven" looks like: one failing call per rule (6m).</b> "This is the reference procedure answering. Yours must give each rule its own message." Run the calls on your projector copy (built from the lesson's scripts before class).
+<pre class="code"><span class="k">CALL</span> checkout_tool(<span class="s">8</span>, <span class="s">1</span>, <span class="s">'2026-06-15'</span>);   <span class="c">-- Victor is suspended</span>
+<span class="k">CALL</span> checkout_tool(<span class="s">1</span>, <span class="s">12</span>, <span class="s">'2026-06-15'</span>);  <span class="c">-- tile cutter in repair</span>
+<span class="k">CALL</span> checkout_tool(<span class="s">6</span>, <span class="s">7</span>, <span class="s">'2026-06-15'</span>);   <span class="c">-- ladder is out with Amara</span>
+<span class="k">CALL</span> checkout_tool(<span class="s">7</span>, <span class="s">6</span>, <span class="s">'2026-06-15'</span>);   <span class="c">-- Tessa has no chainsaw course</span></pre>
+<pre class="out">ERROR 1644 (45000): Member is suspended
+ERROR 1644 (45000): Tool is out for repair
+ERROR 1644 (45000): Tool is already on loan
+ERROR 1644 (45000): Safety course required for this tool</pre>
+Four rules, four messages, error 1644 each (SQLSTATE 45000 is "user-defined").</li>
+  <li><b>The limit, and a success (3m).</b> "Kevin already has the socket set. Two more succeed, the fourth must not."
+<pre class="code"><span class="k">CALL</span> checkout_tool(<span class="s">2</span>, <span class="s">1</span>, <span class="s">'2026-06-15'</span>);
+<span class="k">CALL</span> checkout_tool(<span class="s">2</span>, <span class="s">3</span>, <span class="s">'2026-06-15'</span>);
+<span class="k">CALL</span> checkout_tool(<span class="s">2</span>, <span class="s">8</span>, <span class="s">'2026-06-15'</span>);   <span class="c">-- a fourth tool for Kevin</span></pre>
+<pre class="out">+---------+------------+
+| loan_id | due_on     |
++---------+------------+
+|      17 | 2026-06-22 |
++---------+------------+
++---------+------------+
+| loan_id | due_on     |
++---------+------------+
+|      18 | 2026-06-22 |
++---------+------------+
+ERROR 1644 (45000): Loan limit reached (3 open loans)</pre>
+The successful call prints the new loan id and due date: the desk's web form can show them.</li>
+  <li><b>Returns and the desk view (2m).</b> "return_tool closes the open loan; the view is the desk's screen."
+<pre class="code"><span class="k">CALL</span> return_tool(<span class="s">1</span>, <span class="s">'2026-06-16'</span>);
+<span class="k">CALL</span> return_tool(<span class="s">3</span>, <span class="s">'2026-06-16'</span>);
+<span class="k">CALL</span> return_tool(<span class="s">7</span>, <span class="s">'2026-06-16'</span>);
+
+<span class="k">SELECT</span> * <span class="k">FROM</span> v_open_loans <span class="k">ORDER</span> <span class="k">BY</span> due_on, loan_id;
+
+<span class="k">CALL</span> return_tool(<span class="s">7</span>, <span class="s">'2026-06-16'</span>);        <span class="c">-- the ladder is already back</span></pre>
+<pre class="out">+---------+---------+----------------+--------------+------------+------------+
+| loan_id | tool_id | tool           | member       | loaned_on  | due_on     |
++---------+---------+----------------+--------------+------------+------------+
+|      14 |       2 | Cordless drill | Rosa Delgado | 2026-06-06 | 2026-06-13 |
+|      15 |       4 | Socket set     | Kevin Brooks | 2026-06-10 | 2026-06-17 |
+|      16 |      10 | Carpet cleaner | Hannah Weiss | 2026-06-12 | 2026-06-19 |
++---------+---------+----------------+--------------+------------+------------+
+ERROR 1644 (45000): Tool is not on loan</pre>
+18 loans now: 16 from the data plus Kevin's two. Milestone 7's counts use this number.</li>
+</ol>
+</div>
+<div class="blk lab"><div class="h">Studio: Milestone 5, Business logic (40 minutes)</div>
+<ul class="tick">
+  <li><b>Task (lesson, Milestone 5):</b> <code class="inline">04_logic.sql</code> with the view <code class="inline">v_open_loans</code>, <code class="inline">checkout_tool(member, tool, date)</code> enforcing all five rules of requirement 5 inside a transaction with a clear message for each, and <code class="inline">return_tool(tool, date)</code>; NULL as the date means today. Then a call that must fail for every rule and one that must succeed.</li>
+  <li><b>Stuck on the shape?</b> Send them to <code class="inline">labs/module-14/l8_2-final-project/add_item_rules_starter.sql</code> first (15 minutes): the same shape on the bookstore (lock the order, check, SIGNAL, insert, commit, the handler), with <code class="inline">labs/module-14/l8_2-final-project/debug_add_item_rules.sql</code> as its failing calls. Then back to the project.</li>
+  <li><b>Check-in (from minute 25):</b> the learner runs their failing calls: each rule refused with its own message (five messages), one success, and <code class="inline">SELECT * FROM v_open_loans</code> afterwards. Ask: "what happens to the transaction when the course check fails?" (the handler rolls it back).</li>
+  <li><b>Coach:</b> a rule checked AFTER the INSERT (the loan exists before the refusal: move the checks up); a COUNT that includes returned loans (<code class="inline">returned_on IS NULL</code> missing); <code class="inline">loaned_on + 7</code> instead of <code class="inline">+ INTERVAL 7 DAY</code> (it turns the date into a number: measured, DATE('2026-06-28') + 7 is 20260635, not a date); checking <code class="inline">v_condition = 'repair'</code> when no tool was found (test IS NULL first).</li>
+  <li><b>At 1:05 everyone moves on</b>, finished or not (see the #1 risk).</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Studio: Milestones 6 and 7, Security and backup (25 minutes)</div>
+<ul class="tick">
+  <li><b>Milestone 6 (12m):</b> <code class="inline">05_security.sql</code> with the roles <code class="inline">tl_desk</code> and <code class="inline">tl_reports</code> and the two accounts, each with SET DEFAULT ROLE. Then log in as the desk account in a second terminal and try what it must not do. The reference, measured:</li>
+</ul>
+<pre class="code"><span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'tl_desk_app'</span>@<span class="s">'localhost'</span> <span class="k">USING</span> <span class="s">'tl_desk'</span>;</pre><pre class="out">+----------------------------------------------------------------------------------------+
+| Grants for tl_desk_app@localhost                                                       |
++----------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `tl_desk_app`@`localhost`                                        |
+| GRANT SELECT ON `tool_library`.* TO `tl_desk_app`@`localhost`                          |
+| GRANT INSERT, UPDATE ON `tool_library`.`members` TO `tl_desk_app`@`localhost`          |
+| GRANT EXECUTE ON PROCEDURE `tool_library`.`checkout_tool` TO `tl_desk_app`@`localhost` |
+| GRANT EXECUTE ON PROCEDURE `tool_library`.`return_tool` TO `tl_desk_app`@`localhost`   |
+| GRANT `tl_desk`@`%` TO `tl_desk_app`@`localhost`                                       |
++----------------------------------------------------------------------------------------+</pre><pre class="code"><span class="c">-- logged in as tl_desk_app:</span>
+<span class="k">CALL</span> checkout_tool(<span class="s">4</span>, <span class="s">1</span>, <span class="s">'2026-06-17'</span>);
+<span class="k">DELETE</span> <span class="k">FROM</span> loans <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">INSERT</span> <span class="k">INTO</span> loans (tool_id, member_id, loaned_on, due_on) <span class="k">VALUES</span> (<span class="s">3</span>, <span class="s">4</span>, <span class="s">'2026-06-17'</span>, <span class="s">'2026-06-24'</span>);</pre><pre class="out">+---------+------------+
+| loan_id | due_on     |
++---------+------------+
+|      19 | 2026-06-24 |
++---------+------------+
+ERROR 1142 (42000): DELETE command denied to user 'tl_desk_app'@'localhost' for table 'loans'
+ERROR 1142 (42000): INSERT command denied to user 'tl_desk_app'@'localhost' for table 'loans'</pre><ul class="tick">
+  <li>The CALL works (definer's rights); the direct DELETE and INSERT are refused. The treasurer's account reads (<code class="inline">SELECT COUNT(*) FROM loans</code> answers) and is refused an UPDATE with the same 1142.</li>
+  <li><b>Milestone 7 (13m):</b> in the terminal, the lesson's mysqldump command, <code class="inline">CREATE DATABASE tool_library_test</code>, the restore, then the comparison in the client. Measured on the reference after Milestone 5 (338-line dump, no errors):</li>
+</ul>
+<pre class="out">+----------------+------------+
+| loans_original | loans_copy |
++----------------+------------+
+|             18 |         18 |
++----------------+------------+</pre><ul class="tick">
+  <li>Both counts 18; <code class="inline">checkout_tool</code> and <code class="inline">return_tool</code> are in the copy (defined by root@localhost); the copy's <code class="inline">v_open_loans</code> lists 3 open loans. Then <code class="inline">DROP DATABASE tool_library_test;</code> and one line in the README with the date and the counts.</li>
+  <li><b>Check-in:</b> the learner shows SHOW GRANTS for the desk account (no DELETE, no INSERT on loans) and the two matching counts.</li>
+</ul>
+</div>
+<div class="blk lab"><div class="h">Showcase (35 minutes, after the break)</div>
+<p>Three minutes per learner (pairs: four minutes per pair), then 30 seconds for one question. Every presenter shows three things, from their own laptop on the projector or as screenshots:</p>
+<ol class="steps">
+  <li><b>One design decision and why</b> (an ENUM or a lookup table, a foreign key's ON DELETE rule, where a rule lives).</li>
+  <li><b>One Saturday answer, checked by hand</b> ("7 of 12 on the shelf: here is why").</li>
+  <li><b>One rule refused live</b> (a failing CALL, or a constraint test).</li>
+</ol>
+<p>Listeners write one strength and one question on a sticky note per presenter and hand them over; you fill the showcase sheet below (one strength per learner goes into the written feedback). The showcase is practice: it is <b>not scored</b>. Rubric scores come from the submitted files.</p>
+<ul class="tick">
+  <li><b>More than ten learners:</b> split into two rooms with a co-facilitator, or run a gallery walk (laptops open at the three things, half the room presents while the other half walks, then swap: 2 × 15 minutes).</li>
+  <li><b>A learner whose procedure is broken</b> shows a design decision, a query and a constraint test instead. Nobody skips the showcase.</li>
+  <li><b>Close the showcase</b> with one minute from you: the three strengths you saw most often, and the one fix you saw most often (it goes in everybody's README as a next step).</li>
+</ul>
+<div class="blk"><div class="h">Showcase sheet</div>
+<table class="timing">
+<thead><tr><th>Learner</th><th>Design decision (and why)</th><th>Saturday answer, checked by hand</th><th>Rule refused live</th><th>One strength to write in the feedback</th></tr></thead>
+<tbody>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>Checks without a lock.</b> The procedure checks and inserts correctly, but reads the tool without FOR UPDATE. Coach with two terminals: "open a transaction in each and lend the same drill" (Lesson 7.2's two-session demo). Q5 in the self-check.</li>
+  <li><b>root everywhere.</b> The desk account was skipped, or created with ALL PRIVILEGES. Coach with Rosa's requirement 7 and the rubric's Security row ("desk account can only change data through procedures").</li>
+  <li><b>A backup that was never restored.</b> "The dump file exists" is the "meets" level; full points need the restore and the matching counts in the README. Coach: "a backup is only a backup once it has been restored."</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<p>Ask during the studio check-ins:</p>
+<ul class="tick">
+  <li>Why can the desk account create a loan it may not INSERT? <b>Answer:</b> the procedure runs with its definer's rights (SQL SECURITY DEFINER, the default).</li>
+  <li>What does RESIGNAL add to ROLLBACK? <b>Answer:</b> the caller still receives the original error and message.</li>
+  <li>Your dump restored. What else must you keep to rebuild Rosa's system? <b>Answer:</b> 05_security.sql (the accounts are not in the dump) and the numbered scripts.</li>
+</ul>
+<p>Workbook self-check, items Q1 to Q6.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q1</b> <span data-sc="1">C) <code class="inline">ERROR 1644 (45000): Safety course required for this tool</code></span>; <b>Q2</b> <span data-sc="2">A) So a failed check-out never leaves a half-finished transaction, and the caller still receives the real error message</span>; <b>Q3</b> <span data-sc="3"><code class="inline">ERROR 1142 (42000): DELETE command denied to user 'tl_desk_app'@'localhost' for table 'loans'</code></span>; <b>Q4</b> <span data-sc="4">D) The accounts tl_desk_app and tl_treasurer and their roles</span>; <b>Q5</b> <span data-sc="5">B) So a second check-out of the same tool waits until the first commits, then sees the new loan</span>; <b>Q6</b> <span data-sc="6">Four rows; loan 13 (the extension ladder, <code class="inline">12</code> days) first</span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> the add_item_rules lab first; then a procedure with three rules ("meets" on Business logic) is a fine result for today. In Milestone 6, the lesson's reference 05_security.sql may be typed and then TESTED by the learner: the login test is where the understanding shows.</p>
+<p><b>Stretch:</b> the lesson's Exercise 4 (a generated column that makes one open loan per tool a UNIQUE constraint), the Bonus Challenge (reservations), or a scheduled backup (Lesson 8.1 Step 6) for tool_library.</p>
+</div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div class="lesson-head"><span class="lcode">8.3</span><h3>Next Steps &amp; Best Practices</h3><span class="dur">35 min</span></div>
+    <div class="lesson-body">
+<div class="blk"><div class="h">Objectives (from the lesson page)</div>
+<ul class="tick">
+  <li>Summarize what each module of the course taught and where to look things up again</li>
+  <li>Apply a short list of design, query, security and operations practices to any MySQL project</li>
+  <li>Audit a database with information_schema queries for missing keys, risky types and old character sets</li>
+  <li>Explain SQL injection and write parameterized queries, in SQL and in an application language</li>
+  <li>Choose a next learning step that fits your goal</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Timing in the room</div>
+<table class="timing">
+<tbody>
+<tr><td class="t">5m</td><td>Frame: the course in one page; habits, not rules</td></tr>
+<tr><td class="t">15m</td><td>Live demo: SQL injection and the placeholder; information_schema checks; safe-update mode</td></tr>
+<tr><td class="t">15m</td><td>Start the lesson project: health_check.sql on tool_library (Steps 1 to 4)</td></tr>
+</tbody>
+</table>
+</div>
+<div class="blk"><div class="h">Mental model to say</div>
+<p>Show the lesson's module table ("The Course in One Page") and say: "Every practice in this lesson prevents a problem you met in this course: a missing primary key, FLOAT money, an UPDATE without WHERE, a password in code. Habits are cheap insurance."</p>
+<p>Then the one idea that matters most when they leave: "Real users never see a mysql&gt; prompt. Applications send SQL through a driver, and the user's input travels as a PARAMETER, separate from the SQL text. Glue input into SQL and someone else writes your WHERE clause."</p>
+</div>
+<div class="blk"><div class="h">Live demo (you type, they follow; 15 minutes)</div>
+<p>The lesson's own blocks on a freshly loaded bookstore; outputs are real and match the page.</p>
+<ol class="steps">
+  <li><b>Building SQL from input: the leak (5m).</b> "A web form looks up a customer by the email someone typed. Here is what gluing the input into the SQL does when the input is crafted." Read the query_sent line aloud.
+<pre class="code"><span class="k">SET</span> @input = <span class="s">'nobody@example.com'' OR ''1''=''1'</span>;
+
+<span class="k">SET</span> @sql = CONCAT(<span class="s">'SELECT first_name, email FROM customers WHERE email = '''</span>, @input, <span class="s">''''</span>);
+<span class="k">SELECT</span> @sql <span class="k">AS</span> query_sent;
+
+PREPARE lookup <span class="k">FROM</span> @sql;
+EXECUTE lookup;
+DEALLOCATE PREPARE lookup;</pre>
+<pre class="out">+---------------------------------------------------------------------------------------+
+| query_sent                                                                            |
++---------------------------------------------------------------------------------------+
+| SELECT first_name, email FROM customers WHERE email = 'nobody@example.com' OR '1'='1' |
++---------------------------------------------------------------------------------------+
+Statement prepared
++------------+-------------------+
+| first_name | email             |
++------------+-------------------+
+| Alice      | alice@example.com |
+| Bob        | bob@example.com   |
+| Carol      | carol@example.com |
+| Dave       | dave@example.com  |
+| Eve        | eve@example.com   |
+| Frank      | frank@example.com |
+| Grace      | grace@example.com |
+| Hank       | hank@example.com  |
++------------+-------------------+</pre>
+Every customer's email leaks, with no error. Variations delete tables or skip logins.</li>
+  <li><b>The fix: a placeholder (3m).</b> "The value travels separately and can only ever be a value. Every driver does this."
+<pre class="code">PREPARE lookup <span class="k">FROM</span> <span class="s">'SELECT first_name, email FROM customers WHERE email = ?'</span>;
+EXECUTE lookup <span class="k">USING</span> @input;
+DEALLOCATE PREPARE lookup;</pre>
+<pre class="out">Statement prepared
+Empty set</pre>
+Show one driver example on the lesson page (the language your group uses next): <code class="inline">?</code>, <code class="inline">%s</code>, <code class="inline">:name</code>, <code class="inline">@name</code> are all the same idea.</li>
+  <li><b>information_schema checks a design (5m).</b> "Every server describes itself in tables. Plant an old-style table, then let a query find it."
+<pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> hc_demo_payments (
+    paid_on <span class="k">DATE</span>,
+    amount  <span class="k">FLOAT</span>,
+    note    <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">CHARACTER</span> <span class="k">SET</span> latin1
+);
+
+<span class="k">SELECT</span> t.TABLE_NAME <span class="k">AS</span> table_without_pk
+<span class="k">FROM</span> information_schema.<span class="k">TABLES</span> <span class="k">AS</span> t
+<span class="k">LEFT</span> <span class="k">JOIN</span> information_schema.TABLE_CONSTRAINTS <span class="k">AS</span> c
+       <span class="k">ON</span> c.TABLE_SCHEMA = t.TABLE_SCHEMA
+      <span class="k">AND</span> c.TABLE_NAME = t.TABLE_NAME
+      <span class="k">AND</span> c.CONSTRAINT_TYPE = <span class="s">'PRIMARY KEY'</span>
+<span class="k">WHERE</span> t.TABLE_SCHEMA = <span class="s">'bookstore'</span>
+  <span class="k">AND</span> t.TABLE_TYPE = <span class="s">'BASE TABLE'</span>
+  <span class="k">AND</span> c.CONSTRAINT_NAME <span class="k">IS</span> <span class="k">NULL</span>
+<span class="k">ORDER</span> <span class="k">BY</span> t.TABLE_NAME;</pre>
+<pre class="out">+------------------+
+| table_without_pk |
++------------------+
+| hc_demo_payments |
++------------------+</pre></li>
+  <li><b>Risky types (2m).</b> "FLOAT for money and latin1 text."
+<pre class="code"><span class="k">SELECT</span> TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, CHARACTER_SET_NAME
+<span class="k">FROM</span> information_schema.<span class="k">COLUMNS</span>
+<span class="k">WHERE</span> TABLE_SCHEMA = <span class="s">'bookstore'</span>
+  <span class="k">AND</span> (DATA_TYPE <span class="k">IN</span> (<span class="s">'float'</span>, <span class="s">'double'</span>)
+       <span class="k">OR</span> CHARACTER_SET_NAME <span class="k">NOT</span> <span class="k">IN</span> (<span class="s">'utf8mb4'</span>, <span class="s">'binary'</span>))
+<span class="k">ORDER</span> <span class="k">BY</span> TABLE_NAME, ORDINAL_POSITION;</pre>
+<pre class="out">+------------------+-------------+--------------+--------------------+
+| TABLE_NAME       | COLUMN_NAME | COLUMN_TYPE  | CHARACTER_SET_NAME |
++------------------+-------------+--------------+--------------------+
+| hc_demo_payments | amount      | float        | NULL               |
+| hc_demo_payments | note        | varchar(100) | latin1             |
++------------------+-------------+--------------+--------------------+</pre>
+Then <code class="inline">DROP TABLE hc_demo_payments;</code>. FLOAT for money: the lesson's demo sums 0.10 + 0.20 + 19.99 to 20.289999775588512.</li>
+  <li><b>Safe-update mode (2m).</b> "A forgotten WHERE, caught."
+<pre class="code"><span class="k">SET</span> SQL_SAFE_UPDATES = <span class="s">1</span>;
+
+<span class="k">UPDATE</span> books <span class="k">SET</span> price = price * <span class="s">1.10</span>;</pre>
+<pre class="out">ERROR 1175 (HY000): You are using safe update mode and you tried to update a table without a WHERE that uses a KEY column.</pre>
+Then <code class="inline">SET SQL_SAFE_UPDATES = 0;</code>.</li>
+</ol>
+</div>
+<div class="blk lab"><div class="h">Start the lesson project: Health Check (15 minutes)</div>
+<ul class="tick">
+  <li><b>Steps 1 and 2:</b> <code class="inline">health_check.sql</code> with <code class="inline">SET @db = 'bookstore';</code> and the three checks; on the bookstore, checks 1 and 2 print Empty set (the result you want) and the table count is 8.</li>
+  <li><b>Step 3:</b> the unindexed-foreign-key check (Empty set on the bookstore).</li>
+  <li><b>Step 4, the point of today:</b> <code class="inline">SET @db = 'tool_library';</code> and run it on their own project. On the reference tool_library (measured): 6 tables; no table without a primary key; no FLOAT or non-utf8mb4 column; every foreign-key column leads an index; and the delete rules:</li>
+</ul>
+<pre class="out">+----------------+-------------------+-----------------------+-------------+
+| TABLE_NAME     | CONSTRAINT_NAME   | REFERENCED_TABLE_NAME | DELETE_RULE |
++----------------+-------------------+-----------------------+-------------+
+| loans          | fk_loans_member   | members               | NO ACTION   |
+| loans          | fk_loans_tool     | tools                 | NO ACTION   |
+| member_courses | fk_mc_course      | safety_courses        | NO ACTION   |
+| member_courses | fk_mc_member      | members               | CASCADE     |
+| tools          | fk_tools_category | categories            | NO ACTION   |
+| tools          | fk_tools_course   | safety_courses        | NO ACTION   |
++----------------+-------------------+-----------------------+-------------+</pre><ul class="tick">
+  <li>Ask: "why NO ACTION here and RESTRICT on the bookstore?" Both mean "refuse" in InnoDB; the bookstore's script wrote <code class="inline">ON DELETE RESTRICT</code>, the project wrote no rule at all, and information_schema reports the default as NO ACTION. Only fk_mc_member cascades: course records mean nothing without their member.</li>
+  <li><b>Goes home:</b> Step 5 (<code class="inline">learning_plan.md</code>: a path, a first topic, a project, dates) and the comment block at the top of the file.</li>
+  <li><b>Fast finishers:</b> <code class="inline">labs/module-14/l8_3-next-steps/health_check_starter.sql</code> (two checks the lesson does not have: <code class="inline">_id</code> columns that no foreign key protects, and the CASCADE/SET NULL list), <code class="inline">labs/module-14/l8_3-next-steps/safe_search_starter.sql</code> (placeholders on the bookstore) and <code class="inline">labs/module-14/l8_3-next-steps/debug_unsafe_habits.sql</code> (safe-update mode).</li>
+</ul>
+</div>
+<div class="blk warn"><div class="h">Three mistakes to expect, and how to coach each</div>
+<ul class="tick">
+  <li><b>"Escaping quotes is enough."</b> Coach: placeholders cost nothing and cannot be gotten wrong; escaping by hand can. The lesson says so in its Common Mistake 1.</li>
+  <li><b>Health check reports nothing, so the database must be fine.</b> Coach: run it on the planted table (the lab plants one) to see that each check CAN find something. An empty result only means something when the check can fail.</li>
+  <li><b>Learning plans with no dates.</b> Coach with the lesson's Step 5: a path, one first topic, one small project and a date next to each.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Checks for understanding</div>
+<ul class="tick">
+  <li>What makes a parameterized query safe? <b>Answer:</b> the value is sent separately from the SQL text, so it can never become part of the statement.</li>
+  <li>Which information_schema table tells you what deleting a parent does? <b>Answer:</b> REFERENTIAL_CONSTRAINTS (DELETE_RULE).</li>
+  <li>Which MySQL version do you install for production next year? <b>Answer:</b> the current LTS (9.7 or 8.4), asked for by name.</li>
+</ul>
+<p>Workbook self-check, items Q7 to Q12.</p>
+<p style="font-size:.9rem;margin:.2rem 0">Answers: <b>Q7</b> <span data-sc="7">D) All eight customers</span>; <b>Q8</b> <span data-sc="8">A) They are deleted too (fk_items_order is CASCADE)</span>; <b>Q9</b> <span data-sc="9">It is refused: <code class="inline">ERROR 1175</code> (safe update mode: no KEY column in the WHERE)</span>; <b>Q10</b> <span data-sc="10">C) It is the "find what is missing" pattern: keep every table, then keep only those that found no PRIMARY KEY row</span>; <b>Q11</b> <span data-sc="11">B) In an environment variable or a secrets manager, never in the code or the repository</span>; <b>Q12</b> <span data-sc="12"><code class="inline">EXECUTE stmt USING @author, @max_price;</code>: user variables, in the same order as the ? placeholders</span>. Full set with explanations in the Answer Key.</p></div>
+<div class="blk"><div class="h">Differentiation</div>
+<p><b>Support:</b> the health-check starter has check 1 done; Steps 1 to 4 on the bookstore only are enough for today. <b>Stretch:</b> the lesson's Exercise 3 (a one-line summary per table with correlated subqueries) and its Bonus Challenge (a trigger, a FULLTEXT index or a scheduled event added to the final project, with one thing the manual taught them).</p>
+</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>Closing</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Course close (10 minutes)</div>
+<ol class="steps">
+  <li><b>Final submission (3m).</b> On the slide: the zipped <code class="inline">tool-library</code> folder (the five scripts, the backup file of the test data, README.md with the restore date and counts, the self-scored rubric), within one week, by the channel your program uses. Placeholder passwords only. The full rules: <code class="inline">final-assessment.html</code>.</li>
+  <li><b>Exit ticket (3m).</b> Three questions below.</li>
+  <li><b>Course evaluation (2m).</b> The link or the paper form; ask for one sentence on what to keep and one on what to change.</li>
+  <li><b>What comes next (2m).</b> Show "Choose a path by goal" from Lesson 8.3 once more, and the course's reference pages (cheat sheet, glossary, common errors, troubleshooting). Thank them; name one thing the group did well.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Exit ticket (3 questions, no notes, 3 minutes)</div>
+<ol class="steps">
+  <li>Why can the desk's web form create a loan through checkout_tool although its account may not INSERT into loans? <b>Answer:</b> the procedure runs with its definer's rights (SQL SECURITY DEFINER is the default), so it may insert; the caller only needs EXECUTE, and every loan passes the rules.</li>
+  <li>Rewrite <code class="inline">CONCAT('... WHERE email = ''', @input, '''')</code> safely. <b>Answer:</b> <code class="inline">PREPARE s FROM 'SELECT ... WHERE email = ?'; EXECUTE s USING @input;</code> (a driver: a placeholder plus the value in a list).</li>
+  <li>Name your next step from Lesson 8.3's table and the date you start. <b>Answer:</b> any path with a date (the learning plan's first line).</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Homework (about 2 to 3 hours, plus finishing the project)</div>
+<ul class="tick">
+  <li><b>Finish the final project</b> and submit it within one week: Milestones 5 to 7 if unfinished; Milestone 8 (rebuild from the files in order on a clean server or after <code class="inline">DROP DATABASE tool_library;</code>, the self-review list); <code class="inline">README.md</code> (one page: design, rebuild, backups with the restore date and counts, next steps); score it with the rubric and write the score and one improvement in the README (the lesson's "Before the Next Lesson").</li>
+  <li><b>Lesson 8.2:</b> Exercises 1 to 3 (late returns, member activity, value at risk; they run on tool_library as Milestone 5 leaves it, 18 loans); Exercise 4 is a stretch. The Quick Quiz. The journal prompt (a design decision you changed your mind about).</li>
+  <li><b>Lesson 8.3:</b> project Step 5, <code class="inline">learning_plan.md</code> with dates; Exercises 1 and 2 (Exercise 3 is a stretch); the Quick Quiz; the journal prompt (look back at your Lesson 1.1 entry).</li>
+  <li><b>Optional labs:</b> <code class="inline">labs/module-14/l8_3-next-steps/safe_search_starter.sql</code>, <code class="inline">labs/module-14/l8_3-next-steps/health_check_starter.sql</code>, <code class="inline">labs/module-14/l8_2-final-project/least_privilege_starter.sql</code>.</li>
+  <li><b>After the course:</b> put the first date of the learning plan in a calendar; push the project and health_check.sql to a repository (placeholder passwords only, never a backup of real data, never <code class="inline">.mylogin.cnf</code>).</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>If You Run Long or Short</h2><span class="rule"></span></div>
+<div class="blk warn"><div class="h">Running long: what to protect and what to cut first</div>
+<ul class="tick">
+  <li><b>Protect:</b> the showcase for every learner; Milestone 6; the injection demo; the course close.</li>
+  <li><b>Cut first (saves 7m):</b> the 8.3 demo's information_schema and safe-update steps: the project start runs the same checks.</li>
+  <li><b>Cut second (saves 3m):</b> the 8.2 demo's success and return steps.</li>
+  <li><b>Cut third (saves 13m):</b> Milestone 7 in the room. Show the slide with the commands and the measured counts; it goes home.</li>
+</ul>
+</div>
+<div class="blk"><div class="h">Running short: what to add</div>
+<ul class="tick">
+  <li>Two-terminal demo of the lock: open a transaction in each terminal and call checkout_tool for the same tool; the second waits, then reports "Tool is already on loan".</li>
+  <li>The 8.2 Exercise 3 (value at risk with ROLLUP) together, on the reference data: Cleaning 200.00, Hand Tools 60.00, Power Tools 120.00, all categories 380.00.</li>
+  <li><code class="inline">safe_search_starter.sql</code> for everyone, then one learner explains the placeholder in their next language.</li>
+</ul>
+</div>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 14 · Facilitator Guide · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

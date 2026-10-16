@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 12</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 12: Users, Permissions and Backups</h1>
+    <p class="sub">Answers and reasoning for every Session 12 item: the warm-up, both self-checks, the predict-then-run items, the lab reference outputs (with the logins as demo accounts), the 8.1 shell runs, the lesson pages' own quizzes and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>12</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Warm-up</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>W1</b> (7.2) No. ALTER TABLE caused an implicit commit before it ran, so the UPDATE was already committed and the ROLLBACK had nothing to undo.</li>
+  <li><b>W2</b> (7.2) 1205: a lock wait timed out; only the waiting statement failed and the transaction is still open. 1213: a deadlock; InnoDB rolled the whole transaction back, so retry all of it.</li>
+  <li><b>W3</b> (7.3) -&gt;&gt; : it returns plain text; -&gt; would return the JSON string "hardcover" with its quotes, and the comparison would fail.</li>
+  <li><b>W4</b> (7.3) It turns a JSON array (in a column or a literal) into rows with typed columns that you can join, group and filter.</li>
+  <li><b>W5</b> (7.2 + 7.3) 2 and ["gift"]: the JSON_SET happened inside the transaction and the ROLLBACK discarded it.</li>
+</ol>
+<p>W5 prints:</p>
+<pre class="out">+------+----------+
+| qty  | tags     |
++------+----------+
+| 2    | ["gift"] |
++------+----------+</pre>
+  <div class="sec"><h2>7.4 · User Management &amp; Permissions: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">A server has <code class="inline">'app'@'localhost'</code> and <code class="inline">'app'@'%'</code>. How many accounts is that?</div><div class="opts"><div class="opt">A) One account that may connect from two places</div><div class="opt correct">B) Two separate accounts, each with its own password and privileges</div><div class="opt">C) One account: % already includes localhost, so the second row is ignored</div><div class="opt">D) None: the second CREATE USER failed because the name was taken</div></div><div class="why"><b>Why:</b> An account is the pair 'user'@'host'. The same name with another host is another account, which is why SHOW GRANTS FOR 'shop_reports'@'%' fails with 1141 when only @'localhost' exists.<br><b>A</b> is wrong: Privileges and passwords belong to each pair separately.<br><b>C</b> is wrong: Both rows are real accounts; MySQL picks the most specific host that matches a login.<br><b>D</b> is wrong: The pair is the identity; the same user name with a different host is allowed.</div></div>
+  <div class="q" data-sc="2" data-kind="short"><div class="qn">Q2</div><div class="qt">How many lines does the SHOW GRANTS print, and what are they?</div><pre class="code"><span class="k">CREATE</span> <span class="k">USER</span> <span class="s">'kit_quiz'</span>@<span class="s">'localhost'</span> <span class="k">IDENTIFIED</span> <span class="k">BY</span> <span class="s">'CHANGE-ME-quiz-1'</span>;
+<span class="k">GRANT</span> <span class="k">SELECT</span> <span class="k">ON</span> bookstore.* <span class="k">TO</span> <span class="s">'kit_quiz'</span>@<span class="s">'localhost'</span>;
+<span class="k">GRANT</span> <span class="k">INSERT</span> <span class="k">ON</span> bookstore.orders <span class="k">TO</span> <span class="s">'kit_quiz'</span>@<span class="s">'localhost'</span>;
+<span class="k">SHOW</span> <span class="k">GRANTS</span> <span class="k">FOR</span> <span class="s">'kit_quiz'</span>@<span class="s">'localhost'</span>;</pre><div class="opts"><div class="opt correct">Three: <code class="inline">GRANT USAGE ON *.*</code>, <code class="inline">GRANT SELECT ON `bookstore`.*</code>, <code class="inline">GRANT INSERT ON `bookstore`.`orders`</code></div></div><div class="why"><b>Why:</b> Every account has the USAGE line ("may connect"). Then one line per level: the database-level SELECT and the table-level INSERT stay separate lines because they are at different levels.</div></div>
+  <div class="q" data-sc="3"><div class="qn">Q3</div><div class="qt">An app account gets <code class="inline">ERROR 1143 (42000): SELECT command denied ... for column 'city' in table 'customers'</code>. What does it mean?</div><div class="opts"><div class="opt">A) The password is wrong</div><div class="opt">B) The account may not read the customers table at all</div><div class="opt">C) The account is locked</div><div class="opt correct">D) The account has column privileges on customers, and city is not one of them</div></div><div class="why"><b>Why:</b> 1143 is the column-level cousin of 1142: the account may read some columns of customers (granted with SELECT (col, ...)) but not this one. SELECT * fails with 1142 for the same reason.<br><b>A</b> is wrong: A wrong password is 1045, at login.<br><b>B</b> is wrong: That is 1142 (table level); 1143 names a column.<br><b>C</b> is wrong: A locked account is 3118, at login.</div></div>
+  <div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">Tom and Lena have the role bookstore_sales as a default role. An administrator runs <code class="inline">GRANT INSERT ON bookstore.customers TO 'bookstore_sales';</code>. When can they insert customers?</div><div class="opts"><div class="opt correct">A) Right away, both of them, and every future account given the role</div><div class="opt">B) Only after FLUSH PRIVILEGES</div><div class="opt">C) Only after each is granted INSERT on customers directly</div><div class="opt">D) Only accounts created after the GRANT</div></div><div class="why"><b>Why:</b> A role is a bundle: changing it changes every account that has it, at once. That is the whole point of roles (and GRANT never needs FLUSH PRIVILEGES).<br><b>B</b> is wrong: GRANT, REVOKE and CREATE USER update the privileges in memory immediately.<br><b>C</b> is wrong: That would defeat the role.<br><b>D</b> is wrong: Existing members get it too.</div></div>
+  <div class="q" data-sc="5"><div class="qn">Q5</div><div class="qt"><code class="inline">shop_reports</code> has <code class="inline">GRANT SELECT ON bookstore.*</code>. What does <code class="inline">REVOKE SELECT ON bookstore.books FROM 'shop_reports'@'localhost';</code> do?</div><div class="opts"><div class="opt">A) Hides books and keeps every other table readable</div><div class="opt">B) Removes SELECT on the whole database</div><div class="opt correct">C) Fails with ERROR 1147: there is no table-level grant on books to take away</div><div class="opt">D) Works only after FLUSH PRIVILEGES</div></div><div class="why"><b>Why:</b> Revoke at the level you granted. A database-level grant cannot have one table cut out of it; to hide one table, grant table by table (or through views).<br><b>A</b> is wrong: MySQL has no "all tables except" grant.<br><b>B</b> is wrong: The table-level REVOKE does not touch the database-level grant.<br><b>D</b> is wrong: The statement fails; FLUSH PRIVILEGES changes nothing about that.</div></div>
+  <div class="q" data-sc="6" data-kind="short"><div class="qn">Q6</div><div class="qt">Write the statement that disables <code class="inline">'kit_mailer'@'localhost'</code> without losing its grants.</div><div class="opts"><div class="opt correct"><code class="inline">ALTER USER 'kit_mailer'@'localhost' ACCOUNT LOCK;</code></div></div><div class="why"><b>Why:</b> A locked account keeps its privileges; a login fails with 3118 until ALTER USER ... ACCOUNT UNLOCK. DROP USER would delete the account and its grants.</div></div>
+
+  <div class="sec"><h2>7.4 · User Management &amp; Permissions: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> kit_accounts
+<span class="k">FROM</span> mysql.user
+<span class="k">WHERE</span> user <span class="k">LIKE</span> <span class="s">'kit\_%'</span>;</pre><div class="opts"><div class="opt correct"><pre class="out">+--------------+
+| kit_accounts |
++--------------+
+|            0 |
++--------------+</pre></div></div><div class="why"><b>Why:</b> A fresh 9.7 server has no kit_ accounts (the labs drop theirs at the end). If this is not 0 on a learner's laptop, a lab stopped halfway: run its DROP USER line.</div></div>
+
+  <div class="sec"><h2>8.1 · Importing &amp; Exporting Data: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">Where do you type mysqldump?</div><div class="opts"><div class="opt">A) At the mysql> prompt, ending with ;</div><div class="opt">B) In phpMyAdmin's SQL tab</div><div class="opt correct">C) At the terminal's shell prompt ($ or PS>), not inside the mysql client</div><div class="opt">D) Inside a SOURCE file</div></div><div class="why"><b>Why:</b> mysqldump is a separate program that connects like any client. Typed at mysql> the server receives it as SQL and answers ERROR 1064 (debug_import.sql, bug A).<br><b>A</b> is wrong: That is the 1064 the demo showed.<br><b>B</b> is wrong: phpMyAdmin sends SQL to the server too; it has its own Export tab instead.<br><b>D</b> is wrong: A SOURCE file is SQL, read by the client and sent to the server.</div></div>
+  <div class="q" data-sc="8"><div class="qn">Q8</div><div class="qt">Which mysqldump option puts the stored procedures and functions into the backup?</div><div class="opts"><div class="opt correct">A) <code class="inline">--routines</code></div><div class="opt">B) <code class="inline">--events</code></div><div class="opt">C) <code class="inline">--single-transaction</code></div><div class="opt">D) <code class="inline">--databases</code></div></div><div class="why"><b>Why:</b> Routines are left out by default; --routines adds them (--events adds scheduled events; triggers are in by default).<br><b>B</b> is wrong: --events adds scheduled events, not procedures.<br><b>C</b> is wrong: --single-transaction makes the dump consistent without locking tables.<br><b>D</b> is wrong: --databases adds CREATE DATABASE and USE lines.</div></div>
+  <div class="q" data-sc="9" data-kind="short"><div class="qn">Q9</div><div class="qt">What does this print?</div><pre class="code"><span class="k">SELECT</span> STR_TO_DATE(<span class="s">'07/04/1976'</span>, <span class="s">'%m/%d/%Y'</span>) <span class="k">AS</span> published,
+       NULLIF(<span class="s">''</span>, <span class="s">''</span>) <span class="k">AS</span> pages;</pre><div class="opts"><div class="opt correct"><code class="inline">1976-07-04</code> and <code class="inline">NULL</code></div></div><div class="why"><b>Why:</b> STR_TO_DATE reads the text with the US pattern month/day/year and returns a real DATE. NULLIF returns NULL when its two arguments are equal: the trick that turns empty CSV fields into NULL.</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">You restore a dump made WITHOUT <code class="inline">--databases</code> using <code class="inline">mysql -u root -p &lt; bookstore_backup.sql</code> and get <code class="inline">ERROR 1046 (3D000) at line 22: No database selected</code>. What is the fix?</div><div class="opts"><div class="opt">A) Take the dump again with <code class="inline">--set-gtid-purged=OFF</code></div><div class="opt">B) Run <code class="inline">SET FOREIGN_KEY_CHECKS = 0</code> first</div><div class="opt">C) Use <code class="inline">SOURCE</code> instead of <code class="inline">&lt;</code></div><div class="opt correct">D) Name the target database: <code class="inline">mysql -u root -p bookstore_test &lt; bookstore_backup.sql</code> (or dump with --databases)</div></div><div class="why"><b>Why:</b> Without --databases the file has no CREATE DATABASE or USE line, so you choose the target when you restore (real output from the demo's shell run).<br><b>A</b> is wrong: That fixes ERROR 3546 (GTIDs), a different failure.<br><b>B</b> is wrong: Foreign keys are not the problem; no database is selected.<br><b>C</b> is wrong: SOURCE without a current database fails the same way.</div></div>
+  <div class="q" data-sc="11"><div class="qn">Q11</div><div class="qt">Why load a stranger's CSV into a staging table before touching books?</div><div class="opts"><div class="opt">A) LOAD DATA cannot load into a table that has foreign keys</div><div class="opt correct">B) To look at, convert and check the rows (dates, empty values, missing authors) before any real table changes</div><div class="opt">C) Staging tables load faster than real tables</div><div class="opt">D) LOAD DATA LOCAL only works with staging tables</div></div><div class="why"><b>Why:</b> A staging table with the file's columns lets you SELECT what arrived, find what is missing with a LEFT JOIN, and then copy only the good rows in one transaction.<br><b>A</b> is wrong: LOAD DATA can load into any table you may INSERT into.<br><b>C</b> is wrong: Speed is not the reason.<br><b>D</b> is wrong: LOCAL works with any table.</div></div>
+  <div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">You run <code class="inline">SELECT title FROM books INTO OUTFILE '/var/lib/mysql-files/titles.txt';</code> a second time. What happens?</div><div class="opts"><div class="opt">A) The file is overwritten with the new rows</div><div class="opt">B) The rows are added to the end of the file</div><div class="opt correct">C) ERROR 1086: the file already exists</div><div class="opt">D) MySQL writes titles(1).txt</div></div><div class="why"><b>Why:</b> INTO OUTFILE never overwrites, which protects earlier exports and system files. Write to a new name (add the date) or delete the old file at the terminal.<br><b>A</b> is wrong: Overwriting is exactly what MySQL refuses to do.<br><b>B</b> is wrong: There is no append mode.<br><b>D</b> is wrong: MySQL never renames for you.</div></div>
+
+  <div class="sec"><h2>8.1 · Importing &amp; Exporting Data: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> STR_TO_DATE(<span class="s">'31.12.1999'</span>, <span class="s">'%d.%m.%Y'</span>) <span class="k">AS</span> eu_date,
+       STR_TO_DATE(<span class="s">'31.12.1999'</span>, <span class="s">'%m/%d/%Y'</span>) <span class="k">AS</span> us_pattern;</pre><div class="opts"><div class="opt correct"><pre class="out">+------------+------------+
+| eu_date    | us_pattern |
++------------+------------+
+| 1999-12-31 | NULL       |
++------------+------------+</pre></div></div><div class="why"><b>Why:</b> The European pattern reads the text; the US pattern does not match it, so STR_TO_DATE returns NULL (with warning 1411). In an INSERT, strict mode turns that into an error (debug_import.sql, bug C).</div></div>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> NULLIF(<span class="s">''</span>, <span class="s">''</span>) <span class="k">AS</span> empty_to_null,
+       NULLIF(<span class="s">'412'</span>, <span class="s">''</span>) <span class="k">AS</span> pages_text,
+       COALESCE(<span class="k">NULL</span>, <span class="s">''</span>) <span class="k">AS</span> for_people;</pre><div class="opts"><div class="opt correct"><pre class="out">+---------------+------------+------------+
+| empty_to_null | pages_text | for_people |
++---------------+------------+------------+
+| NULL          | 412        |            |
++---------------+------------+------------+</pre></div></div><div class="why"><b>Why:</b> NULLIF('', '') is NULL (the empty CSV field becomes a real NULL); NULLIF('412', '') keeps the text; COALESCE(NULL, '') turns NULL into an empty string, for files people open.</div></div>
+<div class="blk"><div class="h">Self-check code, run for real</div>
+<p>Q2's SHOW GRANTS prints:</p>
+<pre class="out">+----------------------------------------------------------------+
+| Grants for kit_quiz@localhost                                  |
++----------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_quiz`@`localhost`                   |
+| GRANT SELECT ON `bookstore`.* TO `kit_quiz`@`localhost`        |
+| GRANT INSERT ON `bookstore`.`orders` TO `kit_quiz`@`localhost` |
++----------------------------------------------------------------+</pre><p>Q12, the same INTO OUTFILE twice (the second line is the real answer):</p>
+<pre class="out">ERROR 1086 (HY000): File '/var/lib/mysql-files/titles.txt' already exists</pre></div>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Lab 7.4-A: labs/module-12/l7_4-user-management/warehouse_accounts_starter.sql → warehouse_accounts_solution.sql</div>
+<p>The solution prints (as root):</p>
+<pre class="out">+---------------------------------------------------+
+| Grants for kit_warehouse@localhost                |
++---------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_warehouse`@`localhost` |
++---------------------------------------------------+
++-----------------------------------------------------------------------------------------+
+| Grants for kit_warehouse@localhost                                                      |
++-----------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_warehouse`@`localhost`                                       |
+| GRANT SELECT ON `bookstore`.`authors` TO `kit_warehouse`@`localhost`                    |
+| GRANT SELECT, UPDATE (`in_stock`) ON `bookstore`.`books` TO `kit_warehouse`@`localhost` |
++-----------------------------------------------------------------------------------------+
++-----------------------------------------------------------------------------------------------------------+
+| Grants for kit_accounting@localhost                                                                       |
++-----------------------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_accounting`@`localhost`                                                        |
+| GRANT SELECT (`first_name`, `id`, `last_name`) ON `bookstore`.`customers` TO `kit_accounting`@`localhost` |
+| GRANT SELECT ON `bookstore`.`order_items` TO `kit_accounting`@`localhost`                                 |
+| GRANT SELECT ON `bookstore`.`orders` TO `kit_accounting`@`localhost`                                      |
++-----------------------------------------------------------------------------------------------------------+
++------------------------------+-------------+----------------+
+| GRANTEE                      | TABLE_NAME  | PRIVILEGE_TYPE |
++------------------------------+-------------+----------------+
+| 'kit_accounting'@'localhost' | orders      | SELECT         |
+| 'kit_accounting'@'localhost' | order_items | SELECT         |
+| 'kit_warehouse'@'localhost'  | authors     | SELECT         |
+| 'kit_warehouse'@'localhost'  | books       | SELECT         |
++------------------------------+-------------+----------------+
++------------------------------+------------+-------------+----------------+
+| GRANTEE                      | TABLE_NAME | COLUMN_NAME | PRIVILEGE_TYPE |
++------------------------------+------------+-------------+----------------+
+| 'kit_accounting'@'localhost' | customers  | first_name  | SELECT         |
+| 'kit_accounting'@'localhost' | customers  | id          | SELECT         |
+| 'kit_accounting'@'localhost' | customers  | last_name   | SELECT         |
+| 'kit_warehouse'@'localhost'  | books      | in_stock    | UPDATE         |
++------------------------------+------------+-------------+----------------+
++-----------------------------------------------------------------------------------------------------------+
+| Grants for kit_accounting@localhost                                                                       |
++-----------------------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_accounting`@`localhost`                                                        |
+| GRANT SELECT (`first_name`, `id`, `last_name`) ON `bookstore`.`customers` TO `kit_accounting`@`localhost` |
+| GRANT SELECT ON `bookstore`.`orders` TO `kit_accounting`@`localhost`                                      |
++-----------------------------------------------------------------------------------------------------------+
++----------------+-----------+-----------------------+----------------+
+| user           | host      | plugin                | account_locked |
++----------------+-----------+-----------------------+----------------+
+| kit_accounting | localhost | caching_sha2_password | N              |
+| kit_warehouse  | localhost | caching_sha2_password | Y              |
++----------------+-----------+-----------------------+----------------+</pre><p>TODO 6, logged in as kit_warehouse in a second session before the lock (real output):</p>
+<pre class="code"><span class="k">UPDATE</span> books <span class="k">SET</span> in_stock = <span class="k">FALSE</span> <span class="k">WHERE</span> id = <span class="s">1</span>;
+<span class="k">UPDATE</span> books <span class="k">SET</span> price = <span class="s">0</span> <span class="k">WHERE</span> id = <span class="s">1</span>;</pre>
+<pre class="out">Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+ERROR 1143 (42000): UPDATE command denied to user 'kit_warehouse'@'localhost' for column 'price' in table 'books'</pre><p>Reading it: MySQL merges the table-level SELECT and the column-level UPDATE on books into one SHOW GRANTS line, but information_schema keeps them apart (TABLE_PRIVILEGES vs COLUMN_PRIVILEGES). The REVOKE names the table it was granted on. A locked account keeps its grants (SHOW GRANTS still lists them) and its login fails with 3118. The UPDATE of in_stock also needs SELECT on books for its WHERE: that is why the warehouse has both.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 7.4-B: labs/module-12/l7_4-user-management/staff_roles_starter.sql → staff_roles_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+---------+-------------------+
+| user    | default_role_user |
++---------+-------------------+
+| kit_ana | kit_clerk         |
+| kit_ben | kit_cashier       |
+| kit_ben | kit_clerk         |
++---------+-------------------+
++--------------------------------------------------------------------+
+| Grants for kit_ben@localhost                                       |
++--------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_ben`@`localhost`                        |
+| GRANT SELECT ON `bookstore`.`authors` TO `kit_ben`@`localhost`     |
+| GRANT SELECT ON `bookstore`.`books` TO `kit_ben`@`localhost`       |
+| GRANT INSERT ON `bookstore`.`order_items` TO `kit_ben`@`localhost` |
+| GRANT INSERT ON `bookstore`.`orders` TO `kit_ben`@`localhost`      |
+| GRANT `kit_cashier`@`%`,`kit_clerk`@`%` TO `kit_ben`@`localhost`   |
++--------------------------------------------------------------------+
++------------------------------------------------------------------+
+| Grants for kit_ana@localhost                                     |
++------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_ana`@`localhost`                      |
+| GRANT SELECT ON `bookstore`.`authors` TO `kit_ana`@`localhost`   |
+| GRANT SELECT ON `bookstore`.`books` TO `kit_ana`@`localhost`     |
+| GRANT SELECT ON `bookstore`.`customers` TO `kit_ana`@`localhost` |
+| GRANT `kit_clerk`@`%` TO `kit_ana`@`localhost`                   |
++------------------------------------------------------------------+
++------------------------------------------------+
+| Grants for kit_ben@localhost                   |
++------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_ben`@`localhost`    |
+| GRANT `kit_clerk`@`%` TO `kit_ben`@`localhost` |
++------------------------------------------------+
++-------------+-----------+----------------+
+| user        | host      | account_locked |
++-------------+-----------+----------------+
+| kit_ana     | localhost | N              |
+| kit_ben     | localhost | N              |
+| kit_cashier | %         | Y              |
+| kit_clerk   | %         | Y              |
++-------------+-----------+----------------+</pre><p>As kit_ana, after SET DEFAULT ROLE (real output, second session):</p>
+<pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> books <span class="k">FROM</span> books;
+<span class="k">INSERT</span> <span class="k">INTO</span> orders (customer_id, order_date) <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'2026-07-01'</span>);</pre>
+<pre class="out">+-------+
+| books |
++-------+
+|    11 |
++-------+
+ERROR 1142 (42000): INSERT command denied to user 'kit_ana'@'localhost' for table 'orders'</pre><p>Reading it: without TODO 3 the default_roles query is empty and Ana's first SELECT would fail with 1142. Step 5 changes kit_clerk once and both clerks follow. After TODO 6 Ben's own grants list only kit_clerk. Roles live in mysql.user as locked accounts with host %.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-12/l7_4-user-management/debug_grants.sql (deliberately broken)</div>
+<p>As shipped:</p>
+<pre class="out">ERROR 1410 (42000): You are not allowed to create a user with GRANT
+ERROR 1141 (42000): There is no such grant defined for user 'kit_mailer' on host '%'
+ERROR 1396 (HY000): Operation CREATE USER failed for 'kit_mailer'@'localhost' (User account already exists)
+ERROR 1147 (42000): There is no such grant defined for user 'kit_mailer' on host 'localhost' on table 'orders'
++-----------------------------------------------------------+
+| Grants for kit_mailer@localhost                           |
++-----------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_mailer`@`localhost`            |
+| GRANT SELECT ON `bookstore`.* TO `kit_mailer`@`localhost` |
++-----------------------------------------------------------+</pre><ol class="steps">
+  <li><b>A, 1410:</b> <code class="inline">kit_mailr</code> does not exist, and modern MySQL never creates an account in GRANT. Fix: the right name.</li>
+  <li><b>B, 1141:</b> <code class="inline">'kit_mailer'@'%'</code> is a different account from <code class="inline">@'localhost'</code>. Fix: the exact pair.</li>
+  <li><b>C, 1396:</b> the account already exists. Fix: CREATE USER IF NOT EXISTS (or DROP USER IF EXISTS first, as the top of the file does).</li>
+  <li><b>D, 1147:</b> SELECT was granted on <code class="inline">bookstore.*</code>, not on orders. A database-level grant cannot lose one table; the real fix is to revoke the database-level SELECT and grant only what the tool needs (the customers columns).</li>
+</ol>
+<p>Fixed (real run):</p>
+<pre class="out">+---------------------------------------------------------------------------------------------+
+| Grants for kit_mailer@localhost                                                             |
++---------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_mailer`@`localhost`                                              |
+| GRANT SELECT (`email`, `first_name`) ON `bookstore`.`customers` TO `kit_mailer`@`localhost` |
++---------------------------------------------------------------------------------------------+</pre></div>
+<div class="blk lab"><div class="h">Lab 8.1-A: labs/module-12/l8_1-importing-exporting/new_titles_import_starter.sql → new_titles_import_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+----------------+-------+-------+------------+
+| title          | price | pages | published  |
++----------------+-------+-------+------------+
+| Animal Farm    |  8.49 |   112 | 1945-08-17 |
+| Dracula        |  8.99 |   418 | 1897-05-26 |
+| Foundation     |  9.99 |   255 | 1951-06-01 |
+| Persuasion     |  7.49 |  NULL | 1817-12-20 |
+| The Two Towers |  NULL |   352 | 1954-11-11 |
++----------------+-------+-------+------------+
++----------------+--------------+-----------+
+| title          | verdict      | author_id |
++----------------+--------------+-----------+
+| Animal Farm    | already sold |         2 |
+| The Two Towers | no price     |         6 |
+| Dracula        | ok           |      NULL |
+| Foundation     | ok           |        10 |
+| Persuasion     | ok           |         5 |
++----------------+--------------+-----------+
++----+------------+--------------+-------+-------+------------+
+| id | title      | author       | price | pages | published  |
++----+------------+--------------+-------+-------+------------+
+| 12 | Dracula    | Bram Stoker  |  8.99 |   418 | 1897-05-26 |
+| 13 | Foundation | Isaac Asimov |  9.99 |   255 | 1951-06-01 |
+| 14 | Persuasion | Jane Austen  |  7.49 |  NULL | 1817-12-20 |
++----+------------+--------------+-------+-------+------------+
++-------+---------+
+| books | authors |
++-------+---------+
+|    14 |      11 |
++-------+---------+</pre><p>Reading it: as shipped, CAST('N/A' AS DECIMAL) is 0.00 with a warning (a free book) and the US pattern makes every date NULL with warning 1411; those warnings are the lesson's "read the status line" in action. Bram Stoker's NULL author_id is the LEFT JOIN finding a missing author; the transaction adds him first. NOT EXISTS skips Animal Farm, so the finished file can run again without duplicates (after a reload it gives the same ids). Persuasion's empty page count is a real NULL, not 0.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 8.1-B: labs/module-12/l8_1-importing-exporting/backup_check_starter.sql → backup_check_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+-------------------+--------------+
+| server_side_files | local_infile |
++-------------------+--------------+
+| one folder only   |            1 |
++-------------------+--------------+
++---------------------------------------------------------------------------------------------------+
+| Grants for kit_backup@localhost                                                                   |
++---------------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `kit_backup`@`localhost`                                                    |
+| GRANT SELECT, LOCK TABLES, SHOW VIEW, EVENT, TRIGGER ON `bookstore`.* TO `kit_backup`@`localhost` |
++---------------------------------------------------------------------------------------------------+
++------------------+
+| write_privileges |
++------------------+
+|                0 |
++------------------+
++-------------------+
+| global_privileges |
++-------------------+
+|                 0 |
++-------------------+
++-------------+-----------+
+| table_name  | row_count |
++-------------+-----------+
+| books       |        11 |
+| customers   |         8 |
+| orders      |        12 |
+| order_items |        18 |
++-------------+-----------+
++---------------+
+| revenue_check |
++---------------+
+|        237.29 |
++---------------+
++-----------------+------------+---------+
+| category        | books_sold | revenue |
++-----------------+------------+---------+
+| category        | books_sold | revenue |
+| Classic         | 10         | 96.90   |
+| Dystopian       | 7          | 70.43   |
+| Fantasy         | 5          | 64.95   |
+| Fiction         | 21         | 237.29  |
+| Science Fiction | 6          | 75.44   |
++-----------------+------------+---------+</pre><p>Reading it: <code class="inline">one folder only</code> is the safe setting; local_infile shows 1 on the kit's test server and 0 on a fresh install. The backup account's five privileges are what mysqldump needs to read a database with views, triggers and events; 0 and 0 prove it cannot change anything. The counts and revenue_check (237.29) are what a restore test compares. In the report every value is text because of the header row (the starter, without a header, prints right-aligned numbers).</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-12/l8_1-importing-exporting/debug_import.sql (deliberately broken)</div>
+<p>As shipped:</p>
+<pre class="out">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'mysqldump -u root -p bookstore &gt; bookstore_backup.sql' at line 1
+ERROR 1290 (HY000): The MySQL server is running with the --secure-file-priv option so it cannot execute this statement
+ERROR 1411 (HY000): Incorrect datetime value: '12/23/1815' for function str_to_date
+ERROR 1292 (22007): Truncated incorrect DECIMAL value: '7,49'
+Empty set</pre><ol class="steps">
+  <li><b>A, 1064:</b> mysqldump is a terminal program. Fix: <code class="inline">exit</code>, then run it at <code class="inline">$</code> / <code class="inline">PS&gt;</code> with the 9.7 options.</li>
+  <li><b>B, 1290:</b> /tmp is not the server's file folder. Fix: the secure_file_priv folder (<code class="inline">SHOW VARIABLES LIKE 'secure_file_priv';</code>). On MariaDB's Docker image the folder is empty (anywhere) and the file IS written.</li>
+  <li><b>C, 1411:</b> the dates are month/day/year, the pattern says day/month: in a strict INSERT the NULL becomes an error. Fix: <code class="inline">'%m/%d/%Y'</code>.</li>
+  <li><b>D, 1292:</b> Frankenstein's price <code class="inline">7,49</code> uses a decimal comma. Fix: <code class="inline">REPLACE(price_raw, ',', '.')</code> before the CAST (or ask the supplier for a dot).</li>
+</ol>
+<p>Fixed (real run):</p>
+<pre class="out">+--------------+-------+------------+
+| title        | price | published  |
++--------------+-------+------------+
+| Emma         |  8.49 | 1815-12-23 |
+| Frankenstein |  7.49 | 1818-01-01 |
++--------------+-------+------------+</pre></div>
+<div class="blk"><div class="h">The shell part of the 8.1 demo (real runs on the kit's 9.7 test server)</div>
+<p>The commands as learners type them; on the test server they ran with its socket instead of <code class="inline">-u root -p</code>. The dump and the first restore print nothing.</p>
+<pre class="code">mysqldump -u root -p --single-transaction --routines --events \
+    --set-gtid-purged=OFF bookstore &gt; bookstore_backup.sql</pre><pre class="code">grep -c 'INSERT INTO' bookstore_backup.sql
+grep 'DROP TABLE IF EXISTS' bookstore_backup.sql</pre>
+<pre class="out">8
+DROP TABLE IF EXISTS `authors`;
+DROP TABLE IF EXISTS `book_categories`;
+DROP TABLE IF EXISTS `books`;
+DROP TABLE IF EXISTS `categories`;
+DROP TABLE IF EXISTS `customers`;
+DROP TABLE IF EXISTS `employees`;
+DROP TABLE IF EXISTS `order_items`;
+DROP TABLE IF EXISTS `orders`;</pre><pre class="code">mysql -u root -p -e "CREATE DATABASE bookstore_test"
+mysql -u root -p bookstore_test &lt; bookstore_backup.sql</pre><pre class="code">mysql -u root -p -t -e "SELECT
+    (SELECT COUNT(*) FROM bookstore.order_items) AS items_original,
+    (SELECT COUNT(*) FROM bookstore_test.order_items) AS items_copy"</pre>
+<pre class="out">+----------------+------------+
+| items_original | items_copy |
++----------------+------------+
+|             18 |         18 |
++----------------+------------+</pre><pre class="code">mysqldump -u root -p --single-transaction bookstore &gt; plain_dump.sql</pre>
+<pre class="out">Warning: A partial dump from a server that has GTIDs will by default include the GTIDs of all transactions, even those that changed suppressed parts of the database. If you don't want to restore GTIDs, pass --set-gtid-purged=OFF. To make a complete dump, pass --all-databases --triggers --routines --events.</pre><pre class="code">mysql -u root -p -e "CREATE DATABASE bookstore_test2"
+mysql -u root -p bookstore_test2 &lt; plain_dump.sql</pre>
+<pre class="out">ERROR 3546 (HY000) at line 24: @@GLOBAL.GTID_PURGED cannot be changed: the added gtid set must not overlap with @@GLOBAL.GTID_EXECUTED</pre><pre class="code">mysql -u root -p &lt; bookstore_backup.sql</pre>
+<pre class="out">ERROR 1046 (3D000) at line 22: No database selected</pre><p>The last one is self-check Q10: a dump without --databases has no USE line, so the target must be named. The lesson says a plain dump prints "several" GTID warnings; with <code class="inline">--single-transaction</code> this run printed one.</p>
+</div>
+
+  <div class="sec"><h2>The Lesson Pages' Own Quick Quizzes</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Lesson 7.4 · User Management &amp; Permissions</div>
+<ol class="steps" data-lesson-quiz="7.4">
+  <li><b>B</b> Connect, but read or change nothing: A new account only has USAGE, which means no privileges: it can connect, but every table access fails until you GRANT something.</li>
+  <li><b>A</b> 'shop_reports'@'%' is a different account, and it does not exist: An account is the pair of user and host. shop_reports at % is a separate account that was never created, so it has no grants to show.</li>
+  <li><b>C</b> It fails with error 1524; keep caching_sha2_password and update the app's driver: The plugin was removed in MySQL 9, so the statement fails with ERROR 1524. Use the default caching_sha2_password and update the program's MySQL driver if it cannot connect.</li>
+  <li><b>A</b> The role is not active: run SET DEFAULT ROLE ALL TO 'marcus'@'localhost': Granted roles are inactive until activated. SET DEFAULT ROLE ALL TO marcus activates them at every login (or Marcus runs SET ROLE ALL in his session).</li>
+  <li><b>B</b> Its own account with SELECT on the catalog tables and INSERT on the order tables: The website reads the catalog and adds orders, so it gets SELECT on those tables and INSERT on the order tables. A bug or attack through the site can do nothing more.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Lesson 8.1 · Importing &amp; Exporting Data</div>
+<ol class="steps" data-lesson-quiz="8.1">
+  <li><b>B</b> Take the dump again with --set-gtid-purged=OFF: MySQL 9.7 has GTIDs on by default, and the dump tries to set GTID_PURGED on a server that already has those GTIDs. --set-gtid-purged=OFF leaves that line out.</li>
+  <li><b>C</b> Fails with error 1290: The server only reads and writes files inside its secure_file_priv folder, so a path in /tmp is refused with error 1290.</li>
+  <li><b>A</b> (..., @d) SET published = STR_TO_DATE(@d, '%m/%d/%Y'): Reading the raw text into a user variable and converting it in SET is the general pattern for any value that needs reshaping on the way in.</li>
+  <li><b>C</b> Run SHOW WARNINGS; and inspect the staging rows before using them: With LOCAL, bad values and duplicates become warnings instead of errors. SHOW WARNINGS tells you which rows and why, before the data spreads to real tables.</li>
+  <li><b>A</b> It does not contain the user accounts that may use the database: Accounts and grants live in the mysql system database, so a single-database dump does not include them. Keep a separate script for users.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>Website account:</b> least privilege. It needs to read the catalog and add orders; with no UPDATE or DELETE, a bug or an attacker using its login cannot change prices or erase history.</li>
+  <li><b>A trustworthy backup:</b> (1) a dump with the right options (9.7: --single-transaction --routines --events --set-gtid-purged=OFF), (2) a test restore into another database with the counts compared and logged. A dump that was never restored is a hope.</li>
+  <li><b>The final project:</b> Rosa Delgado, Maple Street Tool Library. Rules: one open loan per tool; nothing goes out while being repaired; suspended members cannot borrow; at most three tools per member; no safety course, no chainsaw (power tools need Power Tools Basics).</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q1 C ("% includes localhost").</b> Treats the host as a filter on one account. Draw two rows of mysql.user.</li>
+  <li><b>Q3 B (1143 = table).</b> Has not seen column grants; show the support_desk test again.</li>
+  <li><b>Q4 B (FLUSH PRIVILEGES).</b> Old-tutorial habit; GRANT works at once.</li>
+  <li><b>Q7 A (mysqldump at mysql&gt;).</b> The most common 8.1 slip; it is bug A of the debug handout.</li>
+  <li><b>Q10 A (--set-gtid-purged=OFF).</b> Mixes the two restore failures: 3546 is GTIDs, 1046 is a missing database name.</li>
+  <li><b>Q12 A (overwritten).</b> Expects files to behave like UPDATE; MySQL protects existing files.</li>
+  <li><b>Exit ticket 2 with only "run mysqldump".</b> The restore test is the half that matters; ask what restore_log.txt would say.</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 12 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

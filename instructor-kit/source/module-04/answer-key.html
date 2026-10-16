@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 4</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 4: Filtering, Sorting and Limiting</h1>
+    <p class="sub">Answers and reasoning for every Session 4 item: the warm-up, both self-checks, the predict-then-run items, Checkpoint 1 (rubric, model answer, Part D), the lab reference outputs, the lesson pages' own quizzes and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>4</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Checkpoint 1</span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Warm-Up: Session 3</h2><span class="rule"></span></div>
+<p>Not graded.</p>
+<div class="q"><div class="qn">W1</div><div class="qt">Which type stores a book's price?</div><div class="opts"><div class="opt">A) <code class="inline">FLOAT</code></div><div class="opt correct">B) <code class="inline">DECIMAL(8, 2)</code></div><div class="opt">C) <code class="inline">VARCHAR(10)</code></div><div class="opt">D) <code class="inline">INT</code></div></div><div class="why"><b>Why:</b> Money is exact: DECIMAL. FLOAT's binary fractions add up to crumbs (the types lab: 556.9499866962433).</div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">An INSERT gives the NOT NULL column email the value NULL. Which error?</div><div class="opts"><div class="opt">A) <code class="inline">1364</code></div><div class="opt">B) <code class="inline">1062</code></div><div class="opt correct">C) <code class="inline">1048</code></div><div class="opt">D) <code class="inline">3819</code></div></div><div class="why"><b>Why:</b> 1048 for an explicit NULL; 1364 when the column is left out.</div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">What does the second line say after this UPDATE?</div><pre class="code"><span class="k">CREATE</span> <span class="k">TABLE</span> w3 (id <span class="k">INT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>, price <span class="k">DECIMAL</span>(<span class="s">6</span>, <span class="s">2</span>));
+<span class="k">INSERT</span> <span class="k">INTO</span> w3 <span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">9.99</span>);
+<span class="k">UPDATE</span> w3 <span class="k">SET</span> price = <span class="s">9.99</span> <span class="k">WHERE</span> id = <span class="s">1</span>;</pre><div class="opts"><div class="opt">A) <code class="inline">Rows matched: 0  Changed: 0</code></div><div class="opt">B) <code class="inline">Rows matched: 1  Changed: 1</code></div><div class="opt">C) <code class="inline">ERROR 1062</code></div><div class="opt correct">D) <code class="inline">Rows matched: 1  Changed: 0</code></div></div><div class="why"><b>Why:</b> The row was found, but already had that value. MySQL prints:<pre class="out">Query OK, 0 rows affected
+Rows matched: 1  Changed: 0  Warnings: 0</pre></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">What do you run right before an UPDATE that touches several rows?</div><div class="opts"><div class="opt correct">A) A SELECT with exactly the same WHERE</div><div class="opt">B) <code class="inline">SHOW TABLES;</code></div><div class="opt">C) <code class="inline">SET SQL_SAFE_UPDATES = 0;</code></div><div class="opt">D) Nothing: UPDATE can be undone</div></div><div class="why"><b>Why:</b> The preview: its row count must match Rows matched.</div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">Which statement gives an existing category a NEW id?</div><div class="opts"><div class="opt">A) <code class="inline">INSERT ... AS new ON DUPLICATE KEY UPDATE ...</code></div><div class="opt">B) <code class="inline">INSERT IGNORE ...</code></div><div class="opt correct">C) <code class="inline">REPLACE INTO ...</code></div><div class="opt">D) <code class="inline">UPDATE ... WHERE id = 3</code></div></div><div class="why"><b>Why:</b> REPLACE deletes and re-inserts; the upsert keeps the row.</div></div>
+
+  <div class="sec"><h2>3.1 · WHERE Clauses, Operators &amp; Filtering: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Two of the 8 customers live in Chicago and two have no city. How many rows does this return?</div><pre class="code"><span class="k">SELECT</span> * <span class="k">FROM</span> customers <span class="k">WHERE</span> city != <span class="s">'Chicago'</span>;</pre><div class="opts"><div class="opt">A) 6</div><div class="opt correct">B) 4</div><div class="opt">C) 8</div><div class="opt">D) 0</div></div><div class="why"><b>Why:</b> != drops the two Chicago rows AND the two NULL cities: "is an unknown city different from Chicago?" is unknown, not true. Add `OR city IS NULL` to keep them (6).<br><b>A</b> is wrong: 6 is what you get once you add OR city IS NULL.<br><b>C</b> is wrong: Chicago is excluded on purpose.<br><b>D</b> is wrong: Only city = NULL (or a NULL inside NOT IN) finds nothing.</div></div>
+  <div class="q" data-sc="2" data-kind="short"><div class="qn">Q2</div><div class="qt">On the Module 3 data, what does this print?</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> n
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price <span class="k">BETWEEN</span> <span class="s">8.99</span> <span class="k">AND</span> <span class="s">9.99</span>;</pre><div class="opts"><div class="opt correct"><code class="inline">4</code></div></div><div class="why"><b>Why:</b> BETWEEN includes both ends: The Great Gatsby and The Catcher in the Rye (8.99), Brave New World (9.49) and 1984 (9.99).</div></div>
+  <div class="q" data-sc="3"><div class="qn">Q3</div><div class="qt">Which WHERE keeps every book NOT written by Tolkien or Orwell?</div><div class="opts"><div class="opt correct">A) <code class="inline">WHERE author NOT IN ('J.R.R. Tolkien', 'George Orwell')</code></div><div class="opt">B) <code class="inline">WHERE author != 'J.R.R. Tolkien' OR author != 'George Orwell'</code></div><div class="opt">C) <code class="inline">WHERE NOT author = 'J.R.R. Tolkien' OR 'George Orwell'</code></div><div class="opt">D) <code class="inline">WHERE author NOT LIKE 'Tolkien, Orwell'</code></div></div><div class="why"><b>Why:</b> NOT IN removes both names: 7 of the 10 books remain (Tolkien and Orwell have three between them).<br><b>B</b> is wrong: Every author differs from at least one of the two names, so the condition is always true: all 10 books.<br><b>C</b> is wrong: OR 'George Orwell' is a separate test on a piece of text, not on author.<br><b>D</b> is wrong: That compares with one literal string, which no author matches.</div></div>
+  <div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">created_at is a DATETIME. Which WHERE finds the customers who signed up on January 27, 2026 (Frank, at 13:30)?</div><div class="opts"><div class="opt">A) <code class="inline">WHERE created_at = '2026-01-27'</code></div><div class="opt">B) <code class="inline">WHERE created_at BETWEEN '2026-01-27' AND '2026-01-27'</code></div><div class="opt correct">C) <code class="inline">WHERE created_at &gt;= '2026-01-27' AND created_at &lt; '2026-01-28'</code></div><div class="opt">D) <code class="inline">WHERE created_at LIKE 2026-01-27</code></div></div><div class="why"><b>Why:</b> A half-open range: on or after midnight of the day, and before midnight of the next. It never misses an evening row.<br><b>A</b> is wrong: '2026-01-27' means midnight exactly: 0 rows (measured).<br><b>B</b> is wrong: The same single instant, midnight: 0 rows.<br><b>D</b> is wrong: Without quotes 2026-01-27 is arithmetic (1998), and LIKE on a date is the wrong tool.</div></div>
+  <div class="q" data-sc="5" data-kind="short"><div class="qn">Q5</div><div class="qt">Which first names does this return, in order?</div><pre class="code"><span class="k">SELECT</span> first_name
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city = <span class="s">'New York'</span> <span class="k">OR</span> city = <span class="s">'Chicago'</span> <span class="k">AND</span> first_name <span class="k">LIKE</span> <span class="s">'G%'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> first_name;</pre><div class="opts"><div class="opt correct"><code class="inline">Alice</code>, <code class="inline">Frank</code>, <code class="inline">Grace</code></div></div><div class="why"><b>Why:</b> AND runs before OR: city = 'New York' OR (city = 'Chicago' AND first_name LIKE 'G%'). Both New Yorkers pass, and of the Chicago customers only Grace. Written with parentheses, (New York OR Chicago) AND LIKE 'G%', it would return only Grace.</div></div>
+  <div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt">Which of these returns no rows at all?</div><div class="opts"><div class="opt">A) <code class="inline">WHERE city IS NULL</code></div><div class="opt">B) <code class="inline">WHERE city &lt;=&gt; NULL</code></div><div class="opt">C) <code class="inline">WHERE city LIKE '%o%'</code></div><div class="opt correct">D) <code class="inline">WHERE city NOT IN ('Reno', NULL)</code></div></div><div class="why"><b>Why:</b> NOT IN ('Reno', NULL) means city != 'Reno' AND city != NULL; the second part is unknown for every row, so nothing passes (COUNT 0 on the course data).<br><b>A</b> is wrong: IS NULL finds Eve and Hank.<br><b>B</b> is wrong: <=> is NULL-safe: it works like IS NULL here.<br><b>C</b> is wrong: New York, Chicago, Los Angeles and Houston all contain an o.</div></div>
+
+  <div class="sec"><h2>3.1 · WHERE Clauses, Operators &amp; Filtering: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> n
+<span class="k">FROM</span> customers
+<span class="k">WHERE</span> city <span class="k">NOT</span> <span class="k">IN</span> (<span class="s">'Chicago'</span>, <span class="s">'Houston'</span>);</pre><div class="opts"><div class="opt correct"><pre class="out">+---+
+| n |
++---+
+| 3 |
++---+</pre></div></div><div class="why"><b>Why:</b> Chicago (2) and Houston (1) are left out, and so are Eve and Hank: NULL NOT IN (...) is unknown. Alice, Carol and Frank remain: 3.</div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> title <span class="k">LIKE</span> <span class="s">'%o%o%'</span>
+<span class="k">ORDER</span> <span class="k">BY</span> title;</pre><div class="opts"><div class="opt correct"><pre class="out">+-----------------------+
+| title                 |
++-----------------------+
+| Lord of the Rings     |
+| To Kill a Mockingbird |
++-----------------------+</pre></div></div><div class="why"><b>Why:</b> <code class="inline">%o%o%</code> needs two o's anywhere: Lord of the Rings (Lord, of) and To Kill a Mockingbird (To, Mockingbird).</div></div>
+
+  <div class="sec"><h2>3.2 · Sorting &amp; Limiting Results: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">What does <code class="inline">ORDER BY in_stock, price DESC</code> do?</div><div class="opts"><div class="opt correct">A) in_stock ascending (0 first), then price descending within each group</div><div class="opt">B) Both columns descending</div><div class="opt">C) <code class="inline">ERROR 1064</code>: DESC must come after every column</div><div class="opt">D) price first, then in_stock</div></div><div class="why"><b>Why:</b> ASC and DESC belong to the one column right before them; ASC is the default. For both descending write `in_stock DESC, price DESC`.<br><b>B</b> is wrong: DESC applies only to price.<br><b>C</b> is wrong: It is valid SQL.<br><b>D</b> is wrong: The first column listed is the first sort key.</div></div>
+  <div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">What does this print?</div><pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> pages <span class="k">DESC</span>
+<span class="k">LIMIT</span> <span class="s">1</span> <span class="k">OFFSET</span> <span class="s">2</span>;</pre><div class="opts"><div class="opt correct"><code class="inline">Dune</code> (412 pages: the third longest)</div></div><div class="why"><b>Why:</b> Longest first: Lord of the Rings 1178, Pride and Prejudice 432, Dune 412. OFFSET 2 skips two rows, LIMIT 1 keeps the next.</div></div>
+  <div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">What happens with <code class="inline">'price'</code> in quotes: <code class="inline">ORDER BY 'price' DESC LIMIT 3</code>?</div><div class="opts"><div class="opt">A) The three most expensive books, as intended</div><div class="opt">B) <code class="inline">ERROR 1054</code>: Unknown column</div><div class="opt correct">C) No error, but the rows come in no particular order: 'price' is a fixed piece of text</div><div class="opt">D) The rows are sorted alphabetically by title</div></div><div class="why"><b>Why:</b> In single quotes, price is text, the same for every row, so there is nothing to sort by. Column names are written bare (or in backticks).<br><b>A</b> is wrong: On the test server it returned Dune, 1984, To Kill a Mockingbird: not the top three.<br><b>B</b> is wrong: A text value is valid, so there is no error: the danger.<br><b>D</b> is wrong: Nothing sorts by title here.</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">Where do Eve and Hank (no city) appear with <code class="inline">ORDER BY city DESC, first_name</code>?</div><div class="opts"><div class="opt">A) First</div><div class="opt">B) They are left out</div><div class="opt">C) <code class="inline">ERROR 1064</code></div><div class="opt correct">D) Last</div></div><div class="why"><b>Why:</b> MySQL treats NULL as smaller than any value: first in an ascending sort, last in a descending one. To force them last in an ascending sort: `ORDER BY city IS NULL, city`.<br><b>A</b> is wrong: That is the ascending sort.<br><b>B</b> is wrong: ORDER BY never removes rows.<br><b>C</b> is wrong: Valid SQL.</div></div>
+  <div class="q" data-sc="11"><div class="qn">Q11</div><div class="qt">A list sorted by id shows 20 rows per page, and page 1 ended at id 57. Which query gets the next page fast, even on a huge table?</div><div class="opts"><div class="opt">A) <code class="inline">... ORDER BY id LIMIT 20 OFFSET 57</code></div><div class="opt correct">B) <code class="inline">... WHERE id &gt; 57 ORDER BY id LIMIT 20</code></div><div class="opt">C) <code class="inline">... WHERE id &gt;= 57 LIMIT 20</code></div><div class="opt">D) <code class="inline">... ORDER BY id LIMIT 57, 20</code></div></div><div class="why"><b>Why:</b> Keyset pagination: remember the last row seen and ask for the rows after it. With the primary key's index MySQL jumps straight to id 58.<br><b>A</b> is wrong: OFFSET counts rows, not ids, and reads and discards them all: slower with every page.<br><b>C</b> is wrong: It repeats id 57 and has no ORDER BY.<br><b>D</b> is wrong: The comma form is OFFSET 57: the same row-counting problem.</div></div>
+  <div class="q" data-sc="12" data-kind="short"><div class="qn">Q12</div><div class="qt">With 3 books per page, how many pages? What does this print?</div><pre class="code"><span class="k">SELECT</span> CEILING(COUNT(*) / <span class="s">3</span>) <span class="k">AS</span> pages <span class="k">FROM</span> books;</pre><div class="opts"><div class="opt correct"><code class="inline">4</code></div></div><div class="why"><b>Why:</b> 10 books / 3 = 3.33, and CEILING rounds up: the last page holds one book.</div></div>
+
+  <div class="sec"><h2>3.2 · Sorting &amp; Limiting Results: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P3</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> first_name, city
+<span class="k">FROM</span> customers
+<span class="k">ORDER</span> <span class="k">BY</span> city <span class="k">DESC</span>, first_name
+<span class="k">LIMIT</span> <span class="s">3</span>;</pre><div class="opts"><div class="opt correct"><pre class="out">+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Alice      | New York    |
+| Frank      | New York    |
+| Carol      | Los Angeles |
++------------+-------------+</pre></div></div><div class="why"><b>Why:</b> Descending puts New York first and NULLs last; first_name breaks the New York tie: Alice, Frank, then Carol (Los Angeles).</div></div>
+<div class="q"><div class="qn">P4</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> title, pages
+<span class="k">FROM</span> books
+<span class="k">ORDER</span> <span class="k">BY</span> pages
+<span class="k">LIMIT</span> <span class="s">2</span> <span class="k">OFFSET</span> <span class="s">8</span>;</pre><div class="opts"><div class="opt correct"><pre class="out">+---------------------+-------+
+| title               | pages |
++---------------------+-------+
+| Pride and Prejudice |   432 |
+| Lord of the Rings   |  1178 |
++---------------------+-------+</pre></div></div><div class="why"><b>Why:</b> Shortest first, skip 8 of the 10: the two longest are left, Pride and Prejudice (432) and Lord of the Rings (1178).</div></div>
+
+  <div class="sec"><h2>Checkpoint 1: Rubric and Model Answer</h2><span class="rule"></span></div>
+<p>Five rows, 0 to 2 points each (10 in all). Score from the learner's file (run it once) and the Part D page. 8 to 10: on track. 5 to 7: review the weakest row before Session 6. Under 5: a one-to-one before Lesson 4.1.</p>
+<table class="rubric">
+<thead><tr><th>Criterion</th><th>Strong (2)</th><th>Partial (1)</th><th>Missing (0)</th></tr></thead>
+<tbody>
+<tr><td class="crit">Script hygiene (Modules 1 and 2)</td><td>Runs twice in a row: DROP DATABASE IF EXISTS, utf8mb4 + a named collation, USE; a comment per table; every INSERT has a column list</td><td>Runs once but not twice, or no collation, or one INSERT without a column list</td><td>Does not run, or tables created in the wrong database (1046 or bookstore)</td></tr>
+<tr><td class="crit">Types (2.1, 2.2)</td><td>DECIMAL for the offer, DATE for received, ENUM for the condition, BOOLEAN for paid, sensible VARCHAR sizes; book_condition (not the reserved word condition)</td><td>One wrong type (FLOAT money, a date as text, INT for the condition)</td><td>Several wrong types, or everything VARCHAR</td></tr>
+<tr><td class="crit">Constraints (2.2)</td><td>AUTO_INCREMENT primary keys; NOT NULL where the spec says required; UNIQUE email; CHECK chk_offer for 0.50 to 20.00; DEFAULT 'good' and DEFAULT FALSE</td><td>Two or three rules missing (often the CHECK or a DEFAULT), or the CHECK unnamed</td><td>Primary keys only, or no rules</td></tr>
+<tr><td class="crit">Changing data safely (2.3)</td><td>B3 and B5 by id; B4 preview with the same WHERE and rows_paid 2; B6 one upsert (AS new ON DUPLICATE KEY UPDATE) that leaves Ivy as id 2 in Henderson</td><td>Results right but no preview, or B6 done with UPDATE (works, but not the asked statement) or REPLACE (new id)</td><td>A WHERE that changes the wrong rows, or an UPDATE/DELETE without WHERE</td></tr>
+<tr><td class="crit">Reading MySQL's answers (Part C, Part D)</td><td>C1 to C3 match the model answer; Part D names 3819, 1062 and 1265 with the rule each one protects and a fix</td><td>Part C right, two of the three error numbers</td><td>Part C wrong, or Part D blank</td></tr>
+</tbody>
+</table>
+<div class="blk lab"><div class="h">Model answer: labs/module-04/checkpoint-1/checkpoint_solution.sql</div>
+<pre class="code"><span class="c">-- ---------- Part A · build (rerunnable) ----------</span>
+<span class="k">DROP</span> <span class="k">DATABASE</span> <span class="k">IF</span> <span class="k">EXISTS</span> kit_cp1_tradein;
+<span class="k">CREATE</span> <span class="k">DATABASE</span> kit_cp1_tradein
+    <span class="k">CHARACTER</span> <span class="k">SET</span> utf8mb4
+    <span class="k">COLLATE</span> utf8mb4_unicode_ci;
+<span class="k">USE</span> kit_cp1_tradein;
+
+<span class="c">-- People who bring books in. email is how the desk finds them again.</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> sellers (
+    id     <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    name   <span class="k">VARCHAR</span>(<span class="s">80</span>)  <span class="k">NOT</span> <span class="k">NULL</span>,
+    email  <span class="k">VARCHAR</span>(<span class="s">100</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">UNIQUE</span>,
+    city   <span class="k">VARCHAR</span>(<span class="s">50</span>)
+);
+
+<span class="c">-- One row per book brought in. seller_id says whose it is (Module 4 makes it a foreign key).</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> trade_ins (
+    id              <span class="k">INT</span> <span class="k">AUTO_INCREMENT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span>,
+    seller_id       <span class="k">INT</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    title           <span class="k">VARCHAR</span>(<span class="s">200</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    book_condition  <span class="k">ENUM</span>(<span class="s">'like new'</span>, <span class="s">'good'</span>, <span class="s">'worn'</span>) <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">DEFAULT</span> <span class="s">'good'</span>,
+    offer           <span class="k">DECIMAL</span>(<span class="s">5</span>, <span class="s">2</span>) <span class="k">NOT</span> <span class="k">NULL</span>,
+    received        <span class="k">DATE</span> <span class="k">NOT</span> <span class="k">NULL</span>,
+    paid            <span class="k">BOOLEAN</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">DEFAULT</span> <span class="k">FALSE</span>,
+    <span class="k">CONSTRAINT</span> chk_offer <span class="k">CHECK</span> (offer <span class="k">BETWEEN</span> <span class="s">0.50</span> <span class="k">AND</span> <span class="s">20.00</span>)
+);
+
+<span class="c">-- ---------- Part B · fill and change ----------</span>
+<span class="c">-- B1 · three sellers</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> sellers (name, email, city) <span class="k">VALUES</span>
+    (<span class="s">'Mo Rahman'</span>, <span class="s">'mo@example.com'</span>, <span class="s">'Reno'</span>),
+    (<span class="s">'Ivy Chen'</span>, <span class="s">'ivy@example.com'</span>, <span class="k">NULL</span>),
+    (<span class="s">'Sam Okoro'</span>, <span class="s">'sam@example.com'</span>, <span class="s">'Sparks'</span>);
+
+<span class="c">-- B2 · five trade-ins (paid is left to its default)</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> trade_ins (seller_id, title, book_condition, offer, received) <span class="k">VALUES</span>
+    (<span class="s">1</span>, <span class="s">'Dune'</span>, <span class="s">'good'</span>, <span class="s">4.00</span>, <span class="s">'2026-05-01'</span>),
+    (<span class="s">1</span>, <span class="s">'Emma'</span>, <span class="s">'worn'</span>, <span class="s">1.50</span>, <span class="s">'2026-05-01'</span>),
+    (<span class="s">2</span>, <span class="s">'The Hobbit'</span>, <span class="s">'like new'</span>, <span class="s">6.00</span>, <span class="s">'2026-05-03'</span>),
+    (<span class="s">3</span>, <span class="s">'1984'</span>, <span class="s">'good'</span>, <span class="s">3.50</span>, <span class="s">'2026-05-04'</span>),
+    (<span class="s">3</span>, <span class="s">'Dracula'</span>, <span class="s">'worn'</span>, <span class="s">1.00</span>, <span class="s">'2026-05-04'</span>);
+
+<span class="c">-- B3 · Dune's offer goes up by one dollar (it is id 1)</span>
+<span class="k">UPDATE</span> trade_ins <span class="k">SET</span> offer = offer + <span class="s">1.00</span> <span class="k">WHERE</span> id = <span class="s">1</span>;
+
+<span class="c">-- B4 · Mo is paid for all his books: preview, then the same WHERE</span>
+<span class="k">SELECT</span> id, title, paid <span class="k">FROM</span> trade_ins <span class="k">WHERE</span> seller_id = <span class="s">1</span> <span class="k">ORDER</span> <span class="k">BY</span> id;
+<span class="k">UPDATE</span> trade_ins <span class="k">SET</span> paid = <span class="k">TRUE</span> <span class="k">WHERE</span> seller_id = <span class="s">1</span>;
+<span class="k">SELECT</span> ROW_COUNT() <span class="k">AS</span> rows_paid;
+
+<span class="c">-- B5 · Dracula (id 5) was turned down</span>
+<span class="k">DELETE</span> <span class="k">FROM</span> trade_ins <span class="k">WHERE</span> id = <span class="s">5</span>;
+
+<span class="c">-- B6 · Ivy sends her details again, now with a city: insert her, or update her</span>
+<span class="k">INSERT</span> <span class="k">INTO</span> sellers (name, email, city)
+<span class="k">VALUES</span> (<span class="s">'Ivy Chen'</span>, <span class="s">'ivy@example.com'</span>, <span class="s">'Henderson'</span>) <span class="k">AS</span> new
+<span class="k">ON</span> <span class="k">DUPLICATE</span> <span class="k">KEY</span> <span class="k">UPDATE</span> city = new.city;
+
+<span class="c">-- ---------- Part C · read ----------</span>
+<span class="c">-- C1 · every trade-in, with 10% extra if taken as store credit</span>
+<span class="k">SELECT</span> id, title, book_condition, offer,
+       ROUND(offer * <span class="s">1.10</span>, <span class="s">2</span>) <span class="k">AS</span> store_credit, paid
+<span class="k">FROM</span> trade_ins
+<span class="k">ORDER</span> <span class="k">BY</span> id;
+
+<span class="c">-- C2 · the conditions that occur, each once</span>
+<span class="k">SELECT</span> <span class="k">DISTINCT</span> book_condition <span class="k">FROM</span> trade_ins <span class="k">ORDER</span> <span class="k">BY</span> book_condition;
+
+<span class="c">-- C3 · the sellers now</span>
+<span class="k">SELECT</span> id, name, city <span class="k">FROM</span> sellers <span class="k">ORDER</span> <span class="k">BY</span> id;
+
+<span class="k">DROP</span> <span class="k">DATABASE</span> kit_cp1_tradein;</pre><p>It prints:</p>
+<pre class="out">Database changed
++----+-------+------+
+| id | title | paid |
++----+-------+------+
+|  1 | Dune  |    0 |
+|  2 | Emma  |    0 |
++----+-------+------+
++-----------+
+| rows_paid |
++-----------+
+|         2 |
++-----------+
++----+------------+----------------+-------+--------------+------+
+| id | title      | book_condition | offer | store_credit | paid |
++----+------------+----------------+-------+--------------+------+
+|  1 | Dune       | good           |  5.00 |         5.50 |    1 |
+|  2 | Emma       | worn           |  1.50 |         1.65 |    1 |
+|  3 | The Hobbit | like new       |  6.00 |         6.60 |    0 |
+|  4 | 1984       | good           |  3.50 |         3.85 |    0 |
++----+------------+----------------+-------+--------------+------+
++----------------+
+| book_condition |
++----------------+
+| like new       |
+| good           |
+| worn           |
++----------------+
++----+-----------+-----------+
+| id | name      | city      |
++----+-----------+-----------+
+|  1 | Mo Rahman | Reno      |
+|  2 | Ivy Chen  | Henderson |
+|  3 | Sam Okoro | Sparks    |
++----+-----------+-----------+</pre></div>
+<div class="blk"><div class="h">Part D answers (each run after the model answer)</div>
+<div class="q"><div class="qn">D1</div><div class="qt">The desk offers 25.00 for a rare copy of Emma.</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> trade_ins (seller_id, title, offer, received)
+<span class="k">VALUES</span> (<span class="s">1</span>, <span class="s">'Emma'</span>, <span class="s">25.00</span>, <span class="s">'2026-05-02'</span>);</pre><div class="opts"><div class="opt correct"><pre class="out">ERROR 3819 (HY000): Check constraint 'chk_offer' is violated.</pre></div></div><div class="why"><b>Why:</b> The CHECK chk_offer keeps offers from 0.50 to 20.00 (the desk's rule). Fix: an offer within the range, or a manager changes the rule with ALTER TABLE.</div></div>
+<div class="q"><div class="qn">D2</div><div class="qt">Mo comes back with a new name on his card, same email.</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> sellers (name, email)
+<span class="k">VALUES</span> (<span class="s">'Mo R.'</span>, <span class="s">'mo@example.com'</span>);</pre><div class="opts"><div class="opt correct"><pre class="out">ERROR 1062 (23000): Duplicate entry 'mo@example.com' for key 'sellers.email'</pre></div></div><div class="why"><b>Why:</b> email is UNIQUE: one seller per email, so the desk finds people again. Fix: UPDATE Mo's name by id, or the B6 upsert.</div></div>
+<div class="q"><div class="qn">D3</div><div class="qt">Ivy's Emma is in "mint" condition.</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> trade_ins (seller_id, title, book_condition, offer, received)
+<span class="k">VALUES</span> (<span class="s">2</span>, <span class="s">'Emma'</span>, <span class="s">'mint'</span>, <span class="s">3.00</span>, <span class="s">'2026-05-02'</span>);</pre><div class="opts"><div class="opt correct"><pre class="out">ERROR 1265 (01000): Data truncated for column 'book_condition' at row 1</pre></div></div><div class="why"><b>Why:</b> mint is not on the ENUM list; 1265 "Data truncated" is how MySQL says so. Fix: 'like new', or add the value by redefining the whole column.</div></div>
+</div>
+<div class="blk"><div class="h">Scoring notes</div>
+<ul class="tick">
+  <li><b>Accept</b> <code class="inline">DECIMAL(4, 2)</code> or wider for the offer, <code class="inline">TINYINT(1)</code> for paid, <code class="inline">VARCHAR</code> sizes close to the spec, and B4 without the ROW_COUNT line if the preview is there.</li>
+  <li><b>B6 by UPDATE</b> gives the right table but not the asked statement: 1 on row 4. <b>B6 by REPLACE</b> gives Ivy a new id (4) and is a 1 too, with a note on why.</li>
+  <li><b>A file that only runs once</b> (no DROP DATABASE IF EXISTS, or CREATE without IF NOT EXISTS after an edit) loses the hygiene point it most needs.</li>
+  <li><b>Column named <code class="inline">condition</code>:</b> a 1064 they should have fixed with the hint; if the rest runs, score the rest.</li>
+</ul>
+</div>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Lab 3.1-A: labs/module-04/l3_1-where-clauses-operators-filtering/staff_requests_starter.sql → staff_requests_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+-----------------------+---------------+
+| title                 | author        |
++-----------------------+---------------+
+| 1984                  | George Orwell |
+| Fahrenheit 451        | Ray Bradbury  |
+| To Kill a Mockingbird | Harper Lee    |
++-----------------------+---------------+
++-----------------+-------+------------+
+| title           | price | published  |
++-----------------+-------+------------+
+| Brave New World |  9.49 | 1932-01-01 |
+| The Hobbit      | 10.99 | 1937-09-21 |
+| 1984            |  9.99 | 1949-06-08 |
++-----------------+-------+------------+
++------------+-----------+
+| first_name | last_name |
++------------+-----------+
+| Alice      | Johnson   |
+| Grace      | Wilson    |
++------------+-----------+
++-------+
+| title |
++-------+
+| 1984  |
+| Dune  |
++-------+
++------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Bob        | Chicago     |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Eve        | NULL        |
+| Grace      | Chicago     |
+| Hank       | NULL        |
++------------+-------------+
++-----------------+---------------+-------+
+| title           | author        | price |
++-----------------+---------------+-------+
+| Brave New World | Aldous Huxley |  9.49 |
+| 1984            | George Orwell |  9.99 |
+| Fahrenheit 451  | Ray Bradbury  | 10.49 |
++-----------------+---------------+-------+
++------------+---------------------+
+| first_name | created_at          |
++------------+---------------------+
+| Grace      | 2026-02-02 08:55:00 |
+| Hank       | 2026-02-10 19:12:00 |
++------------+---------------------+</pre><p>Request 5 is the one most learners get wrong first: <code class="inline">city != 'New York'</code> alone returns 4 rows; Eve and Hank need <code class="inline">OR city IS NULL</code>. Request 7 uses a half-open range; <code class="inline">BETWEEN '2026-02-01' AND '2026-02-14'</code> would miss anyone who signed up on the 14th after midnight.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 3.1-B: labs/module-04/l3_1-where-clauses-operators-filtering/null_detective_starter.sql → null_detective_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+------------+-------------+------------+-------------+---------+
+| first_name | city        | is_chicago | not_chicago | no_city |
++------------+-------------+------------+-------------+---------+
+| Alice      | New York    |          0 |           1 |       0 |
+| Bob        | Chicago     |          1 |           0 |       0 |
+| Carol      | Los Angeles |          0 |           1 |       0 |
+| Dave       | Houston     |          0 |           1 |       0 |
+| Eve        | NULL        |       NULL |        NULL |       1 |
+| Frank      | New York    |          0 |           1 |       0 |
+| Grace      | Chicago     |          1 |           0 |       0 |
+| Hank       | NULL        |       NULL |        NULL |       1 |
++------------+-------------+------------+-------------+---------+
++------------+
+| in_chicago |
++------------+
+|          2 |
++------------+
++-----------+
+| elsewhere |
++-----------+
+|         4 |
++-----------+
++---------+
+| no_city |
++---------+
+|       2 |
++---------+
++------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Alice      | New York    |
+| Bob        | Chicago     |
+| Carol      | Los Angeles |
+| Eve        | NULL        |
+| Frank      | New York    |
+| Grace      | Chicago     |
+| Hank       | NULL        |
++------------+-------------+
++------------+------+
+| first_name | city |
++------------+------+
+| Eve        | NULL |
+| Hank       | NULL |
++------------+------+</pre><p>As shipped, <code class="inline">no_city</code> is 0 and queries 3 and 4 return nothing: the NULL inside NOT IN makes every row unknown, and <code class="inline">= NULL</code> is never true. With IS NULL the counts add to 8.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-04/l3_1-where-clauses-operators-filtering/debug_filters.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 1054 (42S22): Unknown column 'Chicago' in 'where clause'
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '&lt; 500 ORDER BY pages' at line 1
+Empty set
+Empty set
++------------------------+---------------+----------+
+| title                  | author        | in_stock |
++------------------------+---------------+----------+
+| Pride and Prejudice    | Jane Austen   |        1 |
+| The Catcher in the Rye | J.D. Salinger |        0 |
++------------------------+---------------+----------+</pre><ol class="steps">
+  <li><b>Bug A, 1054:</b> <code class="inline">Chicago</code> without quotes is read as a column. Fix: <code class="inline">'Chicago'</code>.</li>
+  <li><b>Bug B, 1064:</b> each comparison needs its column: <code class="inline">pages &gt; 300 AND pages &lt; 500</code> (or <code class="inline">BETWEEN 301 AND 499</code>).</li>
+  <li><b>Bug C, silent:</b> <code class="inline">= NULL</code> finds nothing. Fix: <code class="inline">IS NULL</code> (Eve, Hank).</li>
+  <li><b>Bug D, silent:</b> <code class="inline">=</code> takes the % literally. Fix: <code class="inline">LIKE 'The %'</code> (three titles).</li>
+  <li><b>Bug E, silent:</b> AND before OR lets the out-of-stock Catcher in. Fix: <code class="inline">in_stock = TRUE AND (author = 'Jane Austen' OR author = 'J.D. Salinger')</code> (only Pride and Prejudice).</li>
+</ol>
+</div>
+<div class="blk lab"><div class="h">Lab 3.2-A: labs/module-04/l3_2-sorting-limiting-results/bestseller_board_starter.sql → bestseller_board_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+------------+-----------+---------------------+
+| first_name | last_name | created_at          |
++------------+-----------+---------------------+
+| Hank       | Taylor    | 2026-02-10 19:12:00 |
+| Grace      | Wilson    | 2026-02-02 08:55:00 |
+| Frank      | Miller    | 2026-01-27 13:30:00 |
+| Eve        | Davis     | 2026-01-20 11:08:00 |
+| Dave       | Brown     | 2026-01-12 16:25:00 |
+| Carol      | Williams  | 2026-01-09 09:40:00 |
+| Bob        | Smith     | 2026-01-06 14:02:00 |
+| Alice      | Johnson   | 2026-01-04 10:15:00 |
++------------+-----------+---------------------+
++------------------------+--------------+
+| title                  | title_length |
++------------------------+--------------+
+| The Catcher in the Rye |           22 |
+| To Kill a Mockingbird  |           21 |
+| Pride and Prejudice    |           19 |
+| Lord of the Rings      |           17 |
+| The Great Gatsby       |           16 |
+| Brave New World        |           15 |
+| Fahrenheit 451         |           14 |
+| The Hobbit             |           10 |
+| 1984                   |            4 |
+| Dune                   |            4 |
++------------------------+--------------+
++---------------------+------------------------+------------+
+| author              | title                  | published  |
++---------------------+------------------------+------------+
+| Aldous Huxley       | Brave New World        | 1932-01-01 |
+| F. Scott Fitzgerald | The Great Gatsby       | 1925-04-10 |
+| Frank Herbert       | Dune                   | 1965-08-01 |
+| George Orwell       | 1984                   | 1949-06-08 |
+| Harper Lee          | To Kill a Mockingbird  | 1960-07-11 |
+| J.D. Salinger       | The Catcher in the Rye | 1951-07-16 |
+| J.R.R. Tolkien      | Lord of the Rings      | 1954-07-29 |
+| J.R.R. Tolkien      | The Hobbit             | 1937-09-21 |
+| Jane Austen         | Pride and Prejudice    | 1813-01-28 |
+| Ray Bradbury        | Fahrenheit 451         | 1953-10-19 |
++---------------------+------------------------+------------+
++-----------------------+-------+
+| title                 | pages |
++-----------------------+-------+
+| Fahrenheit 451        |   158 |
+| To Kill a Mockingbird |   281 |
+| The Hobbit            |   310 |
++-----------------------+-------+
++-----------------+
+| name            |
++-----------------+
+| Classic         |
+| Fiction         |
+| Dystopian       |
+| Fantasy         |
+| Science Fiction |
++-----------------+
++------------+-----------+-------------+
+| first_name | last_name | city        |
++------------+-----------+-------------+
+| Eve        | Davis     | NULL        |
+| Hank       | Taylor    | NULL        |
+| Alice      | Johnson   | New York    |
+| Frank      | Miller    | New York    |
+| Carol      | Williams  | Los Angeles |
+| Dave       | Brown     | Houston     |
+| Bob        | Smith     | Chicago     |
+| Grace      | Wilson    | Chicago     |
++------------+-----------+-------------+</pre><p>List 2 needs the tie-breaker: 1984 and Dune both have 4 characters. List 6: <code class="inline">city IS NOT NULL</code> is 0 for the missing cities, so ascending puts them first; then <code class="inline">city DESC</code>.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 3.2-B: labs/module-04/l3_2-sorting-limiting-results/paging_starter.sql → paging_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+----+------------------------+-------+
+| id | title                  | price |
++----+------------------------+-------+
+|  5 | Pride and Prejudice    |  7.99 |
+|  4 | The Great Gatsby       |  8.99 |
+|  8 | The Catcher in the Rye |  8.99 |
+|  7 | Brave New World        |  9.49 |
++----+------------------------+-------+
++----+-----------------------+-------+
+| id | title                 | price |
++----+-----------------------+-------+
+|  2 | 1984                  |  9.99 |
+| 10 | Fahrenheit 451        | 10.49 |
+|  6 | The Hobbit            | 10.99 |
+|  3 | To Kill a Mockingbird | 11.99 |
++----+-----------------------+-------+
++----+-------------------+-------+
+| id | title             | price |
++----+-------------------+-------+
+|  1 | Dune              | 14.99 |
+|  9 | Lord of the Rings | 15.99 |
++----+-------------------+-------+
++-------+-------+
+| books | pages |
++-------+-------+
+|    10 |     3 |
++-------+-------+
+Empty set
++------------------------+
+| note                   |
++------------------------+
+| page 4 printed nothing |
++------------------------+
++----+-----------------------+-------+
+| id | title                 | price |
++----+-----------------------+-------+
+|  2 | 1984                  |  9.99 |
+| 10 | Fahrenheit 451        | 10.49 |
+|  6 | The Hobbit            | 10.99 |
+|  3 | To Kill a Mockingbird | 11.99 |
++----+-----------------------+-------+</pre><p>Two books cost 8.99, so id breaks the tie and the pages never repeat or skip a book. Page 4 (OFFSET 12) is not an error: it prints nothing (in the interactive client, <code class="inline">Empty set</code>). The keyset query returns exactly page 2.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-04/l3_2-sorting-limiting-results/debug_sorting.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints:</p>
+<pre class="out">ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE in_stock = TRUE' at line 1
+ERROR 1054 (42S22): Unknown column '3' in 'order clause'
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '* 4' at line 1
++-----------------------+-------+
+| title                 | pages |
++-----------------------+-------+
+| Dune                  |   412 |
+| 1984                  |   328 |
+| To Kill a Mockingbird |   281 |
++-----------------------+-------+
++------------------------+----------+-------+
+| title                  | in_stock | pages |
++------------------------+----------+-------+
+| The Catcher in the Rye |        0 |   234 |
+| The Great Gatsby       |        0 |   180 |
+| Lord of the Rings      |        1 |  1178 |
+| Pride and Prejudice    |        1 |   432 |
+| Dune                   |        1 |   412 |
+| 1984                   |        1 |   328 |
+| Brave New World        |        1 |   311 |
+| The Hobbit             |        1 |   310 |
+| To Kill a Mockingbird  |        1 |   281 |
+| Fahrenheit 451         |        1 |   158 |
++------------------------+----------+-------+</pre><ol class="steps">
+  <li><b>Bug A, 1064:</b> WHERE must come before ORDER BY.</li>
+  <li><b>Bug B, 1054:</b> there is no third column; sort by name: <code class="inline">ORDER BY price</code> (a column you did not select is allowed).</li>
+  <li><b>Bug C, 1064:</b> no formulas in LIMIT/OFFSET: <code class="inline">OFFSET 8</code>.</li>
+  <li><b>Bug D, silent:</b> <code class="inline">'pages'</code> in quotes is a constant; the three rows are arbitrary (they can differ). Fix: <code class="inline">ORDER BY pages DESC, title</code>.</li>
+  <li><b>Bug E, silent:</b> in_stock is ascending. Fix: <code class="inline">ORDER BY in_stock DESC, pages DESC, title</code>.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>The Lesson Pages' Own Quick Quizzes</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Lesson 3.1 · WHERE Clauses, Operators &amp; Filtering</div>
+<ol class="steps" data-lesson-quiz="3.1">
+  <li><b>B</b> 0: city = NULL is unknown for every row, even for Eve and Hank, and WHERE only keeps rows where the test is true. The query returns an empty set without any error. Use IS NULL instead.</li>
+  <li><b>C</b> a = 1 OR (b = 2 AND c = 3): AND is evaluated before OR, just as multiplication comes before addition. Add parentheses whenever you mix the two so the meaning is clear.</li>
+  <li><b>A</b> 9.49, 10.99 and everything in between: BETWEEN includes both ends. It is shorthand for: price is at least 9.49 AND price is at most 10.99.</li>
+  <li><b>C</b> LIKE '___': Each underscore matches exactly one character, so three underscores match exactly three: Bob and Eve.</li>
+  <li><b>A</b> The text value Austen is missing its quotes: Without quotes, Austen is read as a column name. Text values belong in single quotes: WHERE author = 'Jane Austen'.</li>
+</ol>
+</div>
+<div class="blk"><div class="h">Lesson 3.2 · Sorting &amp; Limiting Results</div>
+<ol class="steps" data-lesson-quiz="3.2">
+  <li><b>A</b> At the top: MySQL sorts NULL as smaller than every value, so NULLs come first in ascending order and last in descending order.</li>
+  <li><b>C</b> Rows 7 to 9: OFFSET 6 skips rows 1 to 6, then LIMIT 3 keeps the next three: rows 7, 8 and 9.</li>
+  <li><b>B</b> The first row is the 7.99 book; the second can be either 8.99 book: The 7.99 book is certain to come first, but the 8.99 books tie, so which one fills the second slot is up to the server. Add a unique tie-breaker such as title.</li>
+  <li><b>A</b> LIMIT 4 OFFSET (3 - 1) * 4: LIMIT and OFFSET accept plain numbers or placeholders, not expressions. Compute 8 first and write OFFSET 8.</li>
+  <li><b>C</b> LIMIT 20 OFFSET 80: Page N starts after (N - 1) x page size rows: (5 - 1) x 20 = 80 rows skipped, then 20 returned.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li>Why does <code class="inline">WHERE city != 'Chicago'</code> skip Eve and Hank, and how do you include them? <b>Answer:</b> Their city is NULL, so the comparison is unknown, not true, and only true rows are kept. Add <code class="inline">OR city IS NULL</code>.</li>
+  <li>Write the WHERE clause for: books from $9 to $11, both ends included, that are not by Tolkien. <b>Answer:</b> <code class="inline">WHERE price BETWEEN 9 AND 11 AND author != 'J.R.R. Tolkien'</code> (on the course data: Brave New World, 1984, Fahrenheit 451).</li>
+  <li>Why should every ORDER BY that feeds a LIMIT end with a unique column? <b>Answer:</b> If rows tie at the cut-off, the server may return either one, and the choice can change between runs: page 1 and page 2 can repeat or skip a row. A unique column (id, title here) makes the order repeatable.</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q1 A (6).</b> Counts the NULL cities as "not Chicago". The day's main idea: unknown is dropped.</li>
+  <li><b>Q3 B.</b> The classic != OR != that is always true. Translate it into English with them.</li>
+  <li><b>Q4 A.</b> Treats a DATETIME like a DATE: show the 0-row result.</li>
+  <li><b>Q7 B.</b> Thinks DESC applies to the whole ORDER BY.</li>
+  <li><b>Q9 A.</b> Does not see the quotes: the most dangerous silent sort mistake.</li>
+  <li><b>Q11 A or D.</b> Confuses rows skipped with ids: an OFFSET counts rows.</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 4 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

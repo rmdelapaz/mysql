@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Key: Session 7</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="../../kit.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="lbl">Instructor copy —</span>
+  <button type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <span class="hint">answers &amp; solutions · not for students</span>
+</div>
+
+<div class="sheet">
+
+  <header class="mast">
+    <div class="kit-eyebrow">Instructor Kit · Answer Key</div>
+    <h1>Session 7: Joins and the Part 1 Assessment</h1>
+    <p class="sub">Answers and reasoning for every Session 7 item: the warm-up, the 4.3 and Part 1 review self-checks, the predict-then-run items, the lab reference outputs and the debug handout, the Part 1 assessment's reference run, the lesson page's own quiz and the exit ticket.</p>
+    <div class="meta-row">
+      <span class="chip">Session <b>7</b></span>
+      <span class="chip"><b>12</b> self-check items</span>
+      <span class="chip">Confidential</span>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Warm-up</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">W1</div><div class="qt">One order has many lines. Where does the foreign key go?</div><div class="opts"><div class="opt correct"><code class="inline">order_items.order_id</code>: the key goes on the many side.</div></div></div>
+<div class="q"><div class="qn">W2</div><div class="qt">Predict the count. (Order 3 has one line; fk_items_order is ON DELETE CASCADE.)</div><pre class="code"><span class="k">START</span> <span class="k">TRANSACTION</span>;
+<span class="k">DELETE</span> <span class="k">FROM</span> orders <span class="k">WHERE</span> id = <span class="s">3</span>;
+<span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> items <span class="k">FROM</span> order_items;
+<span class="k">ROLLBACK</span>;</pre><div class="opts"><div class="opt correct">17: order 3's one line was deleted with it (CASCADE); ROLLBACK put both back.<pre class="out">+-------+
+| items |
++-------+
+|    17 |
++-------+</pre></div></div></div>
+<div class="q"><div class="qn">W3</div><div class="qt">What happens, and why?</div><pre class="code"><span class="k">DELETE</span> <span class="k">FROM</span> authors <span class="k">WHERE</span> id = <span class="s">6</span>;</pre><div class="opts"><div class="opt correct">Error 1451: Tolkien has books, and fk_books_author is ON DELETE RESTRICT ("delete or update a parent row").<pre class="out">ERROR 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails (`bookstore`.`books`, CONSTRAINT `fk_books_author` FOREIGN KEY (`author_id`) REFERENCES `authors` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE)</pre></div></div></div>
+<div class="q"><div class="qn">W4</div><div class="qt">A key is declared with no ON DELETE. What does MySQL do when a parent with children is deleted?</div><div class="opts"><div class="opt correct">It refuses: with no rule written the key is NO ACTION, which MySQL enforces exactly like RESTRICT.</div></div></div>
+<div class="q"><div class="qn">W5</div><div class="qt">How many links?</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> links
+<span class="k">FROM</span> book_categories
+<span class="k">WHERE</span> book_id <span class="k">IN</span> (<span class="k">SELECT</span> id <span class="k">FROM</span> books <span class="k">WHERE</span> author_id = <span class="s">6</span>);</pre><div class="opts"><div class="opt correct">4: The Hobbit and Lord of the Rings are each Fiction and Fantasy.<pre class="out">+-------+
+| links |
++-------+
+|     4 |
++-------+</pre></div></div></div>
+
+  <div class="sec"><h2>4.3 · Joins: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="1"><div class="qn">Q1</div><div class="qt">Eight customers placed 12 orders; Carol and Hank placed none. How many rows does this return?</div><pre class="code"><span class="k">SELECT</span> c.first_name, o.id
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o <span class="k">ON</span> o.customer_id = c.id;</pre><div class="opts"><div class="opt">A) <code class="inline">8</code></div><div class="opt">B) <code class="inline">12</code></div><div class="opt correct">C) <code class="inline">14</code></div><div class="opt">D) <code class="inline">96</code></div></div><div class="why"><b>Why:</b> A LEFT JOIN returns every matching pair (12 orders, each with its customer) plus one row for each customer with no partner (Carol, Hank), padded with NULL: 14.<br><b>A</b> is wrong: One row per customer would need GROUP BY; Alice alone has three orders.<br><b>B</b> is wrong: 12 is the inner join: it drops Carol and Hank.<br><b>D</b> is wrong: 96 (8 × 12) is a cross join: a join without its ON condition.</div></div>
+  <div class="q" data-sc="2"><div class="qn">Q2</div><div class="qt">Which query lists the books that have never been sold?</div><div class="opts"><div class="opt correct">A) <code class="inline">FROM books b LEFT JOIN order_items oi ON oi.book_id = b.id WHERE oi.id IS NULL</code></div><div class="opt">B) <code class="inline">FROM books b JOIN order_items oi ON oi.book_id = b.id WHERE oi.id IS NULL</code></div><div class="opt">C) <code class="inline">FROM books b LEFT JOIN order_items oi ON oi.book_id = b.id WHERE b.id IS NULL</code></div><div class="opt">D) <code class="inline">FROM order_items oi LEFT JOIN books b ON oi.book_id = b.id WHERE b.id IS NULL</code></div></div><div class="why"><b>Why:</b> The anti-join: keep every book (LEFT JOIN from books), then keep only the rows where the right side found nothing (its primary key is NULL). The answer is The Catcher in the Rye and The Great Gatsby.<br><b>B</b> is wrong: An inner join has no unmatched rows, so the IS NULL test keeps nothing.<br><b>C</b> is wrong: b.id is never NULL: every row starts from a real book.<br><b>D</b> is wrong: This keeps order lines whose book is missing; the foreign key makes that impossible, so it returns nothing.</div></div>
+  <div class="q" data-sc="3" data-kind="short"><div class="qn">Q3</div><div class="qt">Alice (customer 1) placed three orders. What does this print?</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> rows_returned
+<span class="k">FROM</span> orders <span class="k">AS</span> o
+<span class="k">JOIN</span> order_items <span class="k">AS</span> oi <span class="k">ON</span> oi.order_id = o.id
+<span class="k">WHERE</span> o.customer_id = <span class="s">1</span>;</pre><div class="opts"><div class="opt correct"><code class="inline">4</code> (one row per order line, not per order)</div></div><div class="why"><b>Why:</b> Joining order_items makes one row per order LINE: order 1 has two lines, orders 2 and 8 one each. Ask "what does one row of this join stand for?" before counting (COUNT(DISTINCT o.id) gives 3).</div></div>
+  <div class="q" data-sc="4"><div class="qn">Q4</div><div class="qt">What happens when this runs?</div><pre class="code"><span class="k">SELECT</span> id, order_date, first_name
+<span class="k">FROM</span> orders
+<span class="k">JOIN</span> customers <span class="k">ON</span> orders.customer_id = customers.id;</pre><div class="opts"><div class="opt">A) It returns 12 rows, using the order's id</div><div class="opt correct">B) <code class="inline">ERROR 1052 (23000): Column 'id' in field list is ambiguous</code></div><div class="opt">C) <code class="inline">ERROR 1054 (42S22): Unknown column 'id' in 'field list'</code></div><div class="opt">D) It returns 96 rows: a cross join</div></div><div class="why"><b>Why:</b> Both orders and customers have an id, and MySQL will not guess which one you mean. Qualify it: orders.id (or o.id with an alias). first_name and order_date exist in only one table each, so they are fine.<br><b>A</b> is wrong: MySQL never guesses between two tables' columns.<br><b>C</b> is wrong: 1054 is a column that exists nowhere (or a table name after an alias); here it exists twice.<br><b>D</b> is wrong: The ON clause is there: this is an inner join.</div></div>
+  <div class="q" data-sc="5" data-kind="short"><div class="qn">Q5</div><div class="qt">Carol (3) has no orders; Dave (4) has two. What does this print?</div><pre class="code"><span class="k">SELECT</span> c.first_name, COUNT(o.id) <span class="k">AS</span> orders
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o <span class="k">ON</span> o.customer_id = c.id
+<span class="k">WHERE</span> c.id <span class="k">IN</span> (<span class="s">3</span>, <span class="s">4</span>)
+<span class="k">GROUP</span> <span class="k">BY</span> c.id, c.first_name
+<span class="k">ORDER</span> <span class="k">BY</span> c.id;</pre><div class="opts"><div class="opt correct"><code class="inline">Carol | 0</code> and <code class="inline">Dave | 2</code></div></div><div class="why"><b>Why:</b> The LEFT JOIN gives Carol one row padded with NULL. COUNT(o.id) counts only the non-NULL order ids, so Carol gets 0. COUNT(*) would have counted her padded row and said 1 (the lesson's Mistake 4).</div></div>
+  <div class="q" data-sc="6"><div class="qn">Q6</div><div class="qt">This was meant to list every author with their in-stock books. Isaac Asimov (no books) and the authors of the two out-of-stock books are missing. Why?</div><pre class="code"><span class="k">SELECT</span> a.name, b.title
+<span class="k">FROM</span> authors <span class="k">AS</span> a
+<span class="k">LEFT</span> <span class="k">JOIN</span> books <span class="k">AS</span> b <span class="k">ON</span> b.author_id = a.id
+<span class="k">WHERE</span> b.in_stock = <span class="k">TRUE</span>
+<span class="k">ORDER</span> <span class="k">BY</span> a.id, b.title;</pre><div class="opts"><div class="opt">A) LEFT JOIN cannot be combined with WHERE</div><div class="opt">B) in_stock is a BOOLEAN, so TRUE must be written as 1</div><div class="opt">C) The ORDER BY removes the NULL rows</div><div class="opt correct">D) The WHERE runs after the join: for the padded rows b.in_stock is NULL, so the LEFT JOIN behaves like an inner join</div></div><div class="why"><b>Why:</b> A condition on the right table belongs in ON when every left row must stay: <code class="inline">LEFT JOIN books b ON b.author_id = a.id AND b.in_stock = TRUE</code>. Then Asimov, Fitzgerald and Salinger appear with NULL titles (the lesson's Mistake 3).<br><b>A</b> is wrong: WHERE is fine after a LEFT JOIN; it just filters the joined rows, NULL-padded ones included.<br><b>B</b> is wrong: TRUE and 1 are the same in MySQL.<br><b>C</b> is wrong: ORDER BY only sorts.</div></div>
+
+  <div class="sec"><h2>4.3 · Joins: predict, then run</h2><span class="rule"></span></div>
+<div class="q"><div class="qn">P1</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">AS</span> rows_returned
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o <span class="k">ON</span> o.customer_id = c.id;</pre><div class="opts"><div class="opt correct"><pre class="out">+---------------+
+| rows_returned |
++---------------+
+|            14 |
++---------------+</pre></div></div><div class="why"><b>Why:</b> Twelve order rows (each with its customer) plus Carol and Hank with NULLs: 14.</div></div>
+<div class="q"><div class="qn">P2</div><div class="qt">Predict the output, then run it.</div><pre class="code"><span class="k">SELECT</span> c.first_name, COUNT(*) <span class="k">AS</span> n
+<span class="k">FROM</span> customers <span class="k">AS</span> c
+<span class="k">LEFT</span> <span class="k">JOIN</span> orders <span class="k">AS</span> o <span class="k">ON</span> o.customer_id = c.id
+<span class="k">WHERE</span> c.id <span class="k">IN</span> (<span class="s">3</span>, <span class="s">6</span>)
+<span class="k">GROUP</span> <span class="k">BY</span> c.id, c.first_name
+<span class="k">ORDER</span> <span class="k">BY</span> c.id;</pre><div class="opts"><div class="opt correct"><pre class="out">+------------+---+
+| first_name | n |
++------------+---+
+| Carol      | 1 |
+| Frank      | 2 |
++------------+---+</pre></div></div><div class="why"><b>Why:</b> Carol has no orders, but the LEFT JOIN gives her one padded row, and COUNT(*) counts rows: 1 (COUNT(o.id) would say 0). Frank has two orders: 2.</div></div>
+
+  <div class="sec"><h2>Part 1 Review: self-check</h2><span class="rule"></span></div>
+  <div class="q" data-sc="7"><div class="qn">Q7</div><div class="qt">Review (Lesson 2.2): which column type fits a book's price?</div><div class="opts"><div class="opt correct">A) <code class="inline">DECIMAL(8, 2)</code></div><div class="opt">B) <code class="inline">FLOAT</code></div><div class="opt">C) <code class="inline">VARCHAR(10)</code></div><div class="opt">D) <code class="inline">INT</code></div></div><div class="why"><b>Why:</b> DECIMAL stores exact decimal values: right for money. The course stores every price as DECIMAL(8, 2).<br><b>B</b> is wrong: FLOAT is approximate: sums of prices can be off by fractions of a cent.<br><b>C</b> is wrong: Text accepts "about 26" and cannot be summed or compared as a number (Session 1's order sheet).<br><b>D</b> is wrong: INT has no cents (unless you store cents, a different design).</div></div>
+  <div class="q" data-sc="8" data-kind="short"><div class="qn">Q8</div><div class="qt">Review (Lessons 2.2 and 2.3): what happens?</div><pre class="code"><span class="k">INSERT</span> <span class="k">INTO</span> customers (first_name, last_name, email)
+<span class="k">VALUES</span> (<span class="s">'Ivy'</span>, <span class="s">'Lane'</span>, <span class="s">'alice@example.com'</span>);</pre><div class="opts"><div class="opt correct"><code class="inline">ERROR 1062 (23000): Duplicate entry 'alice@example.com' for key 'customers.email'</code></div></div><div class="why"><b>Why:</b> customers.email is UNIQUE and alice@example.com belongs to Alice: the INSERT is refused and nothing is added. UNIQUE is a constraint on a column, like the PRIMARY KEY on id.</div></div>
+  <div class="q" data-sc="9"><div class="qn">Q9</div><div class="qt">Review (Lesson 3.1): how many books does this count?</div><pre class="code"><span class="k">SELECT</span> COUNT(*) <span class="k">FROM</span> books <span class="k">WHERE</span> title <span class="k">LIKE</span> <span class="s">'The %'</span>;</pre><div class="opts"><div class="opt">A) <code class="inline">2</code></div><div class="opt correct">B) <code class="inline">3</code></div><div class="opt">C) <code class="inline">4</code></div><div class="opt">D) <code class="inline">11</code></div></div><div class="why"><b>Why:</b> 'The %' means "starts with The and a space": The Great Gatsby, The Hobbit, The Catcher in the Rye. LIKE ignores case with the course's collation.<br><b>A</b> is wrong: Count again: three titles start with "The ".<br><b>C</b> is wrong: To Kill a Mockingbird starts with "To", not "The".<br><b>D</b> is wrong: 11 is every book; the pattern is a real filter.</div></div>
+  <div class="q" data-sc="10"><div class="qn">Q10</div><div class="qt">Review (Lessons 3.2 and 3.3): in which order must these clauses be written?</div><div class="opts"><div class="opt">A) SELECT, FROM, GROUP BY, WHERE, HAVING, ORDER BY, LIMIT</div><div class="opt">B) SELECT, FROM, WHERE, ORDER BY, GROUP BY, HAVING, LIMIT</div><div class="opt">C) SELECT, FROM, WHERE, HAVING, GROUP BY, ORDER BY, LIMIT</div><div class="opt correct">D) SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT</div></div><div class="why"><b>Why:</b> The written order (Some Frogs Will Gladly Hop Over Logs). The run order differs: FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY, LIMIT; with a join, the JOINs belong to FROM.<br><b>A</b> is wrong: WHERE comes before GROUP BY: it picks rows before the piles are made.<br><b>B</b> is wrong: ORDER BY comes after grouping (it sorts the result).<br><b>C</b> is wrong: HAVING after GROUP BY: written the other way it is error 1064.</div></div>
+  <div class="q" data-sc="11" data-kind="short"><div class="qn">Q11</div><div class="qt">Review (Lesson 3.4): what does this print?</div><pre class="code"><span class="k">SELECT</span> title
+<span class="k">FROM</span> books
+<span class="k">WHERE</span> price = (<span class="k">SELECT</span> MIN(price) <span class="k">FROM</span> books);</pre><div class="opts"><div class="opt correct"><code class="inline">Pride and Prejudice</code> (one row)</div></div><div class="why"><b>Why:</b> The inner query finds the lowest price (7.99); the outer query returns the row(s) with it. If two books tied, both would come back, unlike ORDER BY price LIMIT 1.</div></div>
+  <div class="q" data-sc="12"><div class="qn">Q12</div><div class="qt">Review (Lessons 4.1 and 4.2): what is the bookstore's order_items table?</div><div class="opts"><div class="opt">A) A one-to-one extension of orders</div><div class="opt">B) A copy of books with a quantity column</div><div class="opt correct">C) A junction table linking orders and books (many-to-many), carrying facts about each link: quantity and price_at_time</div><div class="opt">D) A self-referencing table</div></div><div class="why"><b>Why:</b> An order holds many books and a book appears in many orders: two foreign keys in a third table. Its extra columns describe the link (this book in this order). Deleting an order cascades to its lines; deleting a sold book is RESTRICTed.<br><b>A</b> is wrong: An order has MANY lines.<br><b>B</b> is wrong: It stores book_id, not a copy of the book; price_at_time is history, not duplication.<br><b>D</b> is wrong: That is employees (manager_id points at employees).</div></div>
+
+  <div class="sec"><h2>Lab Reference Solutions</h2><span class="rule"></span></div>
+<div class="blk lab"><div class="h">Lab 4.3-A: labs/module-07/l4_3-joins/catalog_joins_starter.sql → catalog_joins_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+----------+----------------+---------------+----------+
+| order_id | title          | author        | quantity |
++----------+----------------+---------------+----------+
+|        7 | 1984           | George Orwell |        1 |
+|        7 | Animal Farm    | George Orwell |        1 |
+|       12 | Animal Farm    | George Orwell |        1 |
+|       12 | Fahrenheit 451 | Ray Bradbury  |        1 |
++----------+----------------+---------------+----------+
++---------------------+-------+----------+
+| name                | books | cheapest |
++---------------------+-------+----------+
+| George Orwell       |     2 |     8.49 |
+| J.R.R. Tolkien      |     2 |    10.99 |
+| Aldous Huxley       |     1 |     9.49 |
+| F. Scott Fitzgerald |     1 |     8.99 |
++---------------------+-------+----------+
++--------------+-------+----------+
+| name         | books | cheapest |
++--------------+-------+----------+
+| Isaac Asimov |     0 |     NULL |
++--------------+-------+----------+
++------------+------------+
+| first_name | department |
++------------+------------+
+| Tom        | sales      |
+| Lena       | sales      |
+| Sofia      | inventory  |
+| Nina       | support    |
+| Ben        | sales      |
++------------+------------+
++----------+---------+-------------+
+| employee | manager | years_after |
++----------+---------+-------------+
+| Sofia    | Marcus  |           5 |
+| Tom      | Priya   |           3 |
+| Lena     | Priya   |           2 |
+| Priya    | Daniel  |           2 |
+| Ben      | Priya   |           1 |
+| Marcus   | Daniel  |           1 |
++----------+---------+-------------+</pre><p>What each TODO teaches: (1) an INNER JOIN through three tables, one row per order line; (2) LEFT JOIN with GROUP BY and COUNT of the right table's id (Asimov 0, his cheapest NULL); (3) the anti-join on a self-reference, the same five employees Session 6 found with NOT EXISTS; (4) a self-join with a computed column (YEAR differences, not exact years of service). Sticking points: COUNT(*) in TODO 2, testing the left table's id in TODO 3, and 1066 when a self-join has no aliases.</p>
+</div>
+<div class="blk lab"><div class="h">Lab 4.3-B: labs/module-07/l4_3-joins/city_sales_starter.sql → city_sales_solution.sql</div>
+<p>The solution prints:</p>
+<pre class="out">+-------------+-----------+--------+---------+
+| city        | customers | orders | revenue |
++-------------+-----------+--------+---------+
+| New York    |         2 |      5 |  100.91 |
+| Chicago     |         2 |      4 |   67.44 |
+| Houston     |         1 |      2 |   45.96 |
+| (no city)   |         2 |      1 |   22.98 |
+| Los Angeles |         1 |      0 |    0.00 |
++-------------+-----------+--------+---------+
++-----------------------+
+| title                 |
++-----------------------+
+| 1984                  |
+| Animal Farm           |
+| Dune                  |
+| To Kill a Mockingbird |
++-----------------------+
++------------+--------------------+
+| first_name | orders_since_march |
++------------+--------------------+
+| Bob        |                  2 |
+| Alice      |                  1 |
+| Dave       |                  1 |
+| Eve        |                  1 |
+| Frank      |                  1 |
+| Grace      |                  1 |
+| Carol      |                  0 |
+| Hank       |                  0 |
++------------+--------------------+</pre><p>Reading it: (1) every city stays thanks to the two LEFT JOINs; COUNT(DISTINCT ...) counts customers and orders, not order lines; the NULL cities form one '(no city)' group (Eve, Hank: one order between them); the four revenues add up to 237.29, the store's total. (2) DISTINCT, because Bob and Grace both bought 1984. (3) The WHERE-versus-ON trap on a new question: as shipped the query shows six customers (Carol and Hank vanish); with the date in ON, eight.</p>
+</div>
+<div class="blk lab"><div class="h">Handout: labs/module-07/l4_3-joins/debug_joins.sql (deliberately broken)</div>
+<p>As shipped, MySQL prints (Bug D's table comes first because it is the only statement that runs):</p>
+<pre class="out">ERROR 1052 (23000): Column 'id' in field list is ambiguous
+ERROR 1054 (42S22): Unknown column 'books.title' in 'field list'
+ERROR 1066 (42000): Not unique table/alias: 'employees'
++------------+--------+
+| first_name | orders |
++------------+--------+
+| Alice      |      4 |
+| Bob        |      3 |
++------------+--------+</pre><ol class="steps">
+  <li><b>Bug A, 1052:</b> <code class="inline">id</code> exists in orders and customers. Fix: <code class="inline">orders.id</code> (or aliases).</li>
+  <li><b>Bug B, 1054:</b> books has the alias b, so <code class="inline">books.title</code> refers to nothing. Fix: <code class="inline">b.title</code>.</li>
+  <li><b>Bug C, 1066:</b> employees joined to itself without aliases. Fix: <code class="inline">employees AS e JOIN employees AS m ON e.manager_id = m.id</code>.</li>
+  <li><b>Bug D (silent):</b> Alice gets 4 and Bob 3: the join to order_items makes one row per order LINE. Fix: <code class="inline">COUNT(DISTINCT o.id)</code> (3 and 2), or drop the order_items join.</li>
+</ol>
+<p>Fixed (first rows only for A and C):</p>
+<pre class="out">+----+------------+----------+
+| id | order_date | city     |
++----+------------+----------+
+|  1 | 2026-01-15 | New York |
+|  4 | 2026-01-22 | Houston  |
+|  5 | 2026-02-03 | New York |
++----+------------+----------+
++-------------------+
+| title             |
++-------------------+
+| Lord of the Rings |
+| The Hobbit        |
++-------------------+
++----------+---------+
+| employee | manager |
++----------+---------+
+| Daniel   | Maria   |
+| Priya    | Daniel  |
+| Tom      | Priya   |
++----------+---------+
++------------+--------+-------------+
+| first_name | orders | order_lines |
++------------+--------+-------------+
+| Alice      |      3 |           4 |
+| Bob        |      2 |           3 |
++------------+--------+-------------+</pre><p>MariaDB words 1052 and 1054 slightly differently ("in SELECT" instead of "in field list"); the numbers are the same.</p>
+</div>
+<div class="blk lab"><div class="h">Part 1 assessment: labs/module-07/part1-assessment/part1_assessment_solution.sql (reference run)</div>
+<p>The instructor's reference solution, run start to finish on MySQL 9.7 (rubric, scoring guidance and the common wrong answers with their real numbers: <code class="inline">final-assessment.html</code>, Part 1 assessment section). It prints, in order: A2's counts, the classes after A3, then B1 to B8:</p>
+<pre class="out">Database changed
++-------------+-------+
+| enrollments | rated |
++-------------+-------+
+|          15 |    12 |
++-------------+-------+
++----+---------------------+-------+
+| id | title               | price |
++----+---------------------+-------+
+|  1 | Fresh Pasta by Hand | 70.00 |
+|  2 | Risotto Nights      | 60.00 |
+|  3 | Sushi Basics        | 70.00 |
+|  4 | Ramen from Scratch  | 60.00 |
+|  5 | Sourdough Starter   | 45.00 |
+|  6 | French Pastry       | 75.00 |
+|  7 | Tacos and Salsas    | 50.00 |
++----+---------------------+-------+
++-------------------+------------+-------+
+| title             | class_date | price |
++-------------------+------------+-------+
+| Sourdough Starter | 2026-03-21 | 45.00 |
+| Tacos and Salsas  | 2026-03-28 | 50.00 |
++-------------------+------------+-------+
++----------+---------+-----------+
+| cuisine  | classes | avg_price |
++----------+---------+-----------+
+| Italian  |       2 |     65.00 |
+| Japanese |       2 |     65.00 |
+| Baking   |       2 |     60.00 |
+| Mexican  |       1 |     50.00 |
++----------+---------+-----------+
++------------+-----------+-------------+
+| first_name | last_name | enrollments |
++------------+-----------+-------------+
+| Ana        | Lopez     |           3 |
+| Chloe      | Martin    |           3 |
+| Emma       | Novak     |           3 |
++------------+-----------+-------------+
++---------------------+-------------+---------+------------+
+| title               | enrollments | ratings | avg_rating |
++---------------------+-------------+---------+------------+
+| Fresh Pasta by Hand |           3 |       2 |        4.5 |
+| Risotto Nights      |           2 |       2 |        4.5 |
+| Sushi Basics        |           2 |       2 |        3.5 |
+| Ramen from Scratch  |           2 |       2 |        4.0 |
+| Sourdough Starter   |           2 |       1 |        5.0 |
+| French Pastry       |           2 |       1 |        5.0 |
+| Tacos and Salsas    |           2 |       2 |        3.0 |
++---------------------+-------------+---------+------------+
++---------------------+-------+
+| title               | price |
++---------------------+-------+
+| French Pastry       | 75.00 |
+| Fresh Pasta by Hand | 70.00 |
+| Sushi Basics        | 70.00 |
++---------------------+-------+
++-------------+--------------+--------------------+--------------+
+| enrolled_on | student      | class              | instructor   |
++-------------+--------------+--------------------+--------------+
+| 2026-04-01  | Felix Grant  | Risotto Nights     | Marco Rossi  |
+| 2026-04-02  | Ben Okoro    | Ramen from Scratch | Aiko Tanaka  |
+| 2026-04-05  | Felix Grant  | Ramen from Scratch | Aiko Tanaka  |
+| 2026-04-20  | Chloe Martin | French Pastry      | Lena Fischer |
+| 2026-04-22  | Emma Novak   | French Pastry      | Lena Fischer |
++-------------+--------------+--------------------+--------------+
++------------+-----------+------------------------+
+| first_name | last_name | email                  |
++------------+-----------+------------------------+
+| Gina       | Russo     | gina.russo@example.com |
+| Hugo       | Weber     | hugo.weber@example.com |
++------------+-----------+------------------------+
++---------------+-------------+---------+
+| name          | enrollments | revenue |
++---------------+-------------+---------+
+| Marco Rossi   |           5 |  330.00 |
+| Aiko Tanaka   |           4 |  260.00 |
+| Lena Fischer  |           4 |  240.00 |
+| Diego Morales |           2 |  100.00 |
+| Nadia Haddad  |           0 |    0.00 |
++---------------+-------------+---------+</pre><p>Part A3a, run at the prompt: <code class="inline">ERROR 1452 (23000)</code> for student 9 (a child with no parent) and <code class="inline">ERROR 3819 (HY000): Check constraint 'chk_enrollments_rating' is violated.</code> for rating 6 (on MariaDB: `ERROR 4025 ... CONSTRAINT chk_enrollments_rating failed`).</p>
+</div>
+
+  <div class="sec"><h2>The Lesson Page's Own Quick Quiz</h2><span class="rule"></span></div>
+<div class="blk"><div class="h">Lesson 4.3 · Joins</div>
+<ol class="steps" data-lesson-quiz="4.3">
+  <li><b>A</b> 11: An inner join returns one row per matching pair. Every book has exactly one author, so there are 11 pairs, and Asimov, with no partner, is left out.</li>
+  <li><b>C</b> FROM customers c LEFT JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL: The LEFT JOIN keeps every customer and fills the order columns with NULL when there is none; WHERE o.id IS NULL keeps exactly those customers.</li>
+  <li><b>B</b> The join gave him one row of NULLs, and COUNT(*) counts rows: The LEFT JOIN gives Asimov one row padded with NULLs, and COUNT(*) counts rows. COUNT(b.id) counts only non-NULL book ids and returns 0.</li>
+  <li><b>B</b> Tom, Lena and Ben, each with Priya as manager: It is a self-join: m plays the manager. The rows where the manager is Priya are her three reports, Tom, Lena and Ben (Ben is inactive, but nothing filters on that).</li>
+  <li><b>A</b> In the ON clause, after the key condition: In the ON clause the condition only decides which orders match, so customers without a May order still appear with NULLs. In WHERE it would remove them, turning the LEFT JOIN into an inner join.</li>
+</ol>
+</div>
+
+  <div class="sec"><h2>Exit Ticket</h2><span class="rule"></span></div>
+<ol class="steps">
+  <li><b>JOIN vs LEFT JOIN:</b> JOIN returns one row per customer-order pair (12 rows; Carol and Hank, who never ordered, are not there). LEFT JOIN also keeps every customer without an order, once, with NULL in the order columns (14 rows).</li>
+  <li><b>Hardest task:</b> a reflection. Tally by task: many A1 answers point to Lesson 2.2 and 4.2 (constraints, keys); B4 to the NULL rule (3.3); B7 and B8 to the anti-join and LEFT JOIN with GROUP BY (4.3). If Part 2 follows, open Session 8's refresher with the most frequent one.</li>
+  <li><b>Use and practice:</b> a reflection; read them for the course evaluation.</li>
+</ol>
+
+  <div class="sec"><h2>Common Wrong Answers and What They Reveal</h2><span class="rule"></span></div>
+<ul class="tick">
+  <li><b>Q1 B (12).</b> Thinks LEFT JOIN returns the same rows as JOIN when "every order has a customer". It is the customers without orders that LEFT JOIN adds.</li>
+  <li><b>Q2 B.</b> Uses IS NULL after an inner join: has the pattern's words but not its logic. Draw the NULL-padded rows.</li>
+  <li><b>Q3 3.</b> Counts orders, not order lines: the fan-out habit is not there yet. The board question is the fix.</li>
+  <li><b>Q6 B or C.</b> Looks for a syntax cause of a logic bug. Run it without the WHERE and watch the NULL rows appear.</li>
+  <li><b>Q10 A or C.</b> The written order is still shaky; HAVING before GROUP BY is a 1064 they will meet again.</li>
+  <li><b>Q12 A or B.</b> Has not connected order_items with junction tables. Session 6's relationship map is the remedy.</li>
+</ul>
+
+  <div class="foot">
+    <div class="who">
+      <span class="bio">© 2026 Ray de la Paz · MySQL Foundations</span>
+    </div>
+    <div class="ver">Instructor Kit · Session 7 · Answer Key · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn to write subqueries in MySQL — scalar subqueries, column subqueries with IN, EXISTS, and correlated subqueries for solving multi-step data problems.">
-    <meta name="author" content="Ray De La Paz">
+    <meta name="description" content="Put one MySQL query inside another: scalar subqueries, IN and NOT IN, ANY and ALL, correlated subqueries, EXISTS, derived tables and subqueries in the SELECT list, plus the errors and NULL traps they bring. MySQL Foundations Lesson 3.4.">
+    <meta name="author" content="Ray de la Paz">
     <title>Subqueries &amp; Nested Queries - MySQL Foundations</title>
     <script src="js/theme-init.js"></script>
     <link rel="stylesheet" href="styles/main.css">
@@ -43,30 +43,34 @@
         <ul>
             <li><a href="index.html">Home</a></li>
             <li><a href="index.html#modules">Module 3: Querying Data</a></li>
-            <li aria-current="page">Lesson 10: Subqueries &amp; Nested Queries</li>
+            <li aria-current="page">Lesson 3.4: Subqueries &amp; Nested Queries</li>
         </ul>
     </nav>
 
     <main id="main-content">
         <div class="container">
             <header>
-                <h1>🔍 Lesson 10: Subqueries &amp; Nested Queries</h1>
-                <p class="lead">Sometimes you need the answer to one question before you can ask another. "Show me all books priced above the average" — you need to know the average first, then use it as a filter. A <strong>subquery</strong> is a query inside another query. It lets you break complex questions into logical steps, all in a single SQL statement.</p>
+                <h1>🪆 Lesson 3.4: Subqueries &amp; Nested Queries</h1>
+                <p class="lead">Some questions need an answer before they can be asked. "Which books cost more than average?" needs the average first. "Which book is the cheapest one by each author?" needs each author's minimum first. A <strong>subquery</strong> is a query inside another query: it works out the first answer, and the outer query uses it, all in a single statement.</p>
 
                 <div class="card card-info">
                     <h2>🎯 Learning Objectives</h2>
                     <p>By the end of this lesson, you will be able to:</p>
                     <ul>
-                        <li>Write scalar subqueries that return a single value</li>
-                        <li>Use subqueries with <code>IN</code> to match against a list of values</li>
-                        <li>Use <code>EXISTS</code> to check for the presence of related rows</li>
-                        <li>Write correlated subqueries that reference the outer query</li>
-                        <li>Use subqueries in <code>SELECT</code>, <code>WHERE</code>, and <code>FROM</code> clauses</li>
-                        <li>Know when a subquery is the right tool and when it isn't</li>
+                        <li>Compare every row with an aggregate using a scalar subquery ("above average", "equal to the maximum")</li>
+                        <li>Filter with <code>IN</code>, <code>NOT IN</code>, <code>ANY</code> and <code>ALL</code> subqueries, and keep <code>NULL</code>s from emptying a <code>NOT IN</code></li>
+                        <li>Write correlated subqueries and <code>EXISTS</code> / <code>NOT EXISTS</code> checks that compare a row with related rows</li>
+                        <li>Build derived tables in <code>FROM</code> and computed columns in <code>SELECT</code></li>
+                        <li>Read and fix the subquery errors 1242, 1241, 1248 and 1235</li>
                     </ul>
-                    <p><strong>Estimated Time:</strong> 50 minutes</p>
-                    <p><strong>Prerequisites:</strong> Aggregate functions &amp; GROUP BY (<a href="lesson_09.html">Lesson 9</a>)</p>
                 </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 100 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_09.html">Lesson 3.3: Aggregate Functions &amp; GROUP BY</a></li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>price_review.sql</code>, a five-part price review for the store owner</li>
+                    <li><span class="meta-label">🗄️ Database</span> <code>bookstore</code> as loaded in <a href="lesson_07.html#setup">Lesson 3.1</a>: 10 books, 8 customers</li>
+                </ul>
             </header>
 
             <details class="card toc-card" open>
@@ -78,924 +82,1057 @@
                 <nav aria-label="Table of Contents">
                     <ol>
                         <li><a href="#what-is-subquery" class="toc-link">What Is a Subquery?</a></li>
-                        <li><a href="#scalar" class="toc-link">Scalar Subqueries (Single Value)</a></li>
-                        <li><a href="#in-subquery" class="toc-link">Subqueries with IN (List of Values)</a></li>
-                        <li><a href="#comparison" class="toc-link">Subqueries with Comparison Operators</a></li>
-                        <li><a href="#exists" class="toc-link">EXISTS — Checking for Related Rows</a></li>
+                        <li><a href="#scalar" class="toc-link">Scalar Subqueries: One Value</a></li>
+                        <li><a href="#in-subquery" class="toc-link">IN and NOT IN: A List of Values</a></li>
+                        <li><a href="#any-all" class="toc-link">ANY and ALL</a></li>
                         <li><a href="#correlated" class="toc-link">Correlated Subqueries</a></li>
-                        <li><a href="#from-clause" class="toc-link">Subqueries in the FROM Clause</a></li>
-                        <li><a href="#select-clause" class="toc-link">Subqueries in the SELECT Clause</a></li>
-                        <li><a href="#when-to-use" class="toc-link">When to Use Subqueries</a></li>
-                        <li><a href="#exercises" class="toc-link">Exercises</a></li>
-                        <li><a href="#summary" class="toc-link">Summary</a></li>
+                        <li><a href="#exists" class="toc-link">EXISTS and NOT EXISTS</a></li>
+                        <li><a href="#from-clause" class="toc-link">Derived Tables: Subqueries in FROM</a></li>
+                        <li><a href="#select-clause" class="toc-link">Subqueries in the SELECT List</a></li>
+                        <li><a href="#when-to-use" class="toc-link">When to Use a Subquery</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: The Price Review</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
                     </ol>
                 </nav>
             </details>
 
-            <!-- Section 1: What Is a Subquery? -->
             <section id="what-is-subquery" class="lesson-section">
-                <h2>What Is a Subquery?</h2>
-                <p>A <strong>subquery</strong> (also called an <strong>inner query</strong> or <strong>nested query</strong>) is a complete <code>SELECT</code> statement enclosed in parentheses, placed inside another SQL statement. The outer statement is called the <strong>outer query</strong>.</p>
+                <h2>🪆 What Is a Subquery?</h2>
+                <p>A <strong>subquery</strong> (or <em>inner query</em>, or <em>nested query</em>) is a complete <code>SELECT</code> in parentheses, placed inside another statement, the <em>outer query</em>. Think of filling in a blank: the inner query works out the value, the outer query uses it.</p>
 
-                <div class="mermaid">
-                    graph LR
-                        subgraph Outer_Query["Outer Query"]
-                            A["SELECT title, price FROM books"]
-                            B["WHERE price >"]
-                            subgraph Inner_Query["Subquery"]
-                                C["(SELECT AVG(price) FROM books)"]
-                            end
-                            B --> C
-                        end
+                <div class="card card-info">
+                    <h4>💡 Follow along</h4>
+                    <p>Run <code>USE bookstore;</code> first. Every query reads the 10 books and 8 customers from the <a href="lesson_07.html#setup">Lesson 3.1 setup script</a>; rerun it if your results drift.</p>
                 </div>
 
-                <p>The subquery runs first and produces a result. That result is then used by the outer query. Think of it like filling in a blank:</p>
+                <p>Here is the question "which books cost more than average?" in two steps. First the average:</p>
+                <pre><code class="language-sql">SELECT AVG(price) FROM books;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+
+| AVG(price) |
++------------+
+|  10.990000 |
++------------+</code></pre>
+                </div>
+                <p>Then the books above it, with the number typed in by hand:</p>
+                <pre><code class="language-sql">SELECT title, price
+FROM books
+WHERE price &gt; 10.99
+ORDER BY price;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| To Kill a Mockingbird | 11.99 |
+| Dune                  | 14.99 |
+| Lord of the Rings     | 15.99 |
++-----------------------+-------+</code></pre>
+                </div>
+                <p>The typed-in 10.99 goes stale the moment a price changes. Put the first query where the number was, in parentheses, and MySQL works it out fresh every time:</p>
+                <pre><code class="language-sql">SELECT title, price
+FROM books
+WHERE price &gt; (SELECT AVG(price) FROM books)
+ORDER BY price;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| To Kill a Mockingbird | 11.99 |
+| Dune                  | 14.99 |
+| Lord of the Rings     | 15.99 |
++-----------------------+-------+</code></pre>
+                </div>
 
-                <pre><code class="language-sql">
--- Step 1: What's the average price?
-SELECT AVG(price) FROM books;   -- Returns: 10.99
+                <div class="mermaid">
+graph TD
+    A["inner: SELECT AVG(price)"] --> B["one value: 10.99"]
+    B --> C["outer: WHERE price above 10.99"]
+    C --> D["3 rows"]
+                </div>
 
--- Step 2: Which books cost more than that?
-SELECT title, price FROM books WHERE price > 10.99;
-
--- Combined into one query with a subquery:
-SELECT title, price FROM books
-WHERE price > (SELECT AVG(price) FROM books);
-                </code></pre>
-
-                <p>Subqueries can appear in several places:</p>
-
+                <p>Subqueries can sit in three places, and each place expects a different shape of result:</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Location</th>
-                                <th>What It Does</th>
-                                <th>Example</th>
-                            </tr>
+                            <tr><th>Where</th><th>Result shape</th><th>Example</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><code>WHERE</code></td>
-                                <td>Filter rows based on a computed value</td>
-                                <td><code>WHERE price > (SELECT AVG(price) ...)</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>FROM</code></td>
-                                <td>Use a subquery result as a temporary table</td>
-                                <td><code>FROM (SELECT ... ) AS temp</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>SELECT</code></td>
-                                <td>Compute a value for each row</td>
-                                <td><code>SELECT (SELECT COUNT(*) ...)</code></td>
-                            </tr>
+                            <tr><td><code>WHERE</code> with <code>=</code>, <code>&gt;</code>, ...</td><td>One value (scalar)</td><td><code>WHERE price &gt; (SELECT AVG(price) ...)</code></td></tr>
+                            <tr><td><code>WHERE</code> with <code>IN</code>, <code>ANY</code>, <code>ALL</code></td><td>One column, any number of rows</td><td><code>WHERE city IN (SELECT city ...)</code></td></tr>
+                            <tr><td><code>WHERE EXISTS</code></td><td>Anything; only "any rows?" matters</td><td><code>WHERE EXISTS (SELECT 1 ...)</code></td></tr>
+                            <tr><td><code>FROM</code></td><td>A whole table (needs an alias)</td><td><code>FROM (SELECT ...) AS t</code></td></tr>
+                            <tr><td><code>SELECT</code> list</td><td>One value per row</td><td><code>SELECT title, (SELECT AVG(price) ...)</code></td></tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- Section 2: Scalar Subqueries -->
             <section id="scalar" class="lesson-section">
-                <h2>Scalar Subqueries (Single Value)</h2>
-                <p>A <strong>scalar subquery</strong> returns exactly one row and one column — a single value. This is the most common and simplest type.</p>
+                <h2>🎯 Scalar Subqueries: One Value</h2>
+                <p>A <strong>scalar subquery</strong> returns exactly one row with one column: a single value. Anywhere you could type a number or a date, you can put a scalar subquery instead.</p>
 
-                <h3>Comparing Against an Aggregate</h3>
-
-                <pre><code class="language-sql">
--- Books priced above average
-SELECT title, price
+                <h3>Which row holds the maximum?</h3>
+                <p>In Lesson 3.3, <code>MAX(price)</code> told you the highest price but not which book has it. A subquery closes that gap:</p>
+                <pre><code class="language-sql">SELECT title, author, price
 FROM books
-WHERE price > (SELECT AVG(price) FROM books);
-                </code></pre>
-
+WHERE price = (SELECT MAX(price) FROM books);</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-----------------------+-------+
-| title                 | price |
-+-----------------------+-------+
-| To Kill a Mockingbird | 11.99 |
-| Dune                  | 14.99 |
-| Lord of the Rings     | 15.99 |
-+-----------------------+-------+
-                    </code></pre>
-                </div>
-
-                <p>MySQL first executes the subquery <code>(SELECT AVG(price) FROM books)</code> → 10.99, then substitutes it into the outer query: <code>WHERE price > 10.99</code>.</p>
-
-                <pre><code class="language-sql">
--- Books priced below average
-SELECT title, price
-FROM books
-WHERE price < (SELECT AVG(price) FROM books);
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+------------------------+-------+
-| title                  | price |
-+------------------------+-------+
-| Pride and Prejudice    |  7.99 |
-| The Great Gatsby       |  8.99 |
-| The Catcher in the Rye |  8.99 |
-| Brave New World        |  9.49 |
-| 1984                   |  9.99 |
-| Fahrenheit 451         | 10.49 |
-| The Hobbit             | 10.99 |
-+------------------------+-------+
-                    </code></pre>
-                </div>
-
-                <h3>Using MIN and MAX in Subqueries</h3>
-
-                <pre><code class="language-sql">
--- Which book has the highest price? (full row info!)
-SELECT title, author, price
-FROM books
-WHERE price = (SELECT MAX(price) FROM books);
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-------------------+----------------+-------+
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+----------------+-------+
 | title             | author         | price |
 +-------------------+----------------+-------+
 | Lord of the Rings | J.R.R. Tolkien | 15.99 |
-+-------------------+----------------+-------+
-                    </code></pre>
++-------------------+----------------+-------+</code></pre>
                 </div>
 
-                <div class="card card-info">
-                    <h4>💡 Subquery vs ORDER BY + LIMIT</h4>
-                    <p>Remember how <code>MIN(price)</code> tells you the value but not which row? A subquery solves that. Compare these two equivalent approaches:</p>
-                    <pre><code class="language-sql">
--- Approach 1: Subquery
-SELECT * FROM books WHERE price = (SELECT MIN(price) FROM books);
-
--- Approach 2: ORDER BY + LIMIT
-SELECT * FROM books ORDER BY price ASC LIMIT 1;
-                    </code></pre>
-                    <p>Both work for "find the cheapest book." The subquery approach is more flexible — it can return <em>all</em> books tied at the minimum price, while <code>LIMIT 1</code> only returns one.</p>
-                </div>
-
-                <pre><code class="language-sql">
--- Book(s) with the most pages
-SELECT title, pages
+                <h3>Ties: all of them, not just one</h3>
+                <p>What is the cheapest out-of-stock book? Two books share that price, and the subquery version returns both:</p>
+                <pre><code class="language-sql">SELECT title, price
 FROM books
-WHERE pages = (SELECT MAX(pages) FROM books);
-
--- Book(s) published earliest
-SELECT title, author, published
-FROM books
-WHERE published = (SELECT MIN(published) FROM books);
-                </code></pre>
-
-                <h3>Scalar Subquery with Arithmetic</h3>
-
-                <pre><code class="language-sql">
--- Books priced more than DOUBLE the cheapest book
-SELECT title, price
-FROM books
-WHERE price > (SELECT MIN(price) FROM books) * 2;
-                </code></pre>
-
+WHERE in_stock = FALSE
+  AND price = (SELECT MIN(price) FROM books WHERE in_stock = FALSE)
+ORDER BY title;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-----------------------+-------+
-| title                 | price |
-+-----------------------+-------+
-| To Kill a Mockingbird | 11.99 |
-| Dune                  | 14.99 |
-| Lord of the Rings     | 15.99 |
-+-----------------------+-------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+-------+
+| title                  | price |
++------------------------+-------+
+| The Catcher in the Rye |  8.99 |
+| The Great Gatsby       |  8.99 |
++------------------------+-------+</code></pre>
                 </div>
+                <p>Compare <code>ORDER BY price LIMIT 1</code> from <a href="lesson_08.html">Lesson 3.2</a>: it would return one of the two and silently drop the other. When ties are possible and you want all of them, use the subquery.</p>
 
-                <p>The cheapest book is $7.99, so double is $15.98 — only books above that price are returned.</p>
+                <h3>Arithmetic with a subquery</h3>
+                <p>The value a subquery returns can be part of a calculation. Books that cost more than twice the cheapest book:</p>
+                <pre><code class="language-sql">SELECT title, price
+FROM books
+WHERE price &gt; (SELECT MIN(price) FROM books) * 2
+ORDER BY price;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+-------+
+| title             | price |
++-------------------+-------+
+| Lord of the Rings | 15.99 |
++-------------------+-------+</code></pre>
+                </div>
+                <p>The cheapest book costs 7.99, so the bar is 15.98, and only one book clears it, by a single cent.</p>
             </section>
 
-            <!-- Section 3: IN Subquery -->
             <section id="in-subquery" class="lesson-section">
-                <h2>Subqueries with IN (List of Values)</h2>
-                <p>When a subquery returns <strong>multiple rows</strong> (but one column), you can't use <code>=</code> — you need <code>IN</code>. The subquery produces a list, and <code>IN</code> checks if a value is in that list.</p>
-
-                <h3>Basic IN Subquery</h3>
-
-                <pre><code class="language-sql">
--- Find customers who live in cities that have more than 1 customer
-SELECT first_name, last_name, city
+                <h2>📋 IN and NOT IN: A List of Values</h2>
+                <p>When the inner query returns <strong>one column but several rows</strong>, it is a list, and lists go with <code>IN</code>, exactly like the hand-typed lists in Lesson 3.1. Customers who live in a city with more than one customer:</p>
+                <pre><code class="language-sql">SELECT first_name, last_name, city
 FROM customers
 WHERE city IN (
     SELECT city
     FROM customers
-    WHERE city IS NOT NULL
     GROUP BY city
-    HAVING COUNT(*) > 1
-);
-                </code></pre>
-
+    HAVING COUNT(*) &gt; 1
+)
+ORDER BY city, last_name;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+------------+-----------+----------+
+                    <h4>Output</h4>
+                    <pre><code>+------------+-----------+----------+
 | first_name | last_name | city     |
 +------------+-----------+----------+
-| Alice      | Johnson   | New York |
 | Bob        | Smith     | Chicago  |
-| Frank      | Miller    | New York |
 | Grace      | Wilson    | Chicago  |
-+------------+-----------+----------+
-                    </code></pre>
+| Alice      | Johnson   | New York |
+| Frank      | Miller    | New York |
++------------+-----------+----------+</code></pre>
                 </div>
+                <p>Read it inside out. The inner query is a <code>GROUP BY</code> from Lesson 3.3; on its own it returns Chicago and New York, and also <code>NULL</code>, because Eve and Hank form a group of two. The outer query then becomes <code>WHERE city IN ('Chicago', 'New York', NULL)</code>. The <code>NULL</code> in the list does no harm here: Eve's <code>NULL = NULL</code> is unknown, so she is not matched, and the real cities still match.</p>
 
-                <p>The inner query returns the cities with more than one customer (New York, Chicago). The outer query then finds all customers in those cities.</p>
-
-                <div class="card card-info">
-                    <h4>💡 How It Works Step by Step</h4>
-                    <p>1. Inner query runs: <code>SELECT city ... HAVING COUNT(*) > 1</code> → returns ('New York', 'Chicago')</p>
-                    <p>2. Outer query becomes: <code>WHERE city IN ('New York', 'Chicago')</code></p>
-                    <p>3. All customers matching those cities are returned</p>
-                </div>
-
-                <h3>NOT IN — Excluding Matches</h3>
-
-                <pre><code class="language-sql">
--- Customers NOT in multi-customer cities
-SELECT first_name, last_name, city
+                <h3>NOT IN, and the NULL trap</h3>
+                <p>Now a question in the other direction. The team wants to know which January customers live in a city where none of the February customers live (Grace in Chicago and Hank, who has no city, joined in February):</p>
+                <pre><code class="language-sql">SELECT first_name, city
 FROM customers
-WHERE city IS NOT NULL
-AND city NOT IN (
-    SELECT city
-    FROM customers
-    WHERE city IS NOT NULL
-    GROUP BY city
-    HAVING COUNT(*) > 1
-);
-                </code></pre>
-
+WHERE created_at &lt; '2026-02-01'
+  AND city NOT IN (
+      SELECT city
+      FROM customers
+      WHERE created_at &gt;= '2026-02-01'
+  );</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+------------+-----------+-------------+
-| first_name | last_name | city        |
-+------------+-----------+-------------+
-| Carol      | Williams  | Los Angeles |
-| Dave       | Brown     | Houston     |
-+------------+-----------+-------------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>Empty set</code></pre>
                 </div>
-
-                <div class="card card-warning">
-                    <h4>⚠️ NOT IN and NULL — A Dangerous Trap</h4>
-                    <p>If the subquery returns any NULL values, <code>NOT IN</code> returns <strong>no rows at all</strong>. This is one of SQL's most notorious gotchas:</p>
-                    <pre><code class="language-sql">
--- If the subquery returns ('New York', 'Chicago', NULL):
--- NOT IN ('New York', 'Chicago', NULL) → always FALSE!
--- The NULL makes every comparison UNKNOWN
-
--- Fix: Filter out NULLs in the subquery
-WHERE city NOT IN (
-    SELECT city FROM customers WHERE city IS NOT NULL ...
-);
-                    </code></pre>
-                    <p>Always add <code>WHERE column IS NOT NULL</code> inside subqueries used with <code>NOT IN</code>.</p>
+                <p>Nothing, and no error. The inner query returns Chicago and <code>NULL</code> (Hank). So the outer test is <code>city != 'Chicago' AND city != NULL</code>, and the second half is unknown for every row. One <code>NULL</code> in a <code>NOT IN</code> list empties the whole result. Keep the <code>NULL</code>s out of the list:</p>
+                <pre><code class="language-sql">SELECT first_name, city
+FROM customers
+WHERE created_at &lt; '2026-02-01'
+  AND city NOT IN (
+      SELECT city
+      FROM customers
+      WHERE created_at &gt;= '2026-02-01'
+        AND city IS NOT NULL
+  )
+ORDER BY first_name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Alice      | New York    |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Frank      | New York    |
++------------+-------------+</code></pre>
                 </div>
+                <p>Bob is gone (he shares Chicago with Grace), and so is Eve: her own city is <code>NULL</code>, so <code>NOT IN</code> cannot decide about her either. You will see a version that treats her differently with <code>NOT EXISTS</code> below.</p>
 
-                <h3>Cross-Table IN Subqueries</h3>
-                <p>Subqueries are especially powerful when they reference a <em>different</em> table. Once we add more tables in later lessons (like orders and order_items), you'll see patterns like:</p>
-
-                <pre><code class="language-sql">
--- Conceptual: Find customers who have placed orders
--- (we'll build these tables in Module 4)
--- SELECT first_name, last_name FROM customers
--- WHERE id IN (SELECT customer_id FROM orders);
-
--- Conceptual: Find books that have never been ordered
--- SELECT title FROM books
--- WHERE id NOT IN (SELECT book_id FROM order_items);
-                </code></pre>
-
-                <p>For now, focus on the pattern — you'll use it constantly once tables are linked with foreign keys.</p>
+                <div class="card card-danger">
+                    <h4>🛑 Rule: every NOT IN subquery gets an IS NOT NULL</h4>
+                    <p>A plain <code>IN</code> shrugs off a <code>NULL</code> in the list; <code>NOT IN</code> returns nothing at all. If the column in the subquery can be <code>NULL</code>, add <code>WHERE column IS NOT NULL</code> inside it, or use <code>NOT EXISTS</code>. This bug is common in real reports because the query works fine for months, until the first <code>NULL</code> arrives.</p>
+                </div>
             </section>
 
-            <!-- Section 4: Comparison Operators -->
-            <section id="comparison" class="lesson-section">
-                <h2>Subqueries with Comparison Operators</h2>
-                <p>Beyond <code>=</code> and <code>IN</code>, you can use <code>ANY</code>, <code>ALL</code>, and <code>SOME</code> with subqueries that return multiple values.</p>
-
-                <h3>ANY / SOME — Match At Least One</h3>
-                <p><code>ANY</code> (and its synonym <code>SOME</code>) returns TRUE if the comparison is true for <em>at least one</em> value from the subquery:</p>
-
-                <pre><code class="language-sql">
--- Books cheaper than ANY out-of-stock book
--- (i.e., cheaper than the MOST EXPENSIVE out-of-stock book)
-SELECT title, price
+            <section id="any-all" class="lesson-section">
+                <h2>⚖️ ANY and ALL</h2>
+                <p><code>ANY</code> and <code>ALL</code> let a comparison operator work with a list. <code>&gt; ANY (list)</code> is true if the value beats <em>at least one</em> item; <code>&lt; ALL (list)</code> is true if it beats <em>every</em> item. Tolkien's books cost 10.99 and 15.99. Which books cost less than every Tolkien book?</p>
+                <pre><code class="language-sql">SELECT title, price
 FROM books
-WHERE price < ANY (
-    SELECT price FROM books WHERE in_stock = FALSE
-);
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 ANY Simplified</h4>
-                    <p><code>price < ANY (subquery)</code> means: "price is less than at least one value in the list." This is equivalent to <code>price < MAX(values_from_subquery)</code>.</p>
+WHERE price &lt; ALL (
+    SELECT price FROM books WHERE author = 'J.R.R. Tolkien'
+)
+ORDER BY price, title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+-------+
+| title                  | price |
++------------------------+-------+
+| Pride and Prejudice    |  7.99 |
+| The Catcher in the Rye |  8.99 |
+| The Great Gatsby       |  8.99 |
+| Brave New World        |  9.49 |
+| 1984                   |  9.99 |
+| Fahrenheit 451         | 10.49 |
++------------------------+-------+</code></pre>
                 </div>
-
-                <h3>ALL — Match Every Value</h3>
-                <p><code>ALL</code> returns TRUE only if the comparison is true for <em>every</em> value from the subquery:</p>
-
-                <pre><code class="language-sql">
--- Books cheaper than ALL out-of-stock books
--- (i.e., cheaper than the CHEAPEST out-of-stock book)
-SELECT title, price
+                <p>Less than all of them means less than the smallest, 10.99. And books that cost more than at least one Tolkien book, so more than 10.99:</p>
+                <pre><code class="language-sql">SELECT title, price
 FROM books
-WHERE price < ALL (
-    SELECT price FROM books WHERE in_stock = FALSE
-);
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 ALL Simplified</h4>
-                    <p><code>price < ALL (subquery)</code> means: "price is less than every single value in the list." This is equivalent to <code>price < MIN(values_from_subquery)</code>.</p>
+WHERE price &gt; ANY (
+    SELECT price FROM books WHERE author = 'J.R.R. Tolkien'
+)
+ORDER BY price;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| To Kill a Mockingbird | 11.99 |
+| Dune                  | 14.99 |
+| Lord of the Rings     | 15.99 |
++-----------------------+-------+</code></pre>
                 </div>
 
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Expression</th>
-                                <th>Equivalent To</th>
-                            </tr>
+                            <tr><th>You write</th><th>Same result as</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><code>= ANY (...)</code></td>
-                                <td><code>IN (...)</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>&lt; ANY (...)</code></td>
-                                <td><code>&lt; MAX(...)</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>&gt; ANY (...)</code></td>
-                                <td><code>&gt; MIN(...)</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>&lt; ALL (...)</code></td>
-                                <td><code>&lt; MIN(...)</code></td>
-                            </tr>
-                            <tr>
-                                <td><code>&gt; ALL (...)</code></td>
-                                <td><code>&gt; MAX(...)</code></td>
-                            </tr>
+                            <tr><td><code>= ANY (subquery)</code></td><td><code>IN (subquery)</code></td></tr>
+                            <tr><td><code>&gt; ANY (subquery)</code></td><td><code>&gt; (SELECT MIN(...))</code></td></tr>
+                            <tr><td><code>&lt; ANY (subquery)</code></td><td><code>&lt; (SELECT MAX(...))</code></td></tr>
+                            <tr><td><code>&gt; ALL (subquery)</code></td><td><code>&gt; (SELECT MAX(...))</code></td></tr>
+                            <tr><td><code>&lt; ALL (subquery)</code></td><td><code>&lt; (SELECT MIN(...))</code></td></tr>
                         </tbody>
                     </table>
                 </div>
-
-                <p>In practice, <code>ANY</code> and <code>ALL</code> are less common than <code>IN</code> and scalar subqueries. Most developers find the <code>MIN</code>/<code>MAX</code> equivalents easier to read.</p>
+                <p>Most people find the <code>MIN</code>/<code>MAX</code> versions easier to read, and you will see <code>ANY</code>/<code>ALL</code> less often. Recognize them when you meet them. (<code>SOME</code> is a synonym for <code>ANY</code>.) One edge case: if the subquery returns no rows at all, <code>&gt; ALL</code> is true for every row, while <code>&gt; (SELECT MAX(...))</code> compares with <code>NULL</code> and keeps nothing.</p>
             </section>
 
-            <!-- Section 5: EXISTS -->
-            <section id="exists" class="lesson-section">
-                <h2>EXISTS — Checking for Related Rows</h2>
-                <p><code>EXISTS</code> checks whether a subquery returns <em>any rows at all</em>. It doesn't care about the values — just whether rows exist or not. It returns TRUE if the subquery returns at least one row, FALSE if it returns none.</p>
-
-                <pre><code class="language-sql">
--- Do we have any books priced over $20?
-SELECT EXISTS (SELECT 1 FROM books WHERE price > 20) AS has_expensive;
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+---------------+
-| has_expensive |
-+---------------+
-|             0 |
-+---------------+
-                    </code></pre>
-                </div>
-
-                <pre><code class="language-sql">
--- Do we have any books priced over $15?
-SELECT EXISTS (SELECT 1 FROM books WHERE price > 15) AS has_expensive;
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+---------------+
-| has_expensive |
-+---------------+
-|             1 |
-+---------------+
-                    </code></pre>
-                </div>
-
-                <div class="card card-info">
-                    <h4>💡 Why SELECT 1?</h4>
-                    <p>Inside <code>EXISTS</code>, the actual columns selected don't matter — MySQL only checks if any rows are returned. <code>SELECT 1</code> is a convention that makes this clear, but <code>SELECT *</code> or <code>SELECT column</code> would work identically.</p>
-                </div>
-
-                <h3>EXISTS with Correlated Subqueries</h3>
-                <p><code>EXISTS</code> becomes truly powerful when combined with correlated subqueries (covered in the next section). Here's a preview:</p>
-
-                <pre><code class="language-sql">
--- Conceptual: Find customers who have placed at least one order
--- SELECT c.first_name, c.last_name
--- FROM customers c
--- WHERE EXISTS (
---     SELECT 1 FROM orders o WHERE o.customer_id = c.id
--- );
-                </code></pre>
-
-                <h3>NOT EXISTS</h3>
-
-                <pre><code class="language-sql">
--- Conceptual: Find customers who have NEVER placed an order
--- SELECT c.first_name, c.last_name
--- FROM customers c
--- WHERE NOT EXISTS (
---     SELECT 1 FROM orders o WHERE o.customer_id = c.id
--- );
-                </code></pre>
-
-                <div class="card card-success">
-                    <h4>✅ EXISTS vs IN</h4>
-                    <p><code>IN</code> and <code>EXISTS</code> often solve the same problem, but they work differently:</p>
-                    <ul>
-                        <li><strong>IN</strong> — best when the subquery returns a small list of values</li>
-                        <li><strong>EXISTS</strong> — best when checking for the presence of related rows, especially with large tables</li>
-                        <li><code>NOT EXISTS</code> is generally safer than <code>NOT IN</code> because it handles NULLs correctly</li>
-                    </ul>
-                </div>
-            </section>
-
-            <!-- Section 6: Correlated Subqueries -->
             <section id="correlated" class="lesson-section">
-                <h2>Correlated Subqueries</h2>
-                <p>A <strong>correlated subquery</strong> references a column from the outer query. Unlike a regular subquery that runs once, a correlated subquery runs <em>once for each row</em> of the outer query.</p>
+                <h2>🔁 Correlated Subqueries</h2>
+                <p>Every subquery so far could run on its own. A <strong>correlated subquery</strong> cannot: it refers to a column of the outer query's current row, so its answer is different for every row. Conceptually, MySQL runs it once per outer row.</p>
+
+                <p>Which books are priced above <em>their own author's</em> average (not the overall average)?</p>
+                <pre><code class="language-sql">SELECT b.title, b.author, b.price
+FROM books AS b
+WHERE b.price &gt; (
+    SELECT AVG(b2.price)
+    FROM books AS b2
+    WHERE b2.author = b.author
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+----------------+-------+
+| title             | author         | price |
++-------------------+----------------+-------+
+| Lord of the Rings | J.R.R. Tolkien | 15.99 |
++-------------------+----------------+-------+</code></pre>
+                </div>
 
                 <div class="mermaid">
-                    graph TD
-                        subgraph Regular["Regular Subquery"]
-                            A1["Inner query runs ONCE"] --> A2["Result used for ALL outer rows"]
-                        end
-                        subgraph Correlated["Correlated Subquery"]
-                            B1["Outer query processes Row 1"] --> B2["Inner query runs for Row 1"]
-                            B3["Outer query processes Row 2"] --> B4["Inner query runs for Row 2"]
-                            B5["Outer query processes Row 3"] --> B6["Inner query runs for Row 3"]
-                            B7["...repeat for each row..."]
-                        end
+graph TD
+    A["outer row: The Hobbit, Tolkien"] --> B["inner: AVG for Tolkien = 13.49"]
+    B --> C["10.99 above 13.49? no: dropped"]
+    C --> D["next row: Lord of the Rings"]
+    D --> E["inner: AVG for Tolkien = 13.49"]
+    E --> F["15.99 above 13.49? yes: kept"]
                 </div>
 
-                <h3>Example: Books Above Their Author's Average Price</h3>
-                <p>Imagine an author has multiple books and you want to find books priced above that specific author's average (not the overall average):</p>
+                <p>The same table appears twice, so each copy gets an alias: <code>b</code> is the outer row being tested, <code>b2</code> is the inner scan. <code>WHERE b2.author = b.author</code> is the <em>correlation</em>: "the books by this row's author". Every author with a single book has an average equal to that book's price, and a price is never above itself, so only <em>Lord of the Rings</em> survives.</p>
 
-                <pre><code class="language-sql">
--- Books priced above their author's average price
-SELECT b1.title, b1.author, b1.price
-FROM books b1
-WHERE b1.price > (
-    SELECT AVG(b2.price)
-    FROM books b2
-    WHERE b2.author = b1.author   -- references the outer query!
-);
-                </code></pre>
-
-                <p>Notice <code>b1.author</code> in the subquery — it references the outer query's current row. For each book in the outer query, MySQL recalculates the average price <em>for that specific author</em>.</p>
-
-                <div class="card card-info">
-                    <h4>💡 Table Aliases Are Essential</h4>
-                    <p>When a correlated subquery references the same table as the outer query, you <strong>must</strong> use aliases to distinguish them. Here, <code>b1</code> is the outer copy and <code>b2</code> is the inner copy of the books table.</p>
+                <h3>The cheapest book of each author</h3>
+                <p>Lesson 3.3 could tell you each author's lowest price with <code>GROUP BY</code>, but not which book that is. A correlated subquery can:</p>
+                <pre><code class="language-sql">SELECT b.author, b.title, b.price
+FROM books AS b
+WHERE b.price = (
+    SELECT MIN(b2.price)
+    FROM books AS b2
+    WHERE b2.author = b.author
+)
+ORDER BY b.author;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------+------------------------+-------+
+| author              | title                  | price |
++---------------------+------------------------+-------+
+| Aldous Huxley       | Brave New World        |  9.49 |
+| F. Scott Fitzgerald | The Great Gatsby       |  8.99 |
+| Frank Herbert       | Dune                   | 14.99 |
+| George Orwell       | 1984                   |  9.99 |
+| Harper Lee          | To Kill a Mockingbird  | 11.99 |
+| J.D. Salinger       | The Catcher in the Rye |  8.99 |
+| J.R.R. Tolkien      | The Hobbit             | 10.99 |
+| Jane Austen         | Pride and Prejudice    |  7.99 |
+| Ray Bradbury        | Fahrenheit 451         | 10.49 |
++---------------------+------------------------+-------+</code></pre>
                 </div>
-
-                <h3>Example: Books With Above-Average Page Count for Their Price Range</h3>
-
-                <pre><code class="language-sql">
--- Books with more pages than the average book in their price range
--- (price range = within $2 of the book's price)
-SELECT b1.title, b1.price, b1.pages
-FROM books b1
-WHERE b1.pages > (
-    SELECT AVG(b2.pages)
-    FROM books b2
-    WHERE b2.price BETWEEN b1.price - 2 AND b1.price + 2
-);
-                </code></pre>
+                <p>Nine authors, nine rows: for Tolkien, <em>The Hobbit</em>. This "row with the group's minimum" question is very common, and in Lesson 5.2 you will meet window functions that answer it another way.</p>
 
                 <div class="card card-warning">
-                    <h4>⚠️ Performance Warning</h4>
-                    <p>Correlated subqueries can be slow on large tables because the inner query runs once per outer row. If your outer query returns 10,000 rows, the inner query runs 10,000 times. For performance-critical queries, <strong>JOINs</strong> (covered in <a href="lesson_13.html">Lesson 13</a>) are usually faster.</p>
-                    <p>For learning and small datasets, correlated subqueries are perfectly fine and often more readable.</p>
+                    <h4>⚠️ Speed</h4>
+                    <p>"Once per outer row" is the mental model, and on ten rows it costs nothing. MySQL's optimizer often rewrites correlated subqueries into something faster, but not always; on large tables, check with <code>EXPLAIN</code> (Lesson 6.1) and consider a join (Lesson 4.3).</p>
                 </div>
             </section>
 
-            <!-- Section 7: FROM Clause Subqueries -->
-            <section id="from-clause" class="lesson-section">
-                <h2>Subqueries in the FROM Clause</h2>
-                <p>A subquery in the <code>FROM</code> clause creates a <strong>derived table</strong> (also called an <strong>inline view</strong>) — a temporary result set that you can query like a regular table.</p>
-
-                <pre><code class="language-sql">
--- Create a summary, then query it
-SELECT price_range, book_count, avg_price
-FROM (
-    SELECT
-        CASE
-            WHEN price < 10 THEN 'Budget'
-            WHEN price < 13 THEN 'Mid-Range'
-            ELSE 'Premium'
-        END AS price_range,
-        COUNT(*) AS book_count,
-        ROUND(AVG(price), 2) AS avg_price
-    FROM books
-    GROUP BY price_range
-) AS price_summary
-WHERE book_count > 1
-ORDER BY avg_price;
-                </code></pre>
-
+            <section id="exists" class="lesson-section">
+                <h2>❓ EXISTS and NOT EXISTS</h2>
+                <p><code>EXISTS (subquery)</code> is true if the subquery returns at least one row, whatever the row contains. It is almost always correlated: "is there a related row for this one?"</p>
+                <pre><code class="language-sql">SELECT EXISTS (SELECT 1 FROM books WHERE price &gt; 15) AS any_over_15,
+       EXISTS (SELECT 1 FROM books WHERE price &gt; 20) AS any_over_20;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-------------+------------+-----------+
-| price_range | book_count | avg_price |
-+-------------+------------+-----------+
-| Budget      |          5 |      9.09 |
-| Mid-Range   |          3 |     10.82 |
-+-------------+------------+-----------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+-------------+-------------+
+| any_over_15 | any_over_20 |
++-------------+-------------+
+|           1 |           0 |
++-------------+-------------+</code></pre>
                 </div>
+                <p><code>SELECT 1</code> is a convention: the columns inside <code>EXISTS</code> are never looked at, so <code>1</code> says "I only care whether a row exists".</p>
 
-                <div class="card card-warning">
-                    <h4>⚠️ Derived Tables Need an Alias</h4>
-                    <p>MySQL requires every derived table to have an alias. The <code>AS price_summary</code> part is mandatory — without it, you'll get a syntax error:</p>
-                    <pre><code class="language-sql">
--- ⛔ WRONG — missing alias
-SELECT * FROM (SELECT COUNT(*) FROM books);
-
--- ✅ CORRECT — alias provided
-SELECT * FROM (SELECT COUNT(*) AS total FROM books) AS counts;
-                    </code></pre>
+                <h3>Customers who share a city with someone</h3>
+                <pre><code class="language-sql">SELECT c.first_name, c.city
+FROM customers AS c
+WHERE EXISTS (
+    SELECT 1
+    FROM customers AS other
+    WHERE other.city = c.city
+      AND other.id != c.id
+)
+ORDER BY c.city, c.first_name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+----------+
+| first_name | city     |
++------------+----------+
+| Bob        | Chicago  |
+| Grace      | Chicago  |
+| Alice      | New York |
+| Frank      | New York |
++------------+----------+</code></pre>
                 </div>
+                <p>For each customer, the subquery looks for <em>another</em> customer (<code>other.id != c.id</code>) in the same city. <code>NOT EXISTS</code> gives the rest:</p>
+                <pre><code class="language-sql">SELECT c.first_name, c.city
+FROM customers AS c
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM customers AS other
+    WHERE other.city = c.city
+      AND other.id != c.id
+)
+ORDER BY c.first_name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Eve        | NULL        |
+| Hank       | NULL        |
++------------+-------------+</code></pre>
+                </div>
+                <p>Eve and Hank are here: neither has a known city, so nobody can be found in "their" city.</p>
 
-                <h3>Why Use FROM Subqueries?</h3>
-                <p>They're useful when you need to:</p>
-                <ul>
-                    <li><strong>Filter on aggregated results</strong> without HAVING (more flexible)</li>
-                    <li><strong>Perform calculations on aggregated data</strong> — like finding the average of averages</li>
-                    <li><strong>Pre-process data</strong> before joining it with another table</li>
-                </ul>
+                <h3>NOT EXISTS has no NULL trap</h3>
+                <p>Back to the January-versus-February question that <code>NOT IN</code> got wrong:</p>
+                <pre><code class="language-sql">SELECT c.first_name, c.city
+FROM customers AS c
+WHERE c.created_at &lt; '2026-02-01'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM customers AS feb
+      WHERE feb.created_at &gt;= '2026-02-01'
+        AND feb.city = c.city
+  )
+ORDER BY c.first_name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+-------------+
+| first_name | city        |
++------------+-------------+
+| Alice      | New York    |
+| Carol      | Los Angeles |
+| Dave       | Houston     |
+| Eve        | NULL        |
+| Frank      | New York    |
++------------+-------------+</code></pre>
+                </div>
+                <p>Hank's <code>NULL</code> never matches anyone, so it cannot spoil the result, and Eve is included: no February customer is known to share her city. Whether Eve belongs in the answer is a business decision, but <code>NOT EXISTS</code> gives a sensible, predictable one, which is why many developers use it by default.</p>
 
-                <pre><code class="language-sql">
--- Average number of books per author
--- Step 1: Count books per author (inner query)
--- Step 2: Average those counts (outer query)
-SELECT ROUND(AVG(book_count), 1) AS avg_books_per_author
+                <div class="card card-info">
+                    <h4>💡 Coming in Module 4</h4>
+                    <p>Today both sides of every <code>EXISTS</code> are the same table, because the flat bookstore has no links between tables. In Module 4 the store gets an <code>orders</code> table, and the classic questions appear: customers who have placed an order (<code>EXISTS</code>), books that were never ordered (<code>NOT EXISTS</code>). The pattern is exactly the one you just wrote.</p>
+                </div>
+            </section>
+
+            <section id="from-clause" class="lesson-section">
+                <h2>🧱 Derived Tables: Subqueries in FROM</h2>
+                <p>A subquery in <code>FROM</code> produces a temporary result that the outer query reads like a table: a <strong>derived table</strong>. It is how you summarize once and then work with the summary.</p>
+                <p>On average, how many books does an author have here? First count per author, then average the counts:</p>
+                <pre><code class="language-sql">SELECT ROUND(AVG(book_count), 2) AS avg_books_per_author,
+       MAX(book_count)            AS most_books
 FROM (
     SELECT author, COUNT(*) AS book_count
     FROM books
     GROUP BY author
-) AS author_counts;
-                </code></pre>
-
+) AS author_counts;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+----------------------+
-| avg_books_per_author |
-+----------------------+
-|                  1.0 |
-+----------------------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+----------------------+------------+
+| avg_books_per_author | most_books |
++----------------------+------------+
+|                 1.11 |          2 |
++----------------------+------------+</code></pre>
                 </div>
-            </section>
+                <p>Ten books over nine authors. You cannot write <code>AVG(COUNT(*))</code> in one level (try it: error 1111, "Invalid use of group function"); an aggregate of an aggregate needs two levels, and the derived table is the inner one.</p>
 
-            <!-- Section 8: SELECT Clause Subqueries -->
-            <section id="select-clause" class="lesson-section">
-                <h2>Subqueries in the SELECT Clause</h2>
-                <p>A scalar subquery in the <code>SELECT</code> clause adds a computed column to each row. It must return exactly one value.</p>
-
-                <pre><code class="language-sql">
--- Show each book with the overall average for comparison
-SELECT
-    title,
-    price,
-    (SELECT ROUND(AVG(price), 2) FROM books) AS avg_price,
-    ROUND(price - (SELECT AVG(price) FROM books), 2) AS diff_from_avg
-FROM books
-ORDER BY diff_from_avg DESC;
-                </code></pre>
-
+                <h3>Filtering a summary</h3>
+                <p>The price bands from Lesson 3.3, keeping only the bands with more than two books:</p>
+                <pre><code class="language-sql">SELECT price_band, books, avg_price
+FROM (
+    SELECT
+        CASE
+            WHEN price &lt; 10 THEN 'Under $10'
+            WHEN price &lt; 13 THEN '$10 to $12.99'
+            ELSE '$13 and up'
+        END AS price_band,
+        COUNT(*)             AS books,
+        ROUND(AVG(price), 2) AS avg_price
+    FROM books
+    GROUP BY price_band
+) AS bands
+WHERE books &gt; 2
+ORDER BY avg_price;</code></pre>
                 <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-------------------------+-------+-----------+---------------+
-| title                   | price | avg_price | diff_from_avg |
-+-------------------------+-------+-----------+---------------+
-| Lord of the Rings       | 15.99 |     10.99 |          5.00 |
-| Dune                    | 14.99 |     10.99 |          4.00 |
-| To Kill a Mockingbird   | 11.99 |     10.99 |          1.00 |
-| The Hobbit              | 10.99 |     10.99 |          0.00 |
-| Fahrenheit 451          | 10.49 |     10.99 |         -0.50 |
-| 1984                    |  9.99 |     10.99 |         -1.00 |
-| Brave New World         |  9.49 |     10.99 |         -1.50 |
-| The Great Gatsby        |  8.99 |     10.99 |         -2.00 |
-| The Catcher in the Rye  |  8.99 |     10.99 |         -2.00 |
-| Pride and Prejudice     |  7.99 |     10.99 |         -3.00 |
-+-------------------------+-------+-----------+---------------+
-                    </code></pre>
+                    <h4>Output</h4>
+                    <pre><code>+---------------+-------+-----------+
+| price_band    | books | avg_price |
++---------------+-------+-----------+
+| Under $10     |     5 |      9.09 |
+| $10 to $12.99 |     3 |     11.16 |
++---------------+-------+-----------+</code></pre>
                 </div>
-
-                <pre><code class="language-sql">
--- Show each book with a percentage of total value
-SELECT
-    title,
-    price,
-    ROUND(price / (SELECT SUM(price) FROM books) * 100, 1) AS pct_of_total
-FROM books
-ORDER BY pct_of_total DESC;
-                </code></pre>
-
-                <div class="card card-output">
-                    <h4>Output:</h4>
-                    <pre><code>
-+-------------------------+-------+--------------+
-| title                   | price | pct_of_total |
-+-------------------------+-------+--------------+
-| Lord of the Rings       | 15.99 |         14.5 |
-| Dune                    | 14.99 |         13.6 |
-| To Kill a Mockingbird   | 11.99 |         10.9 |
-| The Hobbit              | 10.99 |         10.0 |
-| Fahrenheit 451          | 10.49 |          9.5 |
-| 1984                    |  9.99 |          9.1 |
-| Brave New World         |  9.49 |          8.6 |
-| The Great Gatsby        |  8.99 |          8.2 |
-| The Catcher in the Rye  |  8.99 |          8.2 |
-| Pride and Prejudice     |  7.99 |          7.3 |
-+-------------------------+-------+--------------+
-                    </code></pre>
-                </div>
-            </section>
-
-            <!-- Section 9: When to Use Subqueries -->
-            <section id="when-to-use" class="lesson-section">
-                <h2>When to Use Subqueries</h2>
-
-                <div class="card card-success">
-                    <h4>✅ Good Uses for Subqueries</h4>
-                    <ul>
-                        <li><strong>Comparing to aggregates</strong> — "above average," "equal to the max," "below the median"</li>
-                        <li><strong>Filtering with IN/NOT IN</strong> — "customers in cities that have X"</li>
-                        <li><strong>Existence checks</strong> — "customers who have/haven't ordered" (with EXISTS)</li>
-                        <li><strong>Derived tables</strong> — when you need to aggregate, then filter or aggregate again</li>
-                        <li><strong>Adding context columns</strong> — showing each row alongside a global metric</li>
-                    </ul>
-                </div>
+                <p><code>HAVING COUNT(*) &gt; 2</code> would do the same job here. The derived table earns its keep when the summary needs further work: joining it to another table, aggregating it again, or filtering on several of its columns at once.</p>
 
                 <div class="card card-warning">
-                    <h4>⚠️ When JOINs Are Better</h4>
-                    <ul>
-                        <li><strong>Combining columns from multiple tables</strong> — JOINs are clearer and usually faster</li>
-                        <li><strong>Correlated subqueries on large tables</strong> — JOINs avoid the "run once per row" penalty</li>
-                        <li><strong>When readability suffers</strong> — deeply nested subqueries become hard to debug</li>
-                    </ul>
-                    <p>You'll learn JOINs in <a href="lesson_13.html">Lesson 13</a>. Many problems can be solved with either subqueries or JOINs — experienced developers choose whichever is clearer for the specific situation.</p>
-                </div>
-
-                <h3>Nesting Depth</h3>
-                <p>Subqueries can be nested — a subquery inside a subquery. MySQL supports deep nesting, but readability drops fast:</p>
-
-                <pre><code class="language-sql">
--- Two levels of nesting (this is about the practical limit)
-SELECT title, price
-FROM books
-WHERE price > (
-    SELECT AVG(price) FROM books
-    WHERE author IN (
-        SELECT DISTINCT author FROM books WHERE in_stock = TRUE
-    )
-);
-                </code></pre>
-
-                <div class="card card-info">
-                    <h4>💡 Rule of Thumb</h4>
-                    <p>If you find yourself nesting more than 2 levels deep, step back and consider whether the query can be restructured with JOINs, temporary tables, or common table expressions (CTEs — an advanced topic for later).</p>
+                    <h4>⚠️ Every derived table needs a name</h4>
+                    <p>The <code>AS author_counts</code> and <code>AS bands</code> are not optional. Without them MySQL stops with error 1248, as you will see in Common Mistakes.</p>
                 </div>
             </section>
 
-            <!-- Section 10: Exercises -->
-            <section id="exercises" class="lesson-section">
-                <h2>Exercises</h2>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 1: Scalar Subqueries</h3>
-                    <p>Write queries to find:</p>
-                    <ol>
-                        <li>All books priced above the average price</li>
-                        <li>The title and author of the book with the most pages</li>
-                        <li>All books that cost less than the cheapest out-of-stock book</li>
-                        <li>Books with more pages than the average page count</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- 1
-SELECT title, price FROM books
-WHERE price > (SELECT AVG(price) FROM books);
-
--- 2
-SELECT title, author, pages FROM books
-WHERE pages = (SELECT MAX(pages) FROM books);
-
--- 3
-SELECT title, price FROM books
-WHERE price < (
-    SELECT MIN(price) FROM books WHERE in_stock = FALSE
-);
-
--- 4
-SELECT title, pages FROM books
-WHERE pages > (SELECT AVG(pages) FROM books);
-                        </code></pre>
-                    </details>
+            <section id="select-clause" class="lesson-section">
+                <h2>➕ Subqueries in the SELECT List</h2>
+                <p>A scalar subquery in the <code>SELECT</code> list adds a computed column. Each book next to the store average, and how far it is from it:</p>
+                <pre><code class="language-sql">SELECT
+    title,
+    price,
+    (SELECT ROUND(AVG(price), 2) FROM books)         AS store_avg,
+    ROUND(price - (SELECT AVG(price) FROM books), 2) AS diff_from_avg
+FROM books
+ORDER BY diff_from_avg DESC, title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+-------+-----------+---------------+
+| title                  | price | store_avg | diff_from_avg |
++------------------------+-------+-----------+---------------+
+| Lord of the Rings      | 15.99 |     10.99 |          5.00 |
+| Dune                   | 14.99 |     10.99 |          4.00 |
+| To Kill a Mockingbird  | 11.99 |     10.99 |          1.00 |
+| The Hobbit             | 10.99 |     10.99 |          0.00 |
+| Fahrenheit 451         | 10.49 |     10.99 |         -0.50 |
+| 1984                   |  9.99 |     10.99 |         -1.00 |
+| Brave New World        |  9.49 |     10.99 |         -1.50 |
+| The Catcher in the Rye |  8.99 |     10.99 |         -2.00 |
+| The Great Gatsby       |  8.99 |     10.99 |         -2.00 |
+| Pride and Prejudice    |  7.99 |     10.99 |         -3.00 |
++------------------------+-------+-----------+---------------+</code></pre>
                 </div>
+                <p>The subquery does not refer to the outer row, so MySQL works it out once and reuses the value. A plain <code>AVG(price)</code> next to <code>title</code> would fail with error 1140 (Lesson 3.3); wrapping it in a subquery is what lets a per-row column and a whole-table number sit side by side.</p>
 
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 2: IN Subqueries</h3>
-                    <p>Write queries to:</p>
-                    <ol>
-                        <li>Find all customers who live in a city that has exactly 1 customer</li>
-                        <li>Find all books whose price matches any out-of-stock book's price</li>
-                        <li>Find customers who do NOT live in cities with multiple customers (exclude NULLs)</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- 1
-SELECT first_name, last_name, city FROM customers
-WHERE city IN (
-    SELECT city FROM customers
-    WHERE city IS NOT NULL
-    GROUP BY city
-    HAVING COUNT(*) = 1
-);
-
--- 2
-SELECT title, price FROM books
-WHERE price IN (
-    SELECT price FROM books WHERE in_stock = FALSE
-);
-
--- 3
-SELECT first_name, last_name, city FROM customers
-WHERE city IS NOT NULL
-AND city NOT IN (
-    SELECT city FROM customers
-    WHERE city IS NOT NULL
-    GROUP BY city
-    HAVING COUNT(*) > 1
-);
-                        </code></pre>
-                    </details>
-                </div>
-
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 3: SELECT &amp; FROM Subqueries</h3>
-                    <p>Write queries to:</p>
-                    <ol>
-                        <li>Show each book's title, price, and its percentage of the total price of all books (rounded to 1 decimal)</li>
-                        <li>Show each book's title, price, and how far it is from the average (price - avg)</li>
-                        <li>Calculate the average number of customers per city (hint: count per city first, then average those counts)</li>
-                    </ol>
-
-                    <details>
-                        <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
--- 1
-SELECT
+                <p>Each book's share of the shelf's total value:</p>
+                <pre><code class="language-sql">SELECT
     title,
     price,
     ROUND(price / (SELECT SUM(price) FROM books) * 100, 1) AS pct_of_total
 FROM books
-ORDER BY pct_of_total DESC;
+ORDER BY pct_of_total DESC, title
+LIMIT 5;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------------+-------+--------------+
+| title                 | price | pct_of_total |
++-----------------------+-------+--------------+
+| Lord of the Rings     | 15.99 |         14.5 |
+| Dune                  | 14.99 |         13.6 |
+| To Kill a Mockingbird | 11.99 |         10.9 |
+| The Hobbit            | 10.99 |         10.0 |
+| Fahrenheit 451        | 10.49 |          9.5 |
++-----------------------+-------+--------------+</code></pre>
+                </div>
 
--- 2
+                <h3>A correlated column</h3>
+                <p>The subquery in the <code>SELECT</code> list can be correlated too. How many books does each book's author have in the store?</p>
+                <pre><code class="language-sql">SELECT
+    b.title,
+    b.author,
+    (SELECT COUNT(*) FROM books AS b2 WHERE b2.author = b.author) AS author_titles
+FROM books AS b
+ORDER BY author_titles DESC, b.title
+LIMIT 4;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------------------+----------------+---------------+
+| title             | author         | author_titles |
++-------------------+----------------+---------------+
+| Lord of the Rings | J.R.R. Tolkien |             2 |
+| The Hobbit        | J.R.R. Tolkien |             2 |
+| 1984              | George Orwell  |             1 |
+| Brave New World   | Aldous Huxley  |             1 |
++-------------------+----------------+---------------+</code></pre>
+                </div>
+            </section>
+
+            <section id="when-to-use" class="lesson-section">
+                <h2>🧭 When to Use a Subquery</h2>
+                <div class="card card-success">
+                    <h4>✅ Subqueries shine at</h4>
+                    <ul>
+                        <li><strong>Comparing with an aggregate</strong>: above average, equal to the maximum, below the cheapest out-of-stock book</li>
+                        <li><strong>Finding the rows behind a number</strong>: which book has the maximum, which book is each author's cheapest</li>
+                        <li><strong>Existence checks</strong>: has a related row / has none (<code>EXISTS</code>, <code>NOT EXISTS</code>)</li>
+                        <li><strong>Two-level summaries</strong>: aggregate, then aggregate or filter the result again (derived tables)</li>
+                    </ul>
+                </div>
+                <p>Subqueries can nest inside subqueries. This works, but each level makes it harder to read:</p>
+                <pre><code class="language-sql">SELECT title, price
+FROM books
+WHERE price &gt; (
+    SELECT AVG(price)
+    FROM books
+    WHERE author IN (
+        SELECT author
+        FROM books
+        GROUP BY author
+        HAVING COUNT(*) = 1
+    )
+)
+ORDER BY price;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| Fahrenheit 451        | 10.49 |
+| The Hobbit            | 10.99 |
+| To Kill a Mockingbird | 11.99 |
+| Dune                  | 14.99 |
+| Lord of the Rings     | 15.99 |
++-----------------------+-------+</code></pre>
+                </div>
+                <p>Books priced above the average of the single-book authors. Reading it means starting at the innermost query and working outward, which is the opposite of how you read prose. Two tools later in the course make such queries easier: <strong>joins</strong> (Lesson 4.3) combine columns from several tables, and <strong>common table expressions</strong> (<a href="lesson_ctes.html">Lesson 5.1</a>) let you give each step a name and write the steps top to bottom.</p>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Using <code>=</code> with a subquery that returns several rows</h3>
+                <pre data-raises="ERROR 1242"><code class="language-sql">SELECT title, price
+FROM books
+WHERE price = (SELECT price FROM books WHERE in_stock = FALSE);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1242 (21000): Subquery returns more than 1 row</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>=</code> needs one value, and there are two out-of-stock books, so two prices came back. The query may even work today and break tomorrow when a second row appears. <strong>Fix:</strong> use <code>IN</code> if any of the values should match, or make the subquery return one value with an aggregate (<code>MIN</code>, <code>MAX</code>) or a <code>WHERE</code> on a unique column.</p>
+
+                <h3>2. Returning two columns where one is expected</h3>
+                <pre data-raises="ERROR 1241"><code class="language-sql">SELECT title, author
+FROM books
+WHERE author IN (
+    SELECT author, COUNT(*)
+    FROM books
+    GROUP BY author
+    HAVING COUNT(*) &gt; 1
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1241 (21000): Operand should contain 1 column(s)</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>author IN (...)</code> compares one value with a list of single values, but each row of the subquery has two columns. <strong>Fix:</strong> select only the column you compare: <code>SELECT author FROM books GROUP BY author HAVING COUNT(*) &gt; 1</code>. The count can stay in <code>HAVING</code> without being selected.</p>
+
+                <h3>3. A derived table without an alias</h3>
+                <pre data-raises="ERROR 1248"><code class="language-sql">SELECT AVG(book_count)
+FROM (
+    SELECT author, COUNT(*) AS book_count
+    FROM books
+    GROUP BY author
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1248 (42000): Every derived table must have its own alias</code></pre>
+                </div>
+                <p><strong>What it means:</strong> a table in <code>FROM</code> must have a name, even a temporary one. <strong>Fix:</strong> add <code>AS author_counts</code> (any name) after the closing parenthesis. On MariaDB the same mistake shows up as a plain syntax error 1064 <code>near ''</code>, which is harder to read: if a query with a subquery in <code>FROM</code> fails with an empty <code>near ''</code>, look for the missing alias first.</p>
+
+                <h3>4. LIMIT inside an IN subquery</h3>
+                <p>"Every book priced among the three highest prices" seems to call for a <code>LIMIT</code> in the list:</p>
+                <pre data-raises="ERROR 1235"><code class="language-sql">SELECT title, price
+FROM books
+WHERE price IN (
+    SELECT DISTINCT price FROM books ORDER BY price DESC LIMIT 3
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1235 (42000): This version of MySQL doesn't yet support 'LIMIT &amp; IN/ALL/ANY/SOME subquery'</code></pre>
+                </div>
+                <p><strong>What it means:</strong> a long-standing MySQL (and MariaDB) limitation: <code>LIMIT</code> is not allowed in a subquery used with <code>IN</code>, <code>ALL</code>, <code>ANY</code> or <code>SOME</code>. <strong>Fix:</strong> wrap the limited query in a derived table, which is allowed, and select from that:</p>
+                <pre><code class="language-sql">SELECT title, price
+FROM books
+WHERE price IN (
+    SELECT price
+    FROM (SELECT DISTINCT price FROM books ORDER BY price DESC LIMIT 3) AS top_prices
+)
+ORDER BY price DESC;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------------+-------+
+| title                 | price |
++-----------------------+-------+
+| Lord of the Rings     | 15.99 |
+| Dune                  | 14.99 |
+| To Kill a Mockingbird | 11.99 |
++-----------------------+-------+</code></pre>
+                </div>
+
+                <h3>5. Forgetting the aliases in a correlated subquery (silent)</h3>
+                <p>The goal: books priced above their own author's average, as in the correlated section, but written without aliases:</p>
+                <pre><code class="language-sql">SELECT title, author, price
+FROM books
+WHERE price &gt; (
+    SELECT AVG(price)
+    FROM books
+    WHERE author = author
+)
+ORDER BY price;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------------+----------------+-------+
+| title                 | author         | price |
++-----------------------+----------------+-------+
+| To Kill a Mockingbird | Harper Lee     | 11.99 |
+| Dune                  | Frank Herbert  | 14.99 |
+| Lord of the Rings     | J.R.R. Tolkien | 15.99 |
++-----------------------+----------------+-------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> no error, but three books instead of one. Inside the subquery, both <code>author</code>s refer to the <em>inner</em> table (the nearest one wins), so <code>author = author</code> is true for every row and the subquery returns the overall average. You got "above the store average" by accident. <strong>Fix:</strong> give both copies of the table an alias and use it on every column: <code>WHERE b2.author = b.author</code>.</p>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: The Price Review</h2>
+                <p>Before the spring price update, the owner wants a review she can rerun after every change: what is above average, what each author's entry-level book is, which authors are fully in stock, and which books make up the top price tier. Every answer depends on another answer, which makes it a job for subqueries. You will collect the five queries in <code>price_review.sql</code>. Allow about 40 minutes.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: Above the average <span class="step-time">(5 min)</span></h3>
+                    <p>Create <code>price_review.sql</code> in your <code>mysql-course</code> folder. The first query lists the books above the store average, with the average and the difference beside each one.</p>
+                    <pre><code class="language-sql">USE bookstore;
+
+-- 1. Books above the store average
 SELECT
     title,
     price,
-    ROUND(price - (SELECT AVG(price) FROM books), 2) AS diff_from_avg
+    (SELECT ROUND(AVG(price), 2) FROM books)         AS store_avg,
+    ROUND(price - (SELECT AVG(price) FROM books), 2) AS above_by
 FROM books
-ORDER BY diff_from_avg DESC;
+WHERE price &gt; (SELECT AVG(price) FROM books)
+ORDER BY above_by DESC;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Database changed
++-----------------------+-------+-----------+----------+
+| title                 | price | store_avg | above_by |
++-----------------------+-------+-----------+----------+
+| Lord of the Rings     | 15.99 |     10.99 |     5.00 |
+| Dune                  | 14.99 |     10.99 |     4.00 |
+| To Kill a Mockingbird | 11.99 |     10.99 |     1.00 |
++-----------------------+-------+-----------+----------+</code></pre>
+                    </div>
+                </div>
 
--- 3
-SELECT ROUND(AVG(customer_count), 1) AS avg_customers_per_city
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: Each author's entry-level book <span class="step-time">(10 min)</span></h3>
+                    <p>For the "try this author" shelf, find each author's cheapest book with a correlated subquery. Write the inner query first on its own for one author (<code>WHERE author = 'J.R.R. Tolkien'</code>), check it, then correlate it.</p>
+                    <pre><code class="language-sql">-- 2. Entry-level book per author
+SELECT b.author, b.title, b.price
+FROM books AS b
+WHERE b.price = (
+    SELECT MIN(b2.price)
+    FROM books AS b2
+    WHERE b2.author = b.author
+)
+ORDER BY b.price, b.author;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+---------------------+------------------------+-------+
+| author              | title                  | price |
++---------------------+------------------------+-------+
+| Jane Austen         | Pride and Prejudice    |  7.99 |
+| F. Scott Fitzgerald | The Great Gatsby       |  8.99 |
+| J.D. Salinger       | The Catcher in the Rye |  8.99 |
+| Aldous Huxley       | Brave New World        |  9.49 |
+| George Orwell       | 1984                   |  9.99 |
+| Ray Bradbury        | Fahrenheit 451         | 10.49 |
+| J.R.R. Tolkien      | The Hobbit             | 10.99 |
+| Harper Lee          | To Kill a Mockingbird  | 11.99 |
+| Frank Herbert       | Dune                   | 14.99 |
++---------------------+------------------------+-------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: Authors fully in stock <span class="step-time">(10 min)</span></h3>
+                    <p>An author is "fully in stock" if no book of theirs is out of stock. "No such row" is <code>NOT EXISTS</code>.</p>
+                    <pre><code class="language-sql">-- 3. Authors with every book in stock
+SELECT DISTINCT b.author
+FROM books AS b
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM books AS missing
+    WHERE missing.author = b.author
+      AND missing.in_stock = FALSE
+)
+ORDER BY b.author;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+----------------+
+| author         |
++----------------+
+| Aldous Huxley  |
+| Frank Herbert  |
+| George Orwell  |
+| Harper Lee     |
+| J.R.R. Tolkien |
+| Jane Austen    |
+| Ray Bradbury   |
++----------------+</code></pre>
+                    </div>
+                    <p>Seven of the nine authors. Fitzgerald and Salinger are missing because their only book is out of stock.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: The top price tier <span class="step-time">(5 min)</span></h3>
+                    <p>Every book priced at one of the three highest prices, using the derived-table workaround for the <code>LIMIT</code> restriction.</p>
+                    <pre><code class="language-sql">-- 4. Top price tier: the three highest prices
+SELECT title, author, price
+FROM books
+WHERE price IN (
+    SELECT price
+    FROM (SELECT DISTINCT price FROM books ORDER BY price DESC LIMIT 3) AS top3
+)
+ORDER BY price DESC;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-----------------------+----------------+-------+
+| title                 | author         | price |
++-----------------------+----------------+-------+
+| Lord of the Rings     | J.R.R. Tolkien | 15.99 |
+| Dune                  | Frank Herbert  | 14.99 |
+| To Kill a Mockingbird | Harper Lee     | 11.99 |
++-----------------------+----------------+-------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: Stock value summary <span class="step-time">(5 min)</span></h3>
+                    <p>Finish with one row of headline numbers: the average price per author (a two-level summary), and the share of the shelf value that is out of stock.</p>
+                    <pre><code class="language-sql">-- 5. Headline numbers
+SELECT
+    (SELECT ROUND(AVG(author_avg), 2)
+     FROM (SELECT AVG(price) AS author_avg FROM books GROUP BY author) AS per_author)
+        AS avg_of_author_avgs,
+    ROUND(
+        (SELECT SUM(price) FROM books WHERE in_stock = FALSE)
+        / (SELECT SUM(price) FROM books) * 100, 1)
+        AS pct_value_out_of_stock;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+--------------------+------------------------+
+| avg_of_author_avgs | pct_value_out_of_stock |
++--------------------+------------------------+
+|              10.71 |                   16.4 |
++--------------------+------------------------+</code></pre>
+                    </div>
+                    <p>A <code>SELECT</code> with no <code>FROM</code> is allowed in MySQL: it returns one row built from the subqueries. The average of the author averages (10.71) is lower than the store average (10.99) because Tolkien's two pricey books count once, as one author, instead of twice. Neither number is wrong; they answer different questions.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 6: Run it <span class="step-time">(5 min)</span></h3>
+                    <p>Save the file and run it from the mysql client (on Windows: <code>SOURCE C:/Users/you/mysql-course/price_review.sql</code>):</p>
+                    <pre data-norun><code class="language-sql">SOURCE ~/mysql-course/price_review.sql</code></pre>
+                    <p>To see the review react to a change, raise one price in a transaction, rerun the file, and undo the change: <code>START TRANSACTION; UPDATE books SET price = 12.99 WHERE id = 5;</code> then <code>SOURCE</code> the file, then <code>ROLLBACK;</code>. Nothing in the file needed editing: every number was worked out fresh.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>price_review.sql</code> starts with <code>USE bookstore;</code> and holds five commented queries</li>
+                        <li>No number in the file is typed in by hand where a subquery could compute it</li>
+                        <li>The correlated queries use an alias on every column inside the subquery</li>
+                        <li>Step 3 uses <code>NOT EXISTS</code> and lists seven authors</li>
+                        <li><code>SOURCE</code> runs the whole file without an error</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+                <p>All four use the bookstore from the <a href="lesson_07.html#setup">Lesson 3.1 setup script</a>. Try each one before you open the solution.</p>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: Longer Than Average</h3>
+                    <p>List the title and page count of every book with more pages than the average book, longest first.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>The same shape as "above the average price", with <code>pages</code> instead of <code>price</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT title, pages
+FROM books
+WHERE pages &gt; (SELECT AVG(pages) FROM books)
+ORDER BY pages DESC;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+---------------------+-------+
+| title               | pages |
++---------------------+-------+
+| Lord of the Rings   |  1178 |
+| Pride and Prejudice |   432 |
+| Dune                |   412 |
++---------------------+-------+</code></pre>
+                        </div>
+                        <p>The average is 382.4 pages, pulled up by the 1,178-page <em>Lord of the Rings</em>; that is why only three books beat it.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 2: Only Customer in Town</h3>
+                    <p>List the customers who are the only customer in their city.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>An <code>IN</code> subquery with <code>GROUP BY city HAVING COUNT(*) = 1</code>. Does the <code>NULL</code> group of two cause trouble here?</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT first_name, last_name, city
+FROM customers
+WHERE city IN (
+    SELECT city
+    FROM customers
+    GROUP BY city
+    HAVING COUNT(*) = 1
+)
+ORDER BY city;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------+-----------+-------------+
+| first_name | last_name | city        |
++------------+-----------+-------------+
+| Dave       | Brown     | Houston     |
+| Carol      | Williams  | Los Angeles |
++------------+-----------+-------------+</code></pre>
+                        </div>
+                        <p>The <code>NULL</code> group has two members, so it fails <code>HAVING COUNT(*) = 1</code> and never reaches the list. And even if it did, a <code>NULL</code> in a plain <code>IN</code> list matches nothing.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: Customers per City, on Average</h3>
+                    <p>For the cities we know, how many customers does a city have on average? Count per city first, then average the counts.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>A derived table with <code>GROUP BY city</code> (leave the <code>NULL</code> cities out with <code>WHERE</code>), and an outer <code>AVG</code>. Remember the alias.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT ROUND(AVG(customer_count), 1) AS avg_customers_per_city
 FROM (
     SELECT city, COUNT(*) AS customer_count
     FROM customers
     WHERE city IS NOT NULL
     GROUP BY city
-) AS city_counts;
-                        </code></pre>
+) AS city_counts;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------------------+
+| avg_customers_per_city |
++------------------------+
+|                    1.5 |
++------------------------+</code></pre>
+                        </div>
+                        <p>Six customers in four cities: 1.5.</p>
                     </details>
                 </div>
 
-                <div class="card card-info">
-                    <h3>🏋️ Exercise 4: Combined Challenge</h3>
-                    <p>Write a single query that shows all books that are:</p>
-                    <ul>
-                        <li>Currently in stock</li>
-                        <li>Priced above the average price of ALL books (including out-of-stock)</li>
-                        <li>Include the title, author, price, and the average price for comparison</li>
-                        <li>Sort by how far above the average they are (highest first)</li>
-                    </ul>
-
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): Cheaper Than Their Author</h3>
+                    <p>Find the books priced <em>below</em> their author's most expensive book, and show that most expensive price beside each one. Then explain why only one author can appear in the result.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Use the same correlated subquery twice: once in <code>WHERE</code> with <code>MAX</code>, once in the <code>SELECT</code> list to show the value.</p>
+                    </details>
                     <details>
                         <summary>✅ Solution</summary>
-                        <pre><code class="language-sql">
-SELECT
-    title,
-    author,
-    price,
-    (SELECT ROUND(AVG(price), 2) FROM books) AS avg_price,
-    ROUND(price - (SELECT AVG(price) FROM books), 2) AS above_avg
-FROM books
-WHERE in_stock = TRUE
-  AND price > (SELECT AVG(price) FROM books)
-ORDER BY above_avg DESC;
-                        </code></pre>
+                        <pre><code class="language-sql">SELECT
+    b.title,
+    b.author,
+    b.price,
+    (SELECT MAX(b2.price) FROM books AS b2 WHERE b2.author = b.author) AS author_max
+FROM books AS b
+WHERE b.price &lt; (
+    SELECT MAX(b2.price)
+    FROM books AS b2
+    WHERE b2.author = b.author
+);</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------+----------------+-------+------------+
+| title      | author         | price | author_max |
++------------+----------------+-------+------------+
+| The Hobbit | J.R.R. Tolkien | 10.99 |      15.99 |
++------------+----------------+-------+------------+</code></pre>
+                        </div>
+                        <p>An author with one book has a maximum equal to that book's price, and no price is below itself. Only Tolkien has two books, so only his cheaper one can qualify.</p>
                     </details>
                 </div>
+            </section>
 
-                <!-- Quiz -->
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
                 <div class="card quiz-container">
-                    <h3>🎯 Quick Quiz</h3>
+                    <h3>🎯 Check Your Understanding</h3>
 
                     <div class="quiz-question">
-                        <p><strong>Question 1:</strong> What type of subquery returns exactly one row and one column?</p>
+                        <p><strong>Question 1:</strong> The average price is 10.99, and The Hobbit costs exactly 10.99. How many books does this count?</p>
+                        <pre><code class="language-sql">SELECT COUNT(*) FROM books WHERE price &gt; (SELECT AVG(price) FROM books);</code></pre>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! A scalar subquery returns a single value — one row, one column. It can be used with comparison operators like =, >, <.">
-                                A) Scalar subquery
+                            <button class="quiz-option" data-correct="false" data-hint="That would be the books at or below the average. Look again at the operator.">
+                                A) 7
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="A correlated subquery references the outer query — it can return one or many values.">
-                                B) Correlated subquery
+                            <button class="quiz-option" data-correct="false" data-hint="Is The Hobbit, at exactly 10.99, greater than 10.99?">
+                                B) 4
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="A derived table is a subquery in the FROM clause — it can return many rows and columns.">
-                                C) Derived table
+                            <button class="quiz-option" data-correct="true" data-explanation="Only To Kill a Mockingbird, Dune and Lord of the Rings cost more than 10.99. The Hobbit equals the average, and greater-than does not include equal.">
+                                C) 3
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 2:</strong> What is the danger of using <code>NOT IN</code> with a subquery?</p>
+                        <p><strong>Question 2:</strong> A query fails with <code>ERROR 1242 (21000): Subquery returns more than 1 row</code>. What is the usual fix?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="NOT IN works fine syntactically — the issue is more subtle.">
-                                A) It causes a syntax error
+                            <button class="quiz-option" data-correct="false" data-hint="An alias names a derived table; it does not change how many rows a subquery returns.">
+                                A) Give the subquery an alias
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! If the subquery returns any NULL values, NOT IN returns no rows at all. Always filter out NULLs in the inner query with WHERE column IS NOT NULL.">
-                                B) If the subquery returns NULL, NOT IN returns no results
+                            <button class="quiz-option" data-correct="true" data-explanation="The subquery sits next to = or another single-value operator but returned a list. Use IN for a list, or reduce the subquery to one value with MIN, MAX or a unique condition.">
+                                B) Use <code>IN</code> instead of <code>=</code>, or make the subquery return a single value
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="NOT IN can be slow on very large lists, but performance isn't the primary danger.">
-                                C) It's always slower than EXISTS
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL does not allow LIMIT in IN subqueries, and for = it would hide the real question: which value did you mean?">
+                                C) Add <code>LIMIT 1</code> to the outer query
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 3:</strong> How does a correlated subquery differ from a regular subquery?</p>
+                        <p><strong>Question 3:</strong> The subquery in <code>WHERE city NOT IN (SELECT city FROM customers WHERE ...)</code> returns Chicago and <code>NULL</code>. What does the outer query return?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="Both types can appear in WHERE. Location isn't the difference.">
-                                A) It can only be used in the FROM clause
+                            <button class="quiz-option" data-correct="true" data-explanation="NOT IN means not equal to every item. Not equal to NULL is unknown for every row, so no row can pass. Filter NULLs out of the subquery or use NOT EXISTS.">
+                                A) No rows at all
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! A correlated subquery references a column from the outer query, so it runs once per outer row. A regular subquery is independent and runs once total.">
-                                B) It references the outer query and runs once per outer row
+                            <button class="quiz-option" data-correct="false" data-hint="That would be true if MySQL ignored the NULL in the list. Try it: what is city != NULL?">
+                                B) Every customer outside Chicago
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="Regular subqueries can return multiple rows too (like with IN).">
-                                C) It always returns multiple rows
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL accepts NULL in a list without complaint. The problem is silent.">
+                                C) An error about NULL values
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
                     </div>
 
                     <div class="quiz-question">
-                        <p><strong>Question 4:</strong> What is required when using a subquery in the FROM clause?</p>
+                        <p><strong>Question 4:</strong> What makes a subquery <em>correlated</em>?</p>
                         <div class="quiz-options">
-                            <button class="quiz-option" data-correct="false" data-hint="FROM subqueries can return any number of rows.">
-                                A) It must return exactly one row
+                            <button class="quiz-option" data-correct="false" data-hint="A subquery in FROM is a derived table. It usually cannot see the outer row at all.">
+                                A) It appears in the FROM clause
                             </button>
-                            <button class="quiz-option" data-correct="false" data-hint="FROM subqueries don't need WHERE — they just need an alias.">
-                                B) It must include a WHERE clause
+                            <button class="quiz-option" data-correct="false" data-hint="Plenty of uncorrelated subqueries use aggregates, like SELECT AVG(price) FROM books.">
+                                B) It uses an aggregate function
                             </button>
-                            <button class="quiz-option" data-correct="true" data-explanation="Correct! MySQL requires every derived table (subquery in FROM) to have an alias. Without one, you get a syntax error.">
-                                C) It must have an alias (AS name)
+                            <button class="quiz-option" data-correct="true" data-explanation="A correlated subquery uses a column of the outer query's current row, such as b2.author = b.author, so its answer can differ for every outer row.">
+                                C) It refers to a column of the outer query's current row
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> This query fails with error 1248. What fixes it?</p>
+                        <pre data-raises="ERROR 1248"><code class="language-sql">SELECT MAX(book_count) FROM (SELECT author, COUNT(*) AS book_count FROM books GROUP BY author);</code></pre>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="GROUP BY is already there, inside the subquery. Read the error message: what does every derived table need?">
+                                A) Adding <code>GROUP BY author</code> to the outer query
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Every derived table must have its own alias. Adding AS author_counts after the closing parenthesis makes the query run.">
+                                B) Adding an alias such as <code>AS author_counts</code> after the closing parenthesis
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Subqueries in FROM are allowed; they just need something extra.">
+                                C) Nothing: subqueries are not allowed in FROM
                             </button>
                         </div>
                         <div class="quiz-feedback"></div>
@@ -1003,81 +1140,113 @@ ORDER BY above_avg DESC;
                 </div>
             </section>
 
-            <!-- Section 11: Summary -->
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Should I use IN or EXISTS?</summary>
+                    <p>For a positive check, either is fine: MySQL's optimizer usually turns both into the same plan, so pick the one that reads more naturally. For the negative check, prefer <code>NOT EXISTS</code>: it has no <code>NULL</code> trap. If you do use <code>NOT IN</code>, add <code>IS NOT NULL</code> inside the subquery.</p>
+                </details>
+                <details>
+                    <summary>Can I use a subquery in UPDATE or DELETE?</summary>
+                    <p>Yes, with one MySQL restriction: the subquery cannot read the same table you are changing. "Delete every book cheaper than average" fails (shown inside a transaction, so nothing could change even on a server that allowed it):</p>
+                    <pre data-raises="ERROR 1093"><code class="language-sql">START TRANSACTION;
+DELETE FROM books WHERE price &lt; (SELECT AVG(price) FROM books);
+ROLLBACK;</code></pre>
+                    <div class="card card-output">
+                        <h4>Error</h4>
+                        <pre><code>ERROR 1093 (HY000): You can't specify target table 'books' for update in FROM clause</code></pre>
+                    </div>
+                    <p>The usual workaround is to compute the value first, for example into a variable: <code>SET @avg = (SELECT AVG(price) FROM books);</code> and then <code>... WHERE price &lt; @avg</code>. MariaDB lifts this restriction and runs the <code>DELETE</code>, which is one more reason to test destructive statements inside a transaction.</p>
+                </details>
+                <details>
+                    <summary>Is a subquery slower than a join?</summary>
+                    <p>Sometimes, not always. Modern MySQL rewrites many <code>IN</code> and <code>EXISTS</code> subqueries into joins internally (it calls them semijoins and antijoins). Write the clearest query first, and measure with <code>EXPLAIN</code> (Lesson 6.1) only if it is slow.</p>
+                </details>
+                <details>
+                    <summary>Why <code>SELECT 1</code> inside EXISTS and not <code>SELECT *</code>?</summary>
+                    <p>Both work identically: <code>EXISTS</code> only checks whether a row comes back and never reads the columns. <code>SELECT 1</code> is simply a signal to the reader that the values do not matter.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>Find the <strong>second-highest price</strong> in the store without <code>LIMIT</code> or <code>OFFSET</code>: the highest price that is lower than the maximum. (Hint: a <code>MAX</code> whose <code>WHERE</code> contains another subquery.) Then list every book at that price. Finally, rewrite your answer so it finds the third-highest price, and notice how the nesting grows. In Lesson 5.2, <code>DENSE_RANK()</code> answers "the Nth highest" in one flat query.</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Pick the correlated subquery from Step 2 of the project and explain it in plain words to someone who has never seen SQL, as if you were the database walking through the books one at a time. Then write down the strategy you used to build it (inner query first? outer first?) and whether it worked for you.</p>
+                </div>
+            </section>
+
             <section id="summary" class="lesson-section">
-                <h2>Summary</h2>
+                <h2>📝 Lesson Summary</h2>
 
                 <div class="card card-success">
-                    <h3>🎉 Key Takeaways</h3>
+                    <h3>🎓 Key Takeaways</h3>
                     <ul>
-                        <li>A <strong>subquery</strong> is a SELECT inside another SQL statement, enclosed in parentheses</li>
-                        <li><strong>Scalar subqueries</strong> return one value — use with <code>=</code>, <code>&gt;</code>, <code>&lt;</code>, etc.</li>
-                        <li>Use <strong>IN</strong> when a subquery returns multiple values (a list)</li>
-                        <li><strong>NOT IN</strong> fails silently when the subquery returns NULL — always filter NULLs</li>
-                        <li><strong>EXISTS</strong> checks whether any rows exist — great for presence/absence checks</li>
-                        <li><strong>Correlated subqueries</strong> reference the outer query and run once per row</li>
-                        <li><strong>FROM subqueries</strong> (derived tables) require an alias and act like temporary tables</li>
-                        <li><strong>SELECT subqueries</strong> add computed columns alongside regular data</li>
-                        <li>Avoid nesting more than 2 levels — consider JOINs or CTEs for complex queries</li>
-                        <li>JOINs often outperform correlated subqueries on large datasets</li>
+                        <li>A <strong>subquery</strong> is a <code>SELECT</code> in parentheses inside another statement; read nested queries from the inside out</li>
+                        <li><strong>Scalar</strong> subqueries return one value and work with <code>=</code>, <code>&gt;</code>, arithmetic, and in the <code>SELECT</code> list</li>
+                        <li>One-column lists go with <code>IN</code>, <code>ANY</code> and <code>ALL</code>; <code>= (list)</code> fails with error 1242</li>
+                        <li>A single <code>NULL</code> in a <code>NOT IN</code> list empties the result: filter it with <code>IS NOT NULL</code> or use <code>NOT EXISTS</code></li>
+                        <li><strong>Correlated</strong> subqueries refer to the outer row; alias both copies of the table and qualify every column</li>
+                        <li><code>EXISTS</code> asks "is there at least one related row?" and ignores the selected columns</li>
+                        <li><strong>Derived tables</strong> in <code>FROM</code> must have an alias (error 1248) and allow summaries of summaries</li>
+                        <li>MySQL rejects <code>LIMIT</code> in an <code>IN</code> subquery (error 1235); wrap it in a derived table</li>
                     </ul>
                 </div>
 
-                <h3>Quick Reference</h3>
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Pattern</th>
-                                <th>Syntax</th>
-                            </tr>
+                            <tr><th>You want</th><th>Write</th></tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Compare to aggregate</td>
-                                <td><code>WHERE col > (SELECT AVG(col) FROM t)</code></td>
-                            </tr>
-                            <tr>
-                                <td>Match a value</td>
-                                <td><code>WHERE col = (SELECT MAX(col) FROM t)</code></td>
-                            </tr>
-                            <tr>
-                                <td>Match a list</td>
-                                <td><code>WHERE col IN (SELECT col FROM t2)</code></td>
-                            </tr>
-                            <tr>
-                                <td>Exclude a list</td>
-                                <td><code>WHERE col NOT IN (SELECT col FROM t2 WHERE col IS NOT NULL)</code></td>
-                            </tr>
-                            <tr>
-                                <td>Check existence</td>
-                                <td><code>WHERE EXISTS (SELECT 1 FROM t2 WHERE ...)</code></td>
-                            </tr>
-                            <tr>
-                                <td>Derived table</td>
-                                <td><code>FROM (SELECT ... ) AS alias</code></td>
-                            </tr>
-                            <tr>
-                                <td>Computed column</td>
-                                <td><code>SELECT (SELECT AGG(col) FROM t) AS name</code></td>
-                            </tr>
+                            <tr><td>Rows above the average</td><td><code>WHERE col &gt; (SELECT AVG(col) FROM t)</code></td></tr>
+                            <tr><td>The row(s) with the maximum</td><td><code>WHERE col = (SELECT MAX(col) FROM t)</code></td></tr>
+                            <tr><td>Match a computed list</td><td><code>WHERE col IN (SELECT col FROM ...)</code></td></tr>
+                            <tr><td>Exclude a computed list safely</td><td><code>WHERE NOT EXISTS (SELECT 1 FROM ... WHERE ...)</code></td></tr>
+                            <tr><td>Each group's best row</td><td><code>WHERE b.col = (SELECT MIN(b2.col) FROM t b2 WHERE b2.grp = b.grp)</code></td></tr>
+                            <tr><td>A summary of a summary</td><td><code>SELECT AVG(n) FROM (SELECT COUNT(*) AS n ... GROUP BY ...) AS x</code></td></tr>
+                            <tr><td>A whole-table number on every row</td><td><code>SELECT col, (SELECT AVG(col) FROM t) AS avg_col</code></td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <h3>📚 Additional Resources</h3>
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You answered two-step questions in one statement, with no hand-typed numbers to go stale</li>
+                        <li>You found the rows behind the numbers: the most expensive book, each author's cheapest</li>
+                        <li>You caught the <code>NOT IN</code> / <code>NULL</code> trap and fixed it two ways</li>
+                        <li>You wrote <code>price_review.sql</code>, a review that recalculates itself after every price change</li>
+                        <li>You finished Module 3: filtering, sorting, summarizing and nesting queries on one table</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>In <a href="lesson_11.html"><strong>Lesson 4.1: Table Relationships</strong></a> the bookstore stops being one big list. You will see why typing "J.R.R. Tolkien" into every one of his books is a problem, split the authors into their own table, and connect tables with keys: one-to-many, many-to-many and one-to-one. The <code>EXISTS</code> and <code>IN</code> patterns from today become the way you ask questions across those tables. And when your subqueries start nesting three deep, Lesson 5.1 introduces common table expressions (<code>WITH</code>), which let you write the same steps top to bottom, each with a name.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
                 <ul>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/subqueries.html" target="_blank" rel="noopener">MySQL Docs — Subqueries</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/exists-and-not-exists-subqueries.html" target="_blank" rel="noopener">MySQL Docs — EXISTS and NOT EXISTS</a></li>
-                    <li><a href="https://dev.mysql.com/doc/refman/8.0/en/derived-tables.html" target="_blank" rel="noopener">MySQL Docs — Derived Tables</a></li>
+                    <li>Run <code>price_review.sql</code> once more from a fresh mysql session</li>
+                    <li>Rewrite one <code>NOT IN</code> query from this lesson as <code>NOT EXISTS</code> without looking</li>
+                    <li>Keep the Lesson 3.1 setup script: Lesson 4.1 starts from this same flat bookstore and turns it into related tables</li>
                 </ul>
 
-                <h3>🚀 What's Next?</h3>
-                <p>You've completed Module 3! You can now filter, sort, aggregate, and nest queries — that's a serious SQL toolkit. In <strong>Module 4: Relationships &amp; Joins</strong>, you'll learn how real databases connect multiple tables together. First up: <strong>Table Relationships</strong> — understanding one-to-one, one-to-many, and many-to-many relationships, and why splitting data across tables is the foundation of good database design.</p>
-
-                <div class="card card-accent" style="text-align: center; padding: 2rem;">
-                    <h3>🎉 Module 3 Complete!</h3>
-                    <p>You've mastered querying data — filtering, sorting, aggregating, and nesting. Your SQL is now powerful enough to answer complex, multi-step questions about your data!</p>
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>Subqueries are the first place where SQL asks you to hold two levels in your head at once, and correlated subqueries are famously the point where many learners slow down. If they still feel slippery, that is normal: build them the way you did in the project, inner query first, tested on one example, then connected to the outer row. You have now finished the whole of Module 3, and you can answer real questions about a real dataset. That is a genuine milestone.</p>
                 </div>
             </section>
 
@@ -1090,7 +1259,7 @@ ORDER BY above_avg DESC;
     </main>
 
     <footer class="site-footer">
-        <p>&copy; 2026 Ray de la Paz. All rights reserved.</p>
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
         <div class="footer-links">
             <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
             <a href="https://rays-home.netlify.app/contact">Contact</a>

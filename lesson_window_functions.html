@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Rank rows, compute running totals and moving averages, compare each month with the one before, and pick the top rows per group with MySQL window functions. MySQL Foundations Lesson 5.2.">
+    <meta name="author" content="Ray de la Paz">
+    <title>Window Functions - MySQL Foundations</title>
+    <script src="js/theme-init.js"></script>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 5: Modern Queries</a></li>
+            <li aria-current="page">Lesson 5.2: Window Functions</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🪟 Lesson 5.2: Window Functions</h1>
+                <p class="lead"><code>GROUP BY</code> answers "what is the total?" by squashing rows into one. Many questions need the rows and the total side by side: each book next to the average price, each month next to last month, each salary ranked within its department. Window functions compute across a set of rows, the window, and still return every row.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Explain how <code>OVER()</code> differs from <code>GROUP BY</code>, and split a window with <code>PARTITION BY</code></li>
+                        <li>Number and rank rows with <code>ROW_NUMBER</code>, <code>RANK</code> and <code>DENSE_RANK</code>, and pick the right one when there are ties</li>
+                        <li>Build running totals and moving averages, and control them with a frame (<code>ROWS BETWEEN ...</code>)</li>
+                        <li>Compare each row with the one before or after it using <code>LAG</code> and <code>LEAD</code></li>
+                        <li>Return the top N rows per group by filtering a window result in a CTE, and explain why <code>WHERE</code> cannot do it (error 3593)</li>
+                    </ul>
+                </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 100 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_ctes.html">Lesson 5.1: CTEs &amp; Recursive Queries</a></li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>sales_dashboard.sql</code>: running revenue, month-over-month change, a best-seller leaderboard and the top customer in every city</li>
+                    <li><span class="meta-label">🗄️ Database</span> <code>bookstore</code> freshly loaded from <a href="assets/sql/bookstore.sql" download>bookstore.sql</a></li>
+                </ul>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary aria-label="Toggle table of contents">
+                    <span class="toc-icon" aria-hidden="true">📑</span>
+                    <span class="toc-label">In This Lesson</span>
+                    <span class="toc-chevron" aria-hidden="true">▾</span>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#what-is-a-window" class="toc-link">What Is a Window?</a></li>
+                        <li><a href="#partition-by" class="toc-link">PARTITION BY: One Window per Group</a></li>
+                        <li><a href="#ranking" class="toc-link">ROW_NUMBER, RANK and DENSE_RANK</a></li>
+                        <li><a href="#running-totals" class="toc-link">Running Totals and Frames</a></li>
+                        <li><a href="#lag-lead" class="toc-link">LAG and LEAD: The Row Before and After</a></li>
+                        <li><a href="#top-n" class="toc-link">Top N per Group</a></li>
+                        <li><a href="#why-not-where" class="toc-link">Why WHERE Cannot Filter a Window</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: The Sales Dashboard</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <section id="what-is-a-window" class="lesson-section">
+                <h2>🪟 What Is a Window?</h2>
+                <p>Start from a fresh copy of the bookstore so your results match the ones shown here (use the path where you saved the file):</p>
+                <pre><code class="language-sql">SOURCE ~/mysql-course/bookstore.sql</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------+-----------+
+| table_name      | row_count |
++-----------------+-----------+
+| authors         |        10 |
+| books           |        11 |
+| categories      |         5 |
+| book_categories |        25 |
+| customers       |         8 |
+| orders          |        12 |
+| order_items     |        18 |
+| employees       |        10 |
++-----------------+-----------+</code></pre>
+                </div>
+
+                <p>Here is the problem window functions solve. The average book price is easy:</p>
+                <pre><code class="language-sql">SELECT ROUND(AVG(price), 2) AS avg_price FROM books;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+
+| avg_price |
++-----------+
+|     10.76 |
++-----------+</code></pre>
+                </div>
+                <p>But one number is all you get: the eleven books are gone. To show every book next to the average, add <code>OVER ()</code> to the aggregate. That turns it into a <strong>window function</strong>: it still averages, but it hands the answer back to every row instead of collapsing them.</p>
+                <pre><code class="language-sql">SELECT title,
+       price,
+       ROUND(AVG(price) OVER (), 2)         AS avg_price,
+       ROUND(price - AVG(price) OVER (), 2) AS vs_average
+FROM books
+ORDER BY price DESC, title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+-------+-----------+------------+
+| title                  | price | avg_price | vs_average |
++------------------------+-------+-----------+------------+
+| Lord of the Rings      | 15.99 |     10.76 |       5.23 |
+| Dune                   | 14.99 |     10.76 |       4.23 |
+| To Kill a Mockingbird  | 11.99 |     10.76 |       1.23 |
+| The Hobbit             | 10.99 |     10.76 |       0.23 |
+| Fahrenheit 451         | 10.49 |     10.76 |      -0.27 |
+| 1984                   |  9.99 |     10.76 |      -0.77 |
+| Brave New World        |  9.49 |     10.76 |      -1.27 |
+| The Catcher in the Rye |  8.99 |     10.76 |      -1.77 |
+| The Great Gatsby       |  8.99 |     10.76 |      -1.77 |
+| Animal Farm            |  8.49 |     10.76 |      -2.27 |
+| Pride and Prejudice    |  7.99 |     10.76 |      -2.77 |
++------------------------+-------+-----------+------------+</code></pre>
+                </div>
+                <p>Eleven rows in, eleven rows out. The empty parentheses in <code>OVER ()</code> mean "the window is the whole result", so every book is compared with the same average, 10.76.</p>
+
+                <div class="mermaid">
+graph TD
+    A["11 book rows"] --> B["AVG(price) with GROUP BY"]
+    A --> C["AVG(price) OVER ()"]
+    B --> D["1 row: the average"]
+    C --> E["11 rows, each with the average"]
+                </div>
+
+                <p>The <code>OVER</code> clause has three optional parts, and the rest of the lesson takes them one at a time:</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Part</th><th>Says</th><th>Example</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>PARTITION BY</code></td><td>Split the rows into separate windows</td><td><code>PARTITION BY department</code></td></tr>
+                            <tr><td><code>ORDER BY</code></td><td>Put the rows of each window in order</td><td><code>ORDER BY salary DESC</code></td></tr>
+                            <tr><td>Frame</td><td>Which neighbors of the current row count</td><td><code>ROWS BETWEEN 2 PRECEDING AND CURRENT ROW</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="partition-by" class="lesson-section">
+                <h2>🧱 PARTITION BY: One Window per Group</h2>
+                <p><code>PARTITION BY</code> does what <code>GROUP BY</code> does, split rows by a value, but without collapsing them. Each row sees only the rows of its own partition. How does each employee's salary compare with their department's average?</p>
+                <pre><code class="language-sql">SELECT first_name,
+       department,
+       salary,
+       ROUND(AVG(salary) OVER (PARTITION BY department), 2) AS dept_avg,
+       COUNT(*) OVER (PARTITION BY department)              AS dept_size
+FROM employees
+ORDER BY department, salary DESC;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+------------+----------+----------+-----------+
+| first_name | department | salary   | dept_avg | dept_size |
++------------+------------+----------+----------+-----------+
+| Priya      | sales      | 46000.00 | 39625.00 |         4 |
+| Lena       | sales      | 39500.00 | 39625.00 |         4 |
+| Tom        | sales      | 38000.00 | 39625.00 |         4 |
+| Ben        | sales      | 35000.00 | 39625.00 |         4 |
+| Marcus     | inventory  | 47000.00 | 42000.00 |         2 |
+| Sofia      | inventory  | 37000.00 | 42000.00 |         2 |
+| Maria      | management | 92000.00 | 80000.00 |         2 |
+| Daniel     | management | 68000.00 | 80000.00 |         2 |
+| James      | support    | 52000.00 | 44250.00 |         2 |
+| Nina       | support    | 36500.00 | 44250.00 |         2 |
++------------+------------+----------+----------+-----------+</code></pre>
+                </div>
+                <p>Every sales row shows the sales average (39625.00) and the sales head count (4); every support row shows the support figures. The departments come out as sales, inventory, management, support because <code>department</code> is an <code>ENUM</code>, and an ENUM sorts in the order its values were declared, not alphabetically.</p>
+
+                <div class="card card-info">
+                    <h4>💡 Several windows in one query</h4>
+                    <p>Each window function has its own <code>OVER</code>, so one query can mix them: <code>AVG(salary) OVER (PARTITION BY department)</code> next to <code>AVG(salary) OVER ()</code> gives the department average and the company average on the same row.</p>
+                </div>
+            </section>
+
+            <section id="ranking" class="lesson-section">
+                <h2>🏅 ROW_NUMBER, RANK and DENSE_RANK</h2>
+                <p>Three functions exist only as window functions. They need an <code>ORDER BY</code> inside <code>OVER</code>, because a rank only makes sense in some order. To see how they treat ties, rank the books by copies sold (a CTE adds up the copies first):</p>
+                <pre><code class="language-sql">WITH copies AS (
+    SELECT b.title, SUM(oi.quantity) AS sold
+    FROM books b
+    JOIN order_items oi ON oi.book_id = b.id
+    GROUP BY b.id, b.title
+)
+SELECT title,
+       sold,
+       ROW_NUMBER() OVER (ORDER BY sold DESC, title) AS row_num,
+       RANK()       OVER (ORDER BY sold DESC)        AS rank_num,
+       DENSE_RANK() OVER (ORDER BY sold DESC)        AS dense_num
+FROM copies
+ORDER BY sold DESC, title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------------+------+---------+----------+-----------+
+| title                 | sold | row_num | rank_num | dense_num |
++-----------------------+------+---------+----------+-----------+
+| 1984                  |    4 |       1 |        1 |         1 |
+| Dune                  |    3 |       2 |        2 |         2 |
+| The Hobbit            |    3 |       3 |        2 |         2 |
+| Animal Farm           |    2 |       4 |        4 |         3 |
+| Fahrenheit 451        |    2 |       5 |        4 |         3 |
+| Lord of the Rings     |    2 |       6 |        4 |         3 |
+| Pride and Prejudice   |    2 |       7 |        4 |         3 |
+| To Kill a Mockingbird |    2 |       8 |        4 |         3 |
+| Brave New World       |    1 |       9 |        9 |         4 |
++-----------------------+------+---------+----------+-----------+</code></pre>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Function</th><th>On a tie</th><th>After the tie</th><th>Use it for</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>ROW_NUMBER()</code></td><td>Different numbers (order decides)</td><td>Continues: 1, 2, 3, 4</td><td>Exactly N rows, numbering, paging</td></tr>
+                            <tr><td><code>RANK()</code></td><td>Same number</td><td>Skips: 1, 2, 2, 4</td><td>Sports-style standings</td></tr>
+                            <tr><td><code>DENSE_RANK()</code></td><td>Same number</td><td>No gap: 1, 2, 2, 3</td><td>"Top 3 sales levels", ties included</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>Dune and The Hobbit both sold 3. <code>ROW_NUMBER</code> must still give them different numbers, so the query adds <code>title</code> as a tie-breaker; without one, which of the two gets 2 is up to the server. <code>RANK</code> gives both 2 and jumps to 4 (three books are ahead of the next one); <code>DENSE_RANK</code> gives both 2 and continues with 3. The aliases end in <code>_num</code> on purpose: <code>rank</code> is a reserved word (Common Mistake 2).</p>
+
+                <h3>Naming a window once</h3>
+                <p>When several functions share the same window, define it once in a <code>WINDOW</code> clause after <code>FROM</code>/<code>WHERE</code>/<code>GROUP BY</code>/<code>HAVING</code> and refer to it by name:</p>
+                <pre><code class="language-sql">SELECT first_name,
+       salary,
+       RANK()       OVER by_pay AS rank_num,
+       DENSE_RANK() OVER by_pay AS dense_num
+FROM employees
+WINDOW by_pay AS (ORDER BY salary DESC)
+ORDER BY salary DESC
+LIMIT 4;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+----------+----------+-----------+
+| first_name | salary   | rank_num | dense_num |
++------------+----------+----------+-----------+
+| Maria      | 92000.00 |        1 |         1 |
+| Daniel     | 68000.00 |        2 |         2 |
+| James      | 52000.00 |        3 |         3 |
+| Marcus     | 47000.00 |        4 |         4 |
++------------+----------+----------+-----------+</code></pre>
+                </div>
+            </section>
+
+            <section id="running-totals" class="lesson-section">
+                <h2>📈 Running Totals and Frames</h2>
+                <p>Add <code>ORDER BY</code> inside <code>OVER</code> to an aggregate like <code>SUM</code>, and it no longer sums the whole window: it sums from the first row up to the current one. That is a <strong>running total</strong>. Here is the half year's revenue, month by month, with the total so far:</p>
+                <pre><code class="language-sql">WITH monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+)
+SELECT month_num,
+       revenue,
+       SUM(revenue) OVER (ORDER BY month_num) AS running_total
+FROM monthly
+ORDER BY month_num;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+---------+---------------+
+| month_num | revenue | running_total |
++-----------+---------+---------------+
+|         1 |   61.95 |         61.95 |
+|         2 |   51.95 |        113.90 |
+|         3 |   33.47 |        147.37 |
+|         4 |   38.97 |        186.34 |
+|         5 |   31.97 |        218.31 |
+|         6 |   18.98 |        237.29 |
++-----------+---------+---------------+</code></pre>
+                </div>
+                <p>Each row adds its own month to the total of the rows before it, and June's running total, 237.29, is the whole half year.</p>
+
+                <h3>The frame: which rows count</h3>
+                <p>The set of rows an aggregate sees for the current row is its <strong>frame</strong>. You can set it yourself with <code>ROWS BETWEEN start AND end</code>. A three-month moving average looks at the current month and the two before it:</p>
+                <pre><code class="language-sql">WITH monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+)
+SELECT month_num,
+       revenue,
+       ROUND(AVG(revenue) OVER (ORDER BY month_num
+                                ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 2) AS moving_avg_3
+FROM monthly
+ORDER BY month_num;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+---------+--------------+
+| month_num | revenue | moving_avg_3 |
++-----------+---------+--------------+
+|         1 |   61.95 |        61.95 |
+|         2 |   51.95 |        56.95 |
+|         3 |   33.47 |        49.12 |
+|         4 |   38.97 |        41.46 |
+|         5 |   31.97 |        34.80 |
+|         6 |   18.98 |        29.97 |
++-----------+---------+--------------+</code></pre>
+                </div>
+                <p>January has no earlier months, so its "average" is January alone; February averages two months; from March on, every row averages exactly three. A moving average smooths out a lucky or unlucky month and shows the trend: steadily down.</p>
+
+                <div class="mermaid">
+graph TD
+    A["current row: April"] --> B["frame: 2 preceding + current"]
+    B --> C["February, March, April"]
+    C --> D["AVG of 3 values: 41.46"]
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Frame</th><th>Rows it covers</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</code></td><td>First row to here (a running total)</td></tr>
+                            <tr><td><code>ROWS BETWEEN 2 PRECEDING AND CURRENT ROW</code></td><td>The last three rows</td></tr>
+                            <tr><td><code>ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING</code></td><td>Previous, current and next row</td></tr>
+                            <tr><td><code>ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</code></td><td>The whole partition</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ The default frame is RANGE, not ROWS</h4>
+                    <p>With <code>ORDER BY</code> and no frame, MySQL uses <code>RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</code>. <code>RANGE</code> treats rows with the same <code>ORDER BY</code> value as one step, so tied rows get the same running total. The months above have no ties, so it made no difference; Common Mistake 4 shows when it does. Write <code>ROWS BETWEEN ...</code> whenever you mean "row by row".</p>
+                </div>
+
+                <h3>Share of the total</h3>
+                <p>An empty <code>OVER ()</code> gives the grand total on every row, which makes percentages one division away:</p>
+                <pre><code class="language-sql">WITH monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+)
+SELECT month_num,
+       revenue,
+       ROUND(100 * revenue / SUM(revenue) OVER (), 1) AS pct_of_half_year
+FROM monthly
+ORDER BY month_num;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+---------+------------------+
+| month_num | revenue | pct_of_half_year |
++-----------+---------+------------------+
+|         1 |   61.95 |             26.1 |
+|         2 |   51.95 |             21.9 |
+|         3 |   33.47 |             14.1 |
+|         4 |   38.97 |             16.4 |
+|         5 |   31.97 |             13.5 |
+|         6 |   18.98 |              8.0 |
++-----------+---------+------------------+</code></pre>
+                </div>
+            </section>
+
+            <section id="lag-lead" class="lesson-section">
+                <h2>⏮️ LAG and LEAD: The Row Before and After</h2>
+                <p>In <a href="lesson_ctes.html">Lesson 5.1</a> you compared each month with the month before by joining a CTE to itself. <code>LAG(column)</code> does it directly: it returns the value of <code>column</code> from the previous row of the window. <code>LEAD(column)</code> returns the next row's value.</p>
+                <pre><code class="language-sql">WITH monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+)
+SELECT month_num,
+       revenue,
+       LAG(revenue)  OVER (ORDER BY month_num)           AS prev_month,
+       revenue - LAG(revenue) OVER (ORDER BY month_num)  AS change_amount,
+       LEAD(revenue) OVER (ORDER BY month_num)           AS next_month
+FROM monthly
+ORDER BY month_num;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+---------+------------+---------------+------------+
+| month_num | revenue | prev_month | change_amount | next_month |
++-----------+---------+------------+---------------+------------+
+|         1 |   61.95 |       NULL |          NULL |      51.95 |
+|         2 |   51.95 |      61.95 |        -10.00 |      33.47 |
+|         3 |   33.47 |      51.95 |        -18.48 |      38.97 |
+|         4 |   38.97 |      33.47 |          5.50 |      31.97 |
+|         5 |   31.97 |      38.97 |         -7.00 |      18.98 |
+|         6 |   18.98 |      31.97 |        -12.99 |       NULL |
++-----------+---------+------------+---------------+------------+</code></pre>
+                </div>
+                <p>January has no row before it, so <code>LAG</code> returns <code>NULL</code> (and so does the subtraction); June has no row after it, so <code>LEAD</code> returns <code>NULL</code>. The numbers match the self-join of Lesson 5.1, with a third of the code.</p>
+
+                <h3>Offsets and defaults</h3>
+                <p>Both functions take two optional arguments: how many rows back (or ahead) to look, and what to return when there is no such row. Percent change against the previous month, with 0 instead of <code>NULL</code> for "two months ago" when there is none:</p>
+                <pre><code class="language-sql">WITH monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+)
+SELECT month_num,
+       revenue,
+       ROUND(100 * (revenue - LAG(revenue) OVER w) / LAG(revenue) OVER w, 1) AS pct_change,
+       LAG(revenue, 2, 0) OVER w AS two_months_ago
+FROM monthly
+WINDOW w AS (ORDER BY month_num)
+ORDER BY month_num;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+---------+------------+----------------+
+| month_num | revenue | pct_change | two_months_ago |
++-----------+---------+------------+----------------+
+|         1 |   61.95 |       NULL |           0.00 |
+|         2 |   51.95 |      -16.1 |           0.00 |
+|         3 |   33.47 |      -35.6 |          61.95 |
+|         4 |   38.97 |       16.4 |          51.95 |
+|         5 |   31.97 |      -18.0 |          33.47 |
+|         6 |   18.98 |      -40.6 |          38.97 |
++-----------+---------+------------+----------------+</code></pre>
+                </div>
+
+                <div class="card card-info">
+                    <h4>🐬 Version note: no default argument on MariaDB</h4>
+                    <p>MySQL 8.4 runs this exactly like 9.7. MariaDB accepts <code>LAG(revenue, 2)</code> but not the third argument: <code>LAG(revenue, 2, 0)</code> is a syntax error (1064) there. Wrapping the function in <code>COALESCE</code> gives the same result on every server:</p>
+                    <pre data-server="mariadb"><code class="language-sql">WITH monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+)
+SELECT month_num,
+       COALESCE(LAG(revenue, 2) OVER (ORDER BY month_num), 0) AS two_months_ago
+FROM monthly
+ORDER BY month_num;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output on MariaDB</h4>
+                        <pre><code>+-----------+----------------+
+| month_num | two_months_ago |
++-----------+----------------+
+|         1 |           0.00 |
+|         2 |           0.00 |
+|         3 |          61.95 |
+|         4 |          51.95 |
+|         5 |          33.47 |
+|         6 |          38.97 |
++-----------+----------------+</code></pre>
+                    </div>
+                </div>
+
+                <h3>LAG within each customer</h3>
+                <p>Add <code>PARTITION BY</code> and "the previous row" means "the previous row for the same customer". How many days passed between each customer's orders?</p>
+                <pre><code class="language-sql">SELECT c.first_name,
+       o.order_date,
+       LAG(o.order_date) OVER (PARTITION BY o.customer_id ORDER BY o.order_date) AS previous_order,
+       DATEDIFF(o.order_date,
+                LAG(o.order_date) OVER (PARTITION BY o.customer_id ORDER BY o.order_date)) AS days_between
+FROM orders o
+JOIN customers c ON c.id = o.customer_id
+ORDER BY c.first_name, o.order_date;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+------------+----------------+--------------+
+| first_name | order_date | previous_order | days_between |
++------------+------------+----------------+--------------+
+| Alice      | 2026-01-15 | NULL           |         NULL |
+| Alice      | 2026-02-20 | 2026-01-15     |           36 |
+| Alice      | 2026-04-05 | 2026-02-20     |           44 |
+| Bob        | 2026-03-10 | NULL           |         NULL |
+| Bob        | 2026-03-28 | 2026-03-10     |           18 |
+| Dave       | 2026-01-22 | NULL           |         NULL |
+| Dave       | 2026-06-07 | 2026-01-22     |          136 |
+| Eve        | 2026-04-18 | NULL           |         NULL |
+| Frank      | 2026-02-03 | NULL           |         NULL |
+| Frank      | 2026-05-02 | 2026-02-03     |           88 |
+| Grace      | 2026-02-14 | NULL           |         NULL |
+| Grace      | 2026-05-19 | 2026-02-14     |           94 |
++------------+------------+----------------+--------------+</code></pre>
+                </div>
+                <p>Every customer's first order has no previous order. Bob came back fastest, after 18 days. Eve has ordered only once.</p>
+            </section>
+
+            <section id="top-n" class="lesson-section">
+                <h2>🥇 Top N per Group</h2>
+                <p>"The best-selling book in each category", "the highest-paid person in each department": these <strong>top-N-per-group</strong> questions are where window functions earn their keep. The recipe has two steps: number the rows inside each group, then keep the low numbers.</p>
+                <pre><code class="language-sql">WITH ranked AS (
+    SELECT first_name,
+           last_name,
+           department,
+           salary,
+           ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS pos
+    FROM employees
+)
+SELECT department, first_name, last_name, salary
+FROM ranked
+WHERE pos = 1
+ORDER BY salary DESC;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+------------+-----------+----------+
+| department | first_name | last_name | salary   |
++------------+------------+-----------+----------+
+| management | Maria      | Santos    | 92000.00 |
+| support    | James      | Okafor    | 52000.00 |
+| inventory  | Marcus     | Hill      | 47000.00 |
+| sales      | Priya      | Nair      | 46000.00 |
++------------+------------+-----------+----------+</code></pre>
+                </div>
+                <p>The window numbers each department's staff from the highest salary down, and the outer query keeps number 1 from every department. Change <code>pos = 1</code> to <code>pos &lt;= 2</code> and you get the top two per department.</p>
+
+                <h3>When ties matter</h3>
+                <p>Which book sold the most copies in each category? Several categories have ties, and <code>ROW_NUMBER</code> would quietly drop one of the tied books. <code>DENSE_RANK</code> keeps them all:</p>
+                <pre><code class="language-sql">WITH copies AS (
+    SELECT cat.name AS category, b.title, SUM(oi.quantity) AS sold
+    FROM categories cat
+    JOIN book_categories bc ON bc.category_id = cat.id
+    JOIN books b            ON b.id = bc.book_id
+    JOIN order_items oi     ON oi.book_id = b.id
+    GROUP BY cat.id, cat.name, b.id, b.title
+),
+ranked AS (
+    SELECT category, title, sold,
+           DENSE_RANK() OVER (PARTITION BY category ORDER BY sold DESC) AS rank_num
+    FROM copies
+)
+SELECT category, title, sold, rank_num
+FROM ranked
+WHERE rank_num &lt;= 2
+ORDER BY category, rank_num, title;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------+-----------------------+------+----------+
+| category        | title                 | sold | rank_num |
++-----------------+-----------------------+------+----------+
+| Classic         | 1984                  |    4 |        1 |
+| Classic         | Animal Farm           |    2 |        2 |
+| Classic         | Pride and Prejudice   |    2 |        2 |
+| Classic         | To Kill a Mockingbird |    2 |        2 |
+| Dystopian       | 1984                  |    4 |        1 |
+| Dystopian       | Fahrenheit 451        |    2 |        2 |
+| Fantasy         | The Hobbit            |    3 |        1 |
+| Fantasy         | Lord of the Rings     |    2 |        2 |
+| Fiction         | 1984                  |    4 |        1 |
+| Fiction         | Dune                  |    3 |        2 |
+| Fiction         | The Hobbit            |    3 |        2 |
+| Science Fiction | Dune                  |    3 |        1 |
+| Science Fiction | Fahrenheit 451        |    2 |        2 |
++-----------------+-----------------------+------+----------+</code></pre>
+                </div>
+                <p>"Top 2" in Classic returns four books: 1984 first, then three books tied at 2 copies. In Fiction, Dune and The Hobbit share second place. Whether that is right depends on the question. For "the two books to put in the window", use <code>ROW_NUMBER</code> with a tie-breaker; for "every book at the top two sales levels", use <code>DENSE_RANK</code>.</p>
+            </section>
+
+            <section id="why-not-where" class="lesson-section">
+                <h2>🚧 Why WHERE Cannot Filter a Window</h2>
+                <p>Why the CTE in the last section? Why not write <code>WHERE ROW_NUMBER() OVER (...) = 1</code>? Because of the order in which MySQL runs a query's clauses. Window functions are computed late, after the rows have been filtered and grouped:</p>
+                <div class="mermaid">
+graph TD
+    A["1. FROM and JOIN"] --> B["2. WHERE: keep rows"]
+    B --> C["3. GROUP BY and HAVING"]
+    C --> D["4. window functions"]
+    D --> E["5. SELECT list"]
+    E --> F["6. ORDER BY, then LIMIT"]
+                </div>
+                <p>When <code>WHERE</code> runs, the windows do not exist yet; and if <code>WHERE</code> could see them, it would change the very rows they are computed over. So MySQL allows window functions only in the <code>SELECT</code> list and <code>ORDER BY</code>. To filter on a window's result, compute it in one step and filter in the next: a CTE (or a derived table) is that next step.</p>
+                <pre><code class="language-sql">WITH priced AS (
+    SELECT title, price,
+           ROW_NUMBER() OVER (ORDER BY price DESC) AS pos
+    FROM books
+)
+SELECT pos, title, price
+FROM priced
+WHERE pos &lt;= 3
+ORDER BY pos;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----+-----------------------+-------+
+| pos | title                 | price |
++-----+-----------------------+-------+
+|   1 | Lord of the Rings     | 15.99 |
+|   2 | Dune                  | 14.99 |
+|   3 | To Kill a Mockingbird | 11.99 |
++-----+-----------------------+-------+</code></pre>
+                </div>
+                <p>For a plain "top 3 of everything" like this one, <code>ORDER BY price DESC LIMIT 3</code> is simpler. The CTE pattern matters as soon as there is a <code>PARTITION BY</code>: <code>LIMIT</code> cuts the whole result, not each group.</p>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Filtering on a window function in WHERE</h3>
+                <pre data-raises="ERROR 3593"><code class="language-sql">SELECT first_name, department, salary
+FROM employees
+WHERE ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) = 1;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3593 (HY000): You cannot use the window function 'row_number' in this context.'</code></pre>
+                </div>
+                <p><strong>What it means:</strong> window functions are computed after <code>WHERE</code>, so <code>WHERE</code> cannot use them. (The stray quote at the end of the message is MySQL's typo, not yours.) Trying the alias instead, <code>WHERE pos = 1</code>, fails too, with error 1054 "Unknown column 'pos' in 'where clause'". On MariaDB the same mistake is error 4015, "Window function is allowed only in SELECT list and ORDER BY clause". <strong>Fix:</strong> compute the window in a CTE and filter in the outer query, as in the Top N section.</p>
+
+                <h3>2. Naming a column <code>rank</code></h3>
+                <pre data-raises="ERROR 1064"><code class="language-sql">SELECT title, price,
+       RANK() OVER (ORDER BY price DESC) AS rank
+FROM books;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'rank
+FROM books' at line 2</code></pre>
+                </div>
+                <p><strong>What it means:</strong> since MySQL 8.0, <code>RANK</code>, <code>ROW_NUMBER</code>, <code>DENSE_RANK</code>, <code>WINDOW</code>, <code>OVER</code> and the other window keywords are reserved words, so <code>AS rank</code> confuses the parser. Old tutorials and MariaDB (which still accepts <code>AS rank</code>) make this easy to copy by accident. <strong>Fix:</strong> pick a different name (<code>rank_num</code>, <code>price_rank</code>), or quote it with backticks: <code>AS `rank`</code>.</p>
+
+                <h3>3. Copying QUALIFY from another database</h3>
+                <pre data-raises="ERROR 6037"><code class="language-sql">SELECT title, price,
+       ROW_NUMBER() OVER (ORDER BY price DESC) AS pos
+FROM books
+QUALIFY pos &lt;= 3;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 6037 (HY000): 'QUALIFY clause' can be used only if the hypergraph optimizer is enabled.</code></pre>
+                </div>
+                <p><strong>What it means:</strong> some databases (Snowflake, BigQuery, DuckDB) have a <code>QUALIFY</code> clause that filters on window results directly. MySQL 9.7 and 8.4 recognize the word but only run it under an alternative query optimizer (the "hypergraph" optimizer) that is switched off by default; MariaDB does not know it at all (error 1064). <strong>Fix:</strong> use the CTE pattern, which works on every server.</p>
+
+                <h3>4. A running total that jumps on ties (silent)</h3>
+                <pre><code class="language-sql">SELECT title, price,
+       SUM(price) OVER (ORDER BY price) AS running_total
+FROM books
+ORDER BY price, title
+LIMIT 5;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+-------+---------------+
+| title                  | price | running_total |
++------------------------+-------+---------------+
+| Pride and Prejudice    |  7.99 |          7.99 |
+| Animal Farm            |  8.49 |         16.48 |
+| The Catcher in the Rye |  8.99 |         34.46 |
+| The Great Gatsby       |  8.99 |         34.46 |
+| Brave New World        |  9.49 |         43.95 |
++------------------------+-------+---------------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> no error, but The Catcher in the Rye and The Great Gatsby both cost 8.99, and both show 34.46, as if they had been added at the same moment. That is the default <code>RANGE</code> frame: rows with the same <code>ORDER BY</code> value are one step. <strong>Fix:</strong> say "row by row" and make the order unique:</p>
+                <pre><code class="language-sql">SELECT title, price,
+       SUM(price) OVER (ORDER BY price, title
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
+FROM books
+ORDER BY price, title
+LIMIT 5;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------------------+-------+---------------+
+| title                  | price | running_total |
++------------------------+-------+---------------+
+| Pride and Prejudice    |  7.99 |          7.99 |
+| Animal Farm            |  8.49 |         16.48 |
+| The Catcher in the Rye |  8.99 |         25.47 |
+| The Great Gatsby       |  8.99 |         34.46 |
+| Brave New World        |  9.49 |         43.95 |
++------------------------+-------+---------------+</code></pre>
+                </div>
+
+                <h3>5. LAST_VALUE that returns the current row (silent)</h3>
+                <pre><code class="language-sql">SELECT title, price,
+       FIRST_VALUE(title) OVER (ORDER BY price) AS cheapest,
+       LAST_VALUE(title)  OVER (ORDER BY price) AS priciest
+FROM books
+ORDER BY price, title
+LIMIT 2;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------+-------+---------------------+---------------------+
+| title               | price | cheapest            | priciest            |
++---------------------+-------+---------------------+---------------------+
+| Pride and Prejudice |  7.99 | Pride and Prejudice | Pride and Prejudice |
+| Animal Farm         |  8.49 | Pride and Prejudice | Animal Farm         |
++---------------------+-------+---------------------+---------------------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>FIRST_VALUE</code> works, but <code>LAST_VALUE</code> echoes each row's own title. The default frame ends at the current row (plus any rows tied with it), so the "last" row of the frame is the current one, never the priciest book. <strong>Fix:</strong> extend the frame to the end of the window:</p>
+                <pre><code class="language-sql">SELECT title, price,
+       LAST_VALUE(title) OVER (ORDER BY price
+                               ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS priciest
+FROM books
+ORDER BY price, title
+LIMIT 2;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------+-------+-------------------+
+| title               | price | priciest          |
++---------------------+-------+-------------------+
+| Pride and Prejudice |  7.99 | Lord of the Rings |
+| Animal Farm         |  8.49 | Lord of the Rings |
++---------------------+-------+-------------------+</code></pre>
+                </div>
+                <p>Or skip <code>LAST_VALUE</code> entirely: <code>FIRST_VALUE(title) OVER (ORDER BY price DESC)</code> gives the priciest book with the default frame.</p>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: The Sales Dashboard</h2>
+                <p>The owner wants a dashboard she can paste into her monthly email: how revenue is building up, whether it is growing, which books lead, and who the best customer is in each city. You will build <code>sales_dashboard.sql</code>, one query per step. Allow about 40 minutes.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: Revenue so far <span class="step-time">(10 min)</span></h3>
+                    <p>Create <code>sales_dashboard.sql</code> in your <code>mysql-course</code> folder. Start with <code>USE bookstore;</code> and a query that shows each month's revenue, the running total and how much of the half year's revenue had come in by the end of that month:</p>
+                    <pre><code class="language-sql">USE bookstore;
+
+-- 1. Revenue so far
+WITH monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+)
+SELECT month_num,
+       revenue,
+       SUM(revenue) OVER (ORDER BY month_num
+                          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total,
+       ROUND(100 * SUM(revenue) OVER (ORDER BY month_num
+                                      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+                 / SUM(revenue) OVER (), 1) AS pct_done
+FROM monthly
+ORDER BY month_num;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Database changed
++-----------+---------+---------------+----------+
+| month_num | revenue | running_total | pct_done |
++-----------+---------+---------------+----------+
+|         1 |   61.95 |         61.95 |     26.1 |
+|         2 |   51.95 |        113.90 |     48.0 |
+|         3 |   33.47 |        147.37 |     62.1 |
+|         4 |   38.97 |        186.34 |     78.5 |
+|         5 |   31.97 |        218.31 |     92.0 |
+|         6 |   18.98 |        237.29 |    100.0 |
++-----------+---------+---------------+----------+</code></pre>
+                    </div>
+                    <p>Almost half of the half year's revenue (48 percent) had come in by the end of February.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: Month over month <span class="step-time">(10 min)</span></h3>
+                    <p>Add the change from the previous month and the three-month moving average, sharing one named window:</p>
+                    <pre><code class="language-sql">-- 2. Month over month
+WITH monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+)
+SELECT month_num,
+       revenue,
+       revenue - LAG(revenue) OVER w AS change_amount,
+       ROUND(AVG(revenue) OVER (w ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 2) AS moving_avg_3
+FROM monthly
+WINDOW w AS (ORDER BY month_num)
+ORDER BY month_num;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-----------+---------+---------------+--------------+
+| month_num | revenue | change_amount | moving_avg_3 |
++-----------+---------+---------------+--------------+
+|         1 |   61.95 |          NULL |        61.95 |
+|         2 |   51.95 |        -10.00 |        56.95 |
+|         3 |   33.47 |        -18.48 |        49.12 |
+|         4 |   38.97 |          5.50 |        41.46 |
+|         5 |   31.97 |         -7.00 |        34.80 |
+|         6 |   18.98 |        -12.99 |        29.97 |
++-----------+---------+---------------+--------------+</code></pre>
+                    </div>
+                    <p><code>OVER (w ROWS BETWEEN ...)</code> starts from the named window and adds a frame to it, so the order is written only once.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: The best-seller leaderboard <span class="step-time">(10 min)</span></h3>
+                    <p>Rank every book that sold, with its revenue and its share of all copies sold:</p>
+                    <pre><code class="language-sql">-- 3. Best-seller leaderboard
+WITH copies AS (
+    SELECT b.title,
+           SUM(oi.quantity)                    AS sold,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM books b
+    JOIN order_items oi ON oi.book_id = b.id
+    GROUP BY b.id, b.title
+)
+SELECT DENSE_RANK() OVER (ORDER BY sold DESC)       AS place,
+       title,
+       sold,
+       revenue,
+       ROUND(100 * sold / SUM(sold) OVER (), 1)     AS pct_of_copies
+FROM copies
+ORDER BY place, revenue DESC;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-------+-----------------------+------+---------+---------------+
+| place | title                 | sold | revenue | pct_of_copies |
++-------+-----------------------+------+---------+---------------+
+|     1 | 1984                  |    4 |   39.96 |          19.0 |
+|     2 | Dune                  |    3 |   44.97 |          14.3 |
+|     2 | The Hobbit            |    3 |   32.97 |          14.3 |
+|     3 | Lord of the Rings     |    2 |   31.98 |           9.5 |
+|     3 | To Kill a Mockingbird |    2 |   23.98 |           9.5 |
+|     3 | Fahrenheit 451        |    2 |   20.98 |           9.5 |
+|     3 | Animal Farm           |    2 |   16.98 |           9.5 |
+|     3 | Pride and Prejudice   |    2 |   15.98 |           9.5 |
+|     4 | Brave New World       |    1 |    9.49 |           4.8 |
++-------+-----------------------+------+---------+---------------+</code></pre>
+                    </div>
+                    <p>The leaderboard has four places for nine books. Within a place, the higher revenue is listed first, so Lord of the Rings leads the many books tied at 2 copies.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: Top customer in every city <span class="step-time">(5 min)</span></h3>
+                    <p>Total each customer's spending, number the customers within their city from the biggest spender down, and keep number 1. Customers with no city get a readable label:</p>
+                    <pre><code class="language-sql">-- 4. Top customer per city
+WITH spending AS (
+    SELECT COALESCE(c.city, '(no city)')        AS city,
+           CONCAT(c.first_name, ' ', c.last_name) AS customer,
+           SUM(oi.quantity * oi.price_at_time)  AS spent
+    FROM customers c
+    JOIN orders o       ON o.customer_id = c.id
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY c.id, c.city, c.first_name, c.last_name
+),
+ranked AS (
+    SELECT city, customer, spent,
+           ROW_NUMBER() OVER (PARTITION BY city ORDER BY spent DESC, customer) AS pos
+    FROM spending
+)
+SELECT city, customer, spent
+FROM ranked
+WHERE pos = 1
+ORDER BY spent DESC;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+-----------+---------------+-------+
+| city      | customer      | spent |
++-----------+---------------+-------+
+| New York  | Alice Johnson | 58.95 |
+| Houston   | Dave Brown    | 45.96 |
+| Chicago   | Grace Wilson  | 33.97 |
+| (no city) | Eve Davis     | 22.98 |
++-----------+---------------+-------+</code></pre>
+                    </div>
+                    <p>Chicago was close: Grace beat Bob by 50 cents. Carol (Los Angeles) and Hank (no city) never ordered, so the inner joins leave Los Angeles out and the "(no city)" row is Eve's.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: Run the dashboard <span class="step-time">(5 min)</span></h3>
+                    <p>Save the file and run it from a fresh mysql session:</p>
+                    <pre data-norun><code class="language-sql">SOURCE ~/mysql-course/sales_dashboard.sql</code></pre>
+                    <p>Four tables print in order. When July's orders arrive, the same script grows a seventh month, recomputes every running total and rank, and the owner's email writes itself.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>sales_dashboard.sql</code> starts with <code>USE bookstore;</code> and holds four commented queries</li>
+                        <li>The running total ends at 237.29 and <code>pct_done</code> ends at 100.0</li>
+                        <li>January's change is <code>NULL</code>, and every month from March on averages three months</li>
+                        <li>The leaderboard shows 1984 alone in first place and four places in all</li>
+                        <li>The city query returns one row per city that has a paying customer, with Grace for Chicago</li>
+                        <li><code>SOURCE</code> runs the whole file without an error</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+                <p>All four use the fresh <code>bookstore</code> database. Try each one before you open the solution.</p>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: Pay Rank by Department</h3>
+                    <p>Show every active employee's first name, department and salary, with their pay rank inside their department (1 = highest). Sort by department, then rank.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p><code>RANK() OVER (PARTITION BY department ORDER BY salary DESC)</code>, and filter the inactive employee in <code>WHERE is_active</code>: that filter runs before the window, which is exactly what you want here.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT first_name, department, salary,
+       RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS pay_rank
+FROM employees
+WHERE is_active
+ORDER BY department, pay_rank;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------+------------+----------+----------+
+| first_name | department | salary   | pay_rank |
++------------+------------+----------+----------+
+| Priya      | sales      | 46000.00 |        1 |
+| Lena       | sales      | 39500.00 |        2 |
+| Tom        | sales      | 38000.00 |        3 |
+| Marcus     | inventory  | 47000.00 |        1 |
+| Sofia      | inventory  | 37000.00 |        2 |
+| Maria      | management | 92000.00 |        1 |
+| Daniel     | management | 68000.00 |        2 |
+| James      | support    | 52000.00 |        1 |
+| Nina       | support    | 36500.00 |        2 |
++------------+------------+----------+----------+</code></pre>
+                        </div>
+                        <p>Ben Carter is inactive, so sales has three ranked people. A <code>WHERE</code> that filters plain columns is fine with window functions: it decides which rows enter the windows.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 2: Each Order's Share</h3>
+                    <p>For each of Alice Johnson's orders (customer 1), show the order id, the date, the order total, and what percentage of Alice's total spending that order was.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Total each order in a CTE (<code>GROUP BY o.id, o.order_date</code>), then divide by <code>SUM(order_total) OVER ()</code> in the outer query.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">WITH alice_orders AS (
+    SELECT o.id, o.order_date,
+           SUM(oi.quantity * oi.price_at_time) AS order_total
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    WHERE o.customer_id = 1
+    GROUP BY o.id, o.order_date
+)
+SELECT id, order_date, order_total,
+       ROUND(100 * order_total / SUM(order_total) OVER (), 1) AS pct_of_alice
+FROM alice_orders
+ORDER BY order_date;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+----+------------+-------------+--------------+
+| id | order_date | order_total | pct_of_alice |
++----+------------+-------------+--------------+
+|  1 | 2026-01-15 |       34.97 |         59.3 |
+|  2 | 2026-02-20 |        7.99 |         13.6 |
+|  8 | 2026-04-05 |       15.99 |         27.1 |
++----+------------+-------------+--------------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: Who Comes Back, and When?</h3>
+                    <p>For every order, show the customer's first name, the order date, and the date of that customer's <em>next</em> order (<code>NULL</code> if there is none). Then, in a second query, show each returning customer's average days between orders, shortest first.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p><code>LEAD(o.order_date) OVER (PARTITION BY o.customer_id ORDER BY o.order_date)</code>. For the second query, put a <code>DATEDIFF</code> with <code>LAG</code> in a CTE and average it per customer: <code>AVG</code> skips the <code>NULL</code> of each first order.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT c.first_name, o.order_date,
+       LEAD(o.order_date) OVER (PARTITION BY o.customer_id ORDER BY o.order_date) AS next_order
+FROM orders o
+JOIN customers c ON c.id = o.customer_id
+ORDER BY c.first_name, o.order_date;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------+------------+------------+
+| first_name | order_date | next_order |
++------------+------------+------------+
+| Alice      | 2026-01-15 | 2026-02-20 |
+| Alice      | 2026-02-20 | 2026-04-05 |
+| Alice      | 2026-04-05 | NULL       |
+| Bob        | 2026-03-10 | 2026-03-28 |
+| Bob        | 2026-03-28 | NULL       |
+| Dave       | 2026-01-22 | 2026-06-07 |
+| Dave       | 2026-06-07 | NULL       |
+| Eve        | 2026-04-18 | NULL       |
+| Frank      | 2026-02-03 | 2026-05-02 |
+| Frank      | 2026-05-02 | NULL       |
+| Grace      | 2026-02-14 | 2026-05-19 |
+| Grace      | 2026-05-19 | NULL       |
++------------+------------+------------+</code></pre>
+                        </div>
+                        <pre><code class="language-sql">WITH gaps AS (
+    SELECT o.customer_id,
+           DATEDIFF(o.order_date,
+                    LAG(o.order_date) OVER (PARTITION BY o.customer_id ORDER BY o.order_date)) AS days_between
+    FROM orders o
+)
+SELECT c.first_name, ROUND(AVG(g.days_between)) AS avg_days_between
+FROM gaps g
+JOIN customers c ON c.id = g.customer_id
+GROUP BY c.id, c.first_name
+HAVING COUNT(g.days_between) &gt; 0
+ORDER BY avg_days_between, c.first_name;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------+------------------+
+| first_name | avg_days_between |
++------------+------------------+
+| Bob        |               18 |
+| Alice      |               40 |
+| Frank      |               88 |
+| Grace      |               94 |
+| Dave       |              136 |
++------------+------------------+</code></pre>
+                        </div>
+                        <p>Eve has only one order, so all her gaps are <code>NULL</code> and <code>HAVING COUNT(g.days_between) &gt; 0</code> leaves her out.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): The Cheapest Way into Each Author</h3>
+                    <p>For every author who has books, show their cheapest book, its price, and how many books the author has. Use one window for the position and another for the count, and keep exactly one row per author even if two books ever cost the same.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Join <code>authors</code> to <code>books</code>. In a CTE, compute <code>ROW_NUMBER() OVER (PARTITION BY a.id ORDER BY b.price, b.title)</code> and <code>COUNT(*) OVER (PARTITION BY a.id)</code>; keep position 1 outside.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">WITH by_author AS (
+    SELECT a.name AS author, b.title, b.price,
+           ROW_NUMBER() OVER (PARTITION BY a.id ORDER BY b.price, b.title) AS pos,
+           COUNT(*)     OVER (PARTITION BY a.id)                         AS books
+    FROM authors a
+    JOIN books b ON b.author_id = a.id
+)
+SELECT author, title AS cheapest_book, price, books
+FROM by_author
+WHERE pos = 1
+ORDER BY books DESC, author;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+---------------------+------------------------+-------+-------+
+| author              | cheapest_book          | price | books |
++---------------------+------------------------+-------+-------+
+| George Orwell       | Animal Farm            |  8.49 |     2 |
+| J.R.R. Tolkien      | The Hobbit             | 10.99 |     2 |
+| Aldous Huxley       | Brave New World        |  9.49 |     1 |
+| F. Scott Fitzgerald | The Great Gatsby       |  8.99 |     1 |
+| Frank Herbert       | Dune                   | 14.99 |     1 |
+| Harper Lee          | To Kill a Mockingbird  | 11.99 |     1 |
+| J.D. Salinger       | The Catcher in the Rye |  8.99 |     1 |
+| Jane Austen         | Pride and Prejudice    |  7.99 |     1 |
+| Ray Bradbury        | Fahrenheit 451         | 10.49 |     1 |
++---------------------+------------------------+-------+-------+</code></pre>
+                        </div>
+                        <p>Orwell and Tolkien are the two authors with two books, so the window had a real choice to make for them: Animal Farm beats 1984, and The Hobbit beats Lord of the Rings. Isaac Asimov has no books, so the inner join leaves him out. The <code>b.title</code> tie-breaker is what "exactly one row, even with equal prices" needs.</p>
+                    </details>
+                </div>
+            </section>
+
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
+                <div class="card quiz-container">
+                    <h3>🎯 Check Your Understanding</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> The <code>books</code> table has 11 rows. How many rows does this query return?</p>
+                        <pre><code class="language-sql">SELECT title, AVG(price) OVER () AS avg_price FROM books;</code></pre>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="That is what AVG(price) with no OVER would return. What does OVER change?">
+                                A) 1
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Mixing title with an aggregate is an error without GROUP BY, but this aggregate has an OVER clause.">
+                                B) None: it fails with error 1140
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="A window function never collapses rows. OVER () makes the whole result the window, so each of the 11 books gets the same average next to its title.">
+                                C) 11
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> Copies sold, best first, are 4, 3, 3, 2. What does <code>RANK() OVER (ORDER BY sold DESC)</code> give the book that sold 2?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="RANK gives the two books with 3 copies the same rank, 2, then skips: three books are ahead of the one with 2 copies, so it gets 4. DENSE_RANK would give 3.">
+                                A) 4
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="That is what DENSE_RANK would give. Does RANK leave a gap after a tie?">
+                                B) 3
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Rank 2 belongs to the tied books with 3 copies.">
+                                C) 2
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> This query fails with error 3593. What is the standard fix?</p>
+                        <pre data-raises="ERROR 3593"><code class="language-sql">SELECT title FROM books
+WHERE ROW_NUMBER() OVER (ORDER BY price) &lt;= 3;</code></pre>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="HAVING runs before the window functions too. Think about the run order.">
+                                A) Move the condition to <code>HAVING</code>
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="Window functions are computed after WHERE, GROUP BY and HAVING. Compute ROW_NUMBER in a CTE, then filter its result with WHERE in the outer query.">
+                                B) Compute the row number in a CTE and filter it in the outer query
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="MySQL 9.7 recognizes QUALIFY but refuses it with the default optimizer (error 6037), and MariaDB does not know it.">
+                                C) Replace <code>WHERE</code> with <code>QUALIFY</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> Monthly revenue runs from January (month 1) to June. What does <code>LAG(revenue) OVER (ORDER BY month_num)</code> return on January's row?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="LAG has an optional third argument for a default. Without it, what is returned when there is no previous row?">
+                                A) 0
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="LAG looks backward, and the window does not wrap around.">
+                                B) June's revenue
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="January is the first row of the window, so there is no previous row and LAG returns NULL. LAG(revenue, 1, 0) would return 0 instead.">
+                                C) <code>NULL</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> With <code>AVG(revenue) OVER (ORDER BY month_num ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)</code>, how many months does January's average include?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="The frame asks for two rows before January, but there are none, so the frame holds only January itself. February averages two months, and from March on every row averages three.">
+                                A) 1
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="The frame cannot reach rows that do not exist. Which rows come before January?">
+                                B) 3
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="The frame never looks forward here: it ends at CURRENT ROW.">
+                                C) 6
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Does the <code>ORDER BY</code> inside <code>OVER</code> sort my result?</summary>
+                    <p>No. It only orders the rows inside the window for the function's sake. The result often comes out in that order because of how MySQL computes it, but nothing promises that. Always add a final <code>ORDER BY</code> to the query itself, as every example in this lesson does.</p>
+                </details>
+                <details>
+                    <summary>Can I use window functions together with GROUP BY?</summary>
+                    <p>Yes. The grouping happens first, then the window functions run over the grouped rows. That is why the lesson's CTEs group first and rank after, but you can also write it in one query: <code>SELECT department, SUM(salary), RANK() OVER (ORDER BY SUM(salary) DESC) FROM employees GROUP BY department</code> ranks the departments by payroll.</p>
+                </details>
+                <details>
+                    <summary>Which window functions does MySQL have besides the ones in this lesson?</summary>
+                    <p>All the usual aggregates (<code>SUM</code>, <code>AVG</code>, <code>COUNT</code>, <code>MIN</code>, <code>MAX</code>) work with <code>OVER</code>. The dedicated ones are <code>ROW_NUMBER</code>, <code>RANK</code>, <code>DENSE_RANK</code>, <code>PERCENT_RANK</code>, <code>CUME_DIST</code>, <code>NTILE(n)</code> (split rows into n buckets), <code>LAG</code>, <code>LEAD</code>, <code>FIRST_VALUE</code>, <code>LAST_VALUE</code> and <code>NTH_VALUE</code>. MySQL 8.4 and MariaDB support the same set.</p>
+                </details>
+                <details>
+                    <summary>Are window functions slow?</summary>
+                    <p>Each distinct window usually means one sort of the rows. On the bookstore's tables that is instant; on millions of rows, an index that matches the <code>PARTITION BY</code> and <code>ORDER BY</code> columns helps, and reusing one named window instead of several slightly different ones avoids extra sorts. <a href="lesson_14.html">Lesson 6.1</a> covers indexes.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>Use <code>NTILE(3) OVER (ORDER BY price)</code> to split the 11 books into three price tiers: budget, standard and premium. Label the tiers with <code>CASE</code>, and show each tier's cheapest and most expensive book with a <code>GROUP BY</code> in an outer query. Eleven does not divide by three: which tier gets the extra books, and how does NTILE decide?</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Pick a ranking you know from outside databases: a race, a league table, a class's grades, a music chart. When two entries tie, which function does it behave like: <code>ROW_NUMBER</code>, <code>RANK</code> or <code>DENSE_RANK</code>? Then describe one question from your own work or hobby that needs "each row next to a total" and sketch its <code>OVER</code> clause.</p>
+                </div>
+            </section>
+
+            <section id="summary" class="lesson-section">
+                <h2>📝 Lesson Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎓 Key Takeaways</h3>
+                    <ul>
+                        <li>A <strong>window function</strong> computes across a set of rows and returns a value for every row: <code>OVER</code> turns an aggregate into one</li>
+                        <li><code>PARTITION BY</code> splits the window per group without collapsing rows; <code>ORDER BY</code> inside <code>OVER</code> orders each window</li>
+                        <li><code>ROW_NUMBER</code> never ties; <code>RANK</code> ties and skips; <code>DENSE_RANK</code> ties without gaps</li>
+                        <li>An aggregate with <code>ORDER BY</code> in <code>OVER</code> is a running total; the frame (<code>ROWS BETWEEN ...</code>) decides which rows count, and the default is <code>RANGE</code>, which lumps ties together</li>
+                        <li><code>LAG</code> and <code>LEAD</code> read the previous and next row, with an optional offset and default</li>
+                        <li>Window functions run after <code>WHERE</code>, <code>GROUP BY</code> and <code>HAVING</code>: filter on them in an outer query over a CTE (error 3593 otherwise)</li>
+                        <li><code>rank</code>, <code>row_number</code> and <code>window</code> are reserved words: name columns <code>rank_num</code> and similar</li>
+                    </ul>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>You want</th><th>Write</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>A total next to every row</td><td><code>SUM(x) OVER ()</code></td></tr>
+                            <tr><td>A per-group figure next to every row</td><td><code>AVG(x) OVER (PARTITION BY g)</code></td></tr>
+                            <tr><td>Rank with ties</td><td><code>RANK()</code> or <code>DENSE_RANK() OVER (ORDER BY x DESC)</code></td></tr>
+                            <tr><td>A running total</td><td><code>SUM(x) OVER (ORDER BY t ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)</code></td></tr>
+                            <tr><td>A 3-row moving average</td><td><code>AVG(x) OVER (ORDER BY t ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)</code></td></tr>
+                            <tr><td>Change from the previous row</td><td><code>x - LAG(x) OVER (ORDER BY t)</code></td></tr>
+                            <tr><td>Top N per group</td><td>CTE with <code>ROW_NUMBER() OVER (PARTITION BY g ORDER BY x DESC) AS pos</code>, then <code>WHERE pos &lt;= N</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You put every book next to the average and every salary next to its department's figures, without losing a row</li>
+                        <li>You ranked best-sellers three ways and know which one to pick when there are ties</li>
+                        <li>You built running totals, moving averages and month-over-month changes from six months of orders</li>
+                        <li>You answered top-N-per-group questions with the CTE pattern, and know why <code>WHERE</code> cannot do it</li>
+                        <li>You wrote <code>sales_dashboard.sql</code>, a monthly dashboard that updates itself as orders arrive</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>Module 6 turns from writing queries to designing for them. In <a href="lesson_14.html"><strong>Lesson 6.1: Indexes &amp; Query Optimization</strong></a> you will see how MySQL finds rows, read query plans with <code>EXPLAIN</code>, and add the indexes that keep joins, sorts and windows like today's fast as the tables grow.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
+                <ul>
+                    <li>Run <code>sales_dashboard.sql</code> from a fresh session and check it against the completion checklist</li>
+                    <li>Rewrite one query from this lesson with a named <code>WINDOW</code> clause</li>
+                    <li>Try the <code>NTILE</code> bonus challenge</li>
+                </ul>
+
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>Window functions are where many people say SQL finally "clicked" for them, and also where many self-taught developers stop. You now have the tools behind most business dashboards: rankings, running totals, period-over-period change and top-N lists. If frames still feel abstract, rerun the moving-average query with a different frame and watch which rows change. Seeing the window move is the best way to make it stick.</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_ctes.html" class="prev-lesson">← Previous: CTEs &amp; Recursive Queries</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_14.html" class="next-lesson">Next: Indexes &amp; Query Optimization →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Final project: design, build, populate, query, secure and back up a complete MySQL database for a community tool library, with milestones, a rubric and a runnable reference solution. MySQL Foundations Lesson 8.2.">
+    <meta name="author" content="Ray de la Paz">
+    <title>Final Project: Design and Build a Database - MySQL Foundations</title>
+    <script src="js/theme-init.js"></script>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 8: Real-World Skills</a></li>
+            <li aria-current="page">Lesson 8.2: Final Project: Design and Build a Database</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🏗️ Lesson 8.2: Final Project: Design and Build a Database</h1>
+                <p class="lead">Until now the bookstore was handed to you. This time you start from a client's description and an empty server, and you finish with a database someone could actually run: designed, built with constraints, filled with test data, answering real questions, protected by its own accounts and backed up. The client is the Maple Street Tool Library, a volunteer-run library that lends drills and ladders instead of books.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Turn a written brief into entities, relationships and business rules, and draw them as a diagram</li>
+                        <li>Build a normalized schema in a re-runnable script, with keys, foreign keys and CHECK constraints that you have tested</li>
+                        <li>Answer business questions with joins, GROUP BY, CTEs and window functions, using a fixed report date</li>
+                        <li>Enforce rules that span several rows in a stored procedure with a transaction</li>
+                        <li>Secure the database with roles and least-privilege accounts, then back it up and prove the backup restores</li>
+                    </ul>
+                </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 240 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_20.html">Lesson 8.1: Importing &amp; Exporting Data</a> (and everything before it, especially Lessons 6.3, 7.1, 7.2 and 7.4)</li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>tool_library</code>: six tables, a view, two procedures, two roles, a backup and a one-page write-up</li>
+                    <li><span class="meta-label">🗄️ Database</span> a new database, <code>tool_library</code>, built from scratch (the <code>bookstore</code> is not touched)</li>
+                </ul>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary aria-label="Toggle table of contents">
+                    <span class="toc-icon" aria-hidden="true">📑</span>
+                    <span class="toc-label">In This Lesson</span>
+                    <span class="toc-chevron" aria-hidden="true">▾</span>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#brief" class="toc-link">The Brief</a></li>
+                        <li><a href="#milestones" class="toc-link">Milestones and Timeline</a></li>
+                        <li><a href="#design-method" class="toc-link">From Requirements to Tables</a></li>
+                        <li><a href="#rubric" class="toc-link">How Your Work Is Assessed</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: The Maple Street Tool Library</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <section id="brief" class="lesson-section">
+                <h2>📋 The Brief</h2>
+                <p>Rosa Delgado coordinates the Maple Street Tool Library, a neighborhood project that lends tools to its members. Today everything lives in a shared spreadsheet, and it is falling apart: two people borrowed the same ladder on the same day, nobody knows who has the drill, and a member who never took the chainsaw course went home with the chainsaw. She wrote down what she needs:</p>
+
+                <div class="card card-accent">
+                    <h4>📝 What the library needs (in Rosa's words)</h4>
+                    <ol>
+                        <li>"We have <strong>members</strong>: name, email (one account per email), the date they joined, and whether they are active or suspended."</li>
+                        <li>"We own about a dozen <strong>tools</strong>. Each has a name, one <strong>category</strong> (hand tools, power tools, garden...), a condition (good, fair, or out for repair), what it would cost to replace, and the date we got it."</li>
+                        <li>"Some tools need a <strong>safety course</strong> first: power tools need Power Tools Basics, the chainsaw needs Chainsaw Safety. We need to know which members finished which course, and when."</li>
+                        <li>"A <strong>loan</strong> is one tool to one member: the day it went out, the day it is due (normally a week later) and the day it came back."</li>
+                        <li>"Rules: a tool can only be out with one person at a time; nothing goes out while it is being repaired; suspended members cannot borrow; nobody may have more than three tools at once; and no course, no chainsaw."</li>
+                        <li>"Every Saturday I need: what is on the shelf, what is overdue and whose email to write to, which tools are popular, and how busy each month was."</li>
+                        <li>"The volunteers at the desk check tools out and in through our little web form. Our treasurer only reads reports. Nobody should be able to delete the loan history."</li>
+                        <li>"If the laptop dies, I do not want to start over."</li>
+                    </ol>
+                </div>
+
+                <h3>What you hand in</h3>
+                <ul>
+                    <li><code>01_schema.sql</code>: creates the database and every table, and can be run again from scratch</li>
+                    <li><code>02_data.sql</code>: realistic test data that exercises every rule</li>
+                    <li><code>03_queries.sql</code>: Rosa's Saturday questions, one commented query each</li>
+                    <li><code>04_logic.sql</code>: a view and the check-out and return procedures</li>
+                    <li><code>05_security.sql</code>: roles and accounts</li>
+                    <li>A tested backup file and <code>README.md</code>: a one-page write-up of your design, how to rebuild it and what you would do next</li>
+                </ul>
+
+                <div class="card card-info">
+                    <h4>💡 How to use this lesson</h4>
+                    <p>Each milestone in the project section describes what to build, then hides a complete <strong>reference solution</strong> that has been run on MySQL 9.7. Do the milestone yourself first, then open the reference and compare. Your solution does not have to match it: different names and designs can be just as good. What matters is that yours meets the rubric and you can explain your choices. Prefer another business? The FAQ has an alternative brief for a small clinic.</p>
+                </div>
+            </section>
+
+            <section id="milestones" class="lesson-section">
+                <h2>⏳ Milestones and Timeline</h2>
+                <p>About four hours of focused work. Spread it over two or three sittings; stopping after a milestone is natural, because every milestone ends with a script that runs.</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>#</th><th>Milestone</th><th>Uses lessons</th><th>Time</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>1</td><td>Design: entities, relationships, rules, diagram</td><td>4.1, 6.3</td><td>30 min</td></tr>
+                            <tr><td>2</td><td>Build the schema and test the constraints</td><td>2.1, 2.2, 4.2</td><td>40 min</td></tr>
+                            <tr><td>3</td><td>Populate with test data</td><td>2.3</td><td>25 min</td></tr>
+                            <tr><td>4</td><td>Answer the Saturday questions</td><td>3.3, 4.3, 5.1, 5.2</td><td>45 min</td></tr>
+                            <tr><td>5</td><td>Business logic: view and procedures</td><td>6.2, 7.1, 7.2</td><td>40 min</td></tr>
+                            <tr><td>6</td><td>Security: roles and accounts</td><td>7.4</td><td>20 min</td></tr>
+                            <tr><td>7</td><td>Back up and test the restore</td><td>8.1</td><td>20 min</td></tr>
+                            <tr><td>8</td><td>Self-review and write-up</td><td>all</td><td>20 min</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="design-method" class="lesson-section">
+                <h2>🧩 From Requirements to Tables</h2>
+                <p>A reliable way to get from prose to a schema, the same one you used in Lesson 6.3:</p>
+                <ol>
+                    <li><strong>Underline the nouns.</strong> Things with their own facts become tables (member, tool, category, safety course, loan). Facts about a thing become columns (a member's email, a tool's condition).</li>
+                    <li><strong>Read the verbs for relationships</strong> and ask "one or many?" in both directions. A category has many tools, a tool has one category: one-to-many, the foreign key goes in <code>tools</code>. A member can finish many courses and a course is finished by many members: many-to-many, so it needs a junction table, which here carries its own fact (the completion date).</li>
+                    <li><strong>Sort the rules by where they can live.</strong> A rule about one value goes in the column type or a constraint (<code>NOT NULL</code>, <code>UNIQUE</code>, <code>ENUM</code>, <code>CHECK</code>). A rule between tables is a foreign key. A rule that needs to look at <strong>other rows</strong> ("only one open loan per tool", "at most three per member") cannot be a <code>CHECK</code>; it goes in the procedure that creates loans, inside a transaction.</li>
+                    <li><strong>Leave out what can be calculated.</strong> "Overdue" and "days late" depend on today's date and the loan's dates, so they are computed in queries, not stored. Whether a tool is "available" is computed from open loans.</li>
+                </ol>
+
+                <div class="mermaid">
+graph TD
+    C["categories"] -->|"1 to many"| T["tools"]
+    S["safety_courses"] -->|"required by"| T
+    S -->|"1 to many"| MC["member_courses"]
+    M["members"] -->|"1 to many"| MC
+    T -->|"1 to many"| L["loans"]
+    M -->|"1 to many"| L
+                </div>
+
+                <h3>Starter schema checklist</h3>
+                <p>Before you write any SQL, your design notes should answer each of these. They are also what the rubric looks for.</p>
+                <ul>
+                    <li>Every table has a primary key; a junction table's key is the pair of foreign keys</li>
+                    <li>Every foreign key is named, has the same type as the column it points to, and has a deliberate <code>ON DELETE</code> rule (or none, meaning "refuse")</li>
+                    <li>Required facts are <code>NOT NULL</code>; values that must be unique (email, category name) have <code>UNIQUE</code></li>
+                    <li>Closed lists of values use <code>ENUM</code> or a lookup table, and you can say why you chose which</li>
+                    <li>Money is <code>DECIMAL</code>, dates are <code>DATE</code>, text that is searched or joined on has a sensible <code>VARCHAR</code> length</li>
+                    <li>At least two <code>CHECK</code> constraints for single-row rules (dates in order, positive amounts)</li>
+                    <li>Indexes on the columns your Saturday queries filter and join on</li>
+                    <li>No derived data (no stored "is overdue" or "times borrowed" columns)</li>
+                    <li>Names are <code>snake_case</code>, tables plural, no reserved words</li>
+                </ul>
+            </section>
+
+            <section id="rubric" class="lesson-section">
+                <h2>📏 How Your Work Is Assessed</h2>
+                <p>Score yourself (or ask a classmate to): each area earns 0 (missing), half (meets), or full points (exceeds).</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Area</th><th>Points</th><th>Meets</th><th>Exceeds</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Design</td><td>15</td><td>Diagram and notes cover all five entities and their relationships</td><td>Every rule from the brief is mapped to where it is enforced, with reasons</td></tr>
+                            <tr><td>Schema and constraints</td><td>20</td><td>Script runs twice without errors; keys and FKs correct</td><td>CHECKs and FK rules proven with failing test statements</td></tr>
+                            <tr><td>Test data</td><td>10</td><td>Every table has rows; joins return results</td><td>Data deliberately covers edge cases: overdue, never borrowed, suspended, out for repair, ties</td></tr>
+                            <tr><td>Queries</td><td>20</td><td>All six Saturday questions answered correctly</td><td>Readable CTEs, a window function, a fixed report date, results checked by hand</td></tr>
+                            <tr><td>Business logic</td><td>15</td><td>Check-out procedure enforces most rules</td><td>All five rules, in a transaction, with clear error messages and tests for each</td></tr>
+                            <tr><td>Security</td><td>10</td><td>App and reporting accounts that are not <code>root</code></td><td>Roles; desk account can only change data through procedures</td></tr>
+                            <tr><td>Backup and write-up</td><td>10</td><td>A dump file exists</td><td>Restore tested and logged; README explains how to rebuild everything</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>80 or more out of 100 is a solid, portfolio-ready project. The reference solution is written to score full points; yours can get there with a different design.</p>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+                <p>These are the problems that cost the most time in projects like this one. The demos use a scratch database so nothing collides with your project:</p>
+                <pre><code class="language-sql">CREATE DATABASE pitfall_demo;
+USE pitfall_demo;</code></pre>
+
+                <h3>1. A column named after a reserved word</h3>
+                <pre data-raises="ERROR 1064"><code class="language-sql">CREATE TABLE demo_tools (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    condition VARCHAR(10)
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'condition VARCHAR(10)
+)' at line 3</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>CONDITION</code> is a reserved word in MySQL (it is used in stored programs), so the parser stops right there. <code>order</code>, <code>group</code>, <code>rank</code> and <code>key</code> cause the same error. <strong>Fix:</strong> choose a clearer name, such as <code>tool_condition</code>. Backticks would also work, but then every query forever needs them.</p>
+
+                <h3>2. A foreign key whose type does not match</h3>
+                <pre><code class="language-sql">CREATE TABLE demo_tools (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50));</code></pre>
+                <pre data-raises="ERROR 3780"><code class="language-sql">CREATE TABLE demo_loans (
+    id      INT AUTO_INCREMENT PRIMARY KEY,
+    tool_id BIGINT NOT NULL,
+    FOREIGN KEY (tool_id) REFERENCES demo_tools (id)
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3780 (HY000): Referencing column 'tool_id' and referenced column 'id' in foreign key constraint 'demo_loans_ibfk_1' are incompatible.</code></pre>
+                </div>
+                <p><strong>What it means:</strong> a foreign key and the key it points to must have the same type (and the same signedness: <code>INT</code> and <code>INT UNSIGNED</code> clash too). <strong>Fix:</strong> make <code>tool_id</code> an <code>INT</code>. Decide on one key type at the start and use it everywhere.</p>
+
+                <h3>3. A CHECK constraint that uses today's date</h3>
+                <pre data-raises="ERROR 3814"><code class="language-sql">CREATE TABLE demo_loans (
+    id     INT AUTO_INCREMENT PRIMARY KEY,
+    due_on DATE NOT NULL,
+    CONSTRAINT chk_due_future CHECK (due_on &gt;= CURDATE())
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3814 (HY000): An expression of a check constraint 'chk_due_future' contains disallowed function: curdate.</code></pre>
+                </div>
+                <p><strong>What it means:</strong> a <code>CHECK</code> must give the same answer for a row forever. "Due in the future" is true today and false next week, so MySQL refuses functions like <code>CURDATE()</code> and <code>NOW()</code> in constraints. <strong>Fix:</strong> compare columns of the same row (<code>due_on &gt;= loaned_on</code>), and put time-dependent rules in the procedure that creates the row.</p>
+
+                <h3>4. Creating a child table before its parent</h3>
+                <pre data-raises="ERROR 1824"><code class="language-sql">CREATE TABLE demo_courses_done (
+    member_id INT NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES demo_members (id)
+);</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1824 (HY000): Failed to open the referenced table 'demo_members'</code></pre>
+                </div>
+                <p><strong>What it means:</strong> <code>demo_members</code> does not exist yet. <strong>Fix:</strong> order <code>CREATE TABLE</code> statements parents first (lookup tables, then the tables that point at them, junction and history tables last), and drop them in the reverse order.</p>
+
+                <div class="card card-info">
+                    <h4>🐬 Version note: MariaDB's messages</h4>
+                    <p>MariaDB refuses the same mistakes with different errors: a mismatched or missing foreign-key target gives <code>ERROR 1005 (HY000): Can't create table ... (errno: 150 "Foreign key constraint is incorrectly formed")</code> for both mistakes 2 and 4, <code>CURDATE()</code> in a CHECK gives error 1901, and a violated CHECK gives error 4025 instead of 3819. The fixes are the same.</p>
+                </div>
+
+                <h3>5. A LEFT JOIN quietly turned into an inner join (silent)</h3>
+                <p>"How many loans did each member start in June?" Members with none should show 0.</p>
+                <pre><code class="language-sql">CREATE TABLE demo_members (id INT PRIMARY KEY, name VARCHAR(50));
+CREATE TABLE demo_member_loans (member_id INT, loaned_on DATE);
+INSERT INTO demo_members VALUES (1, 'Rosa'), (2, 'Kevin'), (3, 'Tessa');
+INSERT INTO demo_member_loans VALUES (1, '2026-06-06'), (2, '2026-05-02');
+
+SELECT m.name, COUNT(l.member_id) AS june_loans
+FROM demo_members AS m
+LEFT JOIN demo_member_loans AS l ON l.member_id = m.id
+WHERE l.loaned_on &gt;= '2026-06-01'
+GROUP BY m.id, m.name
+ORDER BY m.name;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------+------------+
+| name | june_loans |
++------+------------+
+| Rosa |          1 |
++------+------------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> no error, but Kevin and Tessa have vanished. <code>WHERE</code> runs after the join, and for Tessa <code>l.loaned_on</code> is <code>NULL</code>, which fails the test; Kevin's only loan is from May. The <code>LEFT</code> in the join no longer does anything. <strong>Fix:</strong> move conditions on the right-hand table into <code>ON</code>:</p>
+                <pre><code class="language-sql">SELECT m.name, COUNT(l.member_id) AS june_loans
+FROM demo_members AS m
+LEFT JOIN demo_member_loans AS l
+       ON l.member_id = m.id AND l.loaned_on &gt;= '2026-06-01'
+GROUP BY m.id, m.name
+ORDER BY m.name;
+
+DROP DATABASE pitfall_demo;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------+------------+
+| name  | june_loans |
++-------+------------+
+| Kevin |          0 |
+| Rosa  |          1 |
+| Tessa |          0 |
++-------+------------+</code></pre>
+                </div>
+
+                <div class="card card-warning">
+                    <h4>⚠️ Three more traps that do not raise an error</h4>
+                    <ul>
+                        <li><strong>Reports that use <code>CURDATE()</code></strong> give different answers every day, so you cannot check them. Set a report date once (<code>SET @today = '2026-06-15';</code>) and use it everywhere; the real report just sets it to <code>CURDATE()</code>.</li>
+                        <li><strong>Checking a rule, then inserting, without a lock.</strong> Two desk volunteers can both see "drill available" and both lend it. The procedure in Milestone 5 locks the tool's row with <code>SELECT ... FOR UPDATE</code> inside a transaction, so the second check-out waits and then sees the first one.</li>
+                        <li><strong>Test data that only covers the happy path.</strong> If no loan is overdue and every member has borrowed something, a broken overdue query and a broken "never borrowed" query both look fine.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: The Maple Street Tool Library</h2>
+                <p>Eight milestones, about 240 minutes in total. Keep each milestone's SQL in its own numbered file in a <code>tool-library</code> folder, and run the files with <code>SOURCE</code> as you go. Start the client from inside that folder (<code>cd ~/mysql-course/tool-library</code>, then <code>mysql -u root -p</code>): <code>SOURCE</code> resolves file names from the folder the client was started in, so when <code>02_data.sql</code> runs <code>SOURCE 01_schema.sql</code> from anywhere else you get <code>Failed to open file '01_schema.sql', error: 2</code>.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Milestone 1: Design <span class="step-time">(30 min)</span></h3>
+                    <p>On paper or in a text file: list the tables with their columns, types and keys; draw the relationships (a sketch like the diagram above is enough); and write each of Rosa's eight requirements next to the place your design enforces or answers it. No SQL yet.</p>
+                    <details>
+                        <summary>🔒 Reference design (try it yourself first)</summary>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr><th>Table</th><th>Columns (key facts)</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td><code>members</code></td><td><code>id</code> PK, names, <code>email</code> UNIQUE, <code>joined_on</code>, <code>status</code> ENUM('active','suspended')</td></tr>
+                                    <tr><td><code>categories</code></td><td><code>id</code> PK, <code>name</code> UNIQUE</td></tr>
+                                    <tr><td><code>safety_courses</code></td><td><code>id</code> PK, <code>name</code> UNIQUE</td></tr>
+                                    <tr><td><code>tools</code></td><td><code>id</code> PK, <code>name</code>, <code>category_id</code> FK, <code>required_course_id</code> FK (NULL = no course), <code>tool_condition</code> ENUM, <code>replacement_value</code> DECIMAL CHECK &gt; 0, <code>acquired_on</code></td></tr>
+                                    <tr><td><code>member_courses</code></td><td>(<code>member_id</code>, <code>course_id</code>) PK, <code>completed_on</code></td></tr>
+                                    <tr><td><code>loans</code></td><td><code>id</code> PK, <code>tool_id</code> FK, <code>member_id</code> FK, <code>loaned_on</code>, <code>due_on</code>, <code>returned_on</code> (NULL = still out); CHECKs on the date order</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr><th>Requirement</th><th>Where it lives</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>1-4 the facts</td><td>Columns, <code>NOT NULL</code>, <code>UNIQUE</code>, ENUMs, foreign keys</td></tr>
+                                    <tr><td>5 one tool, one borrower; not in repair; not suspended; three at most; course first</td><td><code>checkout_tool</code> procedure, in a transaction with a row lock (these rules look at other rows)</td></tr>
+                                    <tr><td>6 Saturday questions</td><td><code>03_queries.sql</code> and the <code>v_open_loans</code> view</td></tr>
+                                    <tr><td>7 desk, treasurer, no deleting history</td><td>Roles <code>tl_desk</code> and <code>tl_reports</code>; no <code>DELETE</code> granted anywhere; <code>loans</code> foreign keys refuse deleting a member or tool that has history</td></tr>
+                                    <tr><td>8 do not start over</td><td>Backup with <code>mysqldump</code>, tested restore, scripts in version control</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p>Why an ENUM for condition and status but a table for categories? The library will add categories (and wants to list them), while the conditions and statuses are fixed by the code that uses them. Both choices are defensible; writing down the reason is what counts.</p>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Milestone 2: Build the schema <span class="step-time">(40 min)</span></h3>
+                    <p>Write <code>01_schema.sql</code>. It should start with <code>DROP DATABASE IF EXISTS tool_library;</code> so it can be rerun, create the tables parents first, name every constraint, and add indexes for the open-loan lookups. Then prove the constraints: write one statement that each constraint must reject.</p>
+                    <details>
+                        <summary>🔒 Reference solution: 01_schema.sql</summary>
+                        <pre><code class="language-sql">DROP DATABASE IF EXISTS tool_library;
+CREATE DATABASE tool_library CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE tool_library;
+
+CREATE TABLE members (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(50)  NOT NULL,
+    last_name  VARCHAR(50)  NOT NULL,
+    email      VARCHAR(100) NOT NULL,
+    joined_on  DATE         NOT NULL,
+    status     ENUM('active', 'suspended') NOT NULL DEFAULT 'active',
+    CONSTRAINT uq_members_email UNIQUE (email)
+);
+
+CREATE TABLE categories (
+    id   INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    CONSTRAINT uq_categories_name UNIQUE (name)
+);
+
+CREATE TABLE safety_courses (
+    id   INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(80) NOT NULL,
+    CONSTRAINT uq_courses_name UNIQUE (name)
+);
+
+CREATE TABLE tools (
+    id                 INT AUTO_INCREMENT PRIMARY KEY,
+    name               VARCHAR(100)  NOT NULL,
+    category_id        INT           NOT NULL,
+    required_course_id INT           NULL,
+    tool_condition     ENUM('good', 'fair', 'repair') NOT NULL DEFAULT 'good',
+    replacement_value  DECIMAL(8, 2) NOT NULL,
+    acquired_on        DATE          NOT NULL,
+    CONSTRAINT fk_tools_category FOREIGN KEY (category_id) REFERENCES categories (id),
+    CONSTRAINT fk_tools_course   FOREIGN KEY (required_course_id) REFERENCES safety_courses (id),
+    CONSTRAINT chk_tools_value   CHECK (replacement_value &gt; 0)
+);
+
+CREATE TABLE member_courses (
+    member_id    INT  NOT NULL,
+    course_id    INT  NOT NULL,
+    completed_on DATE NOT NULL,
+    PRIMARY KEY (member_id, course_id),
+    CONSTRAINT fk_mc_member FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE,
+    CONSTRAINT fk_mc_course FOREIGN KEY (course_id) REFERENCES safety_courses (id)
+);
+
+CREATE TABLE loans (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    tool_id     INT  NOT NULL,
+    member_id   INT  NOT NULL,
+    loaned_on   DATE NOT NULL,
+    due_on      DATE NOT NULL,
+    returned_on DATE NULL,
+    CONSTRAINT fk_loans_tool      FOREIGN KEY (tool_id)   REFERENCES tools (id),
+    CONSTRAINT fk_loans_member    FOREIGN KEY (member_id) REFERENCES members (id),
+    CONSTRAINT chk_loans_due      CHECK (due_on &gt;= loaned_on),
+    CONSTRAINT chk_loans_returned CHECK (returned_on IS NULL OR returned_on &gt;= loaned_on),
+    INDEX idx_loans_tool_open   (tool_id, returned_on),
+    INDEX idx_loans_member_open (member_id, returned_on)
+);
+
+SHOW TABLES;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>Database changed
++------------------------+
+| Tables_in_tool_library |
++------------------------+
+| categories             |
+| loans                  |
+| member_courses         |
+| members                |
+| safety_courses         |
+| tools                  |
++------------------------+</code></pre>
+                        </div>
+                        <p>The loan foreign keys have no <code>ON DELETE</code> rule, which means "refuse": a member or tool with loan history cannot be deleted, which is requirement 7 at the database level. Members are suspended instead. A member's course records, on the other hand, mean nothing without the member, so they cascade.</p>
+                        <p>Now the constraint tests. Run them inside a transaction and roll it back at the end, so the test rows never stay in the database. The parents need one row each first:</p>
+                        <pre><code class="language-sql">START TRANSACTION;
+
+INSERT INTO categories (name) VALUES ('Hand Tools');
+INSERT INTO members (first_name, last_name, email, joined_on)
+VALUES ('Test', 'Member', 'test@example.org', '2026-01-01');
+INSERT INTO tools (name, category_id, replacement_value, acquired_on)
+VALUES ('Test hammer', 1, 15.00, '2026-01-01');</code></pre>
+                        <pre data-raises="ERROR 3819"><code class="language-sql">INSERT INTO loans (tool_id, member_id, loaned_on, due_on)
+VALUES (1, 1, '2026-06-10', '2026-06-03');</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 3819 (HY000): Check constraint 'chk_loans_due' is violated.</code></pre>
+                        </div>
+                        <pre data-raises="ERROR 3819"><code class="language-sql">INSERT INTO tools (name, category_id, replacement_value, acquired_on)
+VALUES ('Free saw', 1, 0, '2026-01-01');</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 3819 (HY000): Check constraint 'chk_tools_value' is violated.</code></pre>
+                        </div>
+                        <pre data-raises="ERROR 1452"><code class="language-sql">INSERT INTO tools (name, category_id, replacement_value, acquired_on)
+VALUES ('Mystery tool', 99, 10.00, '2026-01-01');</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (`tool_library`.`tools`, CONSTRAINT `fk_tools_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`))</code></pre>
+                        </div>
+                        <pre data-raises="ERROR 1062"><code class="language-sql">INSERT INTO members (first_name, last_name, email, joined_on)
+VALUES ('Second', 'Account', 'test@example.org', '2026-02-01');</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 1062 (23000): Duplicate entry 'test@example.org' for key 'members.uq_members_email'</code></pre>
+                        </div>
+                        <pre><code class="language-sql">ROLLBACK;
+
+SELECT COUNT(*) AS members_left FROM members;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+--------------+
+| members_left |
++--------------+
+|            0 |
++--------------+</code></pre>
+                        </div>
+                        <p>Four rules, four rejections, each naming the constraint that fired. That is what "proven" means in the rubric. A failed statement inside a transaction only undoes itself, so the transaction stayed open until <code>ROLLBACK</code> removed the test rows. (<code>CREATE TABLE</code> cannot be rolled back, which is why the tests come after the schema.)</p>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Milestone 3: Populate with test data <span class="step-time">(25 min)</span></h3>
+                    <p>Write <code>02_data.sql</code>: it runs <code>01_schema.sql</code> first (so the data always lands in a clean database), then inserts about 8 members, 5 categories, 2 courses, 12 tools and 15 or more loans spread over several months. Plan the edge cases on purpose: a suspended member, a member who never borrowed, a tool out for repair, a tool never borrowed, two tools tied for most popular in a category, loans that are open, overdue, and returned late. Use explicit ids so your later queries are predictable.</p>
+                    <details>
+                        <summary>🔒 Reference solution: 02_data.sql</summary>
+                        <pre data-norun><code class="language-sql">SOURCE 01_schema.sql</code></pre>
+                        <p>The first line rebuilds the empty database from Milestone 2, so the script always gives the same result, however often you run it. (Your tables are already empty after the rolled-back tests, so you can also continue straight away.)</p>
+                        <p>Then the data itself, with explicit ids:</p>
+                        <pre><code class="language-sql">INSERT INTO members (id, first_name, last_name, email, joined_on, status) VALUES
+    (1, 'Rosa',   'Delgado',   'rosa.delgado@example.org',   '2025-09-06', 'active'),
+    (2, 'Kevin',  'Brooks',    'kevin.brooks@example.org',   '2025-09-20', 'active'),
+    (3, 'Amara',  'Okoye',     'amara.okoye@example.org',    '2025-10-11', 'active'),
+    (4, 'Liam',   'Foster',    'liam.foster@example.org',    '2025-11-02', 'active'),
+    (5, 'Hannah', 'Weiss',     'hannah.weiss@example.org',   '2026-01-17', 'active'),
+    (6, 'Omar',   'Haddad',    'omar.haddad@example.org',    '2026-02-08', 'active'),
+    (7, 'Tessa',  'Morgan',    'tessa.morgan@example.org',   '2026-03-21', 'active'),
+    (8, 'Victor', 'Lindqvist', 'victor.lindqvist@example.org', '2025-10-25', 'suspended');
+
+INSERT INTO categories (id, name) VALUES
+    (1, 'Hand Tools'), (2, 'Power Tools'), (3, 'Garden'), (4, 'Ladders'), (5, 'Cleaning');
+
+INSERT INTO safety_courses (id, name) VALUES
+    (1, 'Power Tools Basics'), (2, 'Chainsaw Safety');
+
+INSERT INTO member_courses (member_id, course_id, completed_on) VALUES
+    (1, 1, '2025-09-13'), (1, 2, '2025-10-04'), (2, 1, '2025-10-04'), (3, 1, '2025-11-08'),
+    (4, 1, '2025-11-08'), (4, 2, '2026-03-14'), (6, 1, '2026-02-21');
+
+INSERT INTO tools (id, name, category_id, required_course_id, tool_condition, replacement_value, acquired_on) VALUES
+    (1,  'Claw hammer',      1, NULL, 'good',    15.00, '2025-09-01'),
+    (2,  'Cordless drill',   2, 1,    'good',   120.00, '2025-09-01'),
+    (3,  'Circular saw',     2, 1,    'good',   150.00, '2025-10-15'),
+    (4,  'Socket set',       1, NULL, 'good',    60.00, '2025-09-01'),
+    (5,  'Hedge trimmer',    3, 1,    'fair',    90.00, '2025-11-20'),
+    (6,  'Chainsaw',         3, 2,    'good',   300.00, '2025-10-01'),
+    (7,  'Extension ladder', 4, NULL, 'good',   180.00, '2025-09-01'),
+    (8,  'Step ladder',      4, NULL, 'fair',    70.00, '2025-09-01'),
+    (9,  'Pressure washer',  5, 1,    'good',   250.00, '2026-01-10'),
+    (10, 'Carpet cleaner',   5, NULL, 'good',   200.00, '2026-02-01'),
+    (11, 'Wheelbarrow',      3, NULL, 'good',    85.00, '2025-09-01'),
+    (12, 'Tile cutter',      1, NULL, 'repair',  45.00, '2025-12-05');
+
+INSERT INTO loans (id, tool_id, member_id, loaned_on, due_on, returned_on) VALUES
+    (1,  2,  1, '2026-01-10', '2026-01-17', '2026-01-15'),
+    (2,  7,  2, '2026-01-24', '2026-01-31', '2026-01-30'),
+    (3,  6,  1, '2026-02-07', '2026-02-14', '2026-02-12'),
+    (4,  1,  5, '2026-02-14', '2026-02-21', '2026-02-19'),
+    (5,  9,  3, '2026-03-07', '2026-03-14', '2026-03-16'),
+    (6,  2,  4, '2026-03-14', '2026-03-21', '2026-03-20'),
+    (7,  5,  1, '2026-04-04', '2026-04-11', '2026-04-10'),
+    (8,  11, 6, '2026-04-11', '2026-04-18', '2026-04-17'),
+    (9,  6,  4, '2026-04-18', '2026-04-25', '2026-04-24'),
+    (10, 2,  2, '2026-05-02', '2026-05-09', '2026-05-08'),
+    (11, 8,  5, '2026-05-09', '2026-05-16', '2026-05-15'),
+    (12, 9,  6, '2026-05-23', '2026-05-30', '2026-05-29'),
+    (13, 7,  3, '2026-06-01', '2026-06-08', NULL),
+    (14, 2,  1, '2026-06-06', '2026-06-13', NULL),
+    (15, 4,  2, '2026-06-10', '2026-06-17', NULL),
+    (16, 10, 5, '2026-06-12', '2026-06-19', NULL);
+
+SELECT 'members' AS table_name, COUNT(*) AS row_count FROM members
+UNION ALL SELECT 'categories', COUNT(*) FROM categories
+UNION ALL SELECT 'safety_courses', COUNT(*) FROM safety_courses
+UNION ALL SELECT 'member_courses', COUNT(*) FROM member_courses
+UNION ALL SELECT 'tools', COUNT(*) FROM tools
+UNION ALL SELECT 'loans', COUNT(*) FROM loans;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+----------------+-----------+
+| table_name     | row_count |
++----------------+-----------+
+| members        |         8 |
+| categories     |         5 |
+| safety_courses |         2 |
+| member_courses |         7 |
+| tools          |        12 |
+| loans          |        16 |
++----------------+-----------+</code></pre>
+                        </div>
+                        <p>The edge cases are all there: Victor is suspended, Tessa has never borrowed, the tile cutter is being repaired and has never been lent, the hammer and the socket set are tied in Hand Tools, loan 5 came back two days late, and loans 13 to 16 are still out.</p>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Milestone 4: Answer the Saturday questions <span class="step-time">(45 min)</span></h3>
+                    <p>Write <code>03_queries.sql</code> with one commented query per question, all using a report date stored once in <code>@today</code> (use <code>2026-06-15</code> so you can compare with the reference). Check at least two results by hand against the data.</p>
+                    <ol>
+                        <li>Which tools are on the shelf right now (not on loan, not in repair)?</li>
+                        <li>Which loans are overdue, by how many days, and whom do we email?</li>
+                        <li>Which tool is the most borrowed in each category (ties included)?</li>
+                        <li>How many loans started each month, with a running total?</li>
+                        <li>Which members have never borrowed anything?</li>
+                        <li>Which active members may borrow the chainsaw?</li>
+                    </ol>
+                    <details>
+                        <summary>🔒 Reference solution: 03_queries.sql</summary>
+                        <pre><code class="language-sql">SET @today = '2026-06-15';
+
+-- 1. On the shelf now
+SELECT t.id, t.name, c.name AS category
+FROM tools AS t
+JOIN categories AS c ON c.id = t.category_id
+WHERE t.tool_condition &lt;&gt; 'repair'
+  AND NOT EXISTS (SELECT 1 FROM loans AS l
+                  WHERE l.tool_id = t.id AND l.returned_on IS NULL)
+ORDER BY c.name, t.name;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+----+-----------------+-------------+
+| id | name            | category    |
++----+-----------------+-------------+
+|  9 | Pressure washer | Cleaning    |
+|  6 | Chainsaw        | Garden      |
+|  5 | Hedge trimmer   | Garden      |
+| 11 | Wheelbarrow     | Garden      |
+|  1 | Claw hammer     | Hand Tools  |
+|  8 | Step ladder     | Ladders     |
+|  3 | Circular saw    | Power Tools |
++----+-----------------+-------------+</code></pre>
+                        </div>
+                        <pre><code class="language-sql">-- 2. Overdue, worst first
+SELECT l.id AS loan_id, t.name AS tool,
+       CONCAT(m.first_name, ' ', m.last_name) AS member, m.email,
+       l.due_on, DATEDIFF(@today, l.due_on) AS days_overdue
+FROM loans AS l
+JOIN tools   AS t ON t.id = l.tool_id
+JOIN members AS m ON m.id = l.member_id
+WHERE l.returned_on IS NULL
+  AND l.due_on &lt; @today
+ORDER BY days_overdue DESC;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+---------+------------------+--------------+--------------------------+------------+--------------+
+| loan_id | tool             | member       | email                    | due_on     | days_overdue |
++---------+------------------+--------------+--------------------------+------------+--------------+
+|      13 | Extension ladder | Amara Okoye  | amara.okoye@example.org  | 2026-06-08 |            7 |
+|      14 | Cordless drill   | Rosa Delgado | rosa.delgado@example.org | 2026-06-13 |            2 |
++---------+------------------+--------------+--------------------------+------------+--------------+</code></pre>
+                        </div>
+                        <pre><code class="language-sql">-- 3. Most borrowed per category (RANK keeps ties)
+WITH loan_counts AS (
+    SELECT c.name AS category, t.name AS tool, COUNT(l.id) AS loans
+    FROM tools AS t
+    JOIN categories AS c ON c.id = t.category_id
+    LEFT JOIN loans AS l ON l.tool_id = t.id
+    GROUP BY c.name, t.id, t.name
+),
+ranked AS (
+    SELECT category, tool, loans,
+           RANK() OVER (PARTITION BY category ORDER BY loans DESC) AS rank_in_category
+    FROM loan_counts
+)
+SELECT category, tool, loans
+FROM ranked
+WHERE rank_in_category = 1
+ORDER BY category, tool;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------------+------------------+-------+
+| category    | tool             | loans |
++-------------+------------------+-------+
+| Cleaning    | Pressure washer  |     2 |
+| Garden      | Chainsaw         |     2 |
+| Hand Tools  | Claw hammer      |     1 |
+| Hand Tools  | Socket set       |     1 |
+| Ladders     | Extension ladder |     2 |
+| Power Tools | Cordless drill   |     4 |
++-------------+------------------+-------+</code></pre>
+                        </div>
+                        <pre><code class="language-sql">-- 4. Loans per month with a running total
+WITH monthly AS (
+    SELECT DATE_FORMAT(loaned_on, '%Y-%m') AS month, COUNT(*) AS loans
+    FROM loans
+    GROUP BY DATE_FORMAT(loaned_on, '%Y-%m')
+)
+SELECT month, loans,
+       SUM(loans) OVER (ORDER BY month) AS running_total
+FROM monthly
+ORDER BY month;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+---------+-------+---------------+
+| month   | loans | running_total |
++---------+-------+---------------+
+| 2026-01 |     2 |             2 |
+| 2026-02 |     2 |             4 |
+| 2026-03 |     2 |             6 |
+| 2026-04 |     3 |             9 |
+| 2026-05 |     3 |            12 |
+| 2026-06 |     4 |            16 |
++---------+-------+---------------+</code></pre>
+                        </div>
+                        <pre><code class="language-sql">-- 5. Never borrowed
+SELECT CONCAT(m.first_name, ' ', m.last_name) AS member, m.status
+FROM members AS m
+LEFT JOIN loans AS l ON l.member_id = m.id
+WHERE l.id IS NULL
+ORDER BY member;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------------+-----------+
+| member           | status    |
++------------------+-----------+
+| Tessa Morgan     | active    |
+| Victor Lindqvist | suspended |
++------------------+-----------+</code></pre>
+                        </div>
+                        <pre><code class="language-sql">-- 6. Active members cleared for the chainsaw
+SELECT CONCAT(m.first_name, ' ', m.last_name) AS member, mc.completed_on
+FROM tools AS t
+JOIN member_courses AS mc ON mc.course_id = t.required_course_id
+JOIN members AS m         ON m.id = mc.member_id
+WHERE t.name = 'Chainsaw'
+  AND m.status = 'active'
+ORDER BY member;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+--------------+--------------+
+| member       | completed_on |
++--------------+--------------+
+| Liam Foster  | 2026-03-14   |
+| Rosa Delgado | 2025-10-04   |
++--------------+--------------+</code></pre>
+                        </div>
+                        <p>Hand checks: tools 2, 4, 7 and 10 are out and 12 is in repair, so 7 of 12 are on the shelf. On June 15, the ladder due June 8 is 7 days late and the drill due June 13 is 2; the socket set and carpet cleaner are not due yet. The drill (4 loans) tops Power Tools, and the hammer and socket set (1 each) share first place in Hand Tools because <code>RANK</code> gives equal values the same rank.</p>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Milestone 5: Business logic <span class="step-time">(40 min)</span></h3>
+                    <p>Write <code>04_logic.sql</code>: a view <code>v_open_loans</code> for the desk screen, a procedure <code>checkout_tool(member, tool, date)</code> that enforces all five rules from requirement 5 inside a transaction and stops with a clear message when one fails, and <code>return_tool(tool, date)</code>. Passing <code>NULL</code> as the date should mean today. Then test every rule with a call that must fail, and one that must succeed.</p>
+                    <details>
+                        <summary>🔒 Reference solution: 04_logic.sql</summary>
+                        <pre><code class="language-sql">CREATE VIEW v_open_loans AS
+SELECT l.id AS loan_id, t.id AS tool_id, t.name AS tool,
+       CONCAT(m.first_name, ' ', m.last_name) AS member,
+       l.loaned_on, l.due_on
+FROM loans AS l
+JOIN tools   AS t ON t.id = l.tool_id
+JOIN members AS m ON m.id = l.member_id
+WHERE l.returned_on IS NULL;
+
+DELIMITER //
+
+CREATE PROCEDURE checkout_tool(IN p_member_id INT, IN p_tool_id INT, IN p_loan_date DATE)
+BEGIN
+    DECLARE v_status    VARCHAR(10);
+    DECLARE v_condition VARCHAR(10);
+    DECLARE v_course    INT;
+    DECLARE v_open      INT;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    SET p_loan_date = COALESCE(p_loan_date, CURDATE());
+
+    START TRANSACTION;
+
+    SELECT status INTO v_status FROM members WHERE id = p_member_id;
+    IF v_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No such member';
+    ELSEIF v_status &lt;&gt; 'active' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Member is suspended';
+    END IF;
+
+    -- lock the tool's row: a second check-out of the same tool waits here
+    SELECT tool_condition, required_course_id INTO v_condition, v_course
+    FROM tools WHERE id = p_tool_id FOR UPDATE;
+    IF v_condition IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No such tool';
+    ELSEIF v_condition = 'repair' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tool is out for repair';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM loans WHERE tool_id = p_tool_id AND returned_on IS NULL) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tool is already on loan';
+    END IF;
+
+    IF v_course IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM member_courses WHERE member_id = p_member_id AND course_id = v_course) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Safety course required for this tool';
+    END IF;
+
+    SELECT COUNT(*) INTO v_open FROM loans WHERE member_id = p_member_id AND returned_on IS NULL;
+    IF v_open &gt;= 3 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Loan limit reached (3 open loans)';
+    END IF;
+
+    INSERT INTO loans (tool_id, member_id, loaned_on, due_on)
+    VALUES (p_tool_id, p_member_id, p_loan_date, p_loan_date + INTERVAL 7 DAY);
+
+    COMMIT;
+
+    SELECT LAST_INSERT_ID() AS loan_id, p_loan_date + INTERVAL 7 DAY AS due_on;
+END //
+
+CREATE PROCEDURE return_tool(IN p_tool_id INT, IN p_return_date DATE)
+BEGIN
+    UPDATE loans
+    SET returned_on = COALESCE(p_return_date, CURDATE())
+    WHERE tool_id = p_tool_id AND returned_on IS NULL;
+
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tool is not on loan';
+    END IF;
+END //
+
+DELIMITER ;</code></pre>
+                        <p>Every rule gets a call that must fail (note the messages):</p>
+                        <pre data-raises="ERROR 1644"><code class="language-sql">CALL checkout_tool(8, 1, '2026-06-15');   -- Victor is suspended</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 1644 (45000): Member is suspended</code></pre>
+                        </div>
+                        <pre data-raises="ERROR 1644"><code class="language-sql">CALL checkout_tool(1, 12, '2026-06-15');  -- tile cutter in repair</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 1644 (45000): Tool is out for repair</code></pre>
+                        </div>
+                        <pre data-raises="ERROR 1644"><code class="language-sql">CALL checkout_tool(6, 7, '2026-06-15');   -- ladder is out with Amara</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 1644 (45000): Tool is already on loan</code></pre>
+                        </div>
+                        <pre data-raises="ERROR 1644"><code class="language-sql">CALL checkout_tool(7, 6, '2026-06-15');   -- Tessa has no chainsaw course</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 1644 (45000): Safety course required for this tool</code></pre>
+                        </div>
+                        <p>For the loan limit, give Kevin two more tools (he already has the socket set), then try a fourth:</p>
+                        <pre><code class="language-sql">CALL checkout_tool(2, 1, '2026-06-15');
+CALL checkout_tool(2, 3, '2026-06-15');</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+---------+------------+
+| loan_id | due_on     |
++---------+------------+
+|      17 | 2026-06-22 |
++---------+------------+
++---------+------------+
+| loan_id | due_on     |
++---------+------------+
+|      18 | 2026-06-22 |
++---------+------------+</code></pre>
+                        </div>
+                        <pre data-raises="ERROR 1644"><code class="language-sql">CALL checkout_tool(2, 8, '2026-06-15');   -- a fourth tool for Kevin</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 1644 (45000): Loan limit reached (3 open loans)</code></pre>
+                        </div>
+                        <p>Returns, and the desk view:</p>
+                        <pre><code class="language-sql">CALL return_tool(1, '2026-06-16');
+CALL return_tool(3, '2026-06-16');
+CALL return_tool(7, '2026-06-16');
+
+SELECT * FROM v_open_loans ORDER BY due_on, loan_id;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+---------+---------+----------------+--------------+------------+------------+
+| loan_id | tool_id | tool           | member       | loaned_on  | due_on     |
++---------+---------+----------------+--------------+------------+------------+
+|      14 |       2 | Cordless drill | Rosa Delgado | 2026-06-06 | 2026-06-13 |
+|      15 |       4 | Socket set     | Kevin Brooks | 2026-06-10 | 2026-06-17 |
+|      16 |      10 | Carpet cleaner | Hannah Weiss | 2026-06-12 | 2026-06-19 |
++---------+---------+----------------+--------------+------------+------------+</code></pre>
+                        </div>
+                        <pre data-raises="ERROR 1644"><code class="language-sql">CALL return_tool(7, '2026-06-16');        -- the ladder is already back</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 1644 (45000): Tool is not on loan</code></pre>
+                        </div>
+                        <p>The <code>EXIT HANDLER</code> rolls back and re-raises the error, so a failed check-out never leaves a half-finished transaction behind, and the desk's web form receives the exact message to show. The ladder came back eight days late; Milestone 4's overdue query no longer lists it.</p>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Milestone 6: Security <span class="step-time">(20 min)</span></h3>
+                    <p>Write <code>05_security.sql</code>: a role for the desk (read everything, run the two procedures, add and edit members, nothing else) and one for reports (read only), plus one account for the desk's web form and one for the treasurer. No account gets <code>DELETE</code>, and the web form's account cannot write to <code>loans</code> directly.</p>
+                    <details>
+                        <summary>🔒 Reference solution: 05_security.sql</summary>
+                        <pre><code class="language-sql">CREATE ROLE IF NOT EXISTS 'tl_desk', 'tl_reports';
+
+GRANT SELECT ON tool_library.* TO 'tl_reports';
+
+GRANT SELECT ON tool_library.* TO 'tl_desk';
+GRANT INSERT, UPDATE ON tool_library.members TO 'tl_desk';
+GRANT EXECUTE ON PROCEDURE tool_library.checkout_tool TO 'tl_desk';
+GRANT EXECUTE ON PROCEDURE tool_library.return_tool TO 'tl_desk';
+
+CREATE USER IF NOT EXISTS 'tl_desk_app'@'localhost' IDENTIFIED BY 'Change-Me-Desk-2026';
+GRANT 'tl_desk' TO 'tl_desk_app'@'localhost';
+SET DEFAULT ROLE 'tl_desk' TO 'tl_desk_app'@'localhost';
+
+CREATE USER IF NOT EXISTS 'tl_treasurer'@'localhost' IDENTIFIED BY 'Change-Me-Reports-2026';
+GRANT 'tl_reports' TO 'tl_treasurer'@'localhost';
+SET DEFAULT ROLE 'tl_reports' TO 'tl_treasurer'@'localhost';
+
+SHOW GRANTS FOR 'tl_desk_app'@'localhost' USING 'tl_desk';</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+----------------------------------------------------------------------------------------+
+| Grants for tl_desk_app@localhost                                                       |
++----------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `tl_desk_app`@`localhost`                                        |
+| GRANT SELECT ON `tool_library`.* TO `tl_desk_app`@`localhost`                          |
+| GRANT INSERT, UPDATE ON `tool_library`.`members` TO `tl_desk_app`@`localhost`          |
+| GRANT EXECUTE ON PROCEDURE `tool_library`.`checkout_tool` TO `tl_desk_app`@`localhost` |
+| GRANT EXECUTE ON PROCEDURE `tool_library`.`return_tool` TO `tl_desk_app`@`localhost`   |
+| GRANT `tl_desk`@`%` TO `tl_desk_app`@`localhost`                                       |
++----------------------------------------------------------------------------------------+</code></pre>
+                        </div>
+                        <p>The desk account can create loans only by calling <code>checkout_tool</code>. The procedure runs with its definer's rights (<code>SQL SECURITY DEFINER</code> is the default), so it may insert into <code>loans</code> even though the caller may not, and every loan passes through the rules. Log in as <code>tl_desk_app</code> and try <code>DELETE FROM tool_library.loans WHERE id = 1;</code>: you get <code>ERROR 1142 (42000): DELETE command denied to user 'tl_desk_app'@'localhost' for table 'loans'</code>. Replace both placeholder passwords with real ones, and keep the real ones out of the script you share.</p>
+                        <div class="card card-info">
+                            <h4>🐬 Version note</h4>
+                            <p>MariaDB has roles too, but writes the default-role statement differently: <code>SET DEFAULT ROLE tl_desk FOR 'tl_desk_app'@'localhost';</code>, and creates one role per <code>CREATE ROLE</code> statement.</p>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Milestone 7: Back up and test the restore <span class="step-time">(20 min)</span></h3>
+                    <p>Make a backup with the options from Lesson 8.1 (your procedures and view must be in it), restore it into <code>tool_library_test</code>, compare row counts, and write the result in your README.</p>
+                    <details>
+                        <summary>🔒 Reference solution</summary>
+                        <pre><code class="language-bash">mysqldump -u root -p --single-transaction --routines --events --set-gtid-purged=OFF \
+    tool_library &gt; tool_library_$(date +%F).sql
+
+mysql -u root -p -e "CREATE DATABASE tool_library_test"
+mysql -u root -p tool_library_test &lt; tool_library_$(date +%F).sql</code></pre>
+                        <p>Then, in the mysql client:</p>
+                        <pre data-norun><code class="language-sql">SELECT
+    (SELECT COUNT(*) FROM tool_library.loans)      AS loans_original,
+    (SELECT COUNT(*) FROM tool_library_test.loans) AS loans_copy;
+SHOW PROCEDURE STATUS WHERE Db = 'tool_library_test';
+DROP DATABASE tool_library_test;</code></pre>
+                        <p>Both counts should be 18 (16 loans plus Kevin's two), and both procedures should be listed. Restore as <code>root</code>: the view and procedures carry <code>DEFINER=`root`@`localhost`</code>, and recreating objects for another definer needs extra privileges. Remember that the accounts are not in the dump; <code>05_security.sql</code> is their backup.</p>
+                    </details>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Milestone 8: Self-review and write-up <span class="step-time">(20 min)</span></h3>
+                    <p>Rebuild everything from your files in order (<code>02_data.sql</code>, which runs <code>01_schema.sql</code>, then 03, 04, 05) on a clean server or after <code>DROP DATABASE tool_library;</code>. If any step needs a manual fix, your scripts are not finished. Then go through this self-review list honestly:</p>
+                    <ul>
+                        <li>Can I point to where each of Rosa's eight requirements is handled?</li>
+                        <li>Does every constraint have a statement that proves it rejects bad data?</li>
+                        <li>Would any Saturday query give a wrong answer if a member had no loans, or a tool had never been lent?</li>
+                        <li>Does any account have more privileges than its job needs? Is <code>root</code> used anywhere outside setup and backups?</li>
+                        <li>If my laptop died now, which files would I need, and where are their copies?</li>
+                    </ul>
+                    <p>Finish with <code>README.md</code>, one page:</p>
+                    <pre><code class="language-text"># Maple Street Tool Library database
+
+## Design
+Six tables (diagram: design.png). Rules enforced by constraints: ...
+Rules enforced by checkout_tool: ...
+
+## Rebuild from scratch
+1. SOURCE 02_data.sql   (runs 01_schema.sql first)
+2. SOURCE 03_queries.sql, 04_logic.sql, 05_security.sql (set real passwords first)
+
+## Backups
+Nightly mysqldump (options ...); last restore test: DATE, counts matched.
+
+## Next steps
+Reservations, late fees, a maintenance log for repairs ...</code></pre>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li>A design with every requirement mapped to where it is enforced or answered</li>
+                        <li><code>01_schema.sql</code> runs twice without errors and each constraint has a test that it rejects bad data</li>
+                        <li><code>02_data.sql</code> covers the edge cases: suspended, never borrowed, in repair, overdue, late return, ties</li>
+                        <li>All six Saturday queries run against a fixed <code>@today</code> and at least two are checked by hand</li>
+                        <li><code>checkout_tool</code> rejects each of the five rule violations with its own message and leaves no open transaction</li>
+                        <li>The desk and treasurer accounts work through roles, and neither is <code>root</code> or can delete</li>
+                        <li>A backup restored into a test database with matching counts, recorded in <code>README.md</code></li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+                <p>These grow the project the way a real client would ask for it. They run on <code>tool_library</code> as Milestone 5 leaves it (18 loans).</p>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: Late Returns</h3>
+                    <p>Rosa wants to know who brought tools back late and by how many days, for loans that have been returned. Sort the latest returns (most days late) first.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Compare <code>returned_on</code> with <code>due_on</code> using <code>DATEDIFF</code>; only rows where <code>returned_on &gt; due_on</code> count.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT l.id AS loan_id, t.name AS tool,
+       CONCAT(m.first_name, ' ', m.last_name) AS member,
+       l.due_on, l.returned_on,
+       DATEDIFF(l.returned_on, l.due_on) AS days_late
+FROM loans AS l
+JOIN tools   AS t ON t.id = l.tool_id
+JOIN members AS m ON m.id = l.member_id
+WHERE l.returned_on &gt; l.due_on
+ORDER BY days_late DESC, loan_id;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+---------+------------------+-------------+------------+-------------+-----------+
+| loan_id | tool             | member      | due_on     | returned_on | days_late |
++---------+------------------+-------------+------------+-------------+-----------+
+|      13 | Extension ladder | Amara Okoye | 2026-06-08 | 2026-06-16  |         8 |
+|       5 | Pressure washer  | Amara Okoye | 2026-03-14 | 2026-03-16  |         2 |
++---------+------------------+-------------+------------+-------------+-----------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 2: Member Activity</h3>
+                    <p>One row per member, including those who never borrowed: total loans, loans still open, and the date of their latest loan. Sort by total loans, then name.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>A <code>LEFT JOIN</code> keeps every member. <code>COUNT(l.id)</code> counts their loans; <code>SUM(l.returned_on IS NULL)</code> would count a member with no loans as open once, so test <code>l.id IS NOT NULL</code> as well.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT CONCAT(m.first_name, ' ', m.last_name) AS member,
+       COUNT(l.id) AS total_loans,
+       COUNT(CASE WHEN l.id IS NOT NULL AND l.returned_on IS NULL THEN 1 END) AS open_loans,
+       MAX(l.loaned_on) AS latest_loan
+FROM members AS m
+LEFT JOIN loans AS l ON l.member_id = m.id
+GROUP BY m.id, m.first_name, m.last_name
+ORDER BY total_loans DESC, member;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------------+-------------+------------+-------------+
+| member           | total_loans | open_loans | latest_loan |
++------------------+-------------+------------+-------------+
+| Kevin Brooks     |           5 |          1 | 2026-06-15  |
+| Rosa Delgado     |           4 |          1 | 2026-06-06  |
+| Hannah Weiss     |           3 |          1 | 2026-06-12  |
+| Amara Okoye      |           2 |          0 | 2026-06-01  |
+| Liam Foster      |           2 |          0 | 2026-04-18  |
+| Omar Haddad      |           2 |          0 | 2026-05-23  |
+| Tessa Morgan     |           0 |          0 | NULL        |
+| Victor Lindqvist |           0 |          0 | NULL        |
++------------------+-------------+------------+-------------+</code></pre>
+                        </div>
+                        <p><code>COUNT</code> of a <code>CASE</code> with no <code>ELSE</code> counts only the rows where the condition holds, since the others are <code>NULL</code>.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: Replacement Value at Risk</h3>
+                    <p>For insurance, show the total replacement value of the tools currently out on loan, per category, with a grand total row.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Join the view <code>v_open_loans</code> to <code>tools</code> and <code>categories</code>, group by category, and add <code>WITH ROLLUP</code>. <code>GROUPING()</code> labels the total row.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">SELECT IF(GROUPING(c.name), 'All categories', c.name) AS category,
+       COUNT(*) AS tools_out,
+       SUM(t.replacement_value) AS value_out
+FROM v_open_loans AS o
+JOIN tools      AS t ON t.id = o.tool_id
+JOIN categories AS c ON c.id = t.category_id
+GROUP BY c.name WITH ROLLUP;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+----------------+-----------+-----------+
+| category       | tools_out | value_out |
++----------------+-----------+-----------+
+| Cleaning       |         1 |    200.00 |
+| Hand Tools     |         1 |     60.00 |
+| Power Tools    |         1 |    120.00 |
+| All categories |         3 |    380.00 |
++----------------+-----------+-----------+</code></pre>
+                        </div>
+                        <p>With <code>ROLLUP</code>, MySQL puts the summary row last. <code>GROUPING()</code> does not exist in MariaDB; there, test <code>c.name IS NULL</code> instead.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): One Open Loan per Tool, Guaranteed</h3>
+                    <p>The procedure enforces "one borrower at a time", but an administrator typing an <code>INSERT</code> by hand could still break it. Make the database itself refuse a second open loan for the same tool. A normal <code>UNIQUE (tool_id)</code> will not do, since a tool has many returned loans.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Add a generated column that equals <code>tool_id</code> while the loan is open and <code>NULL</code> once it is returned, and make that column <code>UNIQUE</code>. A unique index allows any number of <code>NULL</code>s.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">ALTER TABLE loans
+    ADD COLUMN open_tool_id INT
+        GENERATED ALWAYS AS (IF(returned_on IS NULL, tool_id, NULL)) STORED,
+    ADD CONSTRAINT uq_loans_one_open_per_tool UNIQUE (open_tool_id);</code></pre>
+                        <pre data-raises="ERROR 1062"><code class="language-sql">INSERT INTO loans (tool_id, member_id, loaned_on, due_on)
+VALUES (2, 4, '2026-06-16', '2026-06-23');   -- the drill is out with Rosa</code></pre>
+                        <div class="card card-output">
+                            <h4>Error</h4>
+                            <pre><code>ERROR 1062 (23000): Duplicate entry '2' for key 'loans.uq_loans_one_open_per_tool'</code></pre>
+                        </div>
+                        <p>The rule now holds no matter who writes to the table, and it also closes the race between two desk volunteers for good. Keep the check in the procedure anyway: it gives a friendlier message than a duplicate-key error.</p>
+                    </details>
+                </div>
+            </section>
+
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
+                <div class="card quiz-container">
+                    <h3>🎯 Check Your Understanding</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> Where can the rule "a member may have at most three open loans" be enforced in MySQL?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="A CHECK constraint can only look at the values of the row being written, not count other rows.">
+                                A) In a CHECK constraint on <code>loans</code>
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="The rule depends on other rows, so it belongs in the code that creates loans: a procedure that counts open loans inside a transaction before inserting.">
+                                B) In the procedure that creates loans, inside a transaction
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="A default only fills in a missing value; it never rejects a row.">
+                                C) With a DEFAULT value on <code>member_id</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> Members complete safety courses, and each course is completed by many members, on a date. How do you store that?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="A many-to-many relationship needs a junction table, and the completion date is a fact about the pair, so it lives there too.">
+                                A) A junction table with <code>member_id</code>, <code>course_id</code> and <code>completed_on</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="A list of ids in one text column breaks first normal form and cannot have a foreign key.">
+                                B) A <code>courses</code> text column in <code>members</code>, like '1,2'
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Then each course could only be completed by one member.">
+                                C) A <code>member_id</code> column in <code>safety_courses</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> MySQL rejects this table with error 3814. Why?</p>
+                        <pre data-raises="ERROR 3814"><code class="language-sql">CREATE TABLE quiz_loans (due_on DATE, CHECK (due_on &gt;= CURDATE()));</code></pre>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="CHECK constraints are enforced in MySQL since 8.0.16, on DATE columns too.">
+                                A) CHECK constraints cannot be used on DATE columns
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Unnamed constraints are allowed; MySQL names them for you.">
+                                B) The constraint has no name
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="A constraint must give the same answer for a row at any time. CURDATE() changes every day, so MySQL disallows it in CHECK.">
+                                C) <code>CURDATE()</code> changes over time, so it is not allowed in a CHECK
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> Why do the reference queries use <code>@today</code> instead of <code>CURDATE()</code>?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="With a fixed report date the results can be checked by hand and compared over time; in production the variable is simply set to CURDATE().">
+                                A) So the results are repeatable and can be checked against known answers
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Both are fast. Think about what happens to the output tomorrow.">
+                                B) Because user variables are faster than functions
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="CURDATE() works fine in a WHERE clause; the restriction you met was in CHECK constraints.">
+                                C) Because <code>CURDATE()</code> is not allowed in WHERE
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> The desk's web form connects as <code>tl_desk_app</code>, which has <code>EXECUTE</code> on <code>checkout_tool</code> but no <code>INSERT</code> on <code>loans</code>. What happens when it calls the procedure?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="The procedure runs with its definer's privileges by default, not the caller's.">
+                                A) The INSERT inside the procedure fails with error 1142
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Roles and EXECUTE do not hand out table privileges to the account.">
+                                B) The account gains INSERT on loans permanently
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="With SQL SECURITY DEFINER (the default) the procedure uses its definer's rights, so it can insert the loan, while the account itself still cannot touch loans directly.">
+                                C) The loan is created, because the procedure runs with its definer's rights
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Can I build a different business instead?</summary>
+                    <p>Yes, as long as it has at least five tables, a many-to-many relationship, a rule that spans rows and two kinds of users. A ready-made alternative: <strong>a small physiotherapy clinic</strong>. Patients, therapists, treatment types (each with a price and length), and appointments (patient, therapist, treatment, start time, status). Rules: a therapist cannot be booked twice at the same start time (a <code>UNIQUE (therapist_id, starts_at)</code> covers exact clashes; overlapping lengths need a procedure), cancelled appointments stay in the history, and front-desk staff book while therapists only read their own schedule. Keep all patient data fictional.</p>
+                </details>
+                <details>
+                    <summary>My design is different from the reference. Is it wrong?</summary>
+                    <p>Not necessarily. A lookup table instead of an ENUM, a <code>loan_status</code> column, separate first and last names or one name column: all can be fine. Check yours against the rubric and the starter checklist. It is wrong only if it stores something twice, loses a fact, or cannot enforce a rule from the brief.</p>
+                </details>
+                <details>
+                    <summary>Why not store "available" as a column on tools?</summary>
+                    <p>Because it would duplicate what the open loans already say, and the two would eventually disagree (a return recorded, the flag not reset). Derive it. If a query ever gets slow, an index on <code>loans (tool_id, returned_on)</code>, which the schema has, fixes that long before denormalizing would be needed.</p>
+                </details>
+                <details>
+                    <summary>Should this go on GitHub?</summary>
+                    <p>Yes: the numbered scripts and the README make a good portfolio piece. Commit the scripts with placeholder passwords only, never a backup file of real data, and never the <code>.mylogin.cnf</code> file.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>Add <strong>reservations</strong>: a member can reserve a tool that is out, and the first reservation in line gets it when it comes back. You will need a new table, a change to <code>checkout_tool</code> (only the first in line, or nobody, may borrow a reserved tool), a query for "who is waiting for what", and a decision about what happens to reservations of a suspended member. Write the decision down before the SQL.</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Which design decision did you change your mind about while building, and what made you change it? If you compared your work with the reference, name one thing yours does better and one thing you would borrow from it.</p>
+                </div>
+            </section>
+
+            <section id="summary" class="lesson-section">
+                <h2>📝 Lesson Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎓 Key Takeaways</h3>
+                    <ul>
+                        <li>Design first: nouns become tables, verbs become relationships, and every rule gets a home before any SQL is written</li>
+                        <li>Single-row rules go in types and constraints; rules across rows go in a procedure with a transaction and a row lock</li>
+                        <li>Build scripts must be re-runnable, ordered parents first, and every constraint deserves a test that it rejects bad data</li>
+                        <li>Test data is a design tool: plant the edge cases that would expose a wrong query</li>
+                        <li>Reports use a fixed report date so they can be checked; production sets it to today</li>
+                        <li>Applications get their own least-privilege accounts through roles, and a database is only safe once its backup has been restored</li>
+                    </ul>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You turned a client's description into a working, normalized database with six tables and tested constraints</li>
+                        <li>You answered real business questions with joins, CTEs and window functions</li>
+                        <li>You wrote procedures that enforce rules no constraint can, and secured them behind roles</li>
+                        <li>You backed up your own database, proved the restore, and documented how to rebuild it all</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>In <a href="lesson_21.html"><strong>Lesson 8.3: Next Steps &amp; Best Practices</strong></a> you step back from the details: the habits that keep databases healthy, how applications talk to MySQL safely, and where to go next, from a programming language to database administration.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
+                <ul>
+                    <li>Rebuild <code>tool_library</code> from your scripts once more, from an empty server, without fixing anything by hand</li>
+                    <li>Score your project with the rubric and write the score and one improvement in your README</li>
+                    <li>Note which part of the project felt hardest: the next lesson suggests where to practice it</li>
+                </ul>
+
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>This is the moment the course has been building toward: you started from a few paragraphs of a client's worries and ended with a database that protects her data, answers her questions and survives a dead laptop. Real projects are exactly this, just with more tables. If parts of it took longer than planned or needed the reference, that is normal; designing is a skill that grows with every project, and you have just done a complete one.</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_20.html" class="prev-lesson">← Previous: Importing &amp; Exporting Data</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_21.html" class="next-lesson">Next: Next Steps &amp; Best Practices →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>

@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Write readable multi-step queries with common table expressions (WITH), and walk number series, calendars and the employee hierarchy with recursive CTEs. MySQL Foundations Lesson 5.1.">
+    <meta name="author" content="Ray de la Paz">
+    <title>CTEs &amp; Recursive Queries - MySQL Foundations</title>
+    <script src="js/theme-init.js"></script>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        window.__mermaid = mermaid;
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark
+                ? { primaryColor: '#334155', primaryTextColor: '#e2e8f0', primaryBorderColor: '#6366f1', lineColor: '#94a3b8', secondaryColor: '#1e293b', tertiaryColor: '#0f172a' }
+                : { primaryColor: '#eff6ff', primaryTextColor: '#1e293b', primaryBorderColor: '#3b82f6', lineColor: '#64748b', secondaryColor: '#f8fafc', tertiaryColor: '#f1f5f9' }
+        });
+    </script>
+</head>
+<body>
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">MySQL Foundations</a>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-expanded="false" aria-controls="nav-links">☰</button>
+            <div class="nav-links" id="nav-links">
+                <a href="index.html">Home</a>
+                <a href="index.html#modules">All Modules</a>
+                <span class="nav-divider"></span>
+                <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+                <a href="https://rays-home.netlify.app/contact">Contact</a>
+                <button id="theme-toggle" aria-label="Toggle dark/light mode">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#modules">Module 5: Modern Queries</a></li>
+            <li aria-current="page">Lesson 5.1: CTEs &amp; Recursive Queries</li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div class="container">
+            <header>
+                <h1>🪜 Lesson 5.1: CTEs &amp; Recursive Queries</h1>
+                <p class="lead">Real questions take several steps: total each customer's orders, find the average of those totals, then list who beat it. A common table expression (CTE) lets you write each step once, give it a name, and read the query from top to bottom. A recursive CTE goes further: it can follow a chain of rows, such as the bookstore's chain of managers, as deep as it goes.</p>
+
+                <div class="card card-info">
+                    <h2>🎯 Learning Objectives</h2>
+                    <p>By the end of this lesson, you will be able to:</p>
+                    <ul>
+                        <li>Rewrite a nested subquery as a <code>WITH</code> query and name each step</li>
+                        <li>Chain several CTEs in one statement, letting later steps read earlier ones</li>
+                        <li>Choose between a CTE, a derived table and a view for a given job</li>
+                        <li>Write a recursive CTE with an anchor, a recursive member and a stop condition, and generate number and month series with it</li>
+                        <li>Walk the employee hierarchy down (an org chart) and up (a chain of command)</li>
+                        <li>Read and fix errors 1146, 3636 and 1406 from broken CTEs</li>
+                    </ul>
+                </div>
+
+                <ul class="lesson-meta">
+                    <li><span class="meta-label">⏱️ Time</span> 100 minutes</li>
+                    <li><span class="meta-label">📋 Prerequisites</span> <a href="lesson_13.html">Lesson 4.3: Joins</a> (and the derived tables of <a href="lesson_10.html">Lesson 3.4</a>)</li>
+                    <li><span class="meta-label">🛠️ You will build</span> <code>org_report.sql</code>, a staff and sales briefing: org chart, team sizes, a chain of command and a month-by-month sales calendar</li>
+                    <li><span class="meta-label">🗄️ Database</span> <code>bookstore</code> freshly loaded from <a href="assets/sql/bookstore.sql" download>bookstore.sql</a></li>
+                </ul>
+            </header>
+
+            <details class="card toc-card" open>
+                <summary aria-label="Toggle table of contents">
+                    <span class="toc-icon" aria-hidden="true">📑</span>
+                    <span class="toc-label">In This Lesson</span>
+                    <span class="toc-chevron" aria-hidden="true">▾</span>
+                </summary>
+                <nav aria-label="Table of Contents">
+                    <ol>
+                        <li><a href="#why-ctes" class="toc-link">Why CTEs? One Question, Three Steps</a></li>
+                        <li><a href="#with-basics" class="toc-link">WITH: Naming a Step</a></li>
+                        <li><a href="#multiple-ctes" class="toc-link">Several CTEs in One Query</a></li>
+                        <li><a href="#cte-compare" class="toc-link">CTE, Subquery or View?</a></li>
+                        <li><a href="#recursive-basics" class="toc-link">Recursive CTEs: Counting Up</a></li>
+                        <li><a href="#hierarchy" class="toc-link">Walking the Employee Hierarchy</a></li>
+                        <li><a href="#recursion-limits" class="toc-link">The Recursion Limit</a></li>
+                        <li><a href="#mistakes" class="toc-link">Common Mistakes</a></li>
+                        <li><a href="#project" class="toc-link">Project: The Staff and Sales Briefing</a></li>
+                        <li><a href="#exercises" class="toc-link">Hands-on Exercises</a></li>
+                        <li><a href="#quiz" class="toc-link">Quick Quiz</a></li>
+                        <li><a href="#faq" class="toc-link">Common Questions</a></li>
+                        <li><a href="#journal" class="toc-link">Learning Journal</a></li>
+                        <li><a href="#summary" class="toc-link">Lesson Summary</a></li>
+                    </ol>
+                </nav>
+            </details>
+
+            <section id="why-ctes" class="lesson-section">
+                <h2>🤔 Why CTEs? One Question, Three Steps</h2>
+                <p>Start with a fresh copy of the bookstore so your results match the ones shown here. In the mysql client, run the download with <code>SOURCE</code> (use the path where you saved it; on Windows, forward slashes):</p>
+                <pre><code class="language-sql">SOURCE ~/mysql-course/bookstore.sql</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------------+-----------+
+| table_name      | row_count |
++-----------------+-----------+
+| authors         |        10 |
+| books           |        11 |
+| categories      |         5 |
+| book_categories |        25 |
+| customers       |         8 |
+| orders          |        12 |
+| order_items     |        18 |
+| employees       |        10 |
++-----------------+-----------+</code></pre>
+                </div>
+                <p>The script rebuilds the database from scratch and ends with a row count for every table: 11 books, 8 customers, 12 orders from January to June, and 10 employees.</p>
+
+                <p>Now the question the owner asks: <strong>which customers spent more than the average customer?</strong> It takes three steps. First total each customer's orders, then average those totals, then keep the customers above the average. With the derived tables of <a href="lesson_10.html">Lesson 3.4</a>, it looks like this:</p>
+                <pre><code class="language-sql">SELECT t.customer, t.total
+FROM (
+    SELECT c.first_name AS customer,
+           SUM(oi.quantity * oi.price_at_time) AS total
+    FROM customers c
+    JOIN orders o       ON o.customer_id = c.id
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY c.id, c.first_name
+) AS t
+WHERE t.total &gt; (
+    SELECT AVG(t2.total)
+    FROM (
+        SELECT SUM(oi.quantity * oi.price_at_time) AS total
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+        GROUP BY o.customer_id
+    ) AS t2
+)
+ORDER BY t.total DESC;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------+-------+
+| customer | total |
++----------+-------+
+| Alice    | 58.95 |
+| Dave     | 45.96 |
+| Frank    | 41.96 |
++----------+-------+</code></pre>
+                </div>
+                <p>It works, but you have to read it from the inside out, and the "total per customer" step is written twice. Here is the same question as a CTE:</p>
+                <pre><code class="language-sql">WITH customer_totals AS (
+    SELECT c.first_name AS customer,
+           SUM(oi.quantity * oi.price_at_time) AS total
+    FROM customers c
+    JOIN orders o       ON o.customer_id = c.id
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY c.id, c.first_name
+)
+SELECT customer, total
+FROM customer_totals
+WHERE total &gt; (SELECT AVG(total) FROM customer_totals)
+ORDER BY total DESC;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------+-------+
+| customer | total |
++----------+-------+
+| Alice    | 58.95 |
+| Dave     | 45.96 |
+| Frank    | 41.96 |
++----------+-------+</code></pre>
+                </div>
+                <p>Same answer, and it reads top to bottom: "here is <code>customer_totals</code>; now show the ones above its average". The step is written once and used twice. Six customers have ordered, their totals average about 39.55, and Alice, Dave and Frank are above it. (Carol and Hank never ordered, so the inner joins leave them out of the totals.)</p>
+
+                <div class="mermaid">
+graph TD
+    A["orders + order_items"] --> B["CTE customer_totals"]
+    B --> C["AVG(total): 39.55"]
+    B --> D["keep total above the average"]
+    C --> D
+    D --> E["Alice, Dave, Frank"]
+                </div>
+            </section>
+
+            <section id="with-basics" class="lesson-section">
+                <h2>🏷️ WITH: Naming a Step</h2>
+                <p>A <strong>common table expression</strong> is a named, temporary result that exists only while one statement runs. You write it in front of the statement with <code>WITH</code>:</p>
+                <pre data-norun><code class="language-sql">WITH cte_name AS (
+    SELECT ...            -- any query
+)
+SELECT ... FROM cte_name; -- the statement that uses it</code></pre>
+                <p>Inside the main statement, <code>cte_name</code> behaves like a table: you can select from it, filter it, join it and group it. When the statement ends, it is gone.</p>
+
+                <h3>Monthly revenue as a CTE</h3>
+                <p>The bookstore's orders run from January to June. This CTE turns them into one row per month, and the main query reads it like any table:</p>
+                <pre><code class="language-sql">WITH monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           COUNT(DISTINCT o.id)                AS orders,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+)
+SELECT month_num, orders, revenue
+FROM monthly
+ORDER BY month_num;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+--------+---------+
+| month_num | orders | revenue |
++-----------+--------+---------+
+|         1 |      2 |   61.95 |
+|         2 |      3 |   51.95 |
+|         3 |      2 |   33.47 |
+|         4 |      2 |   38.97 |
+|         5 |      2 |   31.97 |
+|         6 |      1 |   18.98 |
++-----------+--------+---------+</code></pre>
+                </div>
+                <p><code>COUNT(DISTINCT o.id)</code> counts orders, not items: January has two orders but three item rows. Revenue uses <code>price_at_time</code>, the price the customer actually paid.</p>
+
+                <h3>Using the CTE more than once</h3>
+                <p>A CTE can be read several times in the same statement. Which months beat the average month?</p>
+                <pre><code class="language-sql">WITH monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+)
+SELECT month_num, revenue,
+       ROUND((SELECT AVG(revenue) FROM monthly), 2) AS avg_month
+FROM monthly
+WHERE revenue &gt; (SELECT AVG(revenue) FROM monthly)
+ORDER BY month_num;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+---------+-----------+
+| month_num | revenue | avg_month |
++-----------+---------+-----------+
+|         1 |   61.95 |     39.55 |
+|         2 |   51.95 |     39.55 |
++-----------+---------+-----------+</code></pre>
+                </div>
+                <p>The first two months carried the half year. Notice that <code>monthly</code> is read three times, but its query is written once.</p>
+
+                <h3>Naming the columns up front</h3>
+                <p>You can list the CTE's column names after its name instead of using aliases inside. Both forms are equivalent; the list is handy when the inner query has long expressions:</p>
+                <pre><code class="language-sql">WITH stock (status, titles) AS (
+    SELECT IF(in_stock, 'In stock', 'Out of stock'), COUNT(*)
+    FROM books
+    GROUP BY in_stock
+)
+SELECT status, titles
+FROM stock
+ORDER BY status;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+--------------+--------+
+| status       | titles |
++--------------+--------+
+| In stock     |      9 |
+| Out of stock |      2 |
++--------------+--------+</code></pre>
+                </div>
+            </section>
+
+            <section id="multiple-ctes" class="lesson-section">
+                <h2>🔗 Several CTEs in One Query</h2>
+                <p>One <code>WITH</code> can define several CTEs, separated by commas. Each one can read the ones defined before it, so a long question becomes a list of small, named steps:</p>
+                <pre><code class="language-sql">WITH customer_totals AS (
+    SELECT o.customer_id,
+           SUM(oi.quantity * oi.price_at_time) AS total
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY o.customer_id
+),
+average AS (
+    SELECT AVG(total) AS avg_total
+    FROM customer_totals
+)
+SELECT c.first_name, c.last_name, t.total,
+       ROUND(t.total - a.avg_total, 2) AS above_average
+FROM customer_totals t
+JOIN customers c ON c.id = t.customer_id
+CROSS JOIN average a
+WHERE t.total &gt; a.avg_total
+ORDER BY t.total DESC;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------------+-----------+-------+---------------+
+| first_name | last_name | total | above_average |
++------------+-----------+-------+---------------+
+| Alice      | Johnson   | 58.95 |         19.40 |
+| Dave       | Brown     | 45.96 |          6.41 |
+| Frank      | Miller    | 41.96 |          2.41 |
++------------+-----------+-------+---------------+</code></pre>
+                </div>
+                <p><code>average</code> is a one-row CTE, so <code>CROSS JOIN</code> simply attaches its single value to every customer row. Only one <code>WITH</code> keyword is written; the second CTE starts after a comma.</p>
+
+                <h3>Joining a CTE to itself: this month vs. last month</h3>
+                <p>Because a CTE is read like a table, you can join it to itself. Give each copy its own alias and match every month with the month before:</p>
+                <pre><code class="language-sql">WITH monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+)
+SELECT cur.month_num,
+       cur.revenue,
+       prev.revenue                AS previous_month,
+       cur.revenue - prev.revenue  AS change_amount
+FROM monthly cur
+LEFT JOIN monthly prev ON prev.month_num = cur.month_num - 1
+ORDER BY cur.month_num;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-----------+---------+----------------+---------------+
+| month_num | revenue | previous_month | change_amount |
++-----------+---------+----------------+---------------+
+|         1 |   61.95 |           NULL |          NULL |
+|         2 |   51.95 |          61.95 |        -10.00 |
+|         3 |   33.47 |          51.95 |        -18.48 |
+|         4 |   38.97 |          33.47 |          5.50 |
+|         5 |   31.97 |          38.97 |         -7.00 |
+|         6 |   18.98 |          31.97 |        -12.99 |
++-----------+---------+----------------+---------------+</code></pre>
+                </div>
+                <p>January has no previous month, so the <code>LEFT JOIN</code> keeps it with <code>NULL</code>s. Sales fell every month except April. In <a href="lesson_window_functions.html">Lesson 5.2</a> you will get the same "previous row" with a single function, <code>LAG()</code>, and no self-join.</p>
+
+                <div class="card card-info">
+                    <h4>💡 Write CTEs like a recipe</h4>
+                    <p>Name each CTE after what it holds (<code>customer_totals</code>, <code>monthly</code>, <code>average</code>), not after how it is computed (<code>t1</code>, <code>sub</code>). Then test it on its own: replace the final statement with <code>SELECT * FROM the_cte;</code> and check its rows before you build the next step on top of it.</p>
+                </div>
+            </section>
+
+            <section id="cte-compare" class="lesson-section">
+                <h2>⚖️ CTE, Subquery or View?</h2>
+                <p>All three let you treat a query's result as a table. The differences are about how long the result lives and who can reuse it:</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th></th><th>Derived table (subquery in FROM)</th><th>CTE (<code>WITH</code>)</th><th>View</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Lives for</td><td>One statement</td><td>One statement</td><td>Until dropped (stored in the database)</td></tr>
+                            <tr><td>Can be read twice in a statement</td><td>No, write it again</td><td>Yes</td><td>Yes</td></tr>
+                            <tr><td>Can refer to itself (recursion)</td><td>No</td><td>Yes, with <code>WITH RECURSIVE</code></td><td>No</td></tr>
+                            <tr><td>Reading order</td><td>Inside out</td><td>Top to bottom</td><td>By name, from anywhere</td></tr>
+                            <tr><td>Best for</td><td>A small one-off step</td><td>Multi-step questions, hierarchies</td><td>A question the whole team asks every day</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>A good habit: build the query with CTEs, and if the same CTE starts appearing in many scripts, promote it to a view. You will create views in <a href="lesson_15.html">Lesson 6.2</a>. Speed is rarely the deciding factor: MySQL's optimizer can merge a simple CTE into the main query or compute it once and reuse the result, and it picks the cheaper plan for you.</p>
+            </section>
+
+            <section id="recursive-basics" class="lesson-section">
+                <h2>🔁 Recursive CTEs: Counting Up</h2>
+                <p>A <strong>recursive CTE</strong> refers to itself. That sounds circular, but it works in rounds. It has two parts joined by <code>UNION ALL</code>:</p>
+                <ul>
+                    <li>The <strong>anchor</strong>: an ordinary query that produces the starting rows. It runs once.</li>
+                    <li>The <strong>recursive member</strong>: a query that reads the CTE itself and produces the next rows from the rows of the previous round. It runs again and again, and it must contain a <strong>stop condition</strong>: when a round produces no rows, the recursion ends.</li>
+                </ul>
+                <pre><code class="language-sql">WITH RECURSIVE numbers AS (
+    SELECT 1 AS n            -- anchor: the first row
+    UNION ALL
+    SELECT n + 1             -- recursive member: next row from the last one
+    FROM numbers
+    WHERE n &lt; 5              -- stop condition
+)
+SELECT n FROM numbers;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------+
+| n    |
++------+
+|    1 |
+|    2 |
+|    3 |
+|    4 |
+|    5 |
++------+</code></pre>
+                </div>
+
+                <div class="mermaid">
+graph TD
+    A["anchor: n = 1"] --> B["round 1: 1 + 1 = 2"]
+    B --> C["round 2: 3"]
+    C --> D["round 3: 4"]
+    D --> E["round 4: 5"]
+    E --> F["round 5: n = 5 fails n less than 5"]
+    F --> G["no new rows: stop"]
+                </div>
+
+                <p>Each round sees only the rows the previous round made. Round 5 reads <code>n = 5</code>, the condition <code>n &lt; 5</code> is false, no row comes out, and MySQL stops and returns everything collected: 1 to 5. The keyword <code>RECURSIVE</code> is required; it goes right after <code>WITH</code>, once, even when only one of several CTEs is recursive.</p>
+
+                <h3>A calendar that fills the gaps</h3>
+                <p>Series are useful because real data has holes. A sales report for January through July should show July, even though nobody has ordered yet in July. A plain <code>GROUP BY</code> can only report months that have orders. A recursive CTE can generate every month first, and a <code>LEFT JOIN</code> then hangs the orders on it:</p>
+                <pre><code class="language-sql">WITH RECURSIVE months AS (
+    SELECT DATE('2026-01-01') AS month_start
+    UNION ALL
+    SELECT month_start + INTERVAL 1 MONTH
+    FROM months
+    WHERE month_start &lt; '2026-07-01'
+)
+SELECT DATE_FORMAT(m.month_start, '%Y-%m') AS month,
+       COUNT(o.id)                         AS orders
+FROM months m
+LEFT JOIN orders o
+       ON o.order_date &gt;= m.month_start
+      AND o.order_date &lt;  m.month_start + INTERVAL 1 MONTH
+GROUP BY m.month_start
+ORDER BY m.month_start;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------+--------+
+| month   | orders |
++---------+--------+
+| 2026-01 |      2 |
+| 2026-02 |      3 |
+| 2026-03 |      2 |
+| 2026-04 |      2 |
+| 2026-05 |      2 |
+| 2026-06 |      1 |
+| 2026-07 |      0 |
++---------+--------+</code></pre>
+                </div>
+                <p>July appears with 0 orders. <code>COUNT(o.id)</code> counts only matched orders, so the unmatched July row (all <code>NULL</code>s on the orders side) counts as 0. The date range in the <code>ON</code> clause (from the first of the month up to, but not including, the first of the next) is the safe way to say "in this month".</p>
+
+                <h3>Text built up round by round</h3>
+                <p>The recursive member can carry any columns forward, not just a counter. Here each round appends the next number to a text list:</p>
+                <pre><code class="language-sql">WITH RECURSIVE series AS (
+    SELECT 1 AS n, CAST('1' AS CHAR(50)) AS list
+    UNION ALL
+    SELECT n + 1, CONCAT(list, ',', n + 1)
+    FROM series
+    WHERE n &lt; 5
+)
+SELECT n, list FROM series;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+------+-----------+
+| n    | list      |
++------+-----------+
+|    1 | 1         |
+|    2 | 1,2       |
+|    3 | 1,2,3     |
+|    4 | 1,2,3,4   |
+|    5 | 1,2,3,4,5 |
++------+-----------+</code></pre>
+                </div>
+                <p>The <code>CAST(... AS CHAR(50))</code> in the anchor is not decoration. <strong>The anchor decides every column's type and width</strong>, and the string <code>'1'</code> alone would make <code>list</code> a one-character column. Common Mistake 3 shows what happens without it.</p>
+            </section>
+
+            <section id="hierarchy" class="lesson-section">
+                <h2>🌳 Walking the Employee Hierarchy</h2>
+                <p>The <code>employees</code> table stores each person's boss in <code>manager_id</code>. In <a href="lesson_13.html">Lesson 4.3</a> a self-join showed one level: each employee next to their manager. But "everyone who works under Daniel, at any depth" needs as many joins as there are levels, and you do not know that number in advance. A recursive CTE follows the chain until it runs out.</p>
+                <pre><code class="language-sql">SELECT id, first_name, last_name, department, manager_id
+FROM employees
+ORDER BY id;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----+------------+-----------+------------+------------+
+| id | first_name | last_name | department | manager_id |
++----+------------+-----------+------------+------------+
+|  1 | Maria      | Santos    | management |       NULL |
+|  2 | Daniel     | Reyes     | management |          1 |
+|  3 | Priya      | Nair      | sales      |          2 |
+|  4 | Tom        | Becker    | sales      |          3 |
+|  5 | Lena       | Park      | sales      |          3 |
+|  6 | Marcus     | Hill      | inventory  |          2 |
+|  7 | Sofia      | Alvarez   | inventory  |          6 |
+|  8 | James      | Okafor    | support    |          1 |
+|  9 | Nina       | Kowalski  | support    |          8 |
+| 10 | Ben        | Carter    | sales      |          3 |
++----+------------+-----------+------------+------------+</code></pre>
+                </div>
+
+                <h3>Top down: the org chart</h3>
+                <p>The anchor is the person with no manager. Each round finds the people whose <code>manager_id</code> is someone found in the round before, adds 1 to their level, and extends a path of names:</p>
+                <pre><code class="language-sql">WITH RECURSIVE org AS (
+    SELECT id, first_name, last_name, 1 AS level,
+           CAST(first_name AS CHAR(200)) AS path
+    FROM employees
+    WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.id, e.first_name, e.last_name, o.level + 1,
+           CONCAT(o.path, ' &gt; ', e.first_name)
+    FROM employees e
+    JOIN org o ON e.manager_id = o.id
+)
+SELECT level, CONCAT(first_name, ' ', last_name) AS employee, path
+FROM org
+ORDER BY path;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+-------+---------------+---------------------------------+
+| level | employee      | path                            |
++-------+---------------+---------------------------------+
+|     1 | Maria Santos  | Maria                           |
+|     2 | Daniel Reyes  | Maria &gt; Daniel                  |
+|     3 | Marcus Hill   | Maria &gt; Daniel &gt; Marcus         |
+|     4 | Sofia Alvarez | Maria &gt; Daniel &gt; Marcus &gt; Sofia |
+|     3 | Priya Nair    | Maria &gt; Daniel &gt; Priya          |
+|     4 | Ben Carter    | Maria &gt; Daniel &gt; Priya &gt; Ben    |
+|     4 | Lena Park     | Maria &gt; Daniel &gt; Priya &gt; Lena   |
+|     4 | Tom Becker    | Maria &gt; Daniel &gt; Priya &gt; Tom    |
+|     2 | James Okafor  | Maria &gt; James                   |
+|     3 | Nina Kowalski | Maria &gt; James &gt; Nina            |
++-------+---------------+---------------------------------+</code></pre>
+                </div>
+
+                <div class="mermaid">
+graph TD
+    A["anchor: Maria (no manager)"] --> B["round 1: Daniel, James"]
+    B --> C["round 2: Priya, Marcus, Nina"]
+    C --> D["round 3: Tom, Lena, Ben, Sofia"]
+    D --> E["round 4: nobody reports to them"]
+    E --> F["stop: 10 rows, 4 levels"]
+                </div>
+
+                <p>Ten employees, four levels. Sorting by <code>path</code> puts every person right under their manager, because "Maria &gt; Daniel &gt; Priya" sorts just after "Maria &gt; Daniel". Here the stop condition is the data itself: in round 4 no employee has Tom, Lena, Ben or Sofia as a manager, the join finds nothing, and the recursion ends.</p>
+
+                <h3>An indented chart</h3>
+                <p><code>REPEAT(text, n)</code> repeats a string, so indenting each name by its level turns the result into something a person can read at a glance:</p>
+                <pre><code class="language-sql">WITH RECURSIVE org AS (
+    SELECT id, first_name, last_name, department, 1 AS level,
+           CAST(first_name AS CHAR(200)) AS path
+    FROM employees
+    WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.id, e.first_name, e.last_name, e.department, o.level + 1,
+           CONCAT(o.path, ' &gt; ', e.first_name)
+    FROM employees e
+    JOIN org o ON e.manager_id = o.id
+)
+SELECT CONCAT(REPEAT('    ', level - 1), first_name, ' ', last_name) AS org_chart,
+       department
+FROM org
+ORDER BY path;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------------+------------+
+| org_chart                 | department |
++---------------------------+------------+
+| Maria Santos              | management |
+|     Daniel Reyes          | management |
+|         Marcus Hill       | inventory  |
+|             Sofia Alvarez | inventory  |
+|         Priya Nair        | sales      |
+|             Ben Carter    | sales      |
+|             Lena Park     | sales      |
+|             Tom Becker    | sales      |
+|     James Okafor          | support    |
+|         Nina Kowalski     | support    |
++---------------------------+------------+</code></pre>
+                </div>
+
+                <h3>Bottom up: a chain of command</h3>
+                <p>Reverse the join and the CTE climbs instead. Start from Sofia (id 7) and, each round, fetch the manager of the person found last:</p>
+                <pre><code class="language-sql">WITH RECURSIVE chain AS (
+    SELECT id, first_name, last_name, manager_id, 0 AS steps_up
+    FROM employees
+    WHERE id = 7
+    UNION ALL
+    SELECT e.id, e.first_name, e.last_name, e.manager_id, c.steps_up + 1
+    FROM employees e
+    JOIN chain c ON e.id = c.manager_id
+)
+SELECT steps_up, CONCAT(first_name, ' ', last_name) AS person
+FROM chain
+ORDER BY steps_up;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------+---------------+
+| steps_up | person        |
++----------+---------------+
+|        0 | Sofia Alvarez |
+|        1 | Marcus Hill   |
+|        2 | Daniel Reyes  |
+|        3 | Maria Santos  |
++----------+---------------+</code></pre>
+                </div>
+                <p>The only change from the org chart is the join: <code>e.manager_id = o.id</code> walks down ("whose manager is this person?"), <code>e.id = c.manager_id</code> walks up ("who is this person's manager?"). The climb stops at Maria, whose <code>manager_id</code> is <code>NULL</code> and matches nobody.</p>
+
+                <h3>Everyone under one manager</h3>
+                <p>Anchor on a manager instead of the top, and the CTE collects their whole team, direct and indirect. Then aggregate it like any table:</p>
+                <pre><code class="language-sql">WITH RECURSIVE team AS (
+    SELECT id, salary
+    FROM employees
+    WHERE manager_id = 2          -- Daniel's direct reports
+    UNION ALL
+    SELECT e.id, e.salary
+    FROM employees e
+    JOIN team t ON e.manager_id = t.id
+)
+SELECT COUNT(*)    AS people_under_daniel,
+       SUM(salary) AS their_payroll
+FROM team;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------+---------------+
+| people_under_daniel | their_payroll |
++---------------------+---------------+
+|                   6 |     242500.00 |
++---------------------+---------------+</code></pre>
+                </div>
+                <p>Six people work under Daniel: Priya and Marcus directly, and Tom, Lena, Ben and Sofia through them. The aggregate runs in the main query, after the recursion has finished; aggregates are not allowed inside the recursive member itself (MySQL answers with error 3575).</p>
+            </section>
+
+            <section id="recursion-limits" class="lesson-section">
+                <h2>🧯 The Recursion Limit</h2>
+                <p>A recursive CTE without a working stop condition would run forever. MySQL protects you with a session variable that caps the number of rounds:</p>
+                <pre><code class="language-sql">SELECT @@cte_max_recursion_depth;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------------------+
+| @@cte_max_recursion_depth |
++---------------------------+
+|                      1000 |
++---------------------------+</code></pre>
+                </div>
+                <p>After 1000 rounds the query is stopped with error 3636 (you will trigger it on purpose in Common Mistakes). For a legitimately long series, raise the limit for your own session only, run the query, and put it back:</p>
+                <pre><code class="language-sql">SET SESSION cte_max_recursion_depth = 2000;
+
+WITH RECURSIVE numbers AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM numbers WHERE n &lt; 1500
+)
+SELECT COUNT(*) AS how_many, MAX(n) AS last_one
+FROM numbers;
+
+SET SESSION cte_max_recursion_depth = DEFAULT;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+----------+----------+
+| how_many | last_one |
++----------+----------+
+|     1500 |     1500 |
++----------+----------+</code></pre>
+                </div>
+                <p><code>SET SESSION</code> changes only your connection, and only until you disconnect. Never raise the limit globally to "fix" a query: if a query hits 1000 rounds unexpectedly, the bug is almost always a missing or wrong stop condition, or a cycle in the data (an employee who is, through a chain, their own manager).</p>
+
+                <div class="card card-info">
+                    <h4>🐬 Version note: MariaDB stops quietly</h4>
+                    <p>MySQL 8.4 behaves exactly like 9.7. MariaDB (XAMPP, many shared hosts) has the same kind of cap under another name, <code>max_recursive_iterations</code> (so <code>@@cte_max_recursion_depth</code> there is error 1193, "Unknown system variable"), but when a query reaches it, MariaDB does not raise an error: it returns the rows it has so far and adds only a warning. A runaway query with no stop condition then looks like it worked:</p>
+                    <pre data-server="mariadb"><code class="language-sql">WITH RECURSIVE numbers AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM numbers
+)
+SELECT COUNT(*) AS how_many FROM numbers;
+SHOW WARNINGS;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output on MariaDB</h4>
+                        <pre><code>+----------+
+| how_many |
++----------+
+|     1001 |
++----------+
++---------+------+-------------------------------------------------------------------------------------------------------------------------+
+| Level   | Code | Message                                                                                                                 |
++---------+------+-------------------------------------------------------------------------------------------------------------------------+
+| Warning | 1931 | Query execution was interrupted. The query exceeded max_recursive_iterations = 1000. The query result may be incomplete |
++---------+------+-------------------------------------------------------------------------------------------------------------------------+</code></pre>
+                    </div>
+                    <p>On MariaDB, always write the stop condition yourself and check the warnings, not just the result.</p>
+                </div>
+            </section>
+
+            <section id="mistakes" class="lesson-section">
+                <h2>⚠️ Common Mistakes</h2>
+
+                <h3>1. Forgetting the word RECURSIVE</h3>
+                <pre data-raises="ERROR 1146"><code class="language-sql">WITH org AS (
+    SELECT id, 1 AS level FROM employees WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.id, o.level + 1 FROM employees e JOIN org o ON e.manager_id = o.id
+)
+SELECT * FROM org;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1146 (42S02): Table 'bookstore.org' doesn't exist</code></pre>
+                </div>
+                <p><strong>What it means:</strong> without <code>RECURSIVE</code>, a CTE cannot see its own name, so <code>JOIN org</code> inside it looks for a real table called <code>org</code>, and there is none. <strong>Fix:</strong> write <code>WITH RECURSIVE</code>.</p>
+
+                <h3>2. No stop condition</h3>
+                <pre data-raises="ERROR 3636"><code class="language-sql">WITH RECURSIVE numbers AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM numbers
+)
+SELECT COUNT(*) FROM numbers;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 3636 (HY000): Recursive query aborted after 1001 iterations. Try increasing @@cte_max_recursion_depth to a larger value.</code></pre>
+                </div>
+                <p><strong>What it means:</strong> every round makes a new row, so the recursion never ends on its own; MySQL stops it at <code>cte_max_recursion_depth</code> (1000 rounds). <strong>Fix:</strong> add a condition to the recursive member (<code>WHERE n &lt; 5</code>) that eventually produces no rows. Raising the limit is the fix only when you really need more than 1000 rounds.</p>
+
+                <h3>3. An anchor column that is too narrow</h3>
+                <pre data-raises="ERROR 1406"><code class="language-sql">WITH RECURSIVE series AS (
+    SELECT 1 AS n, '1' AS list
+    UNION ALL
+    SELECT n + 1, CONCAT(list, ',', n + 1)
+    FROM series
+    WHERE n &lt; 5
+)
+SELECT n, list FROM series;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1406 (22001): Data too long for column 'list' at row 1</code></pre>
+                </div>
+                <p><strong>What it means:</strong> the anchor's <code>'1'</code> made <code>list</code> a one-character column, and <code>'1,2'</code> from the first round does not fit. The recursive member never widens a column. <strong>Fix:</strong> make the anchor column wide enough, <code>CAST('1' AS CHAR(50))</code>, as in the paths of the org chart (<code>CAST(first_name AS CHAR(200))</code>).</p>
+
+                <h3>4. Using a CTE in the next statement</h3>
+                <pre><code class="language-sql">WITH monthly AS (
+    SELECT MONTH(order_date) AS month_num, COUNT(*) AS orders
+    FROM orders
+    GROUP BY MONTH(order_date)
+)
+SELECT MAX(orders) AS busiest FROM monthly;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------+
+| busiest |
++---------+
+|       3 |
++---------+</code></pre>
+                </div>
+                <pre data-raises="ERROR 1146"><code class="language-sql">SELECT * FROM monthly;</code></pre>
+                <div class="card card-output">
+                    <h4>Error</h4>
+                    <pre><code>ERROR 1146 (42S02): Table 'bookstore.monthly' doesn't exist</code></pre>
+                </div>
+                <p><strong>What it means:</strong> a CTE belongs to the one statement it is written in. After the semicolon, <code>monthly</code> no longer exists. <strong>Fix:</strong> repeat the <code>WITH</code> in front of each statement that needs it, or, if many scripts need it, create a view (<a href="lesson_15.html">Lesson 6.2</a>).</p>
+
+                <h3>5. An anchor that starts everywhere (silent)</h3>
+                <pre><code class="language-sql">WITH RECURSIVE org AS (
+    SELECT id, 1 AS level
+    FROM employees                -- no WHERE: every employee is a starting point
+    UNION ALL
+    SELECT e.id, o.level + 1
+    FROM employees e
+    JOIN org o ON e.manager_id = o.id
+)
+SELECT COUNT(*) AS rows_returned, COUNT(DISTINCT id) AS employees
+FROM org;</code></pre>
+                <div class="card card-output">
+                    <h4>Output</h4>
+                    <pre><code>+---------------+-----------+
+| rows_returned | employees |
++---------------+-----------+
+|            30 |        10 |
++---------------+-----------+</code></pre>
+                </div>
+                <p><strong>What it means:</strong> no error, but 30 rows for 10 employees. Every employee starts their own walk, so Sofia is found once as a starting point, again under Marcus, again under Daniel and again under Maria. Levels and counts built on this are wrong. <strong>Fix:</strong> anchor on the true starting rows (<code>WHERE manager_id IS NULL</code> for the whole chart, or <code>WHERE id = ...</code> for one person), and sanity-check with <code>COUNT(*)</code> versus <code>COUNT(DISTINCT id)</code>.</p>
+            </section>
+
+            <section id="project" class="lesson-section">
+                <h2>🛠️ Project: The Staff and Sales Briefing</h2>
+                <p>The owner meets her managers on the first Monday of every month. She wants one script that prints the org chart, the size of every manager's team, the chain of command for any employee, and a month-by-month sales calendar with no gaps. You will build <code>org_report.sql</code> one step at a time, running each query as you add it. Allow about 35 minutes.</p>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 1: Start the script with the org chart <span class="step-time">(5 min)</span></h3>
+                    <p>Create <code>org_report.sql</code> in your <code>mysql-course</code> folder. Start with <code>USE bookstore;</code> and the indented chart, this time with each person's level as a number too:</p>
+                    <pre><code class="language-sql">USE bookstore;
+
+-- 1. Org chart
+WITH RECURSIVE org AS (
+    SELECT id, first_name, last_name, 1 AS level,
+           CAST(first_name AS CHAR(200)) AS path
+    FROM employees
+    WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.id, e.first_name, e.last_name, o.level + 1,
+           CONCAT(o.path, ' &gt; ', e.first_name)
+    FROM employees e
+    JOIN org o ON e.manager_id = o.id
+)
+SELECT level,
+       CONCAT(REPEAT('    ', level - 1), first_name, ' ', last_name) AS org_chart
+FROM org
+ORDER BY path;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>Database changed
++-------+---------------------------+
+| level | org_chart                 |
++-------+---------------------------+
+|     1 | Maria Santos              |
+|     2 |     Daniel Reyes          |
+|     3 |         Marcus Hill       |
+|     4 |             Sofia Alvarez |
+|     3 |         Priya Nair        |
+|     4 |             Ben Carter    |
+|     4 |             Lena Park     |
+|     4 |             Tom Becker    |
+|     2 |     James Okafor          |
+|     3 |         Nina Kowalski     |
++-------+---------------------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 2: Team size and payroll for every manager <span class="step-time">(10 min)</span></h3>
+                    <p>To count every manager's whole team at once, build pairs: each employee starts a pair with themselves, and each round extends every pair one level down. Then group the pairs by manager:</p>
+                    <pre><code class="language-sql">-- 2. Team size and payroll under each manager (direct and indirect)
+WITH RECURSIVE reports AS (
+    SELECT id AS boss_id, id AS employee_id
+    FROM employees
+    UNION ALL
+    SELECT r.boss_id, e.id
+    FROM reports r
+    JOIN employees e ON e.manager_id = r.employee_id
+)
+SELECT CONCAT(b.first_name, ' ', b.last_name) AS manager,
+       COUNT(*) - 1               AS team_size,
+       SUM(e.salary) - b.salary   AS team_payroll
+FROM reports r
+JOIN employees b ON b.id = r.boss_id
+JOIN employees e ON e.id = r.employee_id
+GROUP BY b.id, b.first_name, b.last_name, b.salary
+HAVING team_size &gt; 0
+ORDER BY team_size DESC, manager;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+--------------+-----------+--------------+
+| manager      | team_size | team_payroll |
++--------------+-----------+--------------+
+| Maria Santos |         9 |    399000.00 |
+| Daniel Reyes |         6 |    242500.00 |
+| Priya Nair   |         3 |    112500.00 |
+| James Okafor |         1 |     36500.00 |
+| Marcus Hill  |         1 |     37000.00 |
++--------------+-----------+--------------+</code></pre>
+                    </div>
+                    <p>This anchor deliberately starts at every employee (Common Mistake 5 on purpose), because here every employee is a possible boss. Each pair includes the boss with themselves, so the query subtracts 1 from the count and the boss's own salary from the payroll. Maria's team is the other nine; people with no reports drop out through <code>HAVING</code>.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 3: Chain of command for one employee <span class="step-time">(5 min)</span></h3>
+                    <p>Climb from Nina (id 9) to the top. Change the id to check anyone else.</p>
+                    <pre><code class="language-sql">-- 3. Chain of command (change the id as needed)
+WITH RECURSIVE chain AS (
+    SELECT id, first_name, last_name, department, manager_id, 0 AS steps_up
+    FROM employees
+    WHERE id = 9
+    UNION ALL
+    SELECT e.id, e.first_name, e.last_name, e.department, e.manager_id, c.steps_up + 1
+    FROM employees e
+    JOIN chain c ON e.id = c.manager_id
+)
+SELECT steps_up, CONCAT(first_name, ' ', last_name) AS person, department
+FROM chain
+ORDER BY steps_up;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+----------+---------------+------------+
+| steps_up | person        | department |
++----------+---------------+------------+
+|        0 | Nina Kowalski | support    |
+|        1 | James Okafor  | support    |
+|        2 | Maria Santos  | management |
++----------+---------------+------------+</code></pre>
+                    </div>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 4: The sales calendar <span class="step-time">(10 min)</span></h3>
+                    <p>Combine a recursive CTE with two ordinary ones: <code>months</code> generates January to July, <code>monthly</code> totals the sales, and <code>average</code> works out the mean of the months that had sales. One <code>WITH RECURSIVE</code> covers the whole list:</p>
+                    <pre><code class="language-sql">-- 4. Sales calendar, January to July, with no gaps
+WITH RECURSIVE months AS (
+    SELECT DATE('2026-01-01') AS month_start
+    UNION ALL
+    SELECT month_start + INTERVAL 1 MONTH
+    FROM months
+    WHERE month_start &lt; '2026-07-01'
+),
+monthly AS (
+    SELECT MONTH(o.order_date)                 AS month_num,
+           SUM(oi.quantity * oi.price_at_time) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY MONTH(o.order_date)
+),
+average AS (
+    SELECT AVG(revenue) AS avg_revenue FROM monthly
+)
+SELECT DATE_FORMAT(m.month_start, '%b %Y')  AS month,
+       COALESCE(s.revenue, 0)               AS revenue,
+       CASE
+           WHEN s.revenue IS NULL          THEN 'no sales yet'
+           WHEN s.revenue &gt; a.avg_revenue  THEN 'above average'
+           ELSE 'below average'
+       END                                  AS verdict
+FROM months m
+LEFT JOIN monthly s ON s.month_num = MONTH(m.month_start)
+CROSS JOIN average a
+ORDER BY m.month_start;</code></pre>
+                    <div class="card card-output">
+                        <h4>Output</h4>
+                        <pre><code>+----------+---------+---------------+
+| month    | revenue | verdict       |
++----------+---------+---------------+
+| Jan 2026 |   61.95 | above average |
+| Feb 2026 |   51.95 | above average |
+| Mar 2026 |   33.47 | below average |
+| Apr 2026 |   38.97 | below average |
+| May 2026 |   31.97 | below average |
+| Jun 2026 |   18.98 | below average |
+| Jul 2026 |    0.00 | no sales yet  |
++----------+---------+---------------+</code></pre>
+                    </div>
+                    <p>Matching on <code>MONTH()</code> is fine here because all the dates fall in one year. With several years of orders you would match on the year too, or use the date range from the calendar section.</p>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🛠️ Step 5: Run the whole briefing <span class="step-time">(5 min)</span></h3>
+                    <p>Save the file and run it from a fresh mysql session:</p>
+                    <pre data-norun><code class="language-sql">SOURCE ~/mysql-course/org_report.sql</code></pre>
+                    <p>Four result tables print in order. Next month, the owner adds a row to <code>employees</code> or a few orders, runs the same file, and the chart, team sizes and calendar update themselves: nothing in the script names a level or a number of rows.</p>
+                </div>
+
+                <div class="card card-success">
+                    <h3>✅ Project Completion Checklist</h3>
+                    <ul class="checklist">
+                        <li><code>org_report.sql</code> starts with <code>USE bookstore;</code> and holds four commented queries</li>
+                        <li>The org chart shows 10 people on 4 levels, each one indented under their manager</li>
+                        <li>The team table lists five managers, with Maria's team of 9 at the top</li>
+                        <li>Changing the id in Step 3 to 7 prints Sofia, Marcus, Daniel and Maria</li>
+                        <li>The sales calendar has 7 rows, and July says "no sales yet"</li>
+                        <li><code>SOURCE</code> runs the whole file without an error</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="exercises" class="lesson-section">
+                <h2>🏋️ Hands-on Exercises</h2>
+                <p>All four use the fresh <code>bookstore</code> database. Try each one before you open the solution.</p>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 1: Above-Average Sellers</h3>
+                    <p>With two CTEs, list the books that sold more copies than the average book that sold at all. Show the title and copies sold, best first.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>First CTE: <code>SUM(quantity)</code> per <code>book_id</code> from <code>order_items</code>. Second CTE: the <code>AVG</code> of those sums. Then join the first CTE to <code>books</code> for the titles.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">WITH copies AS (
+    SELECT book_id, SUM(quantity) AS sold
+    FROM order_items
+    GROUP BY book_id
+),
+average AS (
+    SELECT AVG(sold) AS avg_sold FROM copies
+)
+SELECT b.title, c.sold
+FROM copies c
+JOIN books b ON b.id = c.book_id
+CROSS JOIN average a
+WHERE c.sold &gt; a.avg_sold
+ORDER BY c.sold DESC, b.title;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------------+------+
+| title      | sold |
++------------+------+
+| 1984       |    4 |
+| Dune       |    3 |
+| The Hobbit |    3 |
++------------+------+</code></pre>
+                        </div>
+                        <p>Nine books sold 21 copies between them, an average of about 2.33, so only the books with 3 or more copies pass.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 2: A Price Ladder</h3>
+                    <p>Generate the price caps 8, 10, 12, 14 and 16 with a recursive CTE, and for each cap count the books that cost less than it.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Anchor <code>SELECT 8 AS cap</code>, recursive member <code>cap + 2</code> while <code>cap &lt; 16</code>. Then <code>LEFT JOIN books ON books.price &lt; caps.cap</code> and count <code>books.id</code> per cap.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">WITH RECURSIVE caps AS (
+    SELECT 8 AS cap
+    UNION ALL
+    SELECT cap + 2 FROM caps WHERE cap &lt; 16
+)
+SELECT caps.cap, COUNT(b.id) AS books_under_cap
+FROM caps
+LEFT JOIN books b ON b.price &lt; caps.cap
+GROUP BY caps.cap
+ORDER BY caps.cap;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+------+-----------------+
+| cap  | books_under_cap |
++------+-----------------+
+|    8 |               1 |
+|   10 |               6 |
+|   12 |               9 |
+|   14 |               9 |
+|   16 |              11 |
++------+-----------------+</code></pre>
+                        </div>
+                        <p>Only Pride and Prejudice costs less than 8; every one of the 11 books costs less than 16.</p>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 3: Daniel's Team, Level by Level</h3>
+                    <p>List everyone under Daniel Reyes (id 2), with how many levels below Daniel each person sits (his direct reports are 1), sorted by that number and then by first name.</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Anchor on <code>WHERE manager_id = 2</code> with <code>1 AS depth</code>; the recursive member adds 1 and walks down with <code>e.manager_id = t.id</code>.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">WITH RECURSIVE team AS (
+    SELECT id, first_name, last_name, 1 AS depth
+    FROM employees
+    WHERE manager_id = 2
+    UNION ALL
+    SELECT e.id, e.first_name, e.last_name, t.depth + 1
+    FROM employees e
+    JOIN team t ON e.manager_id = t.id
+)
+SELECT depth, CONCAT(first_name, ' ', last_name) AS employee
+FROM team
+ORDER BY depth, first_name;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------+---------------+
+| depth | employee      |
++-------+---------------+
+|     1 | Marcus Hill   |
+|     1 | Priya Nair    |
+|     2 | Ben Carter    |
+|     2 | Lena Park     |
+|     2 | Sofia Alvarez |
+|     2 | Tom Becker    |
++-------+---------------+</code></pre>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>🏋️ Exercise 4 (Stretch): The Shape of the Company</h3>
+                    <p>For each level of the org chart, show how many people sit on it and their average salary rounded to whole dollars. What pattern do the head counts make?</p>
+                    <details>
+                        <summary>💡 Hint</summary>
+                        <p>Build the top-down CTE with a <code>level</code> column (you do not need the path), then <code>GROUP BY level</code> in the main query.</p>
+                    </details>
+                    <details>
+                        <summary>✅ Solution</summary>
+                        <pre><code class="language-sql">WITH RECURSIVE org AS (
+    SELECT id, salary, 1 AS level
+    FROM employees
+    WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.id, e.salary, o.level + 1
+    FROM employees e
+    JOIN org o ON e.manager_id = o.id
+)
+SELECT level, COUNT(*) AS people, ROUND(AVG(salary)) AS avg_salary
+FROM org
+GROUP BY level
+ORDER BY level;</code></pre>
+                        <div class="card card-output">
+                            <h4>Output</h4>
+                            <pre><code>+-------+--------+------------+
+| level | people | avg_salary |
++-------+--------+------------+
+|     1 |      1 |      92000 |
+|     2 |      2 |      60000 |
+|     3 |      3 |      43167 |
+|     4 |      4 |      37375 |
++-------+--------+------------+</code></pre>
+                        </div>
+                        <p>One, two, three, four: each level is one person wider than the one above, and the average salary falls as you go down. A real company would be wider at the bottom, but the shape (a pyramid) is the same.</p>
+                    </details>
+                </div>
+            </section>
+
+            <section id="quiz" class="lesson-section">
+                <h2>🎯 Quick Quiz</h2>
+                <div class="card quiz-container">
+                    <h3>🎯 Check Your Understanding</h3>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 1:</strong> You run a statement that starts <code>WITH monthly AS (...)</code>, and it works. On the next line you type <code>SELECT * FROM monthly;</code>. What happens?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="A CTE is not stored anywhere. Think about how long it lives.">
+                                A) It returns the same rows as before
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="A CTE exists only inside the statement it is written in. After the semicolon it is gone, so MySQL looks for a real table named monthly and reports error 1146.">
+                                B) Error 1146: the table does not exist
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Nothing in the second statement asks for an empty result. What does MySQL know about monthly at that point?">
+                                C) It returns an empty result
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 2:</strong> In a recursive CTE, which part runs exactly once?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="true" data-explanation="The anchor, the query before UNION ALL, produces the starting rows once. The recursive member then runs round after round until a round produces no rows.">
+                                A) The anchor, before <code>UNION ALL</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="This part reads the CTE itself. How many times would it need to run to reach level 4?">
+                                B) The recursive member, after <code>UNION ALL</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="The stop condition lives inside one of the two parts and is checked every round.">
+                                C) The stop condition
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 3:</strong> How many rows does this query return?</p>
+                        <pre><code class="language-sql">WITH RECURSIVE n AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM n WHERE n &lt; 4
+)
+SELECT * FROM n;</code></pre>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="The anchor row counts too. Write down each round's new row.">
+                                A) 3
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="Round 4 reads n = 4. Is 4 less than 4?">
+                                B) 5
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="The anchor gives 1, then the rounds give 2, 3 and 4. The round that reads 4 fails n less than 4, produces nothing, and the recursion stops: 1, 2, 3, 4.">
+                                C) 4
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="The WHERE clause in the recursive member is a working stop condition.">
+                                D) It fails with error 3636
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 4:</strong> A recursive CTE builds a path of names, starting with <code>'Maria' AS path</code> in the anchor. Deeper rows fail with error 1406, "Data too long for column 'path'". What is the fix?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="The data is fine; the problem is where the column's size is decided.">
+                                A) Make <code>employees.first_name</code> a longer column
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="The anchor fixes each column's type and width, and the recursive member can never widen it. CAST('Maria' AS CHAR(200)) in the anchor gives the path room to grow.">
+                                B) Widen the column in the anchor, for example <code>CAST('Maria' AS CHAR(200))</code>
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="The recursion limit counts rounds, not characters.">
+                                C) Raise <code>cte_max_recursion_depth</code>
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+
+                    <div class="quiz-question">
+                        <p><strong>Question 5:</strong> Your team asks the same "revenue per customer" question in a dozen scripts every week. Where should that query live?</p>
+                        <div class="quiz-options">
+                            <button class="quiz-option" data-correct="false" data-hint="That works, but then a dozen copies must be kept in step. What lasts longer than one statement?">
+                                A) In a CTE at the top of each script
+                            </button>
+                            <button class="quiz-option" data-correct="false" data-hint="A derived table is the hardest of the three to reuse: it cannot even be read twice in one statement.">
+                                B) In a derived table inside each query
+                            </button>
+                            <button class="quiz-option" data-correct="true" data-explanation="A view is stored in the database, so every script and every person can read it by name. CTEs are best for steps that belong to one query.">
+                                C) In a view, stored once in the database
+                            </button>
+                        </div>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="faq" class="lesson-section">
+                <h2>❓ Common Questions at This Stage</h2>
+
+                <details>
+                    <summary>Is a CTE faster than a subquery?</summary>
+                    <p>Usually neither is faster. MySQL's optimizer can merge a simple CTE into the main query, exactly as it does with a derived table, or compute it once and reuse the result when it is read several times. Choose CTEs for readability; when speed matters, look at the plan with <code>EXPLAIN</code> (<a href="lesson_14.html">Lesson 6.1</a>).</p>
+                </details>
+                <details>
+                    <summary>Why <code>UNION ALL</code> and not <code>UNION</code> in a recursive CTE?</summary>
+                    <p><code>UNION ALL</code> keeps every row and is what you want almost always. MySQL also accepts <code>UNION</code> (distinct), which throws away any new row identical to one already found. That can stop a walk through data with a cycle, but it hides the cycle instead of showing it, and it costs a duplicate check every round. Fix cycles in the data instead.</p>
+                </details>
+                <details>
+                    <summary>Can I use a CTE with UPDATE or DELETE?</summary>
+                    <p>Yes. In MySQL a <code>WITH</code> clause can come in front of <code>UPDATE</code> and <code>DELETE</code>, and inside <code>INSERT ... SELECT</code>, so you can, for example, compute "everyone under Daniel" with a recursive CTE and update their rows in the same statement. Practice on a copy, or inside a transaction you roll back (<a href="lesson_18.html">Lesson 7.2</a>), before you change real rows.</p>
+                </details>
+                <details>
+                    <summary>Do other databases write CTEs the same way?</summary>
+                    <p>Yes. <code>WITH</code> and <code>WITH RECURSIVE</code> are standard SQL, and PostgreSQL, SQLite and MariaDB read them the same way. SQL Server and Oracle write recursive CTEs without the <code>RECURSIVE</code> keyword (Oracle also wants the column list after the CTE's name). What changes between systems is the name and default of the recursion limit.</p>
+                </details>
+
+                <div class="card card-accent">
+                    <h3>🌟 Going Further: Bonus Challenge</h3>
+                    <p>Make a cycle on purpose, safely: start a transaction, set Maria's <code>manager_id</code> to 9 (Nina, who is under her), and run the org chart query anchored on <code>WHERE id = 1</code>. What error do you get, and after how many rounds? Now add a column to the CTE that carries the ids seen so far (<code>CAST(id AS CHAR(200))</code>, extended with <code>CONCAT(seen, ',', e.id)</code>) and a condition <code>FIND_IN_SET(e.id, o.seen) = 0</code> in the recursive member. Does the walk now stop by itself? Finish with <code>ROLLBACK;</code> so Maria is the boss again.</p>
+                </div>
+            </section>
+
+            <section id="journal" class="lesson-section">
+                <h2>📓 Learning Journal</h2>
+                <div class="card card-accent">
+                    <p>Take five minutes to write in your learning journal (a notebook or a plain text file works fine). Jot down:</p>
+                    <ul>
+                        <li><strong>Key concepts</strong> you learned today</li>
+                        <li><strong>Techniques that clicked</strong> (and the ones that have not, yet)</li>
+                        <li><strong>Questions or confusion</strong> to bring to the next session</li>
+                        <li><strong>Ideas to try</strong> on your own</li>
+                        <li><strong>Progress and feelings</strong>: how did this lesson go for you?</li>
+                    </ul>
+                    <p><strong>✍️ This lesson's prompt:</strong> Think of a chain in your own life that has no fixed length: a family tree, folders inside folders, a "reply to a reply" email thread, the prerequisites of a course. Describe it as a recursive CTE in plain words: what is the anchor, what does each round find from the round before, and what makes it stop?</p>
+                </div>
+            </section>
+
+            <section id="summary" class="lesson-section">
+                <h2>📝 Lesson Summary</h2>
+
+                <div class="card card-success">
+                    <h3>🎓 Key Takeaways</h3>
+                    <ul>
+                        <li>A <strong>CTE</strong> (<code>WITH name AS (...)</code>) is a named result that lives for one statement and is read like a table</li>
+                        <li>One <code>WITH</code> can hold several CTEs separated by commas; each can read the ones before it, and each can be read more than once</li>
+                        <li>CTEs read top to bottom where nested subqueries read inside out; views are for queries reused across many statements</li>
+                        <li>A <strong>recursive CTE</strong> = anchor (runs once) + <code>UNION ALL</code> + recursive member (runs per round) with a stop condition</li>
+                        <li>The anchor fixes every column's type and width: <code>CAST(... AS CHAR(n))</code> for paths and lists</li>
+                        <li>Walk down a hierarchy with <code>e.manager_id = cte.id</code>, up with <code>e.id = cte.manager_id</code></li>
+                        <li><code>cte_max_recursion_depth</code> (1000) stops runaway recursion with error 3636; MariaDB stops quietly with a warning</li>
+                    </ul>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>You want</th><th>Write</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Name a step</td><td><code>WITH step AS (SELECT ...) SELECT ... FROM step;</code></td></tr>
+                            <tr><td>Several steps</td><td><code>WITH a AS (...), b AS (SELECT ... FROM a) SELECT ...</code></td></tr>
+                            <tr><td>A series 1 to N</td><td><code>WITH RECURSIVE s AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM s WHERE n &lt; N)</code></td></tr>
+                            <tr><td>Every month, even empty ones</td><td>a recursive month series, then <code>LEFT JOIN</code> the data</td></tr>
+                            <tr><td>An org chart</td><td>anchor <code>WHERE manager_id IS NULL</code>, join <code>e.manager_id = cte.id</code></td></tr>
+                            <tr><td>A chain of command</td><td>anchor <code>WHERE id = ?</code>, join <code>e.id = cte.manager_id</code></td></tr>
+                            <tr><td>More than 1000 rounds</td><td><code>SET SESSION cte_max_recursion_depth = ...</code>, then back to <code>DEFAULT</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card card-info">
+                    <h3>🏆 What You've Accomplished</h3>
+                    <ul>
+                        <li>You turned an inside-out nested query into a readable, step-by-step <code>WITH</code> query</li>
+                        <li>You compared every month with the one before by joining a CTE to itself</li>
+                        <li>You generated number and month series out of thin air and used one to fill a gap in a report</li>
+                        <li>You walked the bookstore's staff hierarchy down, up and sideways, without knowing its depth in advance</li>
+                        <li>You built <code>org_report.sql</code>, a briefing that keeps itself up to date</li>
+                    </ul>
+                </div>
+
+                <h3>🔭 Looking Ahead</h3>
+                <p>In <a href="lesson_window_functions.html"><strong>Lesson 5.2: Window Functions</strong></a> you will answer questions that need each row and a summary at the same time: a running total of sales, each month next to the one before it (with <code>LAG()</code> instead of today's self-join), and the best-selling book in every category. You will also see why CTEs and window functions are a pair: a CTE is how you filter on a window function's result.</p>
+
+                <h3>📋 Before the Next Lesson</h3>
+                <ul>
+                    <li>Run <code>org_report.sql</code> from a fresh session and make sure all four parts print</li>
+                    <li>Rewrite one nested query from <a href="lesson_10.html">Lesson 3.4</a> as a CTE and check that the result is identical</li>
+                    <li>Try the bonus challenge: break the hierarchy with a cycle inside a transaction, then roll it back</li>
+                </ul>
+
+                <div class="card card-accent">
+                    <h3>🌱 Encouragement for the Journey</h3>
+                    <p>Recursive queries have a reputation for being hard, and you just wrote several. The trick you used is the whole trick: say where to start, say how to get from one round to the next, and say when to stop. If the org chart query still feels like magic, rerun the number series and add one row at a time in your head. Once the rounds click, every hierarchy (folders, categories, comment threads, family trees) is the same query with different table names.</p>
+                </div>
+            </section>
+
+            <nav class="lesson-nav" aria-label="Lesson Navigation">
+                <a href="lesson_13.html" class="prev-lesson">← Previous: Joins</a>
+                <a href="index.html" class="home-link">🏠 Course Home</a>
+                <a href="lesson_window_functions.html" class="next-lesson">Next: Window Functions →</a>
+            </nav>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Ray de la Paz. MySQL Foundations. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="https://rays-home.netlify.app/">Ray's House of Fun</a>
+            <a href="https://rays-home.netlify.app/contact">Contact</a>
+            <a href="#" id="print-button">Print Page</a>
+        </div>
+        <p><small>Press <kbd>?</kbd> for keyboard shortcuts</small></p>
+    </footer>
+
+    <script src="js/clipboard.js"></script>
+    <script src="js/course-enhancements.js"></script>
+</body>
+</html>
